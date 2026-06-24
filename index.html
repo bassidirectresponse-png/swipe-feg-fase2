@@ -74,6 +74,30 @@
   .stat{display:flex;align-items:baseline;gap:8px;}
   .stat .n{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;}
   .stat .l{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);}
+  .impact{display:inline-flex;align-items:center;gap:14px;font-size:clamp(1.8rem,4.5vw,3rem);font-weight:700;letter-spacing:-.03em;line-height:1.05;}
+  .impact .lime{color:var(--accent);}
+  .lupa{width:1.05em;height:1.05em;color:var(--accent);flex-shrink:0;filter:drop-shadow(0 0 14px rgba(229,255,45,.45));}
+  .lupa svg{width:100%;height:100%;display:block;}
+  .page .lab{margin-top:14px;color:var(--muted-fg);font-size:clamp(1rem,1.7vw,1.25rem);max-width:600px;}
+  .page .lab b{color:var(--fg);font-weight:600;}
+
+  /* login */
+  #loginScreen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(900px 600px at 50% -10%,rgba(229,255,45,.08),transparent 60%),var(--bg);}
+  #loginScreen.show{display:flex;}
+  .login-card{max-width:430px;width:100%;border:1px solid var(--border-2);border-radius:22px;padding:clamp(28px,5vw,44px);background:linear-gradient(180deg,var(--surface-2),var(--surface));box-shadow:0 30px 90px -20px rgba(0,0,0,.9);}
+  .login-brand{display:flex;align-items:center;gap:12px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
+  .login-brand .lupa{width:34px;height:34px;}
+  .login-brand .lime{color:var(--accent);}
+  .login-sub{color:var(--muted-fg);font-size:.98rem;line-height:1.5;margin-bottom:28px;}
+  .login-card .field{margin-bottom:18px;}
+  .login-card label{display:block;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;margin-bottom:8px;}
+  .login-card input{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:1.05rem;padding:14px 16px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .login-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .login-card .btn{width:100%;margin-top:8px;}
+  .login-err{display:none;color:#ff8a8a;background:var(--red-soft);border:1px solid rgba(255,93,93,.4);border-radius:var(--radius-xs);padding:11px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;}
+  .login-err.show{display:block;}
+  .login-foot{margin-top:22px;text-align:center;font-size:.72rem;color:var(--faint);letter-spacing:.05em;}
 
   /* grid */
   .grid-wrap{padding:28px clamp(16px,4vw,48px) 90px;}
@@ -259,6 +283,24 @@
 </head>
 <body>
 
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>
+      Benchmarking <span class="lime">Grupo FEG</span>
+    </div>
+    <div class="login-sub">Além de ofertas, um laboratório de análise e dados exclusivo.</div>
+    <form id="loginForm">
+      <div class="login-err" id="loginErr">Usuário ou senha incorretos.</div>
+      <div class="field"><label>Usuário</label><input type="text" id="loginUser" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="seu usuário"></div>
+      <div class="field"><label>Senha</label><input type="password" id="loginPass" autocomplete="current-password" placeholder="sua senha"></div>
+      <button type="submit" class="btn btn--accent btn--lg">Entrar →</button>
+    </form>
+    <div class="login-foot">ACESSO RESTRITO · GRUPO FEG</div>
+  </div>
+</div>
+
 <!-- SETUP -->
 <div id="setupScreen" class="hidden">
   <div class="setup">
@@ -291,11 +333,12 @@ create policy "public_all" on offers
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
     <button class="icon-btn" id="exportBtn" title="Exportar backup">↓</button>
     <button class="icon-btn" id="settingsBtn" title="Configurações">⚙</button>
+    <button class="icon-btn" id="logoutBtn" title="Sair">⎋</button>
     <button class="btn btn--accent" id="newBtn">+ Nova oferta</button>
   </div>
   <div class="page">
-    <h1>Dashboard de <span class="lime">ofertas</span></h1>
-    <p class="sub">Cada card reúne produto, nicho, biblioteca de anúncios, domínios, checkouts, criativos e preços.</p>
+    <div class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></div>
+    <p class="lab">Além de ofertas, um <b>laboratório de análise e dados</b> exclusivo.</p>
     <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l">Ofertas</span></div></div>
   </div>
   <div class="grid-wrap"><div id="gridArea"></div></div>
@@ -393,6 +436,47 @@ function normalize(raw){
   if(typeof d.angulosLink!=="string")d.angulosLink="";
   return d;
 }
+
+/* ===== AUTH (trava de acesso) ===== */
+function sha256(ascii){
+  function rr(v,a){return (v>>>a)|(v<<(32-a));}
+  var mp=Math.pow,mw=mp(2,32),i,j,result='',words=[];
+  var bitLen=ascii.length*8;
+  var hash=sha256.h=sha256.h||[],k=sha256.k=sha256.k||[],pc=k.length,comp={};
+  for(var c=2;pc<64;c++){if(!comp[c]){for(i=0;i<313;i+=c)comp[i]=c;hash[pc]=(mp(c,.5)*mw)|0;k[pc++]=(mp(c,1/3)*mw)|0;}}
+  ascii+='\x80';while(ascii.length%64-56)ascii+='\x00';
+  for(i=0;i<ascii.length;i++){j=ascii.charCodeAt(i);if(j>>8)return;words[i>>2]|=j<<((3-i)%4)*8;}
+  words[words.length]=((bitLen/mw)|0);words[words.length]=(bitLen);
+  for(j=0;j<words.length;){
+    var w=words.slice(j,j+=16),oh=hash;hash=hash.slice(0,8);
+    for(i=0;i<64;i++){
+      var w15=w[i-15],w2=w[i-2],a=hash[0],e=hash[4];
+      var t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
+      var t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash=[(t1+t2)|0].concat(hash);hash[4]=(hash[4]+t1)|0;
+    }
+    for(i=0;i<8;i++)hash[i]=(hash[i]+oh[i])|0;
+  }
+  for(i=0;i<8;i++)for(j=3;j+1;j--){var b=(hash[i]>>(j*8))&255;result+=((b<16)?0:'')+b.toString(16);}
+  return result;
+}
+const AUTH_KEY="feg_auth_user";
+const USERS=[
+  {u:"adminswipefeg", h:"0ee11d0957e3ad73871de08f70597901ce147972e48e635503049a64c0d6b781"},
+  {u:"userswipefeg",  h:"ca87e11f5843eccfbad99c1482563fe06abb29f6e80ed3b8e7e971455ca7c59c"}
+];
+function currentUser(){return localStorage.getItem(AUTH_KEY);}
+function tryLogin(u,p){const user=USERS.find(x=>x.u===(u||"").trim().toLowerCase());if(user&&sha256(p||"")===user.h){localStorage.setItem(AUTH_KEY,user.u);return true;}return false;}
+function logout(){localStorage.removeItem(AUTH_KEY);location.reload();}
+function showLogin(){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");$("#loginUser").focus();}
+function startAuth(){if(currentUser()){$("#loginScreen").classList.remove("show");boot();}else showLogin();}
+$("#loginForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  if(tryLogin($("#loginUser").value,$("#loginPass").value)){
+    $("#loginErr").classList.remove("show");$("#loginScreen").classList.remove("show");$("#loginPass").value="";boot();
+  }else{$("#loginErr").classList.add("show");$("#loginPass").value="";$("#loginPass").focus();}
+});
+document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(confirm("Sair do painel?"))logout();}});
 
 /* ===== SUPABASE ===== */
 function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").classList.add("hidden");}
@@ -847,7 +931,7 @@ document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightb
 /* ===== EXPORT ===== */
 $("#exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");});
 
-boot();
+startAuth();
 </script>
 </body>
 </html>
