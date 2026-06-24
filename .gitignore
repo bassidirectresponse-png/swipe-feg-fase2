@@ -11,3 +11,12 @@
 
 # Backups exportados pelo app
 ofertas-backup*.json
+
+# Relatório de segurança (mantém local — descreve falhas)
+SECURITY_REPORT.md
+
+# Segredos (preventivo)
+.env
+.env.*
+*.pem
+*.key
