@@ -1,0 +1,11 @@
+# Site estático de arquivo único — nada para buildar.
+# A Netlify publica a raiz do repositório diretamente.
+[build]
+  publish = "."
+  command = ""
+
+# Garante que a raiz sirva o index.html
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200

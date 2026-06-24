@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor / tooling
+.claude/
+.vscode/
+*.log
+
+# Backups exportados pelo app
+ofertas-backup*.json
