@@ -9,36 +9,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --bg:#000000;
-    --bg-2:#070708;
-    --surface:#0c0c0e;
-    --surface-2:#121215;
-    --surface-3:#17171b;
-    --fg:#f4f4f5;
-    --muted-fg:#9b9ba3;
-    --faint:#5b5b63;
-    --accent:#e5ff2d;
-    --accent-dim:rgba(229,255,45,.14);
-    --accent-soft:rgba(229,255,45,.08);
-    --border:#1d1d22;
-    --border-2:#2a2a31;
-    --border-strong:#3a3a44;
-    --danger:#ff5d5d;
-    --radius:16px;
-    --radius-sm:10px;
-    --radius-xs:8px;
+    --bg:#000000;--bg-2:#070708;--surface:#0c0c0e;--surface-2:#121215;--surface-3:#17171b;
+    --fg:#f4f4f5;--muted-fg:#9b9ba3;--faint:#5b5b63;
+    --accent:#e5ff2d;--accent-dim:rgba(229,255,45,.14);--accent-soft:rgba(229,255,45,.08);
+    --red:#ff5d5d;--red-soft:rgba(255,93,93,.13);
+    --border:#1d1d22;--border-2:#2a2a31;--border-strong:#3a3a44;
+    --radius:16px;--radius-sm:10px;--radius-xs:8px;
     --shadow:0 10px 40px -12px rgba(0,0,0,.8);
-    --glow:0 0 0 1px rgba(229,255,45,.5), 0 12px 50px -16px rgba(229,255,45,.25);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   ::selection{background:var(--accent);color:#000;}
   html,body{background:var(--bg);color:var(--fg);font-family:"Space Grotesk","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
   body{min-height:100vh;overflow-x:hidden;line-height:1.45;
-    background:
-      radial-gradient(900px 500px at 85% -10%, rgba(229,255,45,.06), transparent 60%),
-      radial-gradient(700px 500px at 0% 0%, rgba(229,255,45,.03), transparent 55%),
-      var(--bg);
-    background-attachment:fixed;}
+    background:radial-gradient(900px 500px at 85% -10%,rgba(229,255,45,.06),transparent 60%),radial-gradient(700px 500px at 0% 0%,rgba(229,255,45,.03),transparent 55%),var(--bg);background-attachment:fixed;}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
   input,textarea,select{font-family:inherit;}
   a{color:inherit;text-decoration:none;}
@@ -46,13 +29,11 @@
   ::-webkit-scrollbar-track{background:var(--bg);}
   ::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:8px;border:2px solid var(--bg);}
   ::-webkit-scrollbar-thumb:hover{background:var(--border-strong);}
-
   .eyebrow{font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;}
   .hidden{display:none !important;}
 
-  /* ---------- topbar ---------- */
-  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:16px clamp(16px,4vw,48px);
-    background:rgba(0,0,0,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+  /* topbar */
+  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:16px clamp(16px,4vw,48px);background:rgba(0,0,0,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
   .brand{display:flex;align-items:baseline;gap:2px;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;text-transform:uppercase;}
   .brand .d{color:var(--accent);}
   .topbar .search{flex:1;max-width:440px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border-2);border-radius:999px;padding:0 18px;height:46px;transition:border-color .2s,box-shadow .2s;}
@@ -61,15 +42,14 @@
   .topbar .search input::placeholder{color:var(--faint);}
   .topbar .search .ic{color:var(--muted-fg);}
   .topbar .spacer{flex:1;}
-
   .sync{display:inline-flex;align-items:center;gap:7px;font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);white-space:nowrap;}
   .sync .dot{width:8px;height:8px;border-radius:50%;background:#444;}
   .sync.ok .dot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
-  .sync.err .dot{background:var(--danger);}
+  .sync.err .dot{background:var(--red);}
   .sync.load .dot{background:#fff;animation:pulse 1s infinite;}
   @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
-  /* ---------- buttons ---------- */
+  /* buttons */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:.9rem;border-radius:var(--radius-sm);height:46px;padding:0 20px;border:1px solid transparent;transition:transform .12s ease,background .2s,color .2s,border-color .2s,box-shadow .2s;white-space:nowrap;}
   .btn:active{transform:scale(.97);}
   .btn--accent{background:var(--accent);color:#000;font-weight:700;}
@@ -78,14 +58,14 @@
   .btn--outline:hover{border-color:var(--border-strong);background:var(--surface-2);}
   .btn--ghost{color:var(--muted-fg);}
   .btn--ghost:hover{color:var(--fg);}
-  .btn--danger{border-color:rgba(255,93,93,.4);color:var(--danger);background:transparent;}
-  .btn--danger:hover{background:var(--danger);color:#000;border-color:var(--danger);}
+  .btn--danger{border-color:rgba(255,93,93,.4);color:var(--red);background:transparent;}
+  .btn--danger:hover{background:var(--red);color:#000;border-color:var(--red);}
   .btn--sm{height:38px;padding:0 14px;font-size:.82rem;}
   .btn--lg{height:56px;padding:0 30px;font-size:1.02rem;}
   .icon-btn{width:46px;height:46px;border-radius:var(--radius-sm);border:1px solid var(--border-2);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;}
   .icon-btn:hover{border-color:var(--border-strong);background:var(--surface-2);}
 
-  /* ---------- page header ---------- */
+  /* page header */
   .page{padding:clamp(28px,5vw,56px) clamp(16px,4vw,48px) 0;}
   .page h1{font-size:clamp(2rem,5.5vw,3.6rem);font-weight:700;letter-spacing:-.03em;line-height:1.02;}
   .page h1 .lime{color:var(--accent);}
@@ -95,15 +75,15 @@
   .stat .n{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;}
   .stat .l{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);}
 
-  /* ---------- grid ---------- */
+  /* grid */
   .grid-wrap{padding:28px clamp(16px,4vw,48px) 90px;}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
   @media(max-width:560px){.grid{grid-template-columns:1fr;}}
 
-  .card{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:14px;cursor:pointer;transition:transform .22s cubic-bezier(.2,.7,.3,1),border-color .22s,box-shadow .22s;overflow:hidden;}
-  .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(180deg,rgba(229,255,45,.0),rgba(229,255,45,0));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .card{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:13px;cursor:pointer;transition:transform .2s cubic-bezier(.2,.7,.3,1),border-color .2s,box-shadow .2s;will-change:transform;}
   .card:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:var(--shadow);}
-  .card:hover::before{opacity:1;background:linear-gradient(180deg,rgba(229,255,45,.35),rgba(229,255,45,0));}
+  .card--hot{border-color:rgba(229,255,45,.55);box-shadow:0 0 0 1px rgba(229,255,45,.3),0 14px 50px -18px rgba(229,255,45,.35);}
+  .card--hot:hover{border-color:var(--accent);box-shadow:0 0 0 1px rgba(229,255,45,.55),0 18px 60px -16px rgba(229,255,45,.45);}
 
   .card__top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;}
   .card__brand{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;}
@@ -112,30 +92,31 @@
   .card__chips{display:flex;flex-wrap:wrap;gap:7px;}
   .chip{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-3);border:1px solid var(--border-2);color:var(--muted-fg);padding:5px 10px;border-radius:999px;font-weight:600;}
   .chip.accent{background:var(--accent-dim);border-color:transparent;color:var(--accent);}
-
+  .chip.niche{background:var(--accent);color:#000;border-color:transparent;}
   .card__ads{display:flex;align-items:baseline;gap:9px;}
   .card__ads .n{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;}
   .card__ads .l{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);}
 
-  .banner{display:flex;align-items:center;gap:9px;font-size:.78rem;font-weight:600;padding:10px 12px;border-radius:var(--radius-xs);line-height:1.3;}
+  .banner{display:flex;align-items:center;gap:9px;font-size:.78rem;font-weight:700;padding:10px 12px;border-radius:var(--radius-xs);line-height:1.3;}
   .banner .bi{flex-shrink:0;font-size:.95rem;}
-  .banner--warn{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(229,255,45,.35);}
-  .banner--multi{background:var(--surface-3);color:var(--muted-fg);border:1px solid var(--border-2);}
+  .banner--warn{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(229,255,45,.4);}
+  .banner--danger{background:var(--red-soft);color:#ff8a8a;border:1px solid rgba(255,93,93,.45);}
+  .card__topbanner{margin:-2px 0 2px;}
 
   .qbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px;}
   .qbtn{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);padding:8px 12px;border-radius:999px;transition:all .18s;}
   .qbtn:hover{background:var(--accent);color:#000;border-color:var(--accent);}
-  .qbtn .qi{opacity:.8;}
+  .qbtn .qi{opacity:.85;}
 
   .card--new{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--border-strong);background:var(--surface);min-height:200px;gap:8px;}
-  .card--new:hover{border-color:var(--accent);}
+  .card--new:hover{border-color:var(--accent);transform:translateY(-4px);}
   .card--new .plus{width:52px;height:52px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:300;}
   .card--new .t{font-weight:600;color:var(--muted-fg);}
 
   .empty{padding:90px 20px;text-align:center;color:var(--muted-fg);}
   .empty h2{font-size:clamp(1.6rem,4vw,2.4rem);color:var(--fg);margin-bottom:10px;letter-spacing:-.02em;}
 
-  /* ---------- modal ---------- */
+  /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:none;overflow-y:auto;padding:clamp(12px,3vw,40px);}
   .overlay.open{display:block;}
   .modal{background:var(--bg-2);border:1px solid var(--border-2);border-radius:20px;max-width:1120px;margin:0 auto;box-shadow:0 30px 90px -20px rgba(0,0,0,.9);overflow:hidden;}
@@ -145,9 +126,13 @@
   .modal__body{padding:clamp(20px,3.5vw,40px);}
   .x{width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;}
   .x:hover{background:var(--surface-2);border-color:var(--border-strong);}
+  .autosave-state{display:inline-flex;align-items:center;gap:7px;font-size:.72rem;color:var(--muted-fg);white-space:nowrap;}
+  .autosave-state .asdot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .autosave-state.saving .asdot{background:#fff;animation:pulse 1s infinite;}
+  .autosave-state.err .asdot{background:var(--red);}
 
-  .view-grid{display:grid;grid-template-columns:1fr 320px;gap:32px;align-items:start;}
-  @media(max-width:900px){.view-grid{grid-template-columns:1fr;}}
+  .view-grid{display:grid;grid-template-columns:1fr 330px;gap:32px;align-items:start;}
+  @media(max-width:920px){.view-grid{grid-template-columns:1fr;}.sidebar{position:static !important;order:-1;}}
 
   .sec{margin-bottom:38px;}
   .sec__head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
@@ -156,7 +141,7 @@
   .sec__line{flex:1;height:1px;background:var(--border);}
 
   .prod-head{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
-  .prod-head .img{width:160px;height:160px;border-radius:14px;border:1px solid var(--border-2);object-fit:cover;background:var(--surface);flex-shrink:0;}
+  .prod-head .img{width:160px;height:160px;border-radius:14px;border:1px solid var(--border-2);object-fit:cover;background:var(--surface);flex-shrink:0;cursor:zoom-in;}
   .prod-head .info{flex:1;min-width:240px;}
   .prod-head h2{font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-.03em;line-height:1.05;}
   .prod-head .brand{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;margin-bottom:8px;}
@@ -171,7 +156,6 @@
   .linkbtn.accent:hover{background:var(--accent);color:#000;}
   .linkbtn .arr{opacity:.6;font-weight:400;}
 
-  /* domain block */
   .dom{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:20px;margin-bottom:16px;}
   .dom__top{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
   .dom__badge{font-size:.68rem;font-weight:700;letter-spacing:.1em;color:#000;background:var(--accent);padding:5px 11px;border-radius:999px;}
@@ -180,57 +164,48 @@
   @media(max-width:640px){.dom__shots{grid-template-columns:1fr;}}
   .shot{border:1px solid var(--border-2);border-radius:12px;overflow:hidden;background:var(--surface-2);}
   .shot__lbl{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-fg);padding:9px 12px;border-bottom:1px solid var(--border);}
-  .shot__lbl .zoom{color:var(--accent);font-weight:700;}
-  .shot img{display:block;width:100%;height:auto;}
+  .shot__lbl .zoom{color:var(--accent);font-weight:700;cursor:zoom-in;}
+  .shot img{display:block;width:100%;height:auto;cursor:zoom-in;}
   .shot .none{padding:34px 12px;text-align:center;color:var(--faint);font-size:.85rem;font-style:italic;}
 
   .crv{background:var(--surface);border:1px solid var(--border-2);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
   .crv__name{font-size:1.02rem;font-weight:600;}
   .crv__name .si{font-size:.7rem;color:var(--muted-fg);font-weight:500;display:block;letter-spacing:.1em;text-transform:uppercase;}
 
-  .angle{background:var(--surface);border:1px solid var(--border-2);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr;gap:16px;}
-  .angle .anum{font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1;}
-  .angle .ameta{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:5px;}
-  .angle .adesc{font-size:1rem;line-height:1.4;}
-  .angle .alink{color:var(--accent);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block;margin-top:8px;}
+  .resumo{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:20px;font-size:1.05rem;line-height:1.55;white-space:pre-wrap;}
 
-  .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  @media(max-width:560px){.price-grid{grid-template-columns:1fr;}}
-  .price{border:1px solid var(--border-2);border-radius:14px;padding:22px;background:var(--surface);}
-  .price.on{background:linear-gradient(180deg,var(--accent),#cfe800);color:#000;border-color:var(--accent);}
-  .price .pk{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.75;}
-  .price .pv{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin-top:8px;line-height:1;}
-  .price .pn{font-size:.9rem;margin-top:8px;opacity:.7;}
+  .price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
+  .price{border:1px solid var(--border-2);border-radius:14px;padding:20px;background:var(--surface);}
+  .price.assina{background:linear-gradient(180deg,var(--accent),#cfe800);color:#000;border-color:var(--accent);}
+  .price .ptag{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;opacity:.7;display:inline-block;margin-bottom:8px;}
+  .price .pk{font-size:.9rem;font-weight:600;opacity:.85;}
+  .price .pv{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-top:6px;line-height:1;}
 
   .sidebar{position:sticky;top:84px;display:flex;flex-direction:column;gap:16px;}
-  .note{border:1px solid rgba(229,255,45,.3);background:linear-gradient(180deg,var(--accent-soft),transparent);border-radius:14px;padding:20px;}
+  .note{border:1px solid rgba(229,255,45,.35);background:linear-gradient(180deg,var(--accent-soft),transparent);border-radius:14px;padding:20px;}
   .note .nk{display:flex;align-items:center;gap:8px;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:12px;}
-  .note .nbody{font-size:1rem;line-height:1.5;white-space:pre-wrap;}
+  .note .nbody{font-size:1.02rem;line-height:1.5;white-space:pre-wrap;}
   .note .nbody.empty{color:var(--faint);font-style:italic;}
   .sidecard{border:1px solid var(--border-2);background:var(--surface);border-radius:14px;padding:18px;}
   .sidecard .sk{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;margin-bottom:12px;}
-
   .muted-empty{color:var(--faint);font-style:italic;font-size:.95rem;}
 
-  /* ---------- form ---------- */
+  /* form */
   .form .fsec{margin-bottom:34px;padding-bottom:30px;border-bottom:1px solid var(--border);}
   .form .fsec:last-child{border-bottom:none;}
   .form .field{margin-bottom:20px;}
   .form label.lbl{display:block;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;margin-bottom:9px;}
-  .form input[type=text],.form input[type=url],.form input[type=number],.form textarea{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:1rem;padding:13px 15px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .form input[type=text],.form input[type=url],.form input[type=number],.form textarea,.form select{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:1rem;padding:13px 15px;outline:none;transition:border-color .15s,box-shadow .15s;}
   .form .field.big input{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;padding:16px;}
-  .form input:focus,.form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .form input:focus,.form textarea:focus,.form select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
   .form input::placeholder,.form textarea::placeholder{color:var(--faint);}
   .form textarea{resize:vertical;min-height:90px;line-height:1.5;}
   .form .row{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  @media(max-width:640px){.form .row{grid-template-columns:1fr;}}
+  .form .row3{display:grid;grid-template-columns:1.4fr 1fr .9fr;gap:14px;}
+  @media(max-width:640px){.form .row,.form .row3{grid-template-columns:1fr;}}
   .form .fsec__title{font-size:1.15rem;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:10px;}
   .form .fsec__title .num{font-size:.66rem;color:var(--accent);background:var(--accent-dim);padding:4px 9px;border-radius:999px;letter-spacing:.1em;}
   .form .fsec__hint{font-size:.85rem;color:var(--muted-fg);margin-bottom:18px;}
-
-  .check{display:inline-flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:12px;user-select:none;}
-  .check input{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;}
-  .check span{font-size:.85rem;font-weight:600;}
 
   .dz{border:1px dashed var(--border-strong);background:var(--surface);border-radius:12px;min-height:120px;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px;cursor:pointer;position:relative;transition:border-color .2s,background .2s;outline:none;}
   .dz:hover,.dz.active{border-color:var(--accent);background:var(--accent-soft);}
@@ -238,13 +213,13 @@
   .dz .hint{color:var(--muted-fg);font-size:.82rem;line-height:1.5;}
   .dz .hint b{color:var(--accent);}
   .dz img{display:block;width:100%;height:auto;}
-  .dz .rm{position:absolute;top:8px;right:8px;background:var(--danger);color:#000;font-weight:700;font-size:.68rem;padding:6px 10px;border-radius:6px;z-index:2;}
+  .dz .rm{position:absolute;top:8px;right:8px;background:var(--red);color:#000;font-weight:700;font-size:.68rem;padding:6px 10px;border-radius:6px;z-index:2;}
 
   .block-edit{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;margin-bottom:14px;}
   .block-edit .behead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
   .block-edit .behead .t{font-weight:700;color:var(--accent);font-size:.82rem;letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
   .block-edit .behead .badge{background:var(--accent);color:#000;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;}
-  .block-edit .rm-block{color:var(--danger);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+  .block-edit .rm-block{color:var(--red);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
   .add-block{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--border-strong);background:transparent;color:var(--accent);padding:11px 18px;border-radius:var(--radius-sm);font-weight:600;font-size:.85rem;transition:all .18s;}
   .add-block:hover{background:var(--accent-dim);border-color:var(--accent);}
 
@@ -260,27 +235,26 @@
 
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(160%);background:var(--accent);color:#000;font-weight:700;padding:14px 26px;border-radius:12px;z-index:5000;transition:transform .3s cubic-bezier(.2,.8,.3,1);box-shadow:0 12px 40px -10px rgba(0,0,0,.6);}
   .toast.show{transform:translateX(-50%) translateY(0);}
-  .toast.err{background:var(--danger);}
+  .toast.err{background:var(--red);}
 
-  /* lightbox */
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:6000;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out;}
   .lightbox.open{display:flex;}
   .lightbox img{max-width:96%;max-height:94vh;border-radius:8px;box-shadow:0 20px 80px -10px rgba(0,0,0,.9);}
+
+  /* skeleton */
+  .sk-card{height:230px;border-radius:var(--radius);border:1px solid var(--border-2);background:linear-gradient(110deg,var(--surface) 30%,var(--surface-2) 50%,var(--surface) 70%);background-size:220% 100%;animation:shimmer 1.2s linear infinite;}
+  @keyframes shimmer{from{background-position:220% 0}to{background-position:-20% 0}}
 </style>
 </head>
 <body>
 
-<!-- ============ SETUP ============ -->
+<!-- SETUP -->
 <div id="setupScreen" class="hidden">
   <div class="setup">
     <div class="eyebrow">Configuração única · Backend Supabase</div>
     <h2 style="margin-top:10px">Conecte o <span>banco</span></h2>
     <p>Cole a <b style="color:#fff">URL</b> e a <b style="color:#fff">anon key</b> do projeto Supabase. Fica guardado só neste navegador.</p>
-    <ol>
-      <li>Em <b>SQL Editor</b>, cole e rode o script abaixo</li>
-      <li>Em <b>Project Settings → API</b>, copie URL e anon key</li>
-      <li>Cole abaixo e clique CONECTAR</li>
-    </ol>
+    <ol><li>Em <b>SQL Editor</b>, rode o script abaixo</li><li>Em <b>Project Settings → API</b>, copie URL e anon key</li><li>Cole abaixo e clique CONECTAR</li></ol>
     <div class="sql" id="sqlBox">create table if not exists offers (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz default now(),
@@ -297,30 +271,26 @@ create policy "public_all" on offers
   </div>
 </div>
 
-<!-- ============ APP ============ -->
+<!-- APP -->
 <div id="app" class="hidden">
   <div class="topbar">
     <div class="brand">OFERTAS<span class="d">.</span></div>
-    <div class="search"><span class="ic">⌕</span><input type="text" id="searchInput" placeholder="Buscar oferta ou marca..." /></div>
+    <div class="search"><span class="ic">⌕</span><input type="text" id="searchInput" placeholder="Buscar oferta, marca ou nicho..." /></div>
     <div class="spacer"></div>
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
     <button class="icon-btn" id="exportBtn" title="Exportar backup">↓</button>
     <button class="icon-btn" id="settingsBtn" title="Configurações">⚙</button>
     <button class="btn btn--accent" id="newBtn">+ Nova oferta</button>
   </div>
-
   <div class="page">
     <h1>Dashboard de <span class="lime">ofertas</span></h1>
-    <p class="sub">Cada card reúne produto, biblioteca de anúncios, domínios, checkouts, criativos e preços — pronto para apresentar.</p>
-    <div class="meta-row">
-      <div class="stat"><span class="n" id="statTotal">0</span><span class="l">Ofertas</span></div>
-    </div>
+    <p class="sub">Cada card reúne produto, nicho, biblioteca de anúncios, domínios, checkouts, criativos e preços.</p>
+    <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l">Ofertas</span></div></div>
   </div>
-
   <div class="grid-wrap"><div id="gridArea"></div></div>
 </div>
 
-<!-- ============ VIEW MODAL ============ -->
+<!-- VIEW -->
 <div class="overlay" id="viewOverlay">
   <div class="modal">
     <div class="modal__bar">
@@ -335,14 +305,14 @@ create policy "public_all" on offers
   </div>
 </div>
 
-<!-- ============ FORM MODAL ============ -->
+<!-- FORM -->
 <div class="overlay" id="formOverlay">
   <div class="modal">
     <div class="modal__bar">
       <span class="tag" id="formTag">Nova oferta</span>
       <div class="actions">
-        <button class="btn btn--ghost btn--sm" id="formCancel">Cancelar</button>
-        <button class="btn btn--accent btn--sm" id="formSave">Salvar oferta</button>
+        <span class="autosave-state" id="autosaveState"><span class="asdot"></span>Salvo automaticamente</span>
+        <button class="btn btn--accent btn--sm" id="formDone">Concluir</button>
         <button class="x" id="formClose">✕</button>
       </div>
     </div>
@@ -355,76 +325,82 @@ create policy "public_all" on offers
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ===================== CONFIG ===================== */
-const LS={url:"feg_sb_url",key:"feg_sb_key"};
+/* ===== CONFIG ===== */
+const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
 const DEFAULT_URL="https://ppaajtzbhjixhyfidojd.supabase.co";
 const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
 const HIGH_VOLUME=1000;
+const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 
-let sb=null, offers=[], searchTerm="";
-let editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fAngulos=[];
+let sb=null, offers=[], searchTerm="", editingId=null;
+let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[];
 let activeZone=null;
+let autosaveTimer=null, saving=false, dirty=false;
 
-/* ===================== HELPERS ===================== */
+/* ===== HELPERS ===== */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
 function fixUrl(u){u=(u||"").trim();if(!u)return"";if(!/^https?:\/\//i.test(u))u="https://"+u;return u;}
 function getAds(d){const n=parseInt(String(d.numAdsAtivos||"").replace(/\D/g,""),10);return isNaN(n)?null:n;}
+function val(id){const e=document.getElementById(id);return e?e.value.trim():"";}
 let toastTimer;
 function toast(msg,err=false){const t=$("#toast");t.textContent=msg;t.classList.toggle("err",err);t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2600);}
 function setSync(st,txt){$("#syncPill").className="sync "+st;$("#syncTxt").textContent=txt;}
+function setAutosave(s){const e=$("#autosaveState");const lbl=s==="saving"?"Salvando…":s==="err"?"Erro ao salvar":s==="idle"?"Rascunho":"Tudo salvo";e.className="autosave-state"+(s==="saving"?" saving":s==="err"?" err":"");e.innerHTML='<span class="asdot"></span>'+lbl;}
 
 function normalize(raw){
   const d=Object.assign({},raw||{});
+  if(typeof d.nicho!=="string")d.nicho="";
   if(!Array.isArray(d.dominios)){
     d.dominios=[];
-    if(d.linkOferta||d.linkCheckout||d.printPV||d.printCheckout)
-      d.dominios.push({nome:"",linkDominio:d.linkOferta||"",linkCheckout:d.linkCheckout||"",printPV:d.printPV||"",printCheckout:d.printCheckout||""});
+    if(d.linkOferta||d.linkCheckout||d.printPV||d.printCheckout)d.dominios.push({nome:"",linkDominio:d.linkOferta||"",linkCheckout:d.linkCheckout||"",printPV:d.printPV||"",printCheckout:d.printCheckout||""});
   }
-  if(!Array.isArray(d.criativos)){
-    d.criativos=[];
-    if(d.linkCriativos) d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});
+  if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
+  if(!Array.isArray(d.precos)){
+    d.precos=[];
+    if(d.temUnico&&d.precoUnico)d.precos.push({descricao:"Compra única",valor:d.precoUnico,tipo:"Compra única"});
+    if(d.temAssinatura&&d.precoAssinatura)d.precos.push({descricao:"Assinatura",valor:d.precoAssinatura,tipo:"Assinatura"});
   }
-  if(!Array.isArray(d.angulos)) d.angulos=[];
+  if(typeof d.angulosResumo!=="string"){
+    d.angulosResumo=Array.isArray(d.angulos)?d.angulos.map(a=>a&&a.descricao?"• "+a.descricao:"").filter(Boolean).join("\n"):"";
+  }
+  if(typeof d.angulosLink!=="string")d.angulosLink="";
   return d;
 }
 
-/* ===================== SUPABASE ===================== */
+/* ===== SUPABASE ===== */
 function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").classList.add("hidden");}
 function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList.remove("hidden");}
 function initSupabase(u,k){try{sb=window.supabase.createClient(u,k);return true;}catch(e){console.error(e);return false;}}
+
+function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
+function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
   const url=localStorage.getItem(LS.url)||DEFAULT_URL;
   const key=localStorage.getItem(LS.key)||DEFAULT_KEY;
   if(url&&key&&initSupabase(url,key)){
     showApp();
+    const cached=readCache();
+    if(cached&&cached.length){offers=cached;renderGrid();setSync("load","Atualizando");}
+    else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<div class="sk-card"></div>').join("")+'</div>';
     const ok=await loadOffers();
-    if(ok===false){$("#supUrl").value=url;$("#supKey").value=key;showSetup();toast("Rode o SQL no Supabase primeiro",true);}
+    if(ok===false&&!(cached&&cached.length)){$("#supUrl").value=url;$("#supKey").value=key;showSetup();toast("Rode o SQL no Supabase primeiro",true);}
   }else showSetup();
 }
 async function loadOffers(){
   setSync("load","Carregando");
   const {data,error}=await sb.from("offers").select("*").order("created_at",{ascending:true});
   if(error){setSync("err","Erro");console.warn(error);return false;}
-  offers=data||[];setSync("ok","Sincronizado");renderGrid();return true;
-}
-async function saveOffer(payload){
-  setSync("load","Salvando");
-  let res;
-  if(editingId) res=await sb.from("offers").update({data:payload}).eq("id",editingId).select();
-  else res=await sb.from("offers").insert({data:payload}).select();
-  if(res.error){setSync("err","Erro");toast("Erro ao salvar: "+res.error.message,true);return false;}
-  setSync("ok","Sincronizado");await loadOffers();return true;
+  offers=data||[];setSync("ok","Sincronizado");renderGrid();writeCache();return true;
 }
 async function deleteOffer(id){
   setSync("load","Excluindo");
   const {error}=await sb.from("offers").delete().eq("id",id);
   if(error){setSync("err","Erro");toast("Erro ao excluir",true);return;}
-  setSync("ok","Sincronizado");await loadOffers();toast("Oferta excluída");
+  offers=offers.filter(o=>o.id!==id);setSync("ok","Sincronizado");renderGrid();writeCache();toast("Oferta excluída");
 }
 
 $("#connectBtn").addEventListener("click",async()=>{
@@ -435,45 +411,35 @@ $("#connectBtn").addEventListener("click",async()=>{
   setSync("load","Conectando");
   const {error}=await sb.from("offers").select("id").limit(1);
   if(error){toast("Erro: "+error.message,true);setSync("err","Erro");alert("Não conectou.\nVerifique o SQL e as chaves.\n\n"+error.message);return;}
-  localStorage.setItem(LS.url,url);localStorage.setItem(LS.key,key);
-  showApp();await loadOffers();toast("Conectado!");
+  localStorage.setItem(LS.url,url);localStorage.setItem(LS.key,key);showApp();await loadOffers();toast("Conectado!");
 });
 $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboard.writeText($("#sqlBox").childNodes[0].textContent).then(()=>toast("SQL copiado"));});
-$("#settingsBtn").addEventListener("click",()=>{
-  if(confirm("Trocar credenciais do Supabase? (As ofertas continuam no banco.)")){
-    $("#supUrl").value=localStorage.getItem(LS.url)||DEFAULT_URL;
-    $("#supKey").value=localStorage.getItem(LS.key)||DEFAULT_KEY;showSetup();
-  }
-});
+$("#settingsBtn").addEventListener("click",()=>{if(confirm("Trocar credenciais do Supabase? (As ofertas continuam no banco.)")){$("#supUrl").value=localStorage.getItem(LS.url)||DEFAULT_URL;$("#supKey").value=localStorage.getItem(LS.key)||DEFAULT_KEY;showSetup();}});
 
-/* ===================== GRID ===================== */
+/* ===== GRID ===== */
 function filtered(){
-  if(!searchTerm) return offers;
+  if(!searchTerm)return offers;
   const t=searchTerm.toLowerCase();
-  return offers.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nomeMarca,d.formato].some(v=>(v||"").toLowerCase().includes(t));});
+  return offers.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nomeMarca,d.formato,d.nicho].some(v=>(v||"").toLowerCase().includes(t));});
 }
 function qbtn(label,url,icon){if(!url)return"";return `<button class="qbtn" data-href="${esc(fixUrl(url))}"><span class="qi">${icon}</span>${label}</button>`;}
 
 function cardHtml(o){
   const d=normalize(o.data);
-  const ads=getAds(d);
-  const high=ads!=null&&ads>=HIGH_VOLUME;
-  const doms=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout);
+  const ads=getAds(d);const high=ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);
   const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const crvs=d.criativos.filter(x=>x.link);
-  const multi=domLinks.length>1||coLinks.length>1||crvs.length>1;
+  const multi=domLinks.length>1||coLinks.length>1;
 
-  const thumb=d.imagemProduto?`<img class="card__thumb" src="${d.imagemProduto}" alt="">`:"";
+  const thumb=d.imagemProduto?`<img class="card__thumb" loading="lazy" decoding="async" src="${d.imagemProduto}" alt="">`:"";
   const chips=[];
+  if(d.nicho)chips.push(`<span class="chip niche">${esc(d.nicho)}</span>`);
   if(d.formato)chips.push(`<span class="chip">${esc(d.formato)}</span>`);
-  if(doms.length>1)chips.push(`<span class="chip accent">${doms.length} domínios</span>`);
-  if(d.temAssinatura)chips.push(`<span class="chip">Assinatura</span>`);
-  if(d.temUnico)chips.push(`<span class="chip">Compra única</span>`);
+  if(domLinks.length>1)chips.push(`<span class="chip accent">${domLinks.length} domínios</span>`);
 
-  let banners="";
-  if(high)banners+=`<div class="banner banner--warn"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`;
-  if(multi)banners+=`<div class="banner banner--multi"><span class="bi">⊞</span>Oferta possui mais de um domínio e checkout, abra para visualizar todos.</div>`;
+  const topBanner=high?`<div class="banner banner--warn card__topbanner"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:"";
+  const redBanner=multi?`<div class="banner banner--danger"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout — abra para ver todas.</div>`:"";
 
   const quick=[
     qbtn("Biblioteca",d.linkBiblioteca,"📚"),
@@ -481,32 +447,22 @@ function cardHtml(o){
     qbtn("Domínio",(domLinks[0]||{}).linkDominio,"🌐"),
     qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒")
   ].filter(Boolean).join("");
-
   const adsDisp=ads!=null?ads.toLocaleString("pt-BR"):"–";
 
-  return `<div class="card" data-id="${o.id}">
-    <div class="card__top">
-      <div>
-        <div class="card__brand">${esc(d.nomeMarca||"Sem marca")}</div>
-        <div class="card__title">${esc(d.nomeOferta||"Oferta sem nome")}</div>
-      </div>
-      ${thumb}
-    </div>
+  return `<div class="card${high?' card--hot':''}" data-id="${o.id}">
+    ${topBanner}
+    <div class="card__top"><div><div class="card__brand">${esc(d.nomeMarca||"Sem marca")}</div><div class="card__title">${esc(d.nomeOferta||"Oferta sem nome")}</div></div>${thumb}</div>
     <div class="card__chips">${chips.join("")}</div>
     <div class="card__ads"><span class="n">${adsDisp}</span><span class="l">Ads ativos</span></div>
-    ${banners}
+    ${redBanner}
     <div class="qbar">${quick||'<span class="muted-empty" style="font-size:.8rem">Sem links — abra para editar</span>'}</div>
   </div>`;
 }
-
 function renderGrid(){
   const list=filtered();
   $("#statTotal").textContent=offers.length;
   const area=$("#gridArea");
-  if(offers.length===0){
-    area.innerHTML=`<div class="empty"><h2>Nenhuma oferta ainda</h2><p>Clique em <b style="color:var(--accent)">+ Nova oferta</b> para começar.</p></div>`;
-    return;
-  }
+  if(offers.length===0){area.innerHTML=`<div class="empty"><h2>Nenhuma oferta ainda</h2><p>Clique em <b style="color:var(--accent)">+ Nova oferta</b> para começar.</p></div>`;return;}
   let html=list.map(cardHtml).join("");
   html+=`<div class="card card--new" id="addCard"><div class="plus">+</div><div class="t">Nova oferta</div></div>`;
   area.innerHTML=`<div class="grid">${html}</div>`;
@@ -517,22 +473,22 @@ function renderGrid(){
 $("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;renderGrid();});
 $("#newBtn").addEventListener("click",()=>openForm(null));
 
-/* ===================== VIEW ===================== */
+/* ===== VIEW ===== */
 function linkbtn(label,url,accent){if(!url)return"";return `<a class="linkbtn${accent?' accent':''}" href="${esc(fixUrl(url))}" target="_blank" rel="noopener">${label}<span class="arr">↗</span></a>`;}
 function shotView(label,img){
   if(!img)return`<div class="shot"><div class="shot__lbl">${label}</div><div class="none">Sem print</div></div>`;
-  return`<div class="shot"><div class="shot__lbl">${label}<span class="zoom lb" data-img="${img}">⤢ ampliar</span></div><img class="lb" data-img="${img}" src="${img}" alt="${label}"></div>`;
+  return`<div class="shot"><div class="shot__lbl">${label}<span class="zoom lb" data-img="${img}">⤢ ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${img}" src="${img}" alt="${label}"></div>`;
 }
-
 function openView(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
   const d=normalize(o.data);
   const ads=getAds(d);const high=ads!=null&&ads>=HIGH_VOLUME;
+  const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
+  const multi=domLinks.length>1||coLinks.length>1;
   $("#viewTag").textContent=(d.nomeMarca?d.nomeMarca+" · ":"")+"Oferta";
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
-  // domains
   const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout||x.nome);
   const domsHtml=domsAll.length?domsAll.map((dm,i)=>`
     <div class="dom">
@@ -541,22 +497,13 @@ function openView(id){
       <div class="dom__shots">${shotView("Página de vendas",dm.printPV)}${shotView("Checkout",dm.printCheckout)}</div>
     </div>`).join(""):`<div class="muted-empty">Nenhum domínio cadastrado.</div>`;
 
-  // criativos
   const crvsAll=d.criativos.filter(x=>x.link||x.transcricao||x.nome);
   const crvsHtml=crvsAll.length?crvsAll.map((c,i)=>`
-    <div class="crv">
-      <div class="crv__name"><span class="si">Criativo ${String(i+1).padStart(2,"0")}</span>${esc(c.nome||"Sem título")}</div>
-      <div class="linkbtns">${linkbtn("Ver criativo",c.link,true)}${c.transcricao?linkbtn("📄 Ver transcrição do ad",c.transcricao):""}</div>
-    </div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
+    <div class="crv"><div class="crv__name"><span class="si">Criativo ${String(i+1).padStart(2,"0")}</span>${esc(c.nome||"Sem título")}</div>
+    <div class="linkbtns">${linkbtn("Ver criativo",c.link,true)}${c.transcricao?linkbtn("📄 Ver transcrição do ad",c.transcricao):""}</div></div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
 
-  // angulos
-  const angs=d.angulos.filter(a=>a&&(a.descricao||a.link||a.formato));
-  const angsHtml=angs.length?angs.map((a,i)=>`
-    <div class="angle"><div class="anum">${String(i+1).padStart(2,"0")}</div><div>
-      ${a.formato?`<div class="ameta">${esc(a.formato)}</div>`:""}
-      <div class="adesc">${esc(a.descricao||"—")}</div>
-      ${a.link?`<a class="alink" href="${esc(fixUrl(a.link))}" target="_blank" rel="noopener">Ver anúncio ↗</a>`:""}
-    </div></div>`).join(""):`<div class="muted-empty">Nenhum ângulo cadastrado.</div>`;
+  const precos=d.precos.filter(p=>p.descricao||p.valor);
+  const precosHtml=precos.length?`<div class="price-grid">${precos.map(p=>`<div class="price ${/assin/i.test(p.tipo||"")?'assina':''}">${p.tipo?`<span class="ptag">${esc(p.tipo)}</span>`:""}<div class="pk">${esc(p.descricao||"Preço")}</div><div class="pv">${esc(p.valor||"?")}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum preço cadastrado.</div>`;
 
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
@@ -570,134 +517,113 @@ function openView(id){
             <div class="brand">${esc(d.nomeMarca||"Sem marca")}</div>
             <h2>${esc(d.nomeOferta||"Oferta sem nome")}</h2>
             <div class="kvs">
+              ${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}
               <div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>
               <div class="kv"><div class="k">Ads ativos</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>
             </div>
             ${high?`<div class="banner banner--warn" style="margin-top:18px"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:""}
-            ${d.linkBiblioteca?`<div class="linkbtns" style="margin-top:18px">${linkbtn("📚 Biblioteca de anúncios (Meta)",d.linkBiblioteca,true)}${linkbtn("Advertorial",d.advertorialLink)}</div>`:(d.advertorialLink?`<div class="linkbtns" style="margin-top:18px">${linkbtn("Advertorial",d.advertorialLink)}</div>`:"")}
+            ${multi?`<div class="banner banner--danger" style="margin-top:12px"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout.</div>`:""}
+            ${(d.linkBiblioteca||d.advertorialLink)?`<div class="linkbtns" style="margin-top:18px">${linkbtn("📚 Biblioteca de anúncios (Meta)",d.linkBiblioteca,true)}${linkbtn("Advertorial",d.advertorialLink)}</div>`:""}
           </div>
         </div>
       </section>
-
-      <section class="sec">
-        <div class="sec__head"><span class="sec__num">01</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>
-        ${domsHtml}
+      <section class="sec"><div class="sec__head"><span class="sec__num">01</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">02</span><span class="sec__title">Criativos</span><span class="sec__line"></span></div>${crvsHtml}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">03</span><span class="sec__title">Resumo dos ângulos</span><span class="sec__line"></span></div>
+        ${d.angulosResumo?`<div class="resumo">${esc(d.angulosResumo)}</div>`:`<div class="muted-empty">Sem resumo.</div>`}
+        ${d.angulosLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("📁 Abrir no Drive",d.angulosLink,true)}</div>`:""}
       </section>
-
-      <section class="sec">
-        <div class="sec__head"><span class="sec__num">02</span><span class="sec__title">Criativos</span><span class="sec__line"></span></div>
-        ${crvsHtml}
-      </section>
-
-      <section class="sec">
-        <div class="sec__head"><span class="sec__num">03</span><span class="sec__title">Biblioteca de anúncios · Ângulos</span><span class="sec__line"></span></div>
-        ${angsHtml}
-      </section>
-
-      <section class="sec">
-        <div class="sec__head"><span class="sec__num">04</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
+      <section class="sec"><div class="sec__head"><span class="sec__num">04</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
         ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir advertorial",d.advertorialLink)}</div>`:""}
       </section>
-
-      <section class="sec">
-        <div class="sec__head"><span class="sec__num">05</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>
-        <div class="price-grid">
-          <div class="price ${d.temAssinatura?'on':''}"><div class="pk">Assinatura (recorrência)</div>${d.temAssinatura?`<div class="pv">${esc(d.precoAssinatura||"?")}</div>`:'<div class="pn">Sem assinatura</div>'}</div>
-          <div class="price ${d.temUnico?'on':''}"><div class="pk">Compra única (one time)</div>${d.temUnico?`<div class="pv">${esc(d.precoUnico||"?")}</div>`:'<div class="pn">Sem compra única</div>'}</div>
-        </div>
-      </section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">05</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
     </div>
-
     <aside class="sidebar">
-      <div class="note">
-        <div class="nk">★ Comentário / orientação</div>
-        <div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div>
-      </div>
+      <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div></div>
       ${drive.length?`<div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l)).join("")}</div></div>`:""}
     </aside>
   </div>`;
-
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeOverlay("#viewOverlay"));
 
-/* ===================== FORM ===================== */
+/* ===== FORM ===== */
 function openForm(id){
-  editingId=id;
+  editingId=id;dirty=false;saving=false;clearTimeout(autosaveTimer);
   const d=id?normalize(offers.find(x=>x.id===id)?.data):normalize({});
   $("#formTag").textContent=id?"Editar oferta":"Nova oferta";
+  setAutosave(id?"saved":"idle");
   fProductImg=d.imagemProduto||"";
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
-  fAngulos=d.angulos.length?JSON.parse(JSON.stringify(d.angulos)):[{link:"",formato:"",descricao:""}];
+  fPrecos=d.precos.length?JSON.parse(JSON.stringify(d.precos)):[{descricao:"",valor:"",tipo:""}];
 
   $("#formBody").innerHTML=`
     <div class="fsec">
       <div class="fsec__title"><span class="num">01</span> Produto</div>
-      <div class="fsec__hint">Identidade da oferta.</div>
       <div class="field big"><label class="lbl">Nome da oferta *</label><input type="text" id="f_nomeOferta" placeholder="Ex: Performance Masculina XYZ" value="${esc(d.nomeOferta)}"></div>
       <div class="row">
         <div class="field"><label class="lbl">Nome da marca</label><input type="text" id="f_nomeMarca" placeholder="Marca" value="${esc(d.nomeMarca)}"></div>
-        <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
+        <div class="field"><label class="lbl">Nicho</label><input list="nichos" id="f_nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(d.nicho)}"><datalist id="nichos">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
       </div>
       <div class="row">
+        <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
         <div class="field"><label class="lbl">Nº de ads ativos</label><input type="number" id="f_numAdsAtivos" placeholder="0" value="${esc(d.numAdsAtivos)}"></div>
-        <div class="field"><label class="lbl">Link da biblioteca (Meta Ads Library)</label><input type="url" id="f_linkBiblioteca" placeholder="https://facebook.com/ads/library..." value="${esc(d.linkBiblioteca)}"></div>
       </div>
+      <div class="field"><label class="lbl">Link da biblioteca (Meta Ads Library)</label><input type="url" id="f_linkBiblioteca" placeholder="https://facebook.com/ads/library..." value="${esc(d.linkBiblioteca)}"></div>
       <div class="field"><label class="lbl">Imagem do produto (cole, arraste ou clique)</label><div class="dz" data-zone="produto" tabindex="0"></div></div>
     </div>
 
     <div class="fsec">
       <div class="fsec__title"><span class="num">02</span> Domínios, Checkouts & Prints</div>
-      <div class="fsec__hint">Adicione quantos domínios quiser. Cada domínio leva seu checkout e os prints da página de vendas e do checkout — tudo vinculado.</div>
+      <div class="fsec__hint">Adicione quantos domínios quiser. Cada domínio leva seu checkout e os prints da PV e do checkout — tudo vinculado.</div>
       <div id="domWrap"></div>
       <button type="button" class="add-block" data-action="add-dom">+ Adicionar domínio</button>
     </div>
 
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Criativos</div>
-      <div class="fsec__hint">Link do criativo (Drive ou anúncio nativo). A transcrição (.doc) é opcional — se preenchida, vira um botão "Ver transcrição do ad".</div>
+      <div class="fsec__hint">Link do criativo (Drive ou anúncio nativo). Transcrição (.doc) opcional vira o botão "Ver transcrição do ad".</div>
       <div id="crvWrap"></div>
       <button type="button" class="add-block" data-action="add-crv">+ Adicionar criativo</button>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> Biblioteca de anúncios · Top ângulos</div>
-      <div class="fsec__hint">Os principais ângulos que mais se repetem na biblioteca.</div>
-      <div id="angWrap"></div>
-      <button type="button" class="add-block" data-action="add-ang">+ Adicionar ângulo</button>
+      <div class="fsec__title"><span class="num">04</span> Resumo dos ângulos</div>
+      <div class="fsec__hint">Uma breve descrição dos principais ângulos e/ou um link de Drive. (Sem minutagem ou link de criativo — isso fica na seção de Criativos.)</div>
+      <div class="field"><label class="lbl">Resumo</label><textarea id="f_angulosResumo" placeholder="Ex:&#10;• Voz feminina sobre a dor de não performar&#10;• Prova social com depoimentos&#10;• Médico explicando o mecanismo">${esc(d.angulosResumo)}</textarea></div>
+      <div class="field"><label class="lbl">Link de Drive (opcional)</label><input type="url" id="f_angulosLink" placeholder="https://drive.google.com/..." value="${esc(d.angulosLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Funil & Preços</div>
+      <div class="fsec__title"><span class="num">05</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
       <div class="field"><label class="lbl">Link do advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://..." value="${esc(d.advertorialLink)}"></div>
-      <div class="row">
-        <div class="field"><label class="check"><input type="checkbox" id="f_temAssinatura" ${d.temAssinatura?"checked":""}><span>Tem assinatura (recorrência)</span></label><input type="text" id="f_precoAssinatura" placeholder="Ex: R$ 197/mês" value="${esc(d.precoAssinatura)}"></div>
-        <div class="field"><label class="check"><input type="checkbox" id="f_temUnico" ${d.temUnico?"checked":""}><span>Tem compra única (one time)</span></label><input type="text" id="f_precoUnico" placeholder="Ex: R$ 297" value="${esc(d.precoUnico)}"></div>
-      </div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">06</span> Materiais & Comentário</div>
+      <div class="fsec__title"><span class="num">06</span> Preços</div>
+      <div class="fsec__hint">O preço varia por kit. Adicione quantos quiser, com descrição e valor. Ex: "1 pote" → "$79", "3 potes" → "$49".</div>
+      <div id="priWrap"></div>
+      <button type="button" class="add-block" data-action="add-pri">+ Adicionar preço</button>
+    </div>
+
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">07</span> Materiais & Comentário</div>
       <div class="field"><label class="lbl">Links de Drive / Docs (um por linha)</label><textarea id="f_driveLinks" placeholder="https://docs.google.com/...&#10;https://drive.google.com/...">${esc(d.driveLinks)}</textarea></div>
       <div class="field"><label class="lbl">★ Comentário / orientação sobre a oferta</label><textarea id="f_comentario" placeholder="Observações, insights, orientações...">${esc(d.comentario)}</textarea></div>
     </div>
   `;
-
-  wireZones($("#formBody"));   // wires the static product zone
-  renderDominios();
-  renderCriativos();
-  renderAngulos();
+  wireZones($("#formBody"));
+  renderDominios();renderCriativos();renderPrecos();
   openOverlay("#formOverlay");
   $("#f_nomeOferta").focus();
 }
 
 function renderDominios(){
-  const w=$("#domWrap");
-  w.innerHTML=fDominios.map((dm,i)=>`
+  $("#domWrap").innerHTML=fDominios.map((dm,i)=>`
     <div class="block-edit">
       <div class="behead"><span class="t"><span class="badge">${i+1}</span> Domínio ${i+1}</span>${fDominios.length>1?`<button type="button" class="rm-block" data-action="rm-dom" data-i="${i}">✕ Remover</button>`:""}</div>
       <div class="field"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-dom="${i}" data-k="nome" placeholder="Ex: Domínio principal / Variação BR" value="${esc(dm.nome)}"></div>
@@ -710,11 +636,10 @@ function renderDominios(){
         <div class="field" style="margin-bottom:0"><label class="lbl">Print — Checkout</label><div class="dz" data-zone="dom|${i}|co" tabindex="0"></div></div>
       </div>
     </div>`).join("");
-  wireZones(w);
+  wireZones($("#domWrap"));
 }
 function renderCriativos(){
-  const w=$("#crvWrap");
-  w.innerHTML=fCriativos.map((c,i)=>`
+  $("#crvWrap").innerHTML=fCriativos.map((c,i)=>`
     <div class="block-edit">
       <div class="behead"><span class="t"><span class="badge">${i+1}</span> Criativo ${i+1}</span>${fCriativos.length>1?`<button type="button" class="rm-block" data-action="rm-crv" data-i="${i}">✕ Remover</button>`:""}</div>
       <div class="field"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-crv="${i}" data-k="nome" placeholder="Ex: VSL feminino dor" value="${esc(c.nome)}"></div>
@@ -724,26 +649,31 @@ function renderCriativos(){
       </div>
     </div>`).join("");
 }
-function renderAngulos(){
-  const w=$("#angWrap");
-  w.innerHTML=fAngulos.map((a,i)=>`
+function renderPrecos(){
+  $("#priWrap").innerHTML=fPrecos.map((p,i)=>`
     <div class="block-edit">
-      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Ângulo ${i+1}</span>${fAngulos.length>1?`<button type="button" class="rm-block" data-action="rm-ang" data-i="${i}">✕ Remover</button>`:""}</div>
-      <div class="field"><label class="lbl">Ângulo principal (1–2 linhas)</label><textarea data-ang="${i}" data-k="descricao" placeholder='Ex: "voz feminina falando sobre a dor de não performar"'>${esc(a.descricao)}</textarea></div>
-      <div class="row">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Duração / formato</label><input type="text" data-ang="${i}" data-k="formato" placeholder="vídeo 30s, imagem estática..." value="${esc(a.formato)}"></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-ang="${i}" data-k="link" placeholder="https://..." value="${esc(a.link)}"></div>
+      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Preço ${i+1}</span>${fPrecos.length>1?`<button type="button" class="rm-block" data-action="rm-pri" data-i="${i}">✕ Remover</button>`:""}</div>
+      <div class="row3">
+        <div class="field" style="margin-bottom:0"><label class="lbl">Descrição</label><input type="text" data-pri="${i}" data-k="descricao" placeholder="Ex: 3 potes / Kit 90 dias" value="${esc(p.descricao)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Valor</label><input type="text" data-pri="${i}" data-k="valor" placeholder="Ex: $ 49 / un" value="${esc(p.valor)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Tipo</label><select data-pri="${i}" data-k="tipo">
+          <option value="" ${!p.tipo?"selected":""}>—</option>
+          <option value="Compra única" ${p.tipo==="Compra única"?"selected":""}>Compra única</option>
+          <option value="Assinatura" ${p.tipo==="Assinatura"?"selected":""}>Assinatura</option>
+        </select></div>
       </div>
     </div>`).join("");
 }
 
-/* live binding + add/remove (delegated once) */
-$("#formBody").addEventListener("input",e=>{
-  const t=e.target;
-  if(t.dataset.dom!=null)fDominios[+t.dataset.dom][t.dataset.k]=t.value;
-  else if(t.dataset.crv!=null)fCriativos[+t.dataset.crv][t.dataset.k]=t.value;
-  else if(t.dataset.ang!=null)fAngulos[+t.dataset.ang][t.dataset.k]=t.value;
-});
+/* live binding + autosave */
+function onFieldChange(t){
+  if(t.dataset.dom!=null){fDominios[+t.dataset.dom][t.dataset.k]=t.value;return true;}
+  if(t.dataset.crv!=null){fCriativos[+t.dataset.crv][t.dataset.k]=t.value;return true;}
+  if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
+  return false;
+}
+$("#formBody").addEventListener("input",e=>{onFieldChange(e.target);scheduleAutosave();});
+$("#formBody").addEventListener("change",e=>{onFieldChange(e.target);scheduleAutosave();});
 $("#formBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action;
@@ -751,38 +681,75 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
-  else if(a==="add-ang"){fAngulos.push({link:"",formato:"",descricao:""});renderAngulos();}
-  else if(a==="rm-ang"){fAngulos.splice(+b.dataset.i,1);renderAngulos();}
+  else if(a==="add-pri"){fPrecos.push({descricao:"",valor:"",tipo:""});renderPrecos();}
+  else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
+  else return;
+  scheduleAutosave();
 });
 
-/* ---- image zones ---- */
+/* ===== AUTOSAVE ===== */
+function buildPayload(){
+  return {
+    nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
+    formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),linkBiblioteca:val("f_linkBiblioteca"),
+    imagemProduto:fProductImg||"",
+    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout),
+    criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
+    angulosResumo:val("f_angulosResumo"),angulosLink:val("f_angulosLink"),
+    funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
+    precos:fPrecos.filter(p=>p.descricao||p.valor),
+    driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
+  };
+}
+function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.linkBiblioteca||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length);}
+function scheduleAutosave(){dirty=true;setAutosave("saving");clearTimeout(autosaveTimer);autosaveTimer=setTimeout(doAutosave,650);}
+async function doAutosave(){
+  clearTimeout(autosaveTimer);
+  if(!$("#formOverlay").classList.contains("open"))return;
+  if(saving){return;}
+  const p=buildPayload();
+  if(!editingId&&!hasContent(p)){setAutosave("idle");dirty=false;return;}
+  saving=true;
+  let res;
+  if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
+  else res=await sb.from("offers").insert({data:p}).select();
+  saving=false;dirty=false;
+  if(res.error){setAutosave("err");setSync("err","Erro");return;}
+  const row=res.data&&res.data[0];
+  if(row){
+    if(!editingId){editingId=row.id;offers.push(row);}
+    else{const i=offers.findIndex(o=>o.id===editingId);if(i>=0)offers[i]=row;else offers.push(row);}
+  }
+  setAutosave("saved");setSync("ok","Salvo");renderGrid();writeCache();
+  if(dirty)scheduleAutosave();
+}
+async function flushAutosave(){
+  clearTimeout(autosaveTimer);
+  let g=0;while(saving&&g++<60){await new Promise(r=>setTimeout(r,50));}
+  if(dirty||!editingId)await doAutosave();
+}
+async function closeForm(){await flushAutosave();closeOverlay("#formOverlay");}
+$("#formDone").addEventListener("click",async()=>{await closeForm();toast("Oferta salva");});
+$("#formClose").addEventListener("click",closeForm);
+
+/* ===== IMAGE ZONES ===== */
 function getZone(key){
   if(key==="produto")return fProductImg;
-  const p=key.split("|");
-  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
-  return "";
+  const p=key.split("|");if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}return "";
 }
-function setZone(key,val){
-  if(key==="produto"){fProductImg=val;return;}
-  const p=key.split("|");
-  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=val;}
+function setZone(key,v){
+  if(key==="produto"){fProductImg=v;return;}
+  const p=key.split("|");if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;}
 }
 function paintZone(dz){
   const key=dz.dataset.zone,img=getZone(key);
-  if(img){dz.classList.add("has");dz.innerHTML=`<button type="button" class="rm">✕ Remover</button><img src="${img}" alt="">`;
-    $(".rm",dz).addEventListener("click",ev=>{ev.stopPropagation();setZone(key,"");paintZone(dz);});}
+  if(img){dz.classList.add("has");dz.innerHTML=`<button type="button" class="rm">✕ Remover</button><img src="${img}" alt="">`;$(".rm",dz).addEventListener("click",ev=>{ev.stopPropagation();setZone(key,"");paintZone(dz);scheduleAutosave();});}
   else{dz.classList.remove("has");dz.innerHTML=`<div class="hint">Clique e <b>cole (Ctrl/⌘+V)</b><br>ou arraste / selecione</div>`;}
 }
 function wireZones(scope){
   $$(".dz",scope).forEach(dz=>{
-    const key=dz.dataset.zone;
     paintZone(dz);
-    dz.addEventListener("click",e=>{
-      if(e.target.classList.contains("rm"))return;
-      setActiveZone(dz);
-      const inp=document.createElement("input");inp.type="file";inp.accept="image/*";
-      inp.onchange=()=>{if(inp.files[0])fileToImage(inp.files[0],dz);};inp.click();
-    });
+    dz.addEventListener("click",e=>{if(e.target.classList.contains("rm"))return;setActiveZone(dz);const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=()=>{if(inp.files[0])fileToImage(inp.files[0],dz);};inp.click();});
     dz.addEventListener("focus",()=>setActiveZone(dz));
     dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("active");});
     dz.addEventListener("dragleave",()=>dz.classList.remove("active"));
@@ -790,7 +757,7 @@ function wireZones(scope){
   });
 }
 function setActiveZone(dz){$$(".dz").forEach(z=>z.classList.remove("active"));dz.classList.add("active");activeZone=dz.dataset.zone;}
-function fileToImage(file,dz){const r=new FileReader();r.onload=()=>{setZone(dz.dataset.zone,r.result);paintZone(dz);};r.readAsDataURL(file);}
+function fileToImage(file,dz){const r=new FileReader();r.onload=()=>{setZone(dz.dataset.zone,r.result);paintZone(dz);scheduleAutosave();};r.readAsDataURL(file);}
 document.addEventListener("paste",e=>{
   if(!$("#formOverlay").classList.contains("open")||!activeZone)return;
   const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(!item)return;
@@ -798,50 +765,18 @@ document.addEventListener("paste",e=>{
   if(file&&dz){fileToImage(file,dz);toast("Print colado");}
 });
 
-/* ---- save ---- */
-$("#formSave").addEventListener("click",async()=>{
-  const nome=$("#f_nomeOferta").value.trim();
-  if(!nome){toast("Dê um nome à oferta",true);$("#f_nomeOferta").focus();return;}
-  const payload={
-    nomeOferta:nome,
-    nomeMarca:$("#f_nomeMarca").value.trim(),
-    formato:$("#f_formato").value.trim(),
-    imagemProduto:fProductImg||"",
-    numAdsAtivos:$("#f_numAdsAtivos").value.trim(),
-    linkBiblioteca:$("#f_linkBiblioteca").value.trim(),
-    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout),
-    criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
-    angulos:fAngulos.filter(x=>x.descricao||x.link||x.formato),
-    funil:$("#f_funil").value.trim(),
-    advertorialLink:$("#f_advertorialLink").value.trim(),
-    temAssinatura:$("#f_temAssinatura").checked,
-    precoAssinatura:$("#f_precoAssinatura").value.trim(),
-    temUnico:$("#f_temUnico").checked,
-    precoUnico:$("#f_precoUnico").value.trim(),
-    driveLinks:$("#f_driveLinks").value.trim(),
-    comentario:$("#f_comentario").value.trim()
-  };
-  const ok=await saveOffer(payload);
-  if(ok){closeOverlay("#formOverlay");toast(editingId?"Oferta atualizada":"Oferta criada");}
-});
-$("#formCancel").addEventListener("click",()=>closeOverlay("#formOverlay"));
-$("#formClose").addEventListener("click",()=>closeOverlay("#formOverlay"));
-
-/* ===================== LIGHTBOX ===================== */
+/* ===== LIGHTBOX ===== */
 function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("open");}
 $("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("open"));
 
-/* ===================== OVERLAY ===================== */
+/* ===== OVERLAY ===== */
 function openOverlay(s){$(s).classList.add("open");document.body.style.overflow="hidden";$(s).scrollTop=0;}
 function closeOverlay(s){$(s).classList.remove("open");document.body.style.overflow="";activeZone=null;}
-$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target===ov)closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#lightbox").classList.contains("open"))$("#lightbox").classList.remove("open");else $$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));}});
+$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="formOverlay")closeForm();else closeOverlay("#"+ov.id);}));
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#formOverlay").classList.contains("open")){closeForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
 
-/* ===================== EXPORT ===================== */
-$("#exportBtn").addEventListener("click",()=>{
-  const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");
-});
+/* ===== EXPORT ===== */
+$("#exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");});
 
 boot();
 </script>
