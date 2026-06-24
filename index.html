@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OFERTAS — Dashboard</title>
+<title>OFERTAS — Benchmarking Grupo FEG</title>
+<link rel="icon" type="image/jpeg" href="logo-feg.jpg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -34,8 +35,12 @@
 
   /* topbar */
   .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:16px clamp(16px,4vw,48px);background:rgba(0,0,0,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
-  .brand{display:flex;align-items:baseline;gap:2px;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;text-transform:uppercase;}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;text-transform:uppercase;}
+  .brand .brand-txt{display:inline-flex;align-items:baseline;gap:2px;}
   .brand .d{color:var(--accent);}
+  .logo-mark{border-radius:10px;border:1px solid var(--border-2);object-fit:cover;background:#0d0d0d;display:block;}
+  .topbar .logo-mark{width:38px;height:38px;}
+  @media(max-width:560px){.brand .brand-txt{display:none;}}
   .topbar .search{flex:1;max-width:440px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border-2);border-radius:999px;padding:0 18px;height:46px;transition:border-color .2s,box-shadow .2s;}
   .topbar .search:focus-within{border-color:var(--border-strong);box-shadow:0 0 0 3px var(--accent-soft);}
   .topbar .search input{flex:1;background:none;border:none;color:var(--fg);font-size:.95rem;outline:none;}
@@ -86,6 +91,7 @@
     background:radial-gradient(900px 600px at 50% -10%,rgba(229,255,45,.08),transparent 60%),var(--bg);}
   #loginScreen.show{display:flex;}
   .login-card{max-width:430px;width:100%;border:1px solid var(--border-2);border-radius:22px;padding:clamp(28px,5vw,44px);background:linear-gradient(180deg,var(--surface-2),var(--surface));box-shadow:0 30px 90px -20px rgba(0,0,0,.9);}
+  .login-logo{width:74px;height:74px;border-radius:18px;margin-bottom:22px;box-shadow:0 14px 36px -12px rgba(0,0,0,.85);border-color:var(--border-strong);}
   .login-brand{display:flex;align-items:center;gap:12px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
   .login-brand .lupa{width:34px;height:34px;}
   .login-brand .lime{color:var(--accent);}
@@ -286,6 +292,7 @@
 <!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-card">
+    <img class="logo-mark login-logo" src="logo-feg.jpg" alt="Grupo FEG" />
     <div class="login-brand">
       <span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>
       Benchmarking <span class="lime">Grupo FEG</span>
@@ -327,7 +334,7 @@ create policy "public_all" on offers
 <!-- APP -->
 <div id="app" class="hidden">
   <div class="topbar">
-    <div class="brand">OFERTAS<span class="d">.</span></div>
+    <div class="brand"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG" /><span class="brand-txt">OFERTAS<span class="d">.</span></span></div>
     <div class="search"><span class="ic">⌕</span><input type="text" id="searchInput" placeholder="Buscar oferta, marca ou nicho..." /></div>
     <div class="spacer"></div>
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
