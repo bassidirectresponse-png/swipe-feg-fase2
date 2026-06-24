@@ -730,9 +730,13 @@ function markDirty(){formDirty=true;setSaveState("unsaved");}
 
 async function saveForm(){
   if(saving)return false;
-  const p=buildPayload();
-  if(!hasContent(p)){toast("Preencha algo antes de salvar",true);return false;}
   saving=true;setSaveState("saving");setSync("load","Salvando");
+  await compressStateImages();
+  $$(".dz",$("#formBody")).forEach(paintZone);
+  const p=buildPayload();
+  if(!hasContent(p)){saving=false;setSaveState(formDirty?"unsaved":"new");toast("Preencha algo antes de salvar",true);return false;}
+  const size=JSON.stringify(p).length;
+  if(size>6000000){saving=false;setSaveState("error");toast("Imagens muito grandes ("+Math.round(size/1048576)+"MB). Remova/reduza um print.",true);return false;}
   let res;
   try{
     if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
@@ -786,7 +790,43 @@ function wireZones(scope){
   });
 }
 function setActiveZone(dz){$$(".dz").forEach(z=>z.classList.remove("active"));dz.classList.add("active");activeZone=dz.dataset.zone;}
-function fileToImage(file,dz){const r=new FileReader();r.onload=()=>{setZone(dz.dataset.zone,r.result);paintZone(dz);markDirty();};r.readAsDataURL(file);}
+/* compressão de imagem: reduz dimensões e qualidade p/ caber no banco */
+function compressImage(srcDataUrl,maxW=1280,maxH=4000,quality=0.72){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+      const scale=Math.min(1,maxW/w,maxH/h);
+      const nw=Math.max(1,Math.round(w*scale)), nh=Math.max(1,Math.round(h*scale));
+      try{
+        const c=document.createElement("canvas");c.width=nw;c.height=nh;
+        const ctx=c.getContext("2d");
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,nw,nh);
+        ctx.drawImage(img,0,0,nw,nh);
+        resolve(c.toDataURL("image/jpeg",quality));
+      }catch(e){resolve(srcDataUrl);}
+    };
+    img.onerror=()=>resolve(srcDataUrl);
+    img.src=srcDataUrl;
+  });
+}
+async function maybeCompress(d){
+  if(typeof d!=="string"||!d.startsWith("data:image"))return d;
+  if(d.length<300000)return d;            // já está leve (~<225KB)
+  return await compressImage(d);
+}
+async function compressStateImages(){
+  fProductImg=await maybeCompress(fProductImg);
+  for(const dm of fDominios){dm.printPV=await maybeCompress(dm.printPV);dm.printCheckout=await maybeCompress(dm.printCheckout);}
+}
+function fileToImage(file,dz){
+  const r=new FileReader();
+  r.onload=async()=>{
+    const compressed=await compressImage(r.result);
+    setZone(dz.dataset.zone,compressed);paintZone(dz);markDirty();
+  };
+  r.readAsDataURL(file);
+}
 document.addEventListener("paste",e=>{
   if(!$("#formOverlay").classList.contains("open")||!activeZone)return;
   const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(!item)return;
