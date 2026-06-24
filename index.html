@@ -410,7 +410,7 @@ const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 
 let sb=null, offers=[], searchTerm="", editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[];
+let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[];
 let activeZone=null;
 let formDirty=false, saving=false;
 
@@ -435,6 +435,7 @@ function normalize(raw){
     if(d.linkOferta||d.linkCheckout||d.printPV||d.printCheckout)d.dominios.push({nome:"",linkDominio:d.linkOferta||"",linkCheckout:d.linkCheckout||"",printPV:d.printPV||"",printCheckout:d.printCheckout||""});
   }
   if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
+  if(!Array.isArray(d.bibliotecas)){d.bibliotecas=[];if(d.linkBiblioteca)d.bibliotecas.push({nome:"",link:d.linkBiblioteca});}
   if(!Array.isArray(d.precos)){
     d.precos=[];
     if(d.temUnico&&d.precoUnico)d.precos.push({descricao:"Compra única",valor:d.precoUnico,tipo:"Compra única"});
@@ -530,6 +531,7 @@ function cardHtml(o){
   const domLinks=d.dominios.filter(x=>x.linkDominio);
   const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const crvs=d.criativos.filter(x=>x.link);
+  const bibs=d.bibliotecas.filter(x=>x.link);
   const multi=domLinks.length>1||coLinks.length>1;
 
   const thumb=d.imagemProduto?`<img class="card__thumb" loading="lazy" decoding="async" src="${d.imagemProduto}" alt="">`:"";
@@ -537,12 +539,13 @@ function cardHtml(o){
   if(d.nicho)chips.push(`<span class="chip niche">${esc(d.nicho)}</span>`);
   if(d.formato)chips.push(`<span class="chip">${esc(d.formato)}</span>`);
   if(domLinks.length>1)chips.push(`<span class="chip accent">${domLinks.length} domínios</span>`);
+  if(bibs.length>1)chips.push(`<span class="chip accent">${bibs.length} bibliotecas</span>`);
 
   const topBanner=high?`<div class="banner banner--warn card__topbanner"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:"";
   const redBanner=multi?`<div class="banner banner--danger"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout — abra para ver todas.</div>`:"";
 
   const quick=[
-    qbtn("Biblioteca",d.linkBiblioteca,"📚"),
+    qbtn("Biblioteca",(bibs[0]||{}).link,"📚"),
     qbtn("Anúncios",(crvs[0]||{}).link,"▶"),
     qbtn("Domínio",(domLinks[0]||{}).linkDominio,"🌐"),
     qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒")
@@ -623,7 +626,7 @@ function openView(id){
             </div>
             ${high?`<div class="banner banner--warn" style="margin-top:18px"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:""}
             ${multi?`<div class="banner banner--danger" style="margin-top:12px"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout.</div>`:""}
-            ${(d.linkBiblioteca||d.advertorialLink)?`<div class="linkbtns" style="margin-top:18px">${linkbtn("📚 Biblioteca de anúncios (Meta)",d.linkBiblioteca,true)}${linkbtn("Advertorial",d.advertorialLink)}</div>`:""}
+            ${(()=>{const bibs=d.bibliotecas.filter(x=>x.link);const bs=bibs.map((b,i)=>linkbtn("📚 "+(b.nome||"Biblioteca "+(i+1)),b.link,true)).join("");return (bs||d.advertorialLink)?`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("Advertorial",d.advertorialLink)}</div>`:"";})()}
           </div>
         </div>
       </section>
@@ -659,6 +662,7 @@ function openForm(id){
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fPrecos=d.precos.length?JSON.parse(JSON.stringify(d.precos)):[{descricao:"",valor:"",tipo:""}];
+  fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
 
   $("#formBody").innerHTML=`
     <div class="fsec">
@@ -672,7 +676,9 @@ function openForm(id){
         <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
         <div class="field"><label class="lbl">Nº de ads ativos</label><input type="number" id="f_numAdsAtivos" placeholder="0" value="${esc(d.numAdsAtivos)}"></div>
       </div>
-      <div class="field"><label class="lbl">Link da biblioteca (Meta Ads Library)</label><input type="url" id="f_linkBiblioteca" placeholder="https://facebook.com/ads/library..." value="${esc(d.linkBiblioteca)}"></div>
+      <label class="lbl">Bibliotecas de anúncios (Meta Ads Library)</label>
+      <div id="bibWrap"></div>
+      <button type="button" class="add-block" data-action="add-bib" style="margin-bottom:6px">+ Adicionar biblioteca</button>
       <div class="field"><label class="lbl">Imagem do produto (cole, arraste ou clique)</label><div class="dz" data-zone="produto" tabindex="0"></div></div>
     </div>
 
@@ -717,7 +723,7 @@ function openForm(id){
     </div>
   `;
   wireZones($("#formBody"));
-  renderDominios();renderCriativos();renderPrecos();
+  renderDominios();renderCriativos();renderPrecos();renderBibliotecas();
   openOverlay("#formOverlay");
   $("#f_nomeOferta").focus();
 }
@@ -764,12 +770,23 @@ function renderPrecos(){
       </div>
     </div>`).join("");
 }
+function renderBibliotecas(){
+  $("#bibWrap").innerHTML=fBibliotecas.map((b,i)=>`
+    <div class="block-edit">
+      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Biblioteca ${i+1}</span>${fBibliotecas.length>1?`<button type="button" class="rm-block" data-action="rm-bib" data-i="${i}">✕ Remover</button>`:""}</div>
+      <div class="row">
+        <div class="field" style="margin-bottom:0"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-bib="${i}" data-k="nome" placeholder="Ex: Marca / Conta secundária" value="${esc(b.nome)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Link (Meta Ads Library)</label><input type="url" data-bib="${i}" data-k="link" placeholder="https://facebook.com/ads/library..." value="${esc(b.link)}"></div>
+      </div>
+    </div>`).join("");
+}
 
 /* live binding + autosave */
 function onFieldChange(t){
   if(t.dataset.dom!=null){fDominios[+t.dataset.dom][t.dataset.k]=t.value;return true;}
   if(t.dataset.crv!=null){fCriativos[+t.dataset.crv][t.dataset.k]=t.value;return true;}
   if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
+  if(t.dataset.bib!=null){fBibliotecas[+t.dataset.bib][t.dataset.k]=t.value;return true;}
   return false;
 }
 $("#formBody").addEventListener("input",e=>{onFieldChange(e.target);markDirty();});
@@ -783,6 +800,8 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
   else if(a==="add-pri"){fPrecos.push({descricao:"",valor:"",tipo:""});renderPrecos();}
   else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
+  else if(a==="add-bib"){fBibliotecas.push({nome:"",link:""});renderBibliotecas();}
+  else if(a==="rm-bib"){fBibliotecas.splice(+b.dataset.i,1);renderBibliotecas();}
   else return;
   markDirty();
 });
@@ -791,7 +810,8 @@ $("#formBody").addEventListener("click",e=>{
 function buildPayload(){
   return {
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
-    formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),linkBiblioteca:val("f_linkBiblioteca"),
+    formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
+    bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
     dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
@@ -801,7 +821,7 @@ function buildPayload(){
     driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
   };
 }
-function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.linkBiblioteca||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length);}
+function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length||p.bibliotecas.length);}
 function markDirty(){formDirty=true;setSaveState("unsaved");}
 
 async function saveForm(){
