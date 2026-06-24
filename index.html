@@ -91,11 +91,11 @@
     background:radial-gradient(900px 600px at 50% -10%,rgba(229,255,45,.08),transparent 60%),var(--bg);}
   #loginScreen.show{display:flex;}
   .login-card{max-width:430px;width:100%;border:1px solid var(--border-2);border-radius:22px;padding:clamp(28px,5vw,44px);background:linear-gradient(180deg,var(--surface-2),var(--surface));box-shadow:0 30px 90px -20px rgba(0,0,0,.9);}
-  .login-logo{width:74px;height:74px;border-radius:18px;margin-bottom:22px;box-shadow:0 14px 36px -12px rgba(0,0,0,.85);border-color:var(--border-strong);}
-  .login-brand{display:flex;align-items:center;gap:12px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
+  .login-logo{width:84px;height:84px;border-radius:20px;margin:0 auto 22px;box-shadow:0 14px 36px -12px rgba(0,0,0,.85);border-color:var(--border-strong);}
+  .login-brand{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:8px;text-align:center;}
   .login-brand .lupa{width:34px;height:34px;}
   .login-brand .lime{color:var(--accent);}
-  .login-sub{color:var(--muted-fg);font-size:.98rem;line-height:1.5;margin-bottom:28px;}
+  .login-sub{color:var(--muted-fg);font-size:.98rem;line-height:1.5;margin-bottom:28px;text-align:center;}
   .login-card .field{margin-bottom:18px;}
   .login-card label{display:block;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;margin-bottom:8px;}
   .login-card input{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:1.05rem;padding:14px 16px;outline:none;transition:border-color .15s,box-shadow .15s;}
@@ -297,7 +297,7 @@
       <span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>
       Benchmarking <span class="lime">Grupo FEG</span>
     </div>
-    <div class="login-sub">Além de ofertas, um laboratório de análise e dados exclusivo.</div>
+    <div class="login-sub">Além de um swipe de ofertas, um laboratório de análise de dados exclusivo.</div>
     <form id="loginForm">
       <div class="login-err" id="loginErr">Usuário ou senha incorretos.</div>
       <div class="field"><label>Usuário</label><input type="text" id="loginUser" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="seu usuário"></div>
@@ -345,7 +345,7 @@ create policy "public_all" on offers
   </div>
   <div class="page">
     <div class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></div>
-    <p class="lab">Além de ofertas, um <b>laboratório de análise e dados</b> exclusivo.</p>
+    <p class="lab">Além de um swipe de ofertas, um <b>laboratório de análise de dados</b> exclusivo.</p>
     <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l">Ofertas</span></div></div>
   </div>
   <div class="grid-wrap"><div id="gridArea"></div></div>
