@@ -126,10 +126,21 @@
   .modal__body{padding:clamp(20px,3.5vw,40px);}
   .x{width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;}
   .x:hover{background:var(--surface-2);border-color:var(--border-strong);}
-  .autosave-state{display:inline-flex;align-items:center;gap:7px;font-size:.72rem;color:var(--muted-fg);white-space:nowrap;}
-  .autosave-state .asdot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
-  .autosave-state.saving .asdot{background:#fff;animation:pulse 1s infinite;}
-  .autosave-state.err .asdot{background:var(--red);}
+  .save-state{display:inline-flex;align-items:center;gap:7px;font-size:.72rem;color:var(--muted-fg);white-space:nowrap;}
+  .save-state .ssdot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .save-state.warn{color:#ffcf7a;}
+  .save-state.warn .ssdot{background:#ffb020;}
+  .save-state.saving .ssdot{background:#fff;animation:pulse 1s infinite;}
+  .save-state.err .ssdot{background:var(--red);}
+  .save-state.err{color:#ff8a8a;}
+
+  #confirmOverlay{z-index:3000;background:rgba(0,0,0,.8);}
+  #confirmOverlay.open{display:flex;align-items:center;justify-content:center;}
+  .confirm-box{background:var(--bg-2);border:1px solid var(--border-2);border-radius:18px;max-width:440px;width:100%;padding:28px;box-shadow:0 30px 90px -20px rgba(0,0,0,.9);}
+  .confirm-box h3{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;margin-bottom:10px;}
+  .confirm-box p{color:var(--muted-fg);margin-bottom:22px;line-height:1.5;}
+  .confirm-actions{display:flex;flex-direction:column;gap:10px;}
+  .confirm-actions .btn{width:100%;}
 
   .view-grid{display:grid;grid-template-columns:1fr 330px;gap:32px;align-items:start;}
   @media(max-width:920px){.view-grid{grid-template-columns:1fr;}.sidebar{position:static !important;order:-1;}}
@@ -311,12 +322,25 @@ create policy "public_all" on offers
     <div class="modal__bar">
       <span class="tag" id="formTag">Nova oferta</span>
       <div class="actions">
-        <span class="autosave-state" id="autosaveState"><span class="asdot"></span>Salvo automaticamente</span>
-        <button class="btn btn--accent btn--sm" id="formDone">Concluir</button>
+        <span class="save-state" id="saveState"><span class="ssdot"></span>Novo</span>
+        <button class="btn btn--accent btn--sm" id="formSave">Salvar</button>
         <button class="x" id="formClose">✕</button>
       </div>
     </div>
     <div class="modal__body form" id="formBody"></div>
+  </div>
+</div>
+
+<!-- CONFIRM (alterações não salvas) -->
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>Alterações não salvas</h3>
+    <p>Você fez edições que ainda não foram salvas. O que deseja fazer?</p>
+    <div class="confirm-actions">
+      <button class="btn btn--accent" id="cfSave">Salvar e fechar</button>
+      <button class="btn btn--outline" id="cfCancel">Continuar editando</button>
+      <button class="btn btn--danger" id="cfDiscard">Fechar sem salvar</button>
+    </div>
   </div>
 </div>
 
@@ -335,7 +359,7 @@ const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diab
 let sb=null, offers=[], searchTerm="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[];
 let activeZone=null;
-let autosaveTimer=null, saving=false, dirty=false;
+let formDirty=false, saving=false;
 
 /* ===== HELPERS ===== */
 const $=(s,r=document)=>r.querySelector(s);
@@ -348,7 +372,7 @@ function val(id){const e=document.getElementById(id);return e?e.value.trim():"";
 let toastTimer;
 function toast(msg,err=false){const t=$("#toast");t.textContent=msg;t.classList.toggle("err",err);t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2600);}
 function setSync(st,txt){$("#syncPill").className="sync "+st;$("#syncTxt").textContent=txt;}
-function setAutosave(s){const e=$("#autosaveState");const lbl=s==="saving"?"Salvando…":s==="err"?"Erro ao salvar":s==="idle"?"Rascunho":"Tudo salvo";e.className="autosave-state"+(s==="saving"?" saving":s==="err"?" err":"");e.innerHTML='<span class="asdot"></span>'+lbl;}
+function setSaveState(s){const e=$("#saveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 
 function normalize(raw){
   const d=Object.assign({},raw||{});
@@ -551,10 +575,10 @@ $("#viewClose").addEventListener("click",()=>closeOverlay("#viewOverlay"));
 
 /* ===== FORM ===== */
 function openForm(id){
-  editingId=id;dirty=false;saving=false;clearTimeout(autosaveTimer);
+  editingId=id;formDirty=false;saving=false;
   const d=id?normalize(offers.find(x=>x.id===id)?.data):normalize({});
   $("#formTag").textContent=id?"Editar oferta":"Nova oferta";
-  setAutosave(id?"saved":"idle");
+  setSaveState(id?"saved":"new");
   fProductImg=d.imagemProduto||"";
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
@@ -672,8 +696,8 @@ function onFieldChange(t){
   if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
   return false;
 }
-$("#formBody").addEventListener("input",e=>{onFieldChange(e.target);scheduleAutosave();});
-$("#formBody").addEventListener("change",e=>{onFieldChange(e.target);scheduleAutosave();});
+$("#formBody").addEventListener("input",e=>{onFieldChange(e.target);markDirty();});
+$("#formBody").addEventListener("change",e=>{onFieldChange(e.target);markDirty();});
 $("#formBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action;
@@ -684,10 +708,10 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="add-pri"){fPrecos.push({descricao:"",valor:"",tipo:""});renderPrecos();}
   else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
   else return;
-  scheduleAutosave();
+  markDirty();
 });
 
-/* ===== AUTOSAVE ===== */
+/* ===== SAVE (explícito) ===== */
 function buildPayload(){
   return {
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
@@ -702,35 +726,40 @@ function buildPayload(){
   };
 }
 function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.linkBiblioteca||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length);}
-function scheduleAutosave(){dirty=true;setAutosave("saving");clearTimeout(autosaveTimer);autosaveTimer=setTimeout(doAutosave,650);}
-async function doAutosave(){
-  clearTimeout(autosaveTimer);
-  if(!$("#formOverlay").classList.contains("open"))return;
-  if(saving){return;}
+function markDirty(){formDirty=true;setSaveState("unsaved");}
+
+async function saveForm(){
+  if(saving)return false;
   const p=buildPayload();
-  if(!editingId&&!hasContent(p)){setAutosave("idle");dirty=false;return;}
-  saving=true;
+  if(!hasContent(p)){toast("Preencha algo antes de salvar",true);return false;}
+  saving=true;setSaveState("saving");setSync("load","Salvando");
   let res;
-  if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
-  else res=await sb.from("offers").insert({data:p}).select();
-  saving=false;dirty=false;
-  if(res.error){setAutosave("err");setSync("err","Erro");return;}
+  try{
+    if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
+    else res=await sb.from("offers").insert({data:p}).select();
+  }catch(err){res={error:err};}
+  saving=false;
+  if(res.error){setSaveState("error");setSync("err","Erro");toast("Erro ao salvar: "+(res.error.message||res.error),true);return false;}
   const row=res.data&&res.data[0];
   if(row){
     if(!editingId){editingId=row.id;offers.push(row);}
     else{const i=offers.findIndex(o=>o.id===editingId);if(i>=0)offers[i]=row;else offers.push(row);}
   }
-  setAutosave("saved");setSync("ok","Salvo");renderGrid();writeCache();
-  if(dirty)scheduleAutosave();
+  formDirty=false;setSaveState("saved");setSync("ok","Salvo");renderGrid();writeCache();
+  return true;
 }
-async function flushAutosave(){
-  clearTimeout(autosaveTimer);
-  let g=0;while(saving&&g++<60){await new Promise(r=>setTimeout(r,50));}
-  if(dirty||!editingId)await doAutosave();
+
+function attemptCloseForm(){
+  if(!formDirty){closeOverlay("#formOverlay");return;}
+  openOverlay("#confirmOverlay");
 }
-async function closeForm(){await flushAutosave();closeOverlay("#formOverlay");}
-$("#formDone").addEventListener("click",async()=>{await closeForm();toast("Oferta salva");});
-$("#formClose").addEventListener("click",closeForm);
+
+$("#formSave").addEventListener("click",async()=>{if(await saveForm())toast("Oferta salva");});
+$("#formClose").addEventListener("click",attemptCloseForm);
+
+$("#cfCancel").addEventListener("click",()=>closeOverlay("#confirmOverlay"));
+$("#cfDiscard").addEventListener("click",()=>{formDirty=false;closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Alterações descartadas");});
+$("#cfSave").addEventListener("click",async()=>{const ok=await saveForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Oferta salva");}});
 
 /* ===== IMAGE ZONES ===== */
 function getZone(key){
@@ -743,7 +772,7 @@ function setZone(key,v){
 }
 function paintZone(dz){
   const key=dz.dataset.zone,img=getZone(key);
-  if(img){dz.classList.add("has");dz.innerHTML=`<button type="button" class="rm">✕ Remover</button><img src="${img}" alt="">`;$(".rm",dz).addEventListener("click",ev=>{ev.stopPropagation();setZone(key,"");paintZone(dz);scheduleAutosave();});}
+  if(img){dz.classList.add("has");dz.innerHTML=`<button type="button" class="rm">✕ Remover</button><img src="${img}" alt="">`;$(".rm",dz).addEventListener("click",ev=>{ev.stopPropagation();setZone(key,"");paintZone(dz);markDirty();});}
   else{dz.classList.remove("has");dz.innerHTML=`<div class="hint">Clique e <b>cole (Ctrl/⌘+V)</b><br>ou arraste / selecione</div>`;}
 }
 function wireZones(scope){
@@ -757,7 +786,7 @@ function wireZones(scope){
   });
 }
 function setActiveZone(dz){$$(".dz").forEach(z=>z.classList.remove("active"));dz.classList.add("active");activeZone=dz.dataset.zone;}
-function fileToImage(file,dz){const r=new FileReader();r.onload=()=>{setZone(dz.dataset.zone,r.result);paintZone(dz);scheduleAutosave();};r.readAsDataURL(file);}
+function fileToImage(file,dz){const r=new FileReader();r.onload=()=>{setZone(dz.dataset.zone,r.result);paintZone(dz);markDirty();};r.readAsDataURL(file);}
 document.addEventListener("paste",e=>{
   if(!$("#formOverlay").classList.contains("open")||!activeZone)return;
   const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(!item)return;
@@ -772,8 +801,8 @@ $("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("ope
 /* ===== OVERLAY ===== */
 function openOverlay(s){$(s).classList.add("open");document.body.style.overflow="hidden";$(s).scrollTop=0;}
 function closeOverlay(s){$(s).classList.remove("open");document.body.style.overflow="";activeZone=null;}
-$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="formOverlay")closeForm();else closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#formOverlay").classList.contains("open")){closeForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}closeOverlay("#"+ov.id);}));
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
 
 /* ===== EXPORT ===== */
 $("#exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");});
