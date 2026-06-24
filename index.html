@@ -47,6 +47,8 @@
   .topbar .search input::placeholder{color:var(--faint);}
   .topbar .search .ic{color:var(--muted-fg);}
   .topbar .spacer{flex:1;}
+  .whoami{font-size:.72rem;letter-spacing:.06em;color:var(--muted-fg);text-transform:uppercase;font-weight:600;white-space:nowrap;}
+  @media(max-width:680px){.whoami{display:none;}}
   .sync{display:inline-flex;align-items:center;gap:7px;font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);white-space:nowrap;}
   .sync .dot{width:8px;height:8px;border-radius:50%;background:#444;}
   .sync.ok .dot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
@@ -338,6 +340,7 @@ create policy "public_all" on offers
     <div class="search"><span class="ic">⌕</span><input type="text" id="searchInput" placeholder="Buscar oferta, marca ou nicho..." /></div>
     <div class="spacer"></div>
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
+    <span class="whoami" id="whoami"></span>
     <button class="icon-btn" id="exportBtn" title="Exportar backup">↓</button>
     <button class="icon-btn" id="settingsBtn" title="Configurações">⚙</button>
     <button class="icon-btn" id="logoutBtn" title="Sair">⎋</button>
@@ -444,45 +447,32 @@ function normalize(raw){
   return d;
 }
 
-/* ===== AUTH (trava de acesso) ===== */
-function sha256(ascii){
-  function rr(v,a){return (v>>>a)|(v<<(32-a));}
-  var mp=Math.pow,mw=mp(2,32),i,j,result='',words=[];
-  var bitLen=ascii.length*8;
-  var hash=sha256.h=sha256.h||[],k=sha256.k=sha256.k||[],pc=k.length,comp={};
-  for(var c=2;pc<64;c++){if(!comp[c]){for(i=0;i<313;i+=c)comp[i]=c;hash[pc]=(mp(c,.5)*mw)|0;k[pc++]=(mp(c,1/3)*mw)|0;}}
-  ascii+='\x80';while(ascii.length%64-56)ascii+='\x00';
-  for(i=0;i<ascii.length;i++){j=ascii.charCodeAt(i);if(j>>8)return;words[i>>2]|=j<<((3-i)%4)*8;}
-  words[words.length]=((bitLen/mw)|0);words[words.length]=(bitLen);
-  for(j=0;j<words.length;){
-    var w=words.slice(j,j+=16),oh=hash;hash=hash.slice(0,8);
-    for(i=0;i<64;i++){
-      var w15=w[i-15],w2=w[i-2],a=hash[0],e=hash[4];
-      var t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
-      var t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
-      hash=[(t1+t2)|0].concat(hash);hash[4]=(hash[4]+t1)|0;
-    }
-    for(i=0;i<8;i++)hash[i]=(hash[i]+oh[i])|0;
-  }
-  for(i=0;i<8;i++)for(j=3;j+1;j--){var b=(hash[i]>>(j*8))&255;result+=((b<16)?0:'')+b.toString(16);}
-  return result;
+/* ===== AUTH (Supabase Auth) ===== */
+const EMAIL_DOMAIN="swipefeg.app";
+function toEmail(u){u=(u||"").trim().toLowerCase();return u.includes("@")?u:u+"@"+EMAIL_DOMAIN;}
+function showLogin(){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");setTimeout(()=>{const i=$("#loginUser");if(i)i.focus();},50);}
+function hideLogin(){$("#loginScreen").classList.remove("show");}
+function showWho(user){const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";}
+
+async function startAuth(){
+  const url=localStorage.getItem(LS.url)||DEFAULT_URL, key=localStorage.getItem(LS.key)||DEFAULT_KEY;
+  if(!initSupabase(url,key)){showSetup();return;}
+  let session=null;
+  try{const r=await sb.auth.getSession();session=r.data&&r.data.session;}catch(e){}
+  if(session){hideLogin();showWho(session.user);boot();}else showLogin();
 }
-const AUTH_KEY="feg_auth_user";
-const USERS=[
-  {u:"adminswipefeg", h:"0ee11d0957e3ad73871de08f70597901ce147972e48e635503049a64c0d6b781"},
-  {u:"userswipefeg",  h:"ca87e11f5843eccfbad99c1482563fe06abb29f6e80ed3b8e7e971455ca7c59c"}
-];
-function currentUser(){return localStorage.getItem(AUTH_KEY);}
-function tryLogin(u,p){const user=USERS.find(x=>x.u===(u||"").trim().toLowerCase());if(user&&sha256(p||"")===user.h){localStorage.setItem(AUTH_KEY,user.u);return true;}return false;}
-function logout(){localStorage.removeItem(AUTH_KEY);location.reload();}
-function showLogin(){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");$("#loginUser").focus();}
-function startAuth(){if(currentUser()){$("#loginScreen").classList.remove("show");boot();}else showLogin();}
-$("#loginForm").addEventListener("submit",e=>{
+$("#loginForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  if(tryLogin($("#loginUser").value,$("#loginPass").value)){
-    $("#loginErr").classList.remove("show");$("#loginScreen").classList.remove("show");$("#loginPass").value="";boot();
-  }else{$("#loginErr").classList.add("show");$("#loginPass").value="";$("#loginPass").focus();}
+  if(!sb){toast("Conexão indisponível",true);return;}
+  const email=toEmail($("#loginUser").value), pass=$("#loginPass").value;
+  const btn=$("#loginForm button[type=submit]");if(btn)btn.disabled=true;
+  $("#loginErr").classList.remove("show");
+  let res;try{res=await sb.auth.signInWithPassword({email,password:pass});}catch(err){res={error:err};}
+  if(btn)btn.disabled=false;
+  if(res.error){$("#loginErr").textContent="Usuário ou senha incorretos.";$("#loginErr").classList.add("show");$("#loginPass").value="";$("#loginPass").focus();return;}
+  $("#loginPass").value="";hideLogin();showWho(res.data&&res.data.user);boot();
 });
+async function logout(){try{await sb.auth.signOut();}catch(e){}try{localStorage.removeItem(LS.cache);}catch(e){}location.reload();}
 document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(confirm("Sair do painel?"))logout();}});
 
 /* ===== SUPABASE ===== */
@@ -494,16 +484,13 @@ function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.pa
 function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
-  const url=localStorage.getItem(LS.url)||DEFAULT_URL;
-  const key=localStorage.getItem(LS.key)||DEFAULT_KEY;
-  if(url&&key&&initSupabase(url,key)){
-    showApp();
-    const cached=readCache();
-    if(cached&&cached.length){offers=cached;renderGrid();setSync("load","Atualizando");}
-    else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<div class="sk-card"></div>').join("")+'</div>';
-    const ok=await loadOffers();
-    if(ok===false&&!(cached&&cached.length)){$("#supUrl").value=url;$("#supKey").value=key;showSetup();toast("Rode o SQL no Supabase primeiro",true);}
-  }else showSetup();
+  if(!sb){showSetup();return;}
+  showApp();
+  const cached=readCache();
+  if(cached&&cached.length){offers=cached;renderGrid();setSync("load","Atualizando");}
+  else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<div class="sk-card"></div>').join("")+'</div>';
+  const ok=await loadOffers();
+  if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
 }
 async function loadOffers(){
   setSync("load","Carregando");
@@ -523,10 +510,8 @@ $("#connectBtn").addEventListener("click",async()=>{
   if(!validUrl(url)){toast("URL inválida",true);return;}
   if(key.length<20){toast("Anon key inválida",true);return;}
   if(!initSupabase(url,key)){toast("Falha ao iniciar",true);return;}
-  setSync("load","Conectando");
-  const {error}=await sb.from("offers").select("id").limit(1);
-  if(error){toast("Erro: "+error.message,true);setSync("err","Erro");alert("Não conectou.\nVerifique o SQL e as chaves.\n\n"+error.message);return;}
-  localStorage.setItem(LS.url,url);localStorage.setItem(LS.key,key);showApp();await loadOffers();toast("Conectado!");
+  localStorage.setItem(LS.url,url);localStorage.setItem(LS.key,key);
+  $("#setupScreen").classList.add("hidden");toast("Conectado!");startAuth();
 });
 $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboard.writeText($("#sqlBox").childNodes[0].textContent).then(()=>toast("SQL copiado"));});
 $("#settingsBtn").addEventListener("click",()=>{if(confirm("Trocar credenciais do Supabase? (As ofertas continuam no banco.)")){$("#supUrl").value=localStorage.getItem(LS.url)||DEFAULT_URL;$("#supKey").value=localStorage.getItem(LS.key)||DEFAULT_KEY;showSetup();}});
