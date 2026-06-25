@@ -281,6 +281,7 @@
   .card__tmetrics .tm .n{font-size:1.45rem;font-weight:700;letter-spacing:-.02em;line-height:1;}
   .card__tmetrics .tm .l{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);}
   .chip.native{background:#7c5cff;color:#fff;border-color:transparent;}
+  .chip.fb{background:#1877f2;color:#fff;border-color:transparent;}
 
   /* traffic analytics (view) */
   .ta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px;}
@@ -570,12 +571,14 @@ function cardHtml(o){
   const crvs=d.criativos.filter(x=>x.link);
   const bibs=d.bibliotecas.filter(x=>x.link);
   const tabs=d.taboolaAds.filter(x=>x.img);
+  const brLink=(d.dominios.find(x=>x.backRedirect)||{}).backRedirect||"";
+  const presell=d.advertorialLink||"";
   const multi=domLinks.length>1||coLinks.length>1;
 
   const thumb=d.imagemProduto?`<img class="card__thumb" loading="lazy" decoding="async" src="${d.imagemProduto}" alt="">`:"";
   const chips=[];
+  chips.push(native?`<span class="chip native">🟧 Native · Taboola</span>`:`<span class="chip fb">📘 Facebook Ads</span>`);
   if(d.nicho)chips.push(`<span class="chip niche">${esc(d.nicho)}</span>`);
-  if(native)chips.push(`<span class="chip native">Native · Taboola</span>`);
   if(d.formato)chips.push(`<span class="chip">${esc(d.formato)}</span>`);
   if(domLinks.length>1)chips.push(`<span class="chip accent">${domLinks.length} domínios</span>`);
   if(native){if(tabs.length)chips.push(`<span class="chip accent">${tabs.length} ${tabs.length>1?"ads":"ad"} Taboola</span>`);}
@@ -585,8 +588,10 @@ function cardHtml(o){
 
   if(native){
     const quick=[
+      qbtn("Presell",presell,"📰"),
       qbtn("Domínio",(domLinks[0]||{}).linkDominio,"🌐"),
-      qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒")
+      qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒"),
+      qbtn("Back redirect",brLink,"↩")
     ].filter(Boolean).join("");
     const has3m=!!(d.trafego3m&&d.trafego3m.trim());
     const metrics=`<div class="card__tmetrics">
@@ -607,8 +612,10 @@ function cardHtml(o){
   const quick=[
     qbtn("Biblioteca",(bibs[0]||{}).link,"📚"),
     qbtn("Anúncios",(crvs[0]||{}).link,"▶"),
+    qbtn("Presell",presell,"📰"),
     qbtn("Domínio",(domLinks[0]||{}).linkDominio,"🌐"),
-    qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒")
+    qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒"),
+    qbtn("Back redirect",brLink,"↩")
   ].filter(Boolean).join("");
   const adsDisp=ads!=null?ads.toLocaleString("pt-BR"):"–";
 
@@ -696,9 +703,9 @@ function openView(id){
   if(!native){
     const bibs=d.bibliotecas.filter(x=>x.link);
     const bs=bibs.map((b,i)=>linkbtn("📚 "+(b.nome||"Biblioteca "+(i+1)),b.link,true)).join("");
-    if(bs||d.advertorialLink)headLinks=`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("Advertorial",d.advertorialLink)}</div>`;
+    if(bs||d.advertorialLink)headLinks=`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("📰 Presell",d.advertorialLink)}</div>`;
   }else if(d.advertorialLink){
-    headLinks=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Advertorial",d.advertorialLink)}</div>`;
+    headLinks=`<div class="linkbtns" style="margin-top:18px">${linkbtn("📰 Presell",d.advertorialLink)}</div>`;
   }
 
   let sn=0;const num=()=>String(++sn).padStart(2,"0");
@@ -728,7 +735,7 @@ function openView(id){
       </section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
-        ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir advertorial",d.advertorialLink)}</div>`:""}
+        ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("📰 Abrir presell",d.advertorialLink)}</div>`:""}
       </section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
     </div>
@@ -826,7 +833,7 @@ function openForm(id){
     <div class="fsec">
       <div class="fsec__title"><span class="num">06</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
-      <div class="field"><label class="lbl">Link do advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://..." value="${esc(d.advertorialLink)}"></div>
+      <div class="field"><label class="lbl">Link da presell / advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://... — página de pré-venda exibida antes da PV" value="${esc(d.advertorialLink)}"></div>
     </div>
 
     <div class="fsec">
