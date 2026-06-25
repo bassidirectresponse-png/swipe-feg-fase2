@@ -266,6 +266,37 @@
   .add-block{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--border-strong);background:transparent;color:var(--accent);padding:11px 18px;border-radius:var(--radius-sm);font-weight:600;font-size:.85rem;transition:all .18s;}
   .add-block:hover{background:var(--accent-dim);border-color:var(--accent);}
 
+  /* segmented (tipo de tráfego) */
+  .seg{display:inline-flex;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:4px;gap:4px;}
+  .seg-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;font-weight:600;font-size:.88rem;color:var(--muted-fg);transition:all .18s;}
+  .seg-btn.active{background:var(--accent);color:#000;}
+  .seg-btn:not(.active):hover{color:var(--fg);background:var(--surface-2);}
+  /* show/hide por tipo de tráfego */
+  .form[data-tipo="native"] .only-meta{display:none !important;}
+  .form[data-tipo="meta"] .only-native{display:none !important;}
+
+  /* card nativo: métricas de tráfego */
+  .card__tmetrics{display:flex;gap:24px;flex-wrap:wrap;}
+  .card__tmetrics .tm{display:flex;flex-direction:column;gap:3px;}
+  .card__tmetrics .tm .n{font-size:1.45rem;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .card__tmetrics .tm .l{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);}
+  .chip.native{background:#7c5cff;color:#fff;border-color:transparent;}
+
+  /* traffic analytics (view) */
+  .ta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px;}
+  .ta-metric{border:1px solid var(--border-2);background:var(--surface);border-radius:14px;padding:18px 20px;}
+  .ta-metric .k{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:7px;}
+  .ta-metric .v{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;line-height:1.05;word-break:break-word;}
+  .ta-info{display:flex;align-items:flex-start;gap:9px;font-size:.86rem;line-height:1.45;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(229,255,45,.3);border-radius:12px;padding:12px 14px;margin-bottom:16px;}
+  .ta-info .bi{flex-shrink:0;}
+  .ta-info b{color:#fff;}
+  .taboola-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+
+  /* aviso info dentro do form */
+  .fhint-info{display:flex;align-items:flex-start;gap:9px;font-size:.85rem;line-height:1.45;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(229,255,45,.3);border-radius:10px;padding:11px 13px;margin-bottom:18px;}
+  .fhint-info .bi{flex-shrink:0;}
+  .fhint-info b{color:#fff;}
+
   /* setup */
   .setup{max-width:760px;margin:50px auto;padding:0 24px;}
   .setup h2{font-size:clamp(1.8rem,6vw,3rem);letter-spacing:-.03em;margin-bottom:14px;}
@@ -410,7 +441,7 @@ const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 
 let sb=null, offers=[], searchTerm="", editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[];
+let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
 let activeZone=null;
 let formDirty=false, saving=false;
 
@@ -445,6 +476,12 @@ function normalize(raw){
     d.angulosResumo=Array.isArray(d.angulos)?d.angulos.map(a=>a&&a.descricao?"• "+a.descricao:"").filter(Boolean).join("\n"):"";
   }
   if(typeof d.angulosLink!=="string")d.angulosLink="";
+  if(d.tipoTrafego!=="native"&&d.tipoTrafego!=="meta")d.tipoTrafego="meta";
+  d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";});
+  if(!Array.isArray(d.taboolaAds))d.taboolaAds=[];
+  if(typeof d.trafego28d!=="string")d.trafego28d="";
+  if(typeof d.trafego3m!=="string")d.trafego3m="";
+  if(typeof d.printSemrush!=="string")d.printSemrush="";
   return d;
 }
 
@@ -482,7 +519,7 @@ function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList
 function initSupabase(u,k){try{sb=window.supabase.createClient(u,k);return true;}catch(e){console.error(e);return false;}}
 
 function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
-function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
+function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
   if(!sb){showSetup();return;}
@@ -527,23 +564,46 @@ function qbtn(label,url,icon){if(!url)return"";return `<button class="qbtn" data
 
 function cardHtml(o){
   const d=normalize(o.data);
-  const ads=getAds(d);const high=ads!=null&&ads>=HIGH_VOLUME;
+  const native=d.tipoTrafego==="native";
   const domLinks=d.dominios.filter(x=>x.linkDominio);
   const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const crvs=d.criativos.filter(x=>x.link);
   const bibs=d.bibliotecas.filter(x=>x.link);
+  const tabs=d.taboolaAds.filter(x=>x.img);
   const multi=domLinks.length>1||coLinks.length>1;
 
   const thumb=d.imagemProduto?`<img class="card__thumb" loading="lazy" decoding="async" src="${d.imagemProduto}" alt="">`:"";
   const chips=[];
   if(d.nicho)chips.push(`<span class="chip niche">${esc(d.nicho)}</span>`);
+  if(native)chips.push(`<span class="chip native">Native · Taboola</span>`);
   if(d.formato)chips.push(`<span class="chip">${esc(d.formato)}</span>`);
   if(domLinks.length>1)chips.push(`<span class="chip accent">${domLinks.length} domínios</span>`);
-  if(bibs.length>1)chips.push(`<span class="chip accent">${bibs.length} bibliotecas</span>`);
+  if(native){if(tabs.length)chips.push(`<span class="chip accent">${tabs.length} ${tabs.length>1?"ads":"ad"} Taboola</span>`);}
+  else if(bibs.length>1)chips.push(`<span class="chip accent">${bibs.length} bibliotecas</span>`);
 
-  const topBanner=high?`<div class="banner banner--warn card__topbanner"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:"";
   const redBanner=multi?`<div class="banner banner--danger"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout — abra para ver todas.</div>`:"";
 
+  if(native){
+    const quick=[
+      qbtn("Domínio",(domLinks[0]||{}).linkDominio,"🌐"),
+      qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"🛒")
+    ].filter(Boolean).join("");
+    const has3m=!!(d.trafego3m&&d.trafego3m.trim());
+    const metrics=`<div class="card__tmetrics">
+      <div class="tm"><span class="n">${d.trafego28d&&d.trafego28d.trim()?esc(d.trafego28d):"–"}</span><span class="l">Tráfego · 28d</span></div>
+      ${has3m?`<div class="tm"><span class="n">${esc(d.trafego3m)}</span><span class="l">Tráfego · 3m</span></div>`:""}
+    </div>`;
+    return `<div class="card" data-id="${o.id}">
+      <div class="card__top"><div><div class="card__brand">${esc(d.nomeMarca||"Sem marca")}</div><div class="card__title">${esc(d.nomeOferta||"Oferta sem nome")}</div></div>${thumb}</div>
+      <div class="card__chips">${chips.join("")}</div>
+      ${metrics}
+      ${redBanner}
+      <div class="qbar">${quick||'<span class="muted-empty" style="font-size:.8rem">Sem links — abra para editar</span>'}</div>
+    </div>`;
+  }
+
+  const ads=getAds(d);const high=ads!=null&&ads>=HIGH_VOLUME;
+  const topBanner=high?`<div class="banner banner--warn card__topbanner"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:"";
   const quick=[
     qbtn("Biblioteca",(bibs[0]||{}).link,"📚"),
     qbtn("Anúncios",(crvs[0]||{}).link,"▶"),
@@ -585,30 +645,63 @@ function shotView(label,img){
 function openView(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
   const d=normalize(o.data);
-  const ads=getAds(d);const high=ads!=null&&ads>=HIGH_VOLUME;
+  const native=d.tipoTrafego==="native";
+  const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
-  $("#viewTag").textContent=(d.nomeMarca?d.nomeMarca+" · ":"")+"Oferta";
+  $("#viewTag").textContent=(d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta");
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
-  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout||x.nome);
+  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout||x.nome);
   const domsHtml=domsAll.length?domsAll.map((dm,i)=>`
     <div class="dom">
       <div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(dm.nome||"Domínio "+(i+1))}</span></div>
-      <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true)}${linkbtn("Abrir checkout",dm.linkCheckout)}</div>
+      <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true)}${linkbtn("Abrir checkout",dm.linkCheckout)}${linkbtn("↩ Back redirect",dm.backRedirect)}</div>
       <div class="dom__shots">${shotView("Página de vendas",dm.printPV)}${shotView("Checkout",dm.printCheckout)}</div>
     </div>`).join(""):`<div class="muted-empty">Nenhum domínio cadastrado.</div>`;
 
-  const crvsAll=d.criativos.filter(x=>x.link||x.transcricao||x.nome);
-  const crvsHtml=crvsAll.length?crvsAll.map((c,i)=>`
-    <div class="crv"><div class="crv__name"><span class="si">Criativo ${String(i+1).padStart(2,"0")}</span>${esc(c.nome||"Sem título")}</div>
-    <div class="linkbtns">${linkbtn("Ver criativo",c.link,true)}${c.transcricao?linkbtn("📄 Ver transcrição do ad",c.transcricao):""}</div></div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
+  let adsTitle,adsInner;
+  if(native){
+    adsTitle="Anúncios encontrados (Taboola)";
+    const tabsAll=d.taboolaAds.filter(x=>x.img||x.nome);
+    adsInner=tabsAll.length?`<div class="taboola-grid">${tabsAll.map((a,i)=>a.img?`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}<span class="zoom lb" data-img="${a.img}">⤢ ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${a.img}" src="${a.img}" alt=""></div>`:`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}</div><div class="none">Sem print</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum anúncio do Taboola cadastrado.</div>`;
+  }else{
+    adsTitle="Criativos";
+    const crvsAll=d.criativos.filter(x=>x.link||x.transcricao||x.nome);
+    adsInner=crvsAll.length?crvsAll.map((c,i)=>`
+      <div class="crv"><div class="crv__name"><span class="si">Criativo ${String(i+1).padStart(2,"0")}</span>${esc(c.nome||"Sem título")}</div>
+      <div class="linkbtns">${linkbtn("Ver criativo",c.link,true)}${c.transcricao?linkbtn("📄 Ver transcrição do ad",c.transcricao):""}</div></div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
+  }
+
+  const taShot=d.printSemrush?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("Volume de tráfego (SEMrush)",d.printSemrush)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`;
+  const trafficInner=`
+    <div class="ta-grid">
+      <div class="ta-metric"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>
+      <div class="ta-metric"><div class="k">Tráfego · últimos 3 meses</div><div class="v">${d.trafego3m?esc(d.trafego3m):"—"}</div></div>
+    </div>
+    <div class="ta-info"><span class="bi">ℹ️</span><span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
+    ${taShot}`;
 
   const precos=d.precos.filter(p=>p.descricao||p.valor);
   const precosHtml=precos.length?`<div class="price-grid">${precos.map(p=>`<div class="price ${/assin/i.test(p.tipo||"")?'assina':''}">${p.tipo?`<span class="ptag">${esc(p.tipo)}</span>`:""}<div class="pk">${esc(p.descricao||"Preço")}</div><div class="pv">${esc(p.valor||"?")}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum preço cadastrado.</div>`;
 
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
+
+  let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
+  if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · 28d</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
+  else kvs+=`<div class="kv"><div class="k">Ads ativos</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>`;
+
+  let headLinks="";
+  if(!native){
+    const bibs=d.bibliotecas.filter(x=>x.link);
+    const bs=bibs.map((b,i)=>linkbtn("📚 "+(b.nome||"Biblioteca "+(i+1)),b.link,true)).join("");
+    if(bs||d.advertorialLink)headLinks=`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("Advertorial",d.advertorialLink)}</div>`;
+  }else if(d.advertorialLink){
+    headLinks=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Advertorial",d.advertorialLink)}</div>`;
+  }
+
+  let sn=0;const num=()=>String(++sn).padStart(2,"0");
 
   $("#viewBody").innerHTML=`
   <div class="view-grid">
@@ -619,28 +712,25 @@ function openView(id){
           <div class="info">
             <div class="brand">${esc(d.nomeMarca||"Sem marca")}</div>
             <h2>${esc(d.nomeOferta||"Oferta sem nome")}</h2>
-            <div class="kvs">
-              ${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}
-              <div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>
-              <div class="kv"><div class="k">Ads ativos</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>
-            </div>
+            <div class="kvs">${kvs}</div>
             ${high?`<div class="banner banner--warn" style="margin-top:18px"><span class="bi">⚡</span>Oferta com alto volume de anúncios.</div>`:""}
             ${multi?`<div class="banner banner--danger" style="margin-top:12px"><span class="bi">🔴</span>Este produto possui mais de uma oferta e checkout.</div>`:""}
-            ${(()=>{const bibs=d.bibliotecas.filter(x=>x.link);const bs=bibs.map((b,i)=>linkbtn("📚 "+(b.nome||"Biblioteca "+(i+1)),b.link,true)).join("");return (bs||d.advertorialLink)?`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("Advertorial",d.advertorialLink)}</div>`:"";})()}
+            ${headLinks}
           </div>
         </div>
       </section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">01</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">02</span><span class="sec__title">Criativos</span><span class="sec__line"></span></div>${crvsHtml}</section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">03</span><span class="sec__title">Resumo dos ângulos</span><span class="sec__line"></span></div>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${adsTitle}</span><span class="sec__line"></span></div>${adsInner}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Traffic Analytics</span><span class="sec__line"></span></div>${trafficInner}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo dos ângulos</span><span class="sec__line"></span></div>
         ${d.angulosResumo?`<div class="resumo">${esc(d.angulosResumo)}</div>`:`<div class="muted-empty">Sem resumo.</div>`}
         ${d.angulosLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("📁 Abrir no Drive",d.angulosLink,true)}</div>`:""}
       </section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">04</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
         ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir advertorial",d.advertorialLink)}</div>`:""}
       </section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">05</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
     </div>
     <aside class="sidebar">
       <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div></div>
@@ -659,14 +749,24 @@ function openForm(id){
   $("#formTag").textContent=id?"Editar oferta":"Nova oferta";
   setSaveState(id?"saved":"new");
   fProductImg=d.imagemProduto||"";
-  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",printPV:"",printCheckout:""}];
+  fTipo=d.tipoTrafego==="native"?"native":"meta";
+  fSemrush=d.printSemrush||"";
+  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fPrecos=d.precos.length?JSON.parse(JSON.stringify(d.precos)):[{descricao:"",valor:"",tipo:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
+  fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
 
   $("#formBody").innerHTML=`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">01</span> Produto</div>
+      <div class="fsec__title"><span class="num">01</span> Tipo & Produto</div>
+      <div class="field">
+        <label class="lbl">Origem do tráfego</label>
+        <div class="seg" id="tipoSeg">
+          <button type="button" class="seg-btn${fTipo==="meta"?" active":""}" data-action="set-tipo" data-tipo="meta">📘 Meta Ads (Facebook)</button>
+          <button type="button" class="seg-btn${fTipo==="native"?" active":""}" data-action="set-tipo" data-tipo="native">🟧 Native Ads (Taboola)</button>
+        </div>
+      </div>
       <div class="field big"><label class="lbl">Nome da oferta *</label><input type="text" id="f_nomeOferta" placeholder="Ex: Performance Masculina XYZ" value="${esc(d.nomeOferta)}"></div>
       <div class="row">
         <div class="field"><label class="lbl">Nome da marca</label><input type="text" id="f_nomeMarca" placeholder="Marca" value="${esc(d.nomeMarca)}"></div>
@@ -674,56 +774,77 @@ function openForm(id){
       </div>
       <div class="row">
         <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
-        <div class="field"><label class="lbl">Nº de ads ativos</label><input type="number" id="f_numAdsAtivos" placeholder="0" value="${esc(d.numAdsAtivos)}"></div>
+        <div class="field only-meta"><label class="lbl">Nº de ads ativos</label><input type="number" id="f_numAdsAtivos" placeholder="0" value="${esc(d.numAdsAtivos)}"></div>
       </div>
-      <label class="lbl">Bibliotecas de anúncios (Meta Ads Library)</label>
-      <div id="bibWrap"></div>
-      <button type="button" class="add-block" data-action="add-bib" style="margin-bottom:6px">+ Adicionar biblioteca</button>
+      <div class="only-meta">
+        <label class="lbl">Bibliotecas de anúncios (Meta Ads Library)</label>
+        <div id="bibWrap"></div>
+        <button type="button" class="add-block" data-action="add-bib" style="margin-bottom:6px">+ Adicionar biblioteca</button>
+      </div>
       <div class="field"><label class="lbl">Imagem do produto (cole, arraste ou clique)</label><div class="dz" data-zone="produto" tabindex="0"></div></div>
     </div>
 
     <div class="fsec">
       <div class="fsec__title"><span class="num">02</span> Domínios, Checkouts & Prints</div>
-      <div class="fsec__hint">Adicione quantos domínios quiser. Cada domínio leva seu checkout e os prints da PV e do checkout — tudo vinculado.</div>
+      <div class="fsec__hint">Adicione quantas ofertas/domínios quiser. Cada um leva seu checkout, o back redirect (se houver) e os prints da PV e do checkout — tudo vinculado.</div>
       <div id="domWrap"></div>
-      <button type="button" class="add-block" data-action="add-dom">+ Adicionar domínio</button>
+      <button type="button" class="add-block" data-action="add-dom">+ Adicionar oferta / domínio</button>
     </div>
 
-    <div class="fsec">
+    <div class="fsec only-meta">
       <div class="fsec__title"><span class="num">03</span> Criativos</div>
-      <div class="fsec__hint">Link do criativo (Drive ou anúncio nativo). Transcrição (.doc) opcional vira o botão "Ver transcrição do ad".</div>
+      <div class="fsec__hint">Link do criativo (Drive ou anúncio). Transcrição (.doc) opcional vira o botão "Ver transcrição do ad".</div>
       <div id="crvWrap"></div>
       <button type="button" class="add-block" data-action="add-crv">+ Adicionar criativo</button>
     </div>
 
+    <div class="fsec only-native">
+      <div class="fsec__title"><span class="num">03</span> Anúncios encontrados (Taboola)</div>
+      <div class="fsec__hint">Cole o print de cada anúncio que você encontrou no Taboola. Adicione quantos quiser — cada print é um anúncio separado (Taboola é só imagem).</div>
+      <div id="tabWrap"></div>
+      <button type="button" class="add-block" data-action="add-tab">+ Adicionar anúncio</button>
+    </div>
+
     <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> Resumo dos ângulos</div>
-      <div class="fsec__hint">Uma breve descrição dos principais ângulos e/ou um link de Drive. (Sem minutagem ou link de criativo — isso fica na seção de Criativos.)</div>
+      <div class="fsec__title"><span class="num">04</span> Traffic Analytics</div>
+      <div class="fsec__hint">Volume de tráfego do domínio (SEMrush). Anexe o print e registre os volumes abaixo.</div>
+      <div class="fhint-info"><span class="bi">ℹ️</span><span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
+      <div class="row">
+        <div class="field"><label class="lbl">Volume — últimos 28 dias</label><input type="text" id="f_trafego28d" placeholder="Ex: 320 mil visitas/mês" value="${esc(d.trafego28d)}"></div>
+        <div class="field"><label class="lbl">Volume — últimos 3 meses</label><input type="text" id="f_trafego3m" placeholder="Ex: 1,2 mi visitas" value="${esc(d.trafego3m)}"></div>
+      </div>
+      <div class="field"><label class="lbl">Print do volume de tráfego (SEMrush)</label><div class="dz" data-zone="semrush" tabindex="0"></div></div>
+    </div>
+
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">05</span> Resumo dos ângulos</div>
+      <div class="fsec__hint">Uma breve descrição dos principais ângulos e/ou um link de Drive.</div>
       <div class="field"><label class="lbl">Resumo</label><textarea id="f_angulosResumo" placeholder="Ex:&#10;• Voz feminina sobre a dor de não performar&#10;• Prova social com depoimentos&#10;• Médico explicando o mecanismo">${esc(d.angulosResumo)}</textarea></div>
       <div class="field"><label class="lbl">Link de Drive (opcional)</label><input type="url" id="f_angulosLink" placeholder="https://drive.google.com/..." value="${esc(d.angulosLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Funil de vendas</div>
+      <div class="fsec__title"><span class="num">06</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
       <div class="field"><label class="lbl">Link do advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://..." value="${esc(d.advertorialLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">06</span> Preços</div>
+      <div class="fsec__title"><span class="num">07</span> Preços</div>
       <div class="fsec__hint">O preço varia por kit. Adicione quantos quiser, com descrição e valor. Ex: "1 pote" → "$79", "3 potes" → "$49".</div>
       <div id="priWrap"></div>
       <button type="button" class="add-block" data-action="add-pri">+ Adicionar preço</button>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">07</span> Materiais & Comentário</div>
+      <div class="fsec__title"><span class="num">08</span> Materiais & Comentário</div>
       <div class="field"><label class="lbl">Links de Drive / Docs (um por linha)</label><textarea id="f_driveLinks" placeholder="https://docs.google.com/...&#10;https://drive.google.com/...">${esc(d.driveLinks)}</textarea></div>
       <div class="field"><label class="lbl">★ Comentário / orientação sobre a oferta</label><textarea id="f_comentario" placeholder="Observações, insights, orientações...">${esc(d.comentario)}</textarea></div>
     </div>
   `;
+  $("#formBody").dataset.tipo=fTipo;
   wireZones($("#formBody"));
-  renderDominios();renderCriativos();renderPrecos();renderBibliotecas();
+  renderDominios();renderCriativos();renderPrecos();renderBibliotecas();renderTaboola();
   openOverlay("#formOverlay");
   $("#f_nomeOferta").focus();
 }
@@ -734,9 +855,10 @@ function renderDominios(){
       <div class="behead"><span class="t"><span class="badge">${i+1}</span> Domínio ${i+1}</span>${fDominios.length>1?`<button type="button" class="rm-block" data-action="rm-dom" data-i="${i}">✕ Remover</button>`:""}</div>
       <div class="field"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-dom="${i}" data-k="nome" placeholder="Ex: Domínio principal / Variação BR" value="${esc(dm.nome)}"></div>
       <div class="row">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Link do domínio</label><input type="url" data-dom="${i}" data-k="linkDominio" placeholder="https://..." value="${esc(dm.linkDominio)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Link do domínio / oferta</label><input type="url" data-dom="${i}" data-k="linkDominio" placeholder="https://..." value="${esc(dm.linkDominio)}"></div>
         <div class="field" style="margin-bottom:0"><label class="lbl">Link do checkout (vinculado)</label><input type="url" data-dom="${i}" data-k="linkCheckout" placeholder="https://..." value="${esc(dm.linkCheckout)}"></div>
       </div>
+      <div class="field" style="margin-top:18px;margin-bottom:0"><label class="lbl">Link de back redirect (se houver)</label><input type="url" data-dom="${i}" data-k="backRedirect" placeholder="https://... — página exibida ao tentar sair" value="${esc(dm.backRedirect)}"></div>
       <div class="row" style="margin-top:18px">
         <div class="field" style="margin-bottom:0"><label class="lbl">Print — Página de vendas</label><div class="dz" data-zone="dom|${i}|pv" tabindex="0"></div></div>
         <div class="field" style="margin-bottom:0"><label class="lbl">Print — Checkout</label><div class="dz" data-zone="dom|${i}|co" tabindex="0"></div></div>
@@ -780,6 +902,15 @@ function renderBibliotecas(){
       </div>
     </div>`).join("");
 }
+function renderTaboola(){
+  $("#tabWrap").innerHTML=fTaboola.map((a,i)=>`
+    <div class="block-edit">
+      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Anúncio ${i+1}</span>${fTaboola.length>1?`<button type="button" class="rm-block" data-action="rm-tab" data-i="${i}">✕ Remover</button>`:""}</div>
+      <div class="field"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-tab="${i}" data-k="nome" placeholder="Ex: Headline / variação encontrada" value="${esc(a.nome)}"></div>
+      <div class="field" style="margin-bottom:0"><label class="lbl">Print do anúncio (cole, arraste ou clique)</label><div class="dz" data-zone="taboola|${i}" tabindex="0"></div></div>
+    </div>`).join("");
+  wireZones($("#tabWrap"));
+}
 
 /* live binding + autosave */
 function onFieldChange(t){
@@ -787,6 +918,7 @@ function onFieldChange(t){
   if(t.dataset.crv!=null){fCriativos[+t.dataset.crv][t.dataset.k]=t.value;return true;}
   if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
   if(t.dataset.bib!=null){fBibliotecas[+t.dataset.bib][t.dataset.k]=t.value;return true;}
+  if(t.dataset.tab!=null){fTaboola[+t.dataset.tab][t.dataset.k]=t.value;return true;}
   return false;
 }
 $("#formBody").addEventListener("input",e=>{onFieldChange(e.target);markDirty();});
@@ -794,7 +926,7 @@ $("#formBody").addEventListener("change",e=>{onFieldChange(e.target);markDirty()
 $("#formBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action;
-  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",printPV:"",printCheckout:""});renderDominios();}
+  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""});renderDominios();}
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
@@ -802,6 +934,9 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
   else if(a==="add-bib"){fBibliotecas.push({nome:"",link:""});renderBibliotecas();}
   else if(a==="rm-bib"){fBibliotecas.splice(+b.dataset.i,1);renderBibliotecas();}
+  else if(a==="add-tab"){fTaboola.push({nome:"",img:""});renderTaboola();}
+  else if(a==="rm-tab"){fTaboola.splice(+b.dataset.i,1);renderTaboola();}
+  else if(a==="set-tipo"){if(fTipo===b.dataset.tipo)return;fTipo=b.dataset.tipo;$("#formBody").dataset.tipo=fTipo;$$("#tipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.tipo===fTipo));}
   else return;
   markDirty();
 });
@@ -809,19 +944,22 @@ $("#formBody").addEventListener("click",e=>{
 /* ===== SAVE (explícito) ===== */
 function buildPayload(){
   return {
+    tipoTrafego:fTipo==="native"?"native":"meta",
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
     bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
-    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.printPV||x.printCheckout),
+    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
+    taboolaAds:fTaboola.filter(x=>x.nome||x.img),
+    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),printSemrush:fSemrush||"",
     angulosResumo:val("f_angulosResumo"),angulosLink:val("f_angulosLink"),
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
     precos:fPrecos.filter(p=>p.descricao||p.valor),
     driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
   };
 }
-function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length||p.bibliotecas.length);}
+function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrush);}
 function markDirty(){formDirty=true;setSaveState("unsaved");}
 
 async function saveForm(){
@@ -864,11 +1002,18 @@ $("#cfSave").addEventListener("click",async()=>{const ok=await saveForm();if(ok)
 /* ===== IMAGE ZONES ===== */
 function getZone(key){
   if(key==="produto")return fProductImg;
-  const p=key.split("|");if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}return "";
+  if(key==="semrush")return fSemrush;
+  const p=key.split("|");
+  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
+  if(p[0]==="taboola"){const i=+p[1];return (fTaboola[i]||{}).img||"";}
+  return "";
 }
 function setZone(key,v){
   if(key==="produto"){fProductImg=v;return;}
-  const p=key.split("|");if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;}
+  if(key==="semrush"){fSemrush=v;return;}
+  const p=key.split("|");
+  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
+  if(p[0]==="taboola"){const i=+p[1];if(fTaboola[i])fTaboola[i].img=v;return;}
 }
 function paintZone(dz){
   const key=dz.dataset.zone,img=getZone(key);
@@ -913,7 +1058,9 @@ async function maybeCompress(d){
 }
 async function compressStateImages(){
   fProductImg=await maybeCompress(fProductImg);
+  fSemrush=await maybeCompress(fSemrush);
   for(const dm of fDominios){dm.printPV=await maybeCompress(dm.printPV);dm.printCheckout=await maybeCompress(dm.printCheckout);}
+  for(const a of fTaboola){a.img=await maybeCompress(a.img);}
 }
 function fileToImage(file,dz){
   const r=new FileReader();
