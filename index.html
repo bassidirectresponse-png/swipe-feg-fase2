@@ -21,7 +21,7 @@
     --shadow-lg:0 24px 70px -24px rgba(0,0,0,.92);
     --ring:0 0 0 3px var(--accent-soft);
     --ease:cubic-bezier(.2,.7,.3,1);
-    --side-w:252px;--topbar-h:79px;
+    --side-w:252px;--topbar-h:79px;--secnav-h:63px;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   ::selection{background:var(--accent);color:#000;}
@@ -128,7 +128,7 @@
   /* ===== shell + sidebar de nichos ===== */
   .shell{display:grid;grid-template-columns:var(--side-w) 1fr;align-items:start;}
   .main{min-width:0;}
-  .nichebar{position:sticky;top:var(--topbar-h);align-self:start;max-height:calc(100vh - var(--topbar-h));overflow-y:auto;border-right:1px solid var(--border);padding:24px 14px 50px;display:flex;flex-direction:column;gap:3px;}
+  .nichebar{position:sticky;top:calc(var(--topbar-h) + var(--secnav-h));align-self:start;max-height:calc(100vh - var(--topbar-h) - var(--secnav-h));overflow-y:auto;border-right:1px solid var(--border);padding:24px 14px 50px;display:flex;flex-direction:column;gap:3px;}
   .nichebar__title{display:flex;align-items:center;gap:8px;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;padding:2px 10px 14px;}
   .nichebar__title .ico{width:14px;height:14px;color:var(--accent);}
   .nfilter{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:9px 12px;border-radius:10px;border:1px solid transparent;color:var(--muted-fg);font-size:.9rem;font-weight:600;transition:background .18s,color .18s,border-color .18s;}
@@ -210,7 +210,7 @@
   /* sidebar de nichos responsiva: vira barra horizontal */
   @media(max-width:980px){
     .shell{grid-template-columns:1fr;}
-    .nichebar{position:sticky;top:var(--topbar-h);max-height:none;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;border-right:none;border-bottom:1px solid var(--border);padding:11px clamp(16px,4vw,40px);gap:8px;background:rgba(5,5,6,.82);backdrop-filter:blur(12px);z-index:40;scrollbar-width:none;}
+    .nichebar{position:sticky;top:calc(var(--topbar-h) + var(--secnav-h));max-height:none;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;border-right:none;border-bottom:1px solid var(--border);padding:11px clamp(16px,4vw,40px);gap:8px;background:rgba(5,5,6,.82);backdrop-filter:blur(12px);z-index:40;scrollbar-width:none;}
     .nichebar::-webkit-scrollbar{display:none;}
     .nichebar.collapsed{display:none;}
     .nichebar__title{display:none;}
@@ -390,6 +390,72 @@
   /* skeleton */
   .sk-card{height:230px;border-radius:var(--radius);border:1px solid var(--border-2);background:linear-gradient(110deg,var(--surface) 30%,var(--surface-2) 50%,var(--surface) 70%);background-size:220% 100%;animation:shimmer 1.2s linear infinite;}
   @keyframes shimmer{from{background-position:220% 0}to{background-position:-20% 0}}
+
+  /* ===== nav de seções (swipes) ===== */
+  .sectionnav{position:sticky;top:var(--topbar-h);z-index:45;display:flex;gap:8px;padding:12px clamp(16px,4vw,48px);background:rgba(0,0,0,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .sectionnav::-webkit-scrollbar{display:none;}
+  .snav{display:inline-flex;align-items:center;gap:9px;padding:10px 15px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface);color:var(--muted-fg);font-weight:600;font-size:.9rem;white-space:nowrap;transition:color .18s,background .18s,border-color .18s,transform .12s ease;}
+  .snav .ico{width:16px;height:16px;}
+  .snav:hover{color:var(--fg);border-color:var(--border-strong);background:var(--surface-2);}
+  .snav:active{transform:scale(.97);}
+  .snav.active{background:var(--accent);color:#000;border-color:var(--accent);}
+  .snav.active .ico{color:#000;}
+  .snav .scount{font-size:.7rem;font-weight:700;background:var(--surface-3);color:var(--faint);border-radius:999px;padding:2px 8px;min-width:22px;text-align:center;}
+  .snav.active .scount{background:rgba(0,0,0,.16);color:#000;}
+  @media(max-width:600px){.snav{padding:9px 12px;font-size:.83rem;}.sectionnav{padding:10px clamp(12px,4vw,24px);}}
+
+  /* sub-filtro (plataforma criativos) */
+  .subfilter{margin-bottom:20px;}
+
+  /* ===== cards de swipe (presell / criativo / megabrain) ===== */
+  .kcard{gap:12px;}
+  .ktag{display:inline-flex;align-items:center;gap:6px;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);}
+  .ktag .ico{width:13px;height:13px;color:var(--accent);}
+  .tbadge--brain{color:#e7ffa0;background:var(--accent-dim);border-color:rgba(229,255,45,.42);}
+  .tbadge--brain .tdot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  .kcard__title{font-size:1.2rem;font-weight:700;letter-spacing:-.02em;line-height:1.15;word-break:break-word;}
+  .cmedia{position:relative;border-radius:13px;overflow:hidden;border:1px solid var(--border-2);background:var(--surface-3);aspect-ratio:16/10;cursor:zoom-in;}
+  .cmedia img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s var(--ease);}
+  .cmedia:hover img{transform:scale(1.05);}
+  .cmedia__zoom{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(3px);}
+  .cmedia__zoom .ico{width:15px;height:15px;}
+  .cmedia--empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);cursor:default;aspect-ratio:16/7;}
+  .cmedia--empty .ico{width:26px;height:26px;opacity:.5;}
+  .cmedia--empty span{font-size:.78rem;}
+  .kcomment{display:flex;gap:8px;font-size:.8rem;line-height:1.4;color:var(--muted-fg);background:var(--surface-3);border:1px solid var(--border);border-radius:10px;padding:9px 11px;}
+  .kcomment .ico{width:14px;height:14px;flex:none;margin-top:1px;color:var(--accent);}
+  .kcomment span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .kassets{display:flex;flex-wrap:wrap;gap:7px;}
+  .kasset{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;color:var(--fg);background:var(--surface-3);border:1px solid var(--border-2);border-radius:9px;padding:6px 10px;}
+  .kasset .ico{width:13px;height:13px;color:var(--accent);}
+  .kcard--brain{border-color:rgba(229,255,45,.3);}
+
+  /* view: asset do megabrain */
+  .mbasset{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;}
+  .mbasset__t{display:flex;align-items:center;gap:8px;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:14px;}
+  .mbasset__t .ico{width:14px;height:14px;color:var(--accent);}
+  .mbasset .linkbtns{margin-bottom:2px;}
+
+  /* ===== cards de notícia + grupos por nicho ===== */
+  .ncard{gap:11px;}
+  .ncard__title{font-size:1.06rem;font-weight:700;letter-spacing:-.01em;line-height:1.25;word-break:break-word;}
+  .ncard__snippet{font-size:.82rem;line-height:1.45;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .ncard__meta{display:flex;flex-wrap:wrap;gap:14px;font-size:.7rem;color:var(--faint);font-weight:600;}
+  .ncard__meta .ico{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
+  .ncard__meta .nmeta__eng{color:var(--muted-fg);}
+  .nsrc{display:inline-flex;align-items:center;gap:6px;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1px solid var(--border-2);white-space:nowrap;}
+  .nsrc--reddit{color:#ff9d6b;background:rgba(255,86,0,.12);border-color:rgba(255,86,0,.35);}
+  .nsrc--yt{color:#ff8a8a;background:rgba(255,0,0,.1);border-color:rgba(255,0,0,.3);}
+  .nsrc--hn{color:#ffb877;background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.32);}
+  .nsrc--web{color:#8fb7ff;background:rgba(40,110,240,.12);border-color:rgba(40,110,240,.32);}
+  .nsrc--x{color:#cfd6dd;background:rgba(255,255,255,.06);border-color:var(--border-strong);}
+  .nsrc--manual{color:var(--muted-fg);background:var(--surface-3);}
+  .nsrc--portal{color:#b7c6ff;background:rgba(124,92,255,.12);border-color:rgba(124,92,255,.34);}
+  .newsgroup{margin-bottom:34px;}
+  .newsgroup__head{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:.98rem;font-weight:700;letter-spacing:.01em;color:var(--fg);}
+  .newsgroup__head .ico{width:16px;height:16px;color:var(--accent);}
+  .newsgroup__cnt{font-size:.68rem;font-weight:700;color:#000;background:var(--accent);border-radius:999px;padding:2px 9px;}
+  .newsgroup__line{flex:1;height:1px;background:var(--border);}
 </style>
 </head>
 <body>
@@ -450,15 +516,16 @@ create policy "public_all" on offers
     <button class="icon-btn" id="logoutBtn" title="Sair" aria-label="Sair"><svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
     <button class="btn btn--accent" id="newBtn"><svg class="ico" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="newBtn-txt">Nova oferta</span></button>
   </div>
+  <nav class="sectionnav" id="sectionNav"></nav>
   <div class="shell">
     <aside class="nichebar collapsed" id="nicheBar"></aside>
     <main class="main">
       <div class="page">
         <div class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></div>
-        <p class="lab">Além de um swipe de ofertas, um <b>laboratório de análise de dados</b> exclusivo.</p>
-        <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
+        <p class="lab" id="pageSub">Além de um swipe de ofertas, um <b>laboratório de análise de dados</b> exclusivo.</p>
+        <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
       </div>
-      <div class="grid-wrap"><div id="gridArea"></div></div>
+      <div class="grid-wrap"><div class="subfilter" id="subFilter"></div><div id="gridArea"></div></div>
     </main>
   </div>
 </div>
@@ -493,6 +560,21 @@ create policy "public_all" on offers
   </div>
 </div>
 
+<!-- FORM SIMPLES (presell / criativo / mega brain) -->
+<div class="overlay" id="simpleFormOverlay">
+  <div class="modal">
+    <div class="modal__bar">
+      <span class="tag" id="simpleFormTag">Novo</span>
+      <div class="actions">
+        <span class="save-state" id="simpleSaveState"><span class="ssdot"></span>Novo</span>
+        <button class="btn btn--accent btn--sm" id="simpleFormSave"><svg class="ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Salvar</button>
+        <button class="x" id="simpleFormClose" aria-label="Fechar"><svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+    </div>
+    <div class="modal__body form" id="simpleFormBody"></div>
+  </div>
+</div>
+
 <!-- CONFIRM (alterações não salvas) -->
 <div class="overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -516,12 +598,23 @@ const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
 const DEFAULT_URL="https://ppaajtzbhjixhyfidojd.supabase.co";
 const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
 const HIGH_VOLUME=1000;
-const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
+const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
+const SECTIONS=[
+  {key:"oferta",label:"Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Vitrine de <b>ofertas</b> completas: bibliotecas, domínios, checkouts, criativos e preços.'},
+  {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
+  {key:"criativo",label:"Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos</b> vencedores, separados por Meta Ads e Taboola.'},
+  {key:"megabrain",label:"Mega Brain Validados",icon:"brain",newLabel:"Novo validado",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar item, marca ou nicho...",subHtml:'<b>Mega Brain Validados</b> — copy e vídeo de VSL e de criativo, tudo num só lugar.'},
+  {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'}
+];
+function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
+function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
 let sb=null, offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
 let activeZone=null;
 let formDirty=false, saving=false;
+let activeSection="oferta", critPlatform="all";
+let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
 const $=(s,r=document)=>r.querySelector(s);
@@ -547,7 +640,13 @@ const ICONS={
   pulse:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>',
   link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',
   external:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
-  plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>'
+  plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+  brain:'<path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"></path>',
+  image:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>',
+  film:'<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M7 3v18"></path><path d="M3 7.5h4"></path><path d="M3 12h18"></path><path d="M3 16.5h4"></path><path d="M17 3v18"></path><path d="M17 7.5h4"></path><path d="M17 16.5h4"></path>',
+  type:'<polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" x2="15" y1="20" y2="20"></line><line x1="12" x2="12" y1="4" y2="20"></line>',
+  message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+  clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -620,7 +719,7 @@ function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList
 function initSupabase(u,k){try{sb=window.supabase.createClient(u,k);return true;}catch(e){console.error(e);return false;}}
 
 function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
-function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
+function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
   if(!sb){showSetup();return;}
@@ -659,25 +758,27 @@ $("#settingsBtn").addEventListener("click",()=>{if(confirm("Trocar credenciais d
 const NO_NICHE="__none__";
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
 function filtered(){
-  let list=offers;
+  let list=offers.filter(o=>sectionOf(o)===activeSection);
+  if(activeSection==="criativo"&&critPlatform!=="all")list=list.filter(o=>((o.data||{}).plataforma||"meta")===critPlatform);
   if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:n===activeNiche;});}
   if(searchTerm){
     const t=searchTerm.toLowerCase();
-    list=list.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nomeMarca,d.formato,d.nicho].some(v=>(v||"").toLowerCase().includes(t));});
+    list=list.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.formato,d.nicho].some(v=>(v||"").toLowerCase().includes(t));});
   }
   return list;
 }
 function renderNicheBar(){
   const bar=$("#nicheBar");if(!bar)return;
+  const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
   const counts=new Map();let none=0;
-  offers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}counts.set(n,(counts.get(n)||0)+1);});
+  secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}counts.set(n,(counts.get(n)||0)+1);});
   if(activeNiche&&activeNiche!==NO_NICHE&&!counts.has(activeNiche))activeNiche="";
   if(activeNiche===NO_NICHE&&!none)activeNiche="";
   const present=[...counts.keys()];
   const ordered=[...NICHOS.filter(n=>counts.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
   const item=(key,label,count,active)=>`<button class="nfilter${active?" active":""}" data-niche="${esc(key)}"><span class="nlabel"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></button>`;
   let html=`<div class="nichebar__title">${ic("layers")}Nichos</div>`;
-  html+=item("","Todos",offers.length,activeNiche==="");
+  html+=item("","Todos",secOffers.length,activeNiche==="");
   ordered.forEach(n=>{html+=item(n,n,counts.get(n),activeNiche===n);});
   if(none)html+=item(NO_NICHE,"Sem nicho",none,activeNiche===NO_NICHE);
   bar.innerHTML=html;
@@ -754,29 +855,55 @@ function cardHtml(o){
     <div class="card__actions">${quick||'<span class="muted-empty" style="font-size:.8rem">Sem links — abra para editar</span>'}</div>
   </article>`;
 }
+function cardFor(o){
+  switch(sectionOf(o)){
+    case "presell":return presellCard(o);
+    case "criativo":return criativoCard(o);
+    case "megabrain":return megabrainCard(o);
+    case "noticia":return noticiaCard(o);
+    default:return cardHtml(o);
+  }
+}
 function renderGrid(){
+  renderSectionNav();
   renderNicheBar();
+  renderSubFilter();
+  setSectionHeader();
+  const cfg=sectionCfg(activeSection);
+  const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
-  $("#statTotal").textContent=offers.length;
-  const filtering=!!(activeNiche||searchTerm);
+  $("#statTotal").textContent=secCount;
+  const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all"));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
-  if(offers.length===0){area.innerHTML=`<div class="empty"><h2>Nenhuma oferta ainda</h2><p>Clique em <b style="color:var(--accent)">Nova oferta</b> para começar.</p></div>`;return;}
+  if(secCount===0){area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.</p></div>`;return;}
   if(list.length===0){
-    area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhuma oferta corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
-    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{activeNiche="";searchTerm="";const si=$("#searchInput");if(si)si.value="";renderGrid();});
+    area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhum item corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
+    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{activeNiche="";searchTerm="";critPlatform="all";const si=$("#searchInput");if(si)si.value="";renderGrid();});
     return;
   }
-  let html=list.map(cardHtml).join("");
-  html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">Nova oferta</div></div>`;
-  area.innerHTML=`<div class="grid">${html}</div>`;
+  if(activeSection==="noticia"&&!activeNiche){
+    const groups=new Map();
+    list.forEach(o=>{const n=(o.data||{}).nicho||"Sem nicho";if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
+    const order=[...NICHOS.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
+    let gh="";
+    order.forEach(n=>{const arr=groups.get(n);gh+=`<div class="newsgroup"><div class="newsgroup__head">${ic("layers")}<span>${esc(n)}</span><span class="newsgroup__cnt">${arr.length}</span><span class="newsgroup__line"></span></div><div class="grid">${arr.map(cardFor).join("")}</div></div>`;});
+    gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
+    area.innerHTML=gh;
+  }else{
+    let html=list.map(cardFor).join("");
+    html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
+    area.innerHTML=`<div class="grid">${html}</div>`;
+  }
   $$(".card[data-id]",area).forEach(c=>c.addEventListener("click",()=>openView(c.dataset.id)));
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();window.open(b.dataset.href,"_blank","noopener");}));
-  const add=$("#addCard");if(add)add.addEventListener("click",()=>openForm(null));
+  $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
+  const add=$("#addCard");if(add)add.addEventListener("click",openNewForActiveSection);
 }
 $("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;renderGrid();});
-$("#newBtn").addEventListener("click",()=>openForm(null));
+$("#newBtn").addEventListener("click",openNewForActiveSection);
+function openNewForActiveSection(){if(activeSection==="oferta")openForm(null);else openSimpleForm(activeSection,null);}
 $("#nicheToggle").addEventListener("click",()=>{const b=$("#nicheBar");if(b)b.classList.toggle("collapsed");});
 
 /* ===== VIEW ===== */
@@ -787,6 +914,7 @@ function shotView(label,img){
 }
 function openView(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
+  if(sectionOf(o)!=="oferta"){openSimpleView(o);return;}
   const d=normalize(o.data);
   const native=d.tipoTrafego==="native";
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
@@ -1132,20 +1260,21 @@ async function saveForm(){
 
 function attemptCloseForm(){
   if(!formDirty){closeOverlay("#formOverlay");return;}
-  openOverlay("#confirmOverlay");
+  pendingCloseForm="offer";openOverlay("#confirmOverlay");
 }
 
 $("#formSave").addEventListener("click",async()=>{if(await saveForm())toast("Oferta salva");});
 $("#formClose").addEventListener("click",attemptCloseForm);
 
 $("#cfCancel").addEventListener("click",()=>closeOverlay("#confirmOverlay"));
-$("#cfDiscard").addEventListener("click",()=>{formDirty=false;closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Alterações descartadas");});
-$("#cfSave").addEventListener("click",async()=>{const ok=await saveForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Oferta salva");}});
+$("#cfDiscard").addEventListener("click",()=>{if(pendingCloseForm==="simple"){sFormDirty=false;closeOverlay("#confirmOverlay");closeOverlay("#simpleFormOverlay");}else{formDirty=false;closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");}toast("Alterações descartadas");});
+$("#cfSave").addEventListener("click",async()=>{if(pendingCloseForm==="simple"){const ok=await saveSimpleForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#simpleFormOverlay");toast("Salvo");}}else{const ok=await saveForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Oferta salva");}}});
 
 /* ===== IMAGE ZONES ===== */
 function getZone(key){
   if(key==="produto")return fProductImg;
   if(key==="semrush")return fSemrush;
+  if(key.slice(0,2)==="s|")return sItem[key.slice(2)]||"";
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
   if(p[0]==="taboola"){const i=+p[1];return (fTaboola[i]||{}).img||"";}
@@ -1154,6 +1283,7 @@ function getZone(key){
 function setZone(key,v){
   if(key==="produto"){fProductImg=v;return;}
   if(key==="semrush"){fSemrush=v;return;}
+  if(key.slice(0,2)==="s|"){sItem[key.slice(2)]=v;return;}
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
   if(p[0]==="taboola"){const i=+p[1];if(fTaboola[i])fTaboola[i].img=v;return;}
@@ -1214,7 +1344,7 @@ function fileToImage(file,dz){
   r.readAsDataURL(file);
 }
 document.addEventListener("paste",e=>{
-  if(!$("#formOverlay").classList.contains("open")||!activeZone)return;
+  if((!$("#formOverlay").classList.contains("open")&&!$("#simpleFormOverlay").classList.contains("open"))||!activeZone)return;
   const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(!item)return;
   const file=item.getAsFile();const dz=$(`.dz[data-zone="${activeZone}"]`);
   if(file&&dz){fileToImage(file,dz);toast("Print colado");}
@@ -1227,8 +1357,349 @@ $("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("ope
 /* ===== OVERLAY ===== */
 function openOverlay(s){$(s).classList.add("open");document.body.style.overflow="hidden";$(s).scrollTop=0;}
 function closeOverlay(s){$(s).classList.remove("open");document.body.style.overflow="";activeZone=null;}
-$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+$$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}if(ov.id==="simpleFormOverlay"){attemptCloseSimpleForm();return;}closeOverlay("#"+ov.id);}));
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+
+/* ===== SEÇÕES (swipes) ===== */
+function renderSectionNav(){
+  const nav=$("#sectionNav");if(!nav)return;
+  const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
+  offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});
+  nav.innerHTML=SECTIONS.map(s=>`<button class="snav${activeSection===s.key?" active":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav-lbl">${esc(s.label)}</span><span class="scount">${counts[s.key]||0}</span></button>`).join("");
+  $$(".snav",nav).forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.section)));
+  syncSecNav();
+}
+function syncSecNav(){const n=$("#sectionNav");if(n)document.documentElement.style.setProperty("--secnav-h",n.offsetHeight+"px");}
+window.addEventListener("resize",syncSecNav);
+function switchSection(key){
+  if(activeSection===key)return;
+  activeSection=key;activeNiche="";critPlatform="all";
+  renderGrid();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function setSectionHeader(){
+  const cfg=sectionCfg(activeSection);
+  const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
+  const lbl=$("#statLabel");if(lbl)lbl.textContent=cfg.statLabel;
+  const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
+  const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;
+}
+function renderSubFilter(){
+  const el=$("#subFilter");if(!el)return;
+  if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
+  el.style.display="";
+  const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
+  el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>`;
+  $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;renderGrid();}));
+}
+
+/* ===== CARDS DOS NOVOS SWIPES ===== */
+function mediaThumb(img,alt){
+  if(img)return `<div class="cmedia" data-lb="${esc(img)}"><img loading="lazy" decoding="async" src="${img}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span></div>`;
+  return `<div class="cmedia cmedia--empty">${ic("image")}<span>Sem print</span></div>`;
+}
+function commentPreview(c){if(!c)return"";return `<div class="kcomment">${ic("message")}<span>${esc(c)}</span></div>`;}
+function emptyActions(){return `<span class="muted-empty" style="font-size:.8rem">Sem link — abra para ver</span>`;}
+function nicheChip(d){return d.nicho?`<div class="card__chips"><span class="chip niche">${esc(d.nicho)}</span></div>`:"";}
+
+function presellCard(o){
+  const d=o.data||{};
+  const native=d.tipoTrafego==="native";
+  const badge=native?`<span class="tbadge tbadge--native"><span class="tdot"></span>Native · Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
+  const acts=qbtn("Abrir presell",d.link,"newspaper");
+  return `<article class="card kcard" data-id="${o.id}">
+    <div class="card__head">${badge}<span class="ktag">${ic("newspaper")}Presell</span></div>
+    ${mediaThumb(d.print,d.nome)}
+    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
+    ${nicheChip(d)}
+    ${commentPreview(d.comentario)}
+    <div class="card__actions">${acts||emptyActions()}</div>
+  </article>`;
+}
+function criativoCard(o){
+  const d=o.data||{};
+  const tab=d.plataforma==="taboola";
+  const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
+  const acts=qbtn("Abrir criativo",d.link,"play");
+  return `<article class="card kcard" data-id="${o.id}">
+    <div class="card__head">${badge}<span class="ktag">${ic("play")}Criativo</span></div>
+    ${mediaThumb(d.print,d.nome)}
+    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
+    ${nicheChip(d)}
+    ${commentPreview(d.comentario)}
+    <div class="card__actions">${acts||emptyActions()}</div>
+  </article>`;
+}
+function megabrainCard(o){
+  const d=o.data||{};
+  const assets=[
+    (d.copyVsl||d.copyVslLink)?{ic:"type",label:"Copy VSL"}:null,
+    d.videoVsl?{ic:"film",label:"Vídeo VSL"}:null,
+    (d.copyCriativo||d.copyCriativoLink)?{ic:"type",label:"Copy criativo"}:null,
+    d.videoCriativo?{ic:"film",label:"Vídeo criativo"}:null
+  ].filter(Boolean);
+  const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:`<div class="muted-empty" style="font-size:.82rem">Sem materiais ainda — abra para adicionar</div>`;
+  return `<article class="card kcard kcard--brain" data-id="${o.id}">
+    <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
+    ${d.print?mediaThumb(d.print,d.nome):""}
+    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
+    ${nicheChip(d)}
+    ${assetChips}
+    ${commentPreview(d.comentario)}
+  </article>`;
+}
+
+/* ===== CARD DE NOTÍCIA ===== */
+function sourceBadge(fonte){
+  const f=(fonte||"").toLowerCase().replace(/\s+/g,"");
+  const map={reddit:["Reddit","nsrc--reddit"],youtube:["YouTube","nsrc--yt"],hackernews:["Hacker News","nsrc--hn"],hn:["Hacker News","nsrc--hn"],web:["Web","nsrc--web"],grounding:["Web","nsrc--web"],x:["X","nsrc--x"],twitter:["X","nsrc--x"],github:["GitHub","nsrc--web"],polymarket:["Polymarket","nsrc--web"],manual:["Manual","nsrc--manual"]};
+  const m=map[f]||(f==="manual"?["Manual","nsrc--manual"]:[fonte||"Fonte","nsrc--portal"]);
+  return `<span class="nsrc ${m[1]}">${esc(m[0])}</span>`;
+}
+function relDate(s){
+  const t=Date.parse(s);if(isNaN(t))return esc(s||"");
+  const days=Math.floor((Date.now()-t)/86400000);
+  if(days<=0)return "hoje";
+  if(days===1)return "ontem";
+  if(days<7)return "há "+days+" dias";
+  if(days<30)return "há "+Math.floor(days/7)+" sem";
+  return new Date(t).toLocaleDateString("pt-BR");
+}
+function noticiaCard(o){
+  const d=o.data||{};
+  const date=d.dataPub?`<span class="nmeta__date">${ic("clock")}${relDate(d.dataPub)}</span>`:"";
+  const eng=d.engajamento?`<span class="nmeta__eng">${ic("trending")}${esc(d.engajamento)}</span>`:"";
+  const meta=(date||eng)?`<div class="ncard__meta">${date}${eng}</div>`:"";
+  return `<article class="card ncard" data-id="${o.id}">
+    <div class="card__head">${sourceBadge(d.fonte)}${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}</div>
+    <div class="ncard__title">${esc(d.nome||"(sem título)")}</div>
+    ${d.resumo?`<div class="ncard__snippet">${esc(d.resumo)}</div>`:""}
+    ${meta}
+    <div class="card__actions">${d.link?qbtn("Abrir notícia",d.link,"external"):'<span class="muted-empty" style="font-size:.8rem">Sem link — abra para editar</span>'}</div>
+  </article>`;
+}
+
+/* ===== VIEW DOS NOVOS SWIPES ===== */
+function openSimpleView(o){
+  const d=o.data||{}, kind=d.kind, cfg=sectionCfg(kind);
+  $("#viewTag").textContent=(d.marca?d.marca+" · ":"")+cfg.label;
+  $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openSimpleForm(kind,o.id);};
+  $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir este item? Não dá para desfazer.")){deleteOffer(o.id);closeOverlay("#viewOverlay");}};
+
+  const kvs=[];
+  if(d.nicho)kvs.push(`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`);
+  if(kind==="presell")kvs.push(`<div class="kv"><div class="k">Origem</div><div class="v">${d.tipoTrafego==="native"?"Native · Taboola":"Meta Ads"}</div></div>`);
+  if(kind==="criativo")kvs.push(`<div class="kv"><div class="k">Plataforma</div><div class="v">${d.plataforma==="taboola"?"Taboola":"Meta Ads"}</div></div>`);
+  if(kind==="noticia"){
+    if(d.fonte)kvs.push(`<div class="kv"><div class="k">Fonte</div><div class="v">${esc(d.fonte)}</div></div>`);
+    if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Data</div><div class="v">${relDate(d.dataPub)}</div></div>`);
+    if(d.engajamento)kvs.push(`<div class="kv"><div class="k">Engajamento</div><div class="v">${esc(d.engajamento)}</div></div>`);
+  }
+
+  let mainLink="";
+  if(kind==="presell"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir presell",d.link,true,"newspaper")}</div>`;
+  if(kind==="criativo"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir criativo",d.link,true,"play")}</div>`;
+  if(kind==="noticia"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir notícia",d.link,true,"external")}</div>`;
+
+  let sn=0;const num=()=>String(++sn).padStart(2,"0");
+  let sections="";
+  if(d.print){
+    sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Print</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView(kind==="criativo"?"Criativo":"Presell / Advertorial",d.print)}</div></section>`;
+  }
+  if(kind==="megabrain"){
+    const assetRow=(icon,title,copy,copyLink,video)=>{
+      const links=[copyLink?linkbtn("Abrir copy (doc)",copyLink,false,"file"):"",video?linkbtn("Ver vídeo",video,true,"film"):""].filter(Boolean).join("");
+      const copyBox=copy?`<div class="resumo" style="margin-top:12px">${esc(copy)}</div>`:(links?"":`<div class="muted-empty">Sem conteúdo cadastrado.</div>`);
+      return `<div class="mbasset"><div class="mbasset__t">${ic(icon)}${title}</div>${links?`<div class="linkbtns">${links}</div>`:""}${copyBox}</div>`;
+    };
+    sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">VSL validada</span><span class="sec__line"></span></div>${assetRow("film","Copy & vídeo da VSL",d.copyVsl,d.copyVslLink,d.videoVsl)}</section>`;
+    sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo validado</span><span class="sec__line"></span></div>${assetRow("play","Copy & vídeo do criativo",d.copyCriativo,d.copyCriativoLink,d.videoCriativo)}</section>`;
+  }
+  if(kind==="noticia"&&d.resumo){
+    sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo</span><span class="sec__line"></span></div><div class="resumo">${esc(d.resumo)}</div></section>`;
+  }
+
+  $("#viewBody").innerHTML=`<div class="view-grid"><div>
+    <section class="sec"><div class="prod-head"><div class="info">
+      <div class="brand">${esc(kind==="noticia"?(d.fonte||cfg.label):(d.marca||cfg.label))}</div>
+      <h2>${esc(d.nome||"Sem título")}</h2>
+      <div class="kvs">${kvs.join("")}</div>
+      ${mainLink}
+    </div></div></section>
+    ${sections}
+  </div>
+  <aside class="sidebar">
+    <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div>
+  </aside></div>`;
+  $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  openOverlay("#viewOverlay");
+}
+
+/* ===== FORM DOS NOVOS SWIPES ===== */
+function blankSimple(kind){
+  const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
+  if(kind==="presell")base.tipoTrafego="meta";
+  if(kind==="criativo")base.plataforma="meta";
+  if(kind==="megabrain")Object.assign(base,{copyVsl:"",copyVslLink:"",videoVsl:"",copyCriativo:"",copyCriativoLink:"",videoCriativo:""});
+  if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
+  return base;
+}
+function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: Oferta validada — Glicose";}
+function setSimpleSaveState(s){const e=$("#simpleSaveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
+function sMarkDirty(){sFormDirty=true;setSimpleSaveState("unsaved");}
+
+function openSimpleForm(kind,id){
+  sKind=kind;sEditingId=id;sFormDirty=false;sSaving=false;
+  const cfg=sectionCfg(kind);
+  const src=id?(offers.find(o=>o.id===id)||{}).data:null;
+  sItem=src?Object.assign(blankSimple(kind),JSON.parse(JSON.stringify(src))):blankSimple(kind);
+  sItem.kind=kind;
+  $("#simpleFormTag").textContent=(id?"Editar — ":"Novo — ")+cfg.label;
+  setSimpleSaveState(id?"saved":"new");
+  renderSimpleForm();
+  openOverlay("#simpleFormOverlay");
+  const f=$("#s_nome");if(f)f.focus();
+}
+function renderSimpleForm(){
+  const k=sKind, it=sItem;
+  const nomeField=`<div class="field big"><label class="lbl">Nome / identificação *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>`;
+  const nichoField=`<div class="field"><label class="lbl">Nicho</label><input list="nichosGlobal" data-sk="nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(it.nicho)}"></div>`;
+  const marcaField=`<div class="field"><label class="lbl">Marca / fonte (opcional)</label><input type="text" data-sk="marca" placeholder="Marca ou conta de origem" value="${esc(it.marca)}"></div>`;
+  const comentField=`<div class="field"><label class="lbl">★ Comentário / orientação</label><textarea data-sk="comentario" placeholder="Observações, por que salvou, insights...">${esc(it.comentario)}</textarea></div>`;
+  const printField=`<div class="field"><label class="lbl">Print / screenshot (cole, arraste ou clique)</label><div class="dz" data-zone="s|print" tabindex="0"></div></div>`;
+  let html="";
+  if(k==="presell"){
+    html=`
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">01</span> Identificação</div>
+      <div class="field"><label class="lbl">Origem do tráfego</label>
+        <div class="seg" id="sTipoSeg">
+          <button type="button" class="seg-btn${it.tipoTrafego!=="native"?" active":""}" data-saction="set-tipo" data-val="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</button>
+          <button type="button" class="seg-btn${it.tipoTrafego==="native"?" active":""}" data-saction="set-tipo" data-val="native"><span class="sdot" style="background:var(--native)"></span>Native / Taboola</button>
+        </div>
+      </div>
+      ${nomeField}
+      <div class="row">${nichoField}${marcaField}</div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">02</span> Presell / Advertorial</div>
+      <div class="field"><label class="lbl">Link da presell / advertorial</label><input type="url" data-sk="link" placeholder="https://... — página exibida antes da PV" value="${esc(it.link)}"></div>
+      ${printField}
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">03</span> Comentário</div>
+      ${comentField}
+    </div>`;
+  }else if(k==="criativo"){
+    html=`
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">01</span> Plataforma & Identificação</div>
+      <div class="field"><label class="lbl">Plataforma do criativo</label>
+        <div class="seg" id="sPlatSeg">
+          <button type="button" class="seg-btn${it.plataforma!=="taboola"?" active":""}" data-saction="set-plat" data-val="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</button>
+          <button type="button" class="seg-btn${it.plataforma==="taboola"?" active":""}" data-saction="set-plat" data-val="taboola"><span class="sdot" style="background:var(--native)"></span>Taboola</button>
+        </div>
+      </div>
+      ${nomeField}
+      <div class="row">${nichoField}${marcaField}</div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">02</span> Criativo</div>
+      <div class="field"><label class="lbl">Link do criativo / vídeo</label><input type="url" data-sk="link" placeholder="https://... (Drive, anúncio, YouTube...)" value="${esc(it.link)}"></div>
+      ${printField}
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">03</span> Comentário</div>
+      ${comentField}
+    </div>`;
+  }else if(k==="noticia"){
+    html=`
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">01</span> Notícia</div>
+      <div class="field big"><label class="lbl">Título da notícia *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>
+      <div class="field"><label class="lbl">Link da notícia</label><input type="url" data-sk="link" placeholder="https://..." value="${esc(it.link)}"></div>
+      <div class="row">${nichoField}
+        <div class="field"><label class="lbl">Fonte</label><input list="fontesGlobal" data-sk="fonte" placeholder="Reddit, YouTube, Web..." value="${esc(it.fonte||"")}"><datalist id="fontesGlobal"><option value="Reddit"><option value="YouTube"><option value="Hacker News"><option value="Web"><option value="X"><option value="Manual"></datalist></div>
+      </div>
+      <div class="row">
+        <div class="field"><label class="lbl">Data (AAAA-MM-DD)</label><input type="text" data-sk="dataPub" placeholder="2026-07-03" value="${esc(it.dataPub||"")}"></div>
+        <div class="field"><label class="lbl">Engajamento (opcional)</label><input type="text" data-sk="engajamento" placeholder="Ex: 317 upvotes" value="${esc(it.engajamento||"")}"></div>
+      </div>
+      <div class="field"><label class="lbl">Resumo</label><textarea data-sk="resumo" placeholder="Resumo / snippet da notícia...">${esc(it.resumo||"")}</textarea></div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">02</span> Comentário</div>
+      ${comentField}
+    </div>`;
+  }else{
+    html=`
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">01</span> Identificação</div>
+      ${nomeField}
+      <div class="row">${nichoField}${marcaField}</div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">02</span> VSL validada</div>
+      <div class="field"><label class="lbl">${ic("type")} Copy da VSL</label><textarea data-sk="copyVsl" placeholder="Cole aqui a copy da VSL (ou um resumo dela)...">${esc(it.copyVsl)}</textarea></div>
+      <div class="row">
+        <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy (doc) — opcional</label><input type="url" data-sk="copyVslLink" placeholder="https://docs.google.com/..." value="${esc(it.copyVslLink)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">${ic("film")} Vídeo da VSL</label><input type="url" data-sk="videoVsl" placeholder="https://... (YouTube, Drive, Vimeo)" value="${esc(it.videoVsl)}"></div>
+      </div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">03</span> Criativo validado</div>
+      <div class="field"><label class="lbl">${ic("type")} Copy do criativo</label><textarea data-sk="copyCriativo" placeholder="Cole aqui a copy do criativo...">${esc(it.copyCriativo)}</textarea></div>
+      <div class="row">
+        <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy (doc) — opcional</label><input type="url" data-sk="copyCriativoLink" placeholder="https://docs.google.com/..." value="${esc(it.copyCriativoLink)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">${ic("film")} Vídeo do criativo</label><input type="url" data-sk="videoCriativo" placeholder="https://..." value="${esc(it.videoCriativo)}"></div>
+      </div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">04</span> Print & Comentário</div>
+      ${printField}
+      ${comentField}
+    </div>`;
+  }
+  $("#simpleFormBody").innerHTML=`<datalist id="nichosGlobal">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`+html;
+  wireZones($("#simpleFormBody"));
+}
+$("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
+$("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
+$("#simpleFormBody").addEventListener("click",e=>{
+  const b=e.target.closest("[data-saction]");if(!b)return;
+  if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego=b.dataset.val;$$("#sTipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));sMarkDirty();}
+  else if(b.dataset.saction==="set-plat"){sItem.plataforma=b.dataset.val;$$("#sPlatSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));sMarkDirty();}
+});
+
+async function compressSimpleImages(){if(typeof sItem.print==="string")sItem.print=await maybeCompress(sItem.print);}
+function hasSimpleContent(p){return !!(p.nome||p.link||p.print||p.comentario||p.marca||p.copyVsl||p.copyVslLink||p.videoVsl||p.copyCriativo||p.copyCriativoLink||p.videoCriativo);}
+async function saveSimpleForm(){
+  if(sSaving)return false;
+  sSaving=true;setSimpleSaveState("saving");setSync("load","Salvando");
+  await compressSimpleImages();
+  $$(".dz",$("#simpleFormBody")).forEach(paintZone);
+  const p=Object.assign({},sItem);p.kind=sKind;
+  if(!hasSimpleContent(p)){sSaving=false;setSimpleSaveState(sFormDirty?"unsaved":"new");toast("Preencha algo antes de salvar",true);return false;}
+  const size=JSON.stringify(p).length;
+  if(size>6000000){sSaving=false;setSimpleSaveState("error");toast("Imagem muito grande ("+Math.round(size/1048576)+"MB). Reduza o print.",true);return false;}
+  let res;
+  try{
+    if(sEditingId)res=await sb.from("offers").update({data:p}).eq("id",sEditingId).select();
+    else res=await sb.from("offers").insert({data:p}).select();
+  }catch(err){res={error:err};}
+  sSaving=false;
+  if(res.error){setSimpleSaveState("error");setSync("err","Erro");toast("Erro ao salvar: "+(res.error.message||res.error),true);return false;}
+  const row=res.data&&res.data[0];
+  if(row){
+    if(!sEditingId){sEditingId=row.id;offers.push(row);}
+    else{const i=offers.findIndex(o=>o.id===sEditingId);if(i>=0)offers[i]=row;else offers.push(row);}
+  }
+  sFormDirty=false;setSimpleSaveState("saved");setSync("ok","Salvo");renderGrid();writeCache();
+  return true;
+}
+function attemptCloseSimpleForm(){if(!sFormDirty){closeOverlay("#simpleFormOverlay");return;}pendingCloseForm="simple";openOverlay("#confirmOverlay");}
+$("#simpleFormSave").addEventListener("click",async()=>{if(await saveSimpleForm())toast("Salvo");});
+$("#simpleFormClose").addEventListener("click",attemptCloseSimpleForm);
 
 /* ===== EXPORT ===== */
 $("#exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");});
