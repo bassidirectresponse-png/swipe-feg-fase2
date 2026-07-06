@@ -24,3 +24,7 @@ SECURITY_REPORT.md
 # Python
 __pycache__/
 *.pyc
+
+# Skills / tooling de agentes (não vai pro deploy)
+.agents/
+skills-lock.json

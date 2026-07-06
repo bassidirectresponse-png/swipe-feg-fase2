@@ -11,7 +11,7 @@
 <style>
   :root{
     --bg:#000000;--bg-2:#070708;--surface:#0c0c0e;--surface-2:#121215;--surface-3:#17171b;
-    --fg:#f4f4f5;--muted-fg:#9b9ba3;--faint:#5b5b63;
+    --fg:#f4f4f5;--muted-fg:#9b9ba3;--faint:#7d7d87;
     --accent:#e5ff2d;--accent-dim:rgba(229,255,45,.14);--accent-soft:rgba(229,255,45,.08);
     --red:#ff5d5d;--red-soft:rgba(255,93,93,.13);
     --border:#1d1d22;--border-2:#2a2a31;--border-strong:#3a3a44;
@@ -92,8 +92,6 @@
 
   /* page header */
   .page{padding:clamp(28px,5vw,56px) clamp(16px,4vw,48px) 0;}
-  .page h1{font-size:clamp(2rem,5.5vw,3.6rem);font-weight:700;letter-spacing:-.03em;line-height:1.02;}
-  .page h1 .lime{color:var(--accent);}
   .page .sub{margin-top:12px;color:var(--muted-fg);font-size:clamp(.95rem,1.6vw,1.15rem);max-width:560px;}
   .page .meta-row{margin-top:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
   .stat{display:flex;align-items:baseline;gap:8px;}
@@ -174,20 +172,21 @@
   .chip.accent{background:var(--accent-dim);border-color:transparent;color:var(--accent);}
   .chip.niche{background:var(--accent);color:#000;border-color:transparent;}
 
-  .card__stats{display:flex;gap:9px;}
-  .kpi{flex:1;min-width:0;background:var(--surface-3);border:1px solid var(--border);border-radius:13px;padding:11px 13px;}
+  .card__stats{display:flex;gap:20px;}
+  .kpi{flex:1;min-width:0;padding:6px 0 2px;}
+  .card__stats .kpi+.kpi{border-left:1px solid var(--border);padding-left:18px;}
   .kpi__l{display:flex;align-items:center;gap:5px;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:6px;}
   .kpi__l .ico{width:12px;height:12px;}
-  .kpi__v{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.05;color:var(--fg);word-break:break-word;}
-  .kpi--hot{border-color:rgba(229,255,45,.3);background:var(--accent-soft);}
+  .kpi__v{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;line-height:1.05;color:var(--fg);word-break:break-word;}
   .kpi--hot .kpi__v,.kpi--hot .kpi__l{color:var(--accent);}
+  .kpi--hot .kpi__v{text-shadow:0 0 22px rgba(229,255,45,.4);}
 
   .cnote{display:flex;align-items:center;gap:8px;font-size:.72rem;font-weight:600;line-height:1.3;padding:8px 11px;border-radius:10px;}
   .cnote .ico{width:14px;height:14px;flex:none;}
   .cnote--danger{color:#ffa3a3;background:var(--red-soft);border:1px solid rgba(255,93,93,.32);}
 
   .card__actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;padding-top:2px;}
-  .qbtn{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);padding:7px 12px;border-radius:9px;transition:background .18s,color .18s,border-color .18s,transform .12s ease;}
+  .qbtn{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);padding:9px 13px;min-height:40px;border-radius:9px;transition:background .18s,color .18s,border-color .18s,transform .12s ease;}
   .qbtn .ico{width:14px;height:14px;opacity:.82;}
   .qbtn:hover{background:var(--accent);color:#000;border-color:var(--accent);}
   .qbtn:hover .ico{opacity:1;}
@@ -546,7 +545,7 @@ create policy "public_all" on offers
     <aside class="nichebar collapsed" id="nicheBar"></aside>
     <main class="main">
       <div class="page">
-        <div class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></div>
+        <h1 class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></h1>
         <p class="lab" id="pageSub">Além de um swipe de ofertas, um <b>laboratório de análise de dados</b> exclusivo.</p>
         <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
       </div>
@@ -844,7 +843,7 @@ function adsChartSvg(hist){
   if(li%step!==0)xlab+=`<text x="${X(li).toFixed(1)}" y="${h-12}" text-anchor="middle" class="axl">${fmtDateShort(pts[li].d)}</text>`;
   const line=pts.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ");
   const area=`M${X(0).toFixed(1)} ${(padT+ih).toFixed(1)} `+pts.map((p,i)=>"L"+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ")+` L${X(li).toFixed(1)} ${(padT+ih).toFixed(1)} Z`;
-  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.n).toFixed(1)}" r="${i===li?3.4:2.1}" fill="${i===li?'var(--accent)':'#0c0c0e'}" stroke="var(--accent)" stroke-width="1.5"><title>${fmtDateShort(p.d)}: ${fmtNum(p.n)} ads</title></circle>`).join("");
+  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.n).toFixed(1)}" r="${i===li?3.4:2.1}" fill="${i===li?'var(--accent)':'var(--bg-2)'}" stroke="var(--accent)" stroke-width="1.5"><title>${fmtDateShort(p.d)}: ${fmtNum(p.n)} ads</title></circle>`).join("");
   const lastX=X(li),edge=lastX>w-padR-34,lx=edge?lastX-6:lastX,anchor=edge?"end":"middle";
   const lastLabel=`<text x="${lx.toFixed(1)}" y="${(Y(pts[li].n)-9).toFixed(1)}" text-anchor="${anchor}" class="axv">${fmtNum(pts[li].n)}</text>`;
   return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por dia">${grid}${ylab}<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>${dots}${xlab}${lastLabel}</svg>`;
@@ -960,10 +959,22 @@ function renderGrid(){
     html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
     area.innerHTML=`<div class="grid">${html}</div>`;
   }
-  $$(".card[data-id]",area).forEach(c=>c.addEventListener("click",()=>openView(c.dataset.id)));
+  $$(".card[data-id]",area).forEach(c=>{
+    c.tabIndex=0;c.setAttribute("role","button");
+    const open=()=>openView(c.dataset.id);
+    c.addEventListener("click",open);
+    c.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target===c){e.preventDefault();open();}});
+  });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();window.open(b.dataset.href,"_blank","noopener");}));
   $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
-  const add=$("#addCard");if(add)add.addEventListener("click",openNewForActiveSection);
+  const add=$("#addCard");
+  if(add){
+    add.addEventListener("click",openNewForActiveSection);
+    if(add.classList.contains("card--new")){
+      add.tabIndex=0;add.setAttribute("role","button");add.setAttribute("aria-label",sectionCfg(activeSection).newLabel);
+      add.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openNewForActiveSection();}});
+    }
+  }
 }
 $("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;renderGrid();});
 $("#newBtn").addEventListener("click",openNewForActiveSection);
@@ -1428,9 +1439,33 @@ document.addEventListener("paste",e=>{
 function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("open");}
 $("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("open"));
 
-/* ===== OVERLAY ===== */
-function openOverlay(s){$(s).classList.add("open");document.body.style.overflow="hidden";$(s).scrollTop=0;}
-function closeOverlay(s){$(s).classList.remove("open");document.body.style.overflow="";activeZone=null;}
+/* ===== OVERLAY (com foco acessível) ===== */
+let lastFocused=null;
+const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]';
+function openOverlay(s){
+  const el=$(s);if(!el)return;
+  lastFocused=document.activeElement;
+  el.classList.add("open");document.body.style.overflow="hidden";el.scrollTop=0;
+  const f=$$(FOCUSABLE,el).filter(x=>x.offsetParent!==null);
+  if(f.length)setTimeout(()=>{try{f[0].focus({preventScroll:true});}catch(e){}},30);
+}
+function closeOverlay(s){
+  const el=$(s);if(!el)return;
+  el.classList.remove("open");document.body.style.overflow="";activeZone=null;
+  if(!$(".overlay.open")&&lastFocused&&lastFocused.focus){try{lastFocused.focus({preventScroll:true});}catch(e){}lastFocused=null;}
+}
+/* prende o Tab dentro do modal aberto no topo */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Tab")return;
+  const ov=$$(".overlay.open").filter(o=>o.id!=="lightbox").pop();
+  if(!ov)return;
+  const f=$$(FOCUSABLE,ov).filter(x=>x.offsetParent!==null);
+  if(!f.length)return;
+  const first=f[0],last=f[f.length-1];
+  if(!ov.contains(document.activeElement)){e.preventDefault();first.focus({preventScroll:true});}
+  else if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus({preventScroll:true});}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus({preventScroll:true});}
+},true);
 $$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}if(ov.id==="simpleFormOverlay"){attemptCloseSimpleForm();return;}closeOverlay("#"+ov.id);}));
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
 
