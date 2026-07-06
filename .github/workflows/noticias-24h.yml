@@ -1,0 +1,39 @@
+name: Notícias 24h — ingestão diária
+
+# Roda todo dia às 09:00 UTC (06:00 BRT) e também sob demanda pela aba Actions.
+# Diferente das rotinas da nuvem (CCR), os runners do GitHub Actions têm
+# internet liberada, então conseguem gravar no Supabase sem bloqueio de egress.
+
+on:
+  schedule:
+    - cron: "0 9 * * *"      # 09:00 UTC = 06:00 America/Sao_Paulo
+  workflow_dispatch: {}        # botão "Run workflow" para disparo manual
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noticias-24h
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Ingerir notícias (RSS → Supabase)
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          # opcionais (têm default no script):
+          # MAX_AGE_DAYS: "14"
+          # MAX_PER_NICHE: "8"
+        run: python3 scripts/noticias_ingest.py
