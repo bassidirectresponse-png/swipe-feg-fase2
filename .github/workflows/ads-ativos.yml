@@ -1,0 +1,46 @@
+name: Ads ativos — atualização automática
+
+# Atualiza o nº de anúncios ativos de cada oferta (Meta) lendo a Biblioteca de
+# Anúncios do Meta com Chromium headless (Playwright), e alimenta o histórico
+# (data.adsHistory) que vira o gráfico dentro do card. Roda 2x/dia.
+# Runner do GitHub tem egress liberado -> grava no Supabase sem bloqueio.
+# Reusa os MESMOS secrets do bot já configurados (nada novo a cadastrar).
+
+on:
+  schedule:
+    - cron: "0 11 * * *"     # 08:00 America/Sao_Paulo
+    - cron: "0 23 * * *"     # 20:00 America/Sao_Paulo
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ads-ativos
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install chromium --with-deps
+
+      - name: Atualizar anúncios ativos
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/ads_scraper.py
