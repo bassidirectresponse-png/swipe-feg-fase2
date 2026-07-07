@@ -480,6 +480,16 @@
   .adsmeta .ico{width:12px;height:12px;}
   .adsmeta .adsupd{display:inline-flex;align-items:center;gap:5px;}
   .adsmeta .adsauto{display:inline-flex;align-items:center;gap:4px;color:var(--accent);}
+
+  /* ===== upload de vídeo (MP4) ===== */
+  .vidup{border:1px dashed var(--border-strong);background:var(--surface);border-radius:12px;min-height:66px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;cursor:pointer;transition:border-color .2s,background .2s;outline:none;}
+  .vidup:hover,.vidup.active{border-color:var(--accent);background:var(--accent-soft);}
+  .vidup:focus-visible{box-shadow:var(--ring);}
+  .vidup__hint{color:var(--muted-fg);font-size:.82rem;line-height:1.5;}
+  .vidup__hint b{color:var(--accent);}
+  .vidup__ok{color:var(--accent);font-weight:600;}
+  .vidup__spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -1737,6 +1747,55 @@ function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Pr
 function setSimpleSaveState(s){const e=$("#simpleSaveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 function sMarkDirty(){sFormDirty=true;setSimpleSaveState("unsaved");}
 
+/* ===== UPLOAD DE VÍDEO (Supabase Storage) ===== */
+const VIDEO_BUCKET="criativos", VIDEO_MAX=52428800; // 50MB
+function setVidUpState(zone,state,name){
+  if(!zone)return;
+  const n=esc(name||"vídeo");
+  if(state==="uploading")zone.innerHTML=`<div class="vidup__hint"><span class="vidup__spin"></span>Enviando ${n}… (não feche)</div>`;
+  else if(state==="done")zone.innerHTML=`<div class="vidup__hint vidup__ok">✓ ${n} enviado — toca na visualização</div>`;
+  else if(state==="error")zone.innerHTML=`<div class="vidup__hint">Falha no envio. Tente de novo ou cole um link.</div>`;
+  else zone.innerHTML=`<div class="vidup__hint">Clique para escolher <b>ou arraste</b> um MP4 aqui (até 50MB)</div>`;
+}
+async function uploadVideoFile(file){
+  const zone=$("#vidUpZone");
+  if(!file)return;
+  if(!sb){toast("Conexão indisponível",true);return;}
+  if(!/^video\//.test(file.type||"")){toast("Selecione um arquivo de vídeo (MP4).",true);return;}
+  if(file.size>VIDEO_MAX){toast("Vídeo acima de 50MB. Comprima ou use um link.",true);return;}
+  if(zone&&zone.dataset.busy)return;
+  if(zone)zone.dataset.busy="1";
+  setVidUpState(zone,"uploading",file.name);
+  const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
+  const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
+  const path=`${sKind||"criativo"}/${uid}.${ext}`;
+  let res;
+  try{res=await sb.storage.from(VIDEO_BUCKET).upload(path,file,{contentType:file.type||"video/mp4",upsert:false});}
+  catch(err){res={error:err};}
+  if(zone)delete zone.dataset.busy;
+  if(res.error){
+    setVidUpState(zone,"error");
+    const m=(res.error.message||String(res.error));
+    toast(/row-level|denied|unauthor/i.test(m)?"Falta a policy de Storage — rode o SQL enviado.":"Falha no upload: "+m,true);
+    return;
+  }
+  const url=sb.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+  sItem.video=url;
+  const inp=$('[data-sk="video"]',$("#simpleFormBody"));if(inp)inp.value=url;
+  setVidUpState(zone,"done",file.name);
+  sMarkDirty();
+  toast("Vídeo enviado ✓");
+}
+function wireVideoUpload(){
+  const zone=$("#vidUpZone");if(!zone)return;
+  const pick=()=>{const i=document.createElement("input");i.type="file";i.accept="video/mp4,video/webm,video/quicktime,video/*";i.onchange=()=>{if(i.files[0])uploadVideoFile(i.files[0]);};i.click();};
+  zone.addEventListener("click",pick);
+  zone.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+  zone.addEventListener("dragover",e=>{e.preventDefault();zone.classList.add("active");});
+  zone.addEventListener("dragleave",()=>zone.classList.remove("active"));
+  zone.addEventListener("drop",e=>{e.preventDefault();zone.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("video/"));if(f)uploadVideoFile(f);else toast("Arraste um arquivo de vídeo.",true);});
+}
+
 function openSimpleForm(kind,id){
   sKind=kind;sEditingId=id;sFormDirty=false;sSaving=false;
   const cfg=sectionCfg(kind);
@@ -1756,6 +1815,7 @@ function renderSimpleForm(){
   const marcaField=`<div class="field"><label class="lbl">Marca / fonte (opcional)</label><input type="text" data-sk="marca" placeholder="Marca ou conta de origem" value="${esc(it.marca)}"></div>`;
   const comentField=`<div class="field"><label class="lbl">★ Comentário / orientação</label><textarea data-sk="comentario" placeholder="Observações, por que salvou, insights...">${esc(it.comentario)}</textarea></div>`;
   const printField=`<div class="field"><label class="lbl">Print / screenshot (cole, arraste ou clique)</label><div class="dz" data-zone="s|print" tabindex="0"></div></div>`;
+  const videoUpField=`<div class="field" style="margin-bottom:0"><label class="lbl">${ic("film")} …ou envie o arquivo (MP4/WebM, até 50MB)</label><div class="vidup" id="vidUpZone" tabindex="0" role="button" aria-label="Enviar arquivo de vídeo"><div class="vidup__hint">Clique para escolher <b>ou arraste</b> um MP4 aqui (até 50MB)</div></div></div>`;
   let html="";
   if(k==="presell"){
     html=`
@@ -1795,9 +1855,10 @@ function renderSimpleForm(){
     </div>
     <div class="fsec only-video">
       <div class="fsec__title"><span class="num">02</span> Vídeo do criativo</div>
-      <div class="fsec__hint">Cole o link do vídeo (Google Drive, YouTube, Vimeo ou .mp4). Ele aparece embutido dentro do card, com a transcrição ao lado.</div>
-      <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://drive.google.com/... ou https://...video.mp4" value="${esc(it.video||"")}"></div>
-      <div class="field" style="margin-bottom:0"><label class="lbl">${ic("file")} Transcrição do vídeo</label><textarea data-sk="transcricao" placeholder="Cole aqui a transcrição do vídeo — aparece ao lado do player.">${esc(it.transcricao||"")}</textarea></div>
+      <div class="fsec__hint">Envie o <b>arquivo MP4</b> (recomendado — toca embutido) ou cole um link (Drive/YouTube/Vimeo). O Drive só toca se o arquivo estiver público; o MP4 enviado sempre toca.</div>
+      <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
+      ${videoUpField}
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição do vídeo</label><textarea data-sk="transcricao" placeholder="Cole aqui a transcrição do vídeo — aparece ao lado do player.">${esc(it.transcricao||"")}</textarea></div>
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
@@ -1843,9 +1904,10 @@ function renderSimpleForm(){
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Criativo / vídeo validado</div>
-      <div class="fsec__hint">Link do vídeo (Drive, YouTube, Vimeo ou .mp4) — aparece embutido na visualização. Adicione uma imagem se for criativo estático.</div>
-      <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive, YouTube, Vimeo, .mp4)" value="${esc(it.video||"")}"></div>
-      <div class="field"><label class="lbl">${ic("file")} Transcrição do vídeo — opcional</label><textarea data-sk="transcricao" placeholder="Transcrição do vídeo (opcional).">${esc(it.transcricao||"")}</textarea></div>
+      <div class="fsec__hint">Envie o <b>arquivo MP4</b> (toca embutido) ou cole um link (Drive/YouTube/Vimeo). Adicione uma imagem se for criativo estático.</div>
+      <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
+      ${videoUpField}
+      <div class="field" style="margin-top:20px"><label class="lbl">${ic("file")} Transcrição do vídeo — opcional</label><textarea data-sk="transcricao" placeholder="Transcrição do vídeo (opcional).">${esc(it.transcricao||"")}</textarea></div>
       ${printField}
     </div>
     <div class="fsec">
@@ -1857,6 +1919,7 @@ function renderSimpleForm(){
   body.innerHTML=`<datalist id="nichosGlobal">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`+html;
   body.dataset.plat=(k==="criativo"&&it.plataforma==="taboola")?"taboola":"meta";
   wireZones(body);
+  if(k==="criativo"||k==="megabrain")wireVideoUpload();
 }
 $("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
 $("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
