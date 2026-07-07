@@ -464,6 +464,8 @@
   .vplayer{border:1px solid var(--border-2);border-radius:14px;background:#000;display:block;overflow:hidden;}
   iframe.vplayer{width:100%;aspect-ratio:16/9;}
   video.vplayer{width:auto;height:auto;max-width:100%;max-height:68vh;margin:0 auto;object-fit:contain;}
+  .vfail{margin-top:10px;font-size:13px;color:var(--faint);}
+  .vfail a{color:var(--accent);text-decoration:underline;}
   .view-grid--full{grid-template-columns:1fr;}
   .vtrans{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:16px 18px;max-height:min(62vh,520px);overflow:auto;}
   .vtrans .vk{display:flex;align-items:center;gap:8px;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
@@ -1648,6 +1650,29 @@ function videoBlock(va,transcricao,forceTrans,pending){
   }
   return "";
 }
+/* garante que o 1º quadro apareça como preview (poster) e mostra fallback se falhar */
+function wireVideoPreviews(root){
+  (root||document).querySelectorAll("video.vplayer").forEach(v=>{
+    if(v.dataset.prevWired)return; v.dataset.prevWired="1";
+    let painted=false;
+    const paint=()=>{
+      if(painted)return;
+      if(v.readyState>=1&&isFinite(v.duration)&&v.duration>0){
+        painted=true;
+        try{v.currentTime=Math.min(0.1,v.duration/2);}catch(e){}
+      }
+    };
+    v.addEventListener("loadedmetadata",paint);
+    v.addEventListener("loadeddata",paint);
+    v.addEventListener("error",()=>{
+      const box=document.createElement("div");
+      box.className="vfail";
+      box.innerHTML=`Não deu para embutir o vídeo aqui. <a href="${esc(v.currentSrc||v.src)}" target="_blank" rel="noopener">Abrir em nova aba ↗</a>`;
+      if(v.parentNode)v.parentNode.insertBefore(box,v.nextSibling);
+    });
+    if(v.readyState>=1)paint(); else {try{v.load();}catch(e){}}
+  });
+}
 
 /* ===== VIEW DOS NOVOS SWIPES ===== */
 function openSimpleView(o){
@@ -1737,6 +1762,7 @@ function openSimpleView(o){
   </div>
   ${asideHtml}</div>`;
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  wireVideoPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
 }
 
