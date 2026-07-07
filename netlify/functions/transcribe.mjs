@@ -28,15 +28,8 @@ const json = (status, obj) => ({
 
 export const handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, body: "" };
-  // health-check seguro: NÃO expõe a chave, só se ela chegou na função
-  if (event.httpMethod === "GET")
-    return json(200, {
-      ok: true, service: "transcribe",
-      groqConfigured: !!GROQ_KEY,
-      groqKeyLength: GROQ_KEY ? GROQ_KEY.length : 0,
-      groqKeyPrefix: GROQ_KEY ? GROQ_KEY.slice(0, 3) : "",
-      model: GROQ_MODEL, adminEmails: ADMIN_EMAILS,
-    });
+  // health-check mínimo (sem expor nada sensível)
+  if (event.httpMethod === "GET") return json(200, { ok: true, service: "transcribe", ready: !!GROQ_KEY });
   if (event.httpMethod !== "POST") return json(405, { ok: false, error: "método inválido" });
   if (!GROQ_KEY) return json(500, { ok: false, error: "GROQ_API_KEY não configurada no Netlify" });
 
