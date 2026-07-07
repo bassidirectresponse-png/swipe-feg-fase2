@@ -42,16 +42,66 @@ HISTORY_CAP = 60
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())
 
-# nicho do app -> termos de busca (hashtags/palavras-chave)
+# Taxonomia por nicho:
+#   queries -> o que buscar no TikTok (inclui os fármacos/ângulos de DR)
+#   must    -> termos que PRECISAM aparecer na legenda/hashtags p/ o vídeo
+#              contar como do nicho (filtro de relevância; corta o viral que
+#              só "encostou" no termo). Use termos distintivos (substring).
 NICHES = {
-    "Emagrecimento":       ["weightloss", "ozempic", "mounjaro", "glp1", "semaglutide"],
-    "Diabetes / Glicose":  ["blood sugar", "type 2 diabetes", "a1c", "glucose control"],
-    "Disfunção Erétil":    ["erectile dysfunction", "mens vitality", "testosterone boost"],
-    "Memória":             ["brain fog", "memory loss", "nootropics", "brain health"],
-    "Neuropatia":          ["neuropathy", "nerve pain", "peripheral neuropathy"],
-    "Próstata":            ["prostate health", "enlarged prostate"],
-    "Visão":               ["eye health", "vision loss", "macular degeneration"],
-    "Audição":             ["tinnitus", "ringing in ears", "hearing loss"],
+    "Emagrecimento": {
+        "queries": ["weight loss", "ozempic", "mounjaro", "wegovy", "glp-1 weight loss",
+                    "semaglutide", "tirzepatide", "weight loss journey", "belly fat"],
+        "must": ["weight loss", "weightloss", "lose weight", "losing weight", "lost weight",
+                 "fat loss", "fatloss", "belly fat", "body fat", "ozempic", "mounjaro",
+                 "wegovy", "zepbound", "glp-1", "glp1", "semaglutide", "tirzepatide",
+                 "slim down", "obesity", "overweight", "calorie deficit", "metabolism",
+                 "weightlossjourney", "skinny"],
+    },
+    "Diabetes / Glicose": {
+        "queries": ["blood sugar", "type 2 diabetes", "a1c", "insulin resistance",
+                    "glucose control", "prediabetes", "diabetic"],
+        "must": ["blood sugar", "bloodsugar", "type 2 diabetes", "type 1 diabetes",
+                 "diabetic", "diabetes", "a1c", "insulin", "glucose", "prediabetes",
+                 "prediabetic", "hyperglycemia", "metformin", "glycemic", "sugar spike"],
+    },
+    "Disfunção Erétil": {
+        "queries": ["erectile dysfunction", "low testosterone", "male enhancement",
+                    "testosterone boost", "libido", "mens health"],
+        "must": ["erectile", "erection", "testosterone", "low t", "libido", "impotence",
+                 "male enhancement", "mens health", "men's health", "virility", "stamina in bed",
+                 "sexual health", "sperm", "semen", "blood flow"],
+    },
+    "Memória": {
+        "queries": ["memory loss", "brain fog", "dementia", "alzheimer",
+                    "cognitive decline", "memory improvement", "forgetfulness"],
+        "must": ["memory", "memory loss", "memoryloss", "forget", "forgetful", "forgetting",
+                 "dementia", "alzheimer", "cognitive", "cognition", "brain fog", "brainfog",
+                 "recall", "nootropic", "mental clarity", "brain health"],
+    },
+    "Neuropatia": {
+        "queries": ["neuropathy", "nerve pain", "peripheral neuropathy",
+                    "diabetic neuropathy", "tingling feet", "nerve damage"],
+        "must": ["neuropathy", "neuropathic", "nerve pain", "nerve damage",
+                 "peripheral neuropathy", "tingling", "numbness", "burning feet",
+                 "pins and needles", "sciatica"],
+    },
+    "Próstata": {
+        "queries": ["enlarged prostate", "prostate health", "bph", "prostate problems",
+                    "frequent urination", "prostatitis"],
+        "must": ["prostate", "prostatitis", "bph", "enlarged prostate", "frequent urination",
+                 "urinary", "bladder", "nocturia", "pee at night"],
+    },
+    "Visão": {
+        "queries": ["vision loss", "eye health", "macular degeneration",
+                    "blurry vision", "eyesight", "glaucoma"],
+        "must": ["vision", "eyesight", "eye health", "macular", "glaucoma", "cataract",
+                 "blurry vision", "blurred vision", "retina", "optic nerve", "eye floaters"],
+    },
+    "Audição": {
+        "queries": ["tinnitus", "ringing in ears", "hearing loss", "ear ringing"],
+        "must": ["tinnitus", "ringing in ears", "ringing ears", "ears ringing", "hearing loss",
+                 "hearing", "ear ringing", "hearing aid", "hard of hearing"],
+    },
 }
 
 
@@ -171,7 +221,7 @@ def norm_apify(v, nicho):
     vm = v.get("videoMeta") or {}
     vid = str(v.get("id") or "")
     caption = (v.get("text") or "").strip()
-    tags = [(t.get("name") if isinstance(t, dict) else str(t)) for t in (v.get("hashtags") or [])][:12]
+    tags = [n for n in ((t.get("name") if isinstance(t, dict) else t) for t in (v.get("hashtags") or [])) if n][:12]
     views = int(v.get("playCount") or 0)
     likes = int(v.get("diggCount") or 0)
     coments = int(v.get("commentCount") or 0)
@@ -233,6 +283,15 @@ def faixa(views):
 
 def too_old(create_time):
     return create_time and (NOW - create_time) > MAX_AGE_DAYS * 86400
+
+
+def relevant(rec, must):
+    """True se a legenda/hashtags do vídeo contêm algum termo do nicho."""
+    if not must:
+        return True
+    tags = " ".join(str(h) for h in (rec.get("hashtags") or []) if h)
+    hay = ((rec.get("caption") or "") + " " + tags).lower()
+    return any(term in hay for term in must)
 
 
 # =============================== Supabase ==================================
@@ -297,13 +356,19 @@ def hosted_url(video_id):
 def collect():
     seen = {}       # videoId -> record (dedup global, 1º nicho ganha)
     per_niche = {n: [] for n in NICHES}
-    for nicho, terms in NICHES.items():
+    for nicho, cfg in NICHES.items():
+        queries = cfg["queries"] if isinstance(cfg, dict) else cfg
+        must = cfg.get("must", []) if isinstance(cfg, dict) else []
         got = {}
-        for prov, v in fetch_niche(terms, PER_KEYWORD):
+        off = 0                            # descartados por não serem do nicho
+        for prov, v in fetch_niche(queries, PER_KEYWORD):
             rec = normalize(prov, v, nicho)
             if not rec or not rec["videoId"]:
                 continue
             if too_old(rec["dataPub"]) or rec["isAd"]:
+                continue
+            if not relevant(rec, must):    # filtro de relevância por nicho
+                off += 1
                 continue
             vid = rec["videoId"]
             if vid in seen:                # já num nicho -> não duplica
@@ -318,7 +383,8 @@ def collect():
               f"(viral {sum(r['faixa']=='viral' for r in ranked)}, "
               f"high {sum(r['faixa']=='high' for r in ranked)}, "
               f"mid {sum(r['faixa']=='mid' for r in ranked)}, "
-              f"low {sum(r['faixa']=='low' for r in ranked)})")
+              f"low {sum(r['faixa']=='low' for r in ranked)})"
+              f"  · fora do nicho: {off}")
     return per_niche
 
 
