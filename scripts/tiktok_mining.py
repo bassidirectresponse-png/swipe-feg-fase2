@@ -117,20 +117,109 @@ def norm_tikwm(v, nicho):
     }
 
 
-def fetch_provider(keyword, count):
+# ----------------------------- Apify (pago) --------------------------------
+APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
+APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "clockworks~tiktok-scraper")
+APIFY_SORT = os.environ.get("APIFY_SORT", "MOST_RELEVANT")   # MOST_RELEVANT|MOST_LIKED|LATEST
+APIFY_DATE = os.environ.get("APIFY_DATE", "ALL_TIME")        # ALL_TIME|PAST_24_HOURS|PAST_WEEK|PAST_MONTH...
+
+
+def fetch_apify(keywords, per_kw):
+    """Uma execução do ator por nicho (todas as keywords de uma vez)."""
+    if not APIFY_TOKEN:
+        raise SystemExit("PROVIDER=apify precisa de APIFY_TOKEN")
+    inp = {
+        "searchQueries": list(keywords),
+        "searchSection": "/video",
+        "resultsPerPage": per_kw,
+        "videoSearchSorting": APIFY_SORT,
+        "videoSearchDateFilter": APIFY_DATE,
+        "shouldDownloadVideos": False,
+        "shouldDownloadCovers": False,
+        "shouldDownloadSubtitles": False,
+        "shouldDownloadAvatars": False,
+        "shouldDownloadSlideshowImages": False,
+    }
+    url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items?token={APIFY_TOKEN}"
+    try:
+        req = urllib.request.Request(url, data=json.dumps(inp).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=300) as r:
+            out = json.loads(r.read().decode("utf-8", "replace"))
+            return out if isinstance(out, list) else []
+    except urllib.error.HTTPError as e:
+        print(f"      ! apify HTTP {e.code}: {e.read().decode()[:180]}", file=sys.stderr)
+        return []
+    except Exception as e:
+        print(f"      ! apify falhou: {str(e)[:120]}", file=sys.stderr)
+        return []
+
+
+def _iso_to_unix(iso):
+    if not iso:
+        return 0
+    try:
+        import datetime as _dt
+        return int(_dt.datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp())
+    except Exception:
+        return 0
+
+
+def norm_apify(v, nicho):
+    au = v.get("authorMeta") or {}
+    mu = v.get("musicMeta") or {}
+    vm = v.get("videoMeta") or {}
+    vid = str(v.get("id") or "")
+    caption = (v.get("text") or "").strip()
+    tags = [(t.get("name") if isinstance(t, dict) else str(t)) for t in (v.get("hashtags") or [])][:12]
+    views = int(v.get("playCount") or 0)
+    likes = int(v.get("diggCount") or 0)
+    coments = int(v.get("commentCount") or 0)
+    shares = int(v.get("shareCount") or 0)
+    saves = int(v.get("collectCount") or 0)
+    eng = round((likes + coments + shares) / views, 4) if views else 0.0
+    cover = vm.get("coverUrl") or vm.get("originCoverUrl") or ""
+    name = au.get("name") or ""
+    return {
+        "kind": "tiktok", "nicho": nicho, "videoId": vid,
+        "nome": caption[:90] or f"@{name}",
+        "caption": caption,
+        "autor": name, "autorNome": au.get("nickName") or "",
+        "seguidores": int(au.get("fans") or 0),
+        "url": v.get("webVideoUrl") or f"https://www.tiktok.com/@{name}/video/{vid}",
+        "thumb": cover, "thumbOrig": cover,
+        "views": views, "likes": likes, "comentarios": coments,
+        "shares": shares, "saves": saves, "engajamento": eng,
+        "duracao": int(vm.get("duration") or 0),
+        "dataPub": _iso_to_unix(v.get("createTimeISO")),
+        "regiao": au.get("region") or "",
+        "som": mu.get("musicName") or "", "somAutor": mu.get("musicAuthor") or "",
+        "hashtags": tags,
+        "faixa": faixa(views),
+        "isAd": bool(v.get("isAd") or v.get("isSponsored") or v.get("isAdvertisement")),
+        "fetchedAt": NOW,
+    }
+
+
+def fetch_niche(keywords, per_kw):
+    """Retorna [(provider, raw), ...] para todas as keywords de um nicho."""
     if PROVIDER == "tikwm":
-        return [("tikwm", v) for v in fetch_tikwm(keyword, count)]
-    # ---- PONTOS DE LIGAÇÃO DOS PROVEDORES PAGOS (preencher quando tiver a key) ----
-    if PROVIDER == "ensembledata":
-        raise SystemExit("ensembledata: adaptador pronto p/ ligar quando a key chegar")
+        out = []
+        for kw in keywords:
+            for v in fetch_tikwm(kw, per_kw):
+                out.append(("tikwm", v))
+            time.sleep(1.1)                # respeita rate limit do tikwm
+        return out
     if PROVIDER == "apify":
-        raise SystemExit("apify: adaptador pronto p/ ligar quando a key chegar")
+        return [("apify", v) for v in fetch_apify(keywords, per_kw)]
     raise SystemExit(f"PROVIDER desconhecido: {PROVIDER}")
 
 
 def normalize(raw_provider, v, nicho):
     if raw_provider == "tikwm":
         return norm_tikwm(v, nicho)
+    if raw_provider == "apify":
+        return norm_apify(v, nicho)
     return None
 
 
@@ -210,19 +299,17 @@ def collect():
     per_niche = {n: [] for n in NICHES}
     for nicho, terms in NICHES.items():
         got = {}
-        for kw in terms:
-            for prov, v in fetch_provider(kw, PER_KEYWORD):
-                rec = normalize(prov, v, nicho)
-                if not rec or not rec["videoId"]:
-                    continue
-                if too_old(rec["dataPub"]) or rec["isAd"]:
-                    continue
-                vid = rec["videoId"]
-                if vid in seen:            # já num nicho -> não duplica
-                    continue
-                if vid not in got or rec["views"] > got[vid]["views"]:
-                    got[vid] = rec
-            time.sleep(1.1)                # respeita rate limit do tikwm
+        for prov, v in fetch_niche(terms, PER_KEYWORD):
+            rec = normalize(prov, v, nicho)
+            if not rec or not rec["videoId"]:
+                continue
+            if too_old(rec["dataPub"]) or rec["isAd"]:
+                continue
+            vid = rec["videoId"]
+            if vid in seen:                # já num nicho -> não duplica
+                continue
+            if vid not in got or rec["views"] > got[vid]["views"]:
+                got[vid] = rec
         ranked = sorted(got.values(), key=lambda r: r["views"], reverse=True)[:MAX_PER_NICHE]
         for r in ranked:
             seen[r["videoId"]] = r
