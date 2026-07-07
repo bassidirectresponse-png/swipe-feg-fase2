@@ -1655,24 +1655,27 @@ function videoEmbedHtml(url){
   if(e.type==="video")return `<video class="vplayer" controls playsinline preload="metadata" src="${esc(e.src)}#t=0.1"></video>`;
   return `<iframe class="vplayer" src="${esc(e.src)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
 }
-function transBox(txt,alwaysShow,pending){
+function transBox(txt,alwaysShow,status){
+  const working=status==="working", pending=status==="pending"||working;
   if(!txt&&!alwaysShow&&!pending)return"";
-  const body=txt?esc(txt):(pending
-    ?`<span class="vpending">${ic("clock")}Transcrição sendo gerada automaticamente… aparece aqui em alguns minutos.</span>`
-    :"Sem transcrição cadastrada.");
+  const body=txt?esc(txt):(working
+    ?`<span class="vpending">${ic("clock")}Transcrevendo agora… deve levar só alguns segundos.</span>`
+    :pending
+      ?`<span class="vpending">${ic("clock")}Transcrição sendo gerada automaticamente… aparece aqui em instantes.</span>`
+      :"Sem transcrição cadastrada.");
   return `<div class="vtrans"><div class="vk">${ic("file")}Transcrição do vídeo</div><div class="vbody ${txt?"":"empty"}">${body}</div></div>`;
 }
 /* bloco de vídeo: embutido + transcrição ao lado + abrir em nova aba */
-function videoBlock(va,transcricao,forceTrans,pending){
+function videoBlock(va,transcricao,forceTrans,status){
   const embed=videoEmbedHtml(va);
   const openBtn=va?`<div class="linkbtns" style="margin-top:12px">${linkbtn("Abrir vídeo em nova aba",va,false,"external")}</div>`:"";
   if(embed){
-    const tb=transBox(transcricao,forceTrans,pending);
+    const tb=transBox(transcricao,forceTrans,status);
     if(tb)return `<div class="vcol"><div>${embed}${openBtn}</div>${tb}</div>`;
     return `<div>${embed}${openBtn}</div>`;
   }
   if(va){
-    const tb=transBox(transcricao,forceTrans,pending);
+    const tb=transBox(transcricao,forceTrans,status);
     return `<div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div>${tb?`<div style="margin-top:14px">${tb}</div>`:""}`;
   }
   return "";
@@ -1717,8 +1720,48 @@ function wireCardPreviews(root){
   });
 }
 
+/* ===== TRANSCRIÇÃO INSTANTÂNEA (Groq via função serverless) ===== */
+const TRANSCRIBE_FN="/.netlify/functions/transcribe";
+const transcribing=new Set();
+let currentSimpleId=null;
+function videoForOffer(o){const d=(o&&o.data)||{};return d.kind==="megabrain"?videoOfBrain(d):videoOfCrv(d);}
+function transcribeBtn(o,va,d){
+  if(!isAdmin)return"";
+  const emb=va?videoEmbedUrl(va):null;
+  if(!emb||emb.type!=="video")return"";                 // só MP4 direto do Storage
+  if(((d.transcricao||"").trim()))return"";             // já transcrito
+  const working=d.transcricaoStatus==="working"||transcribing.has(o.id);
+  return `<div class="linkbtns" style="margin-top:12px"><button class="btn btn--outline btn--sm" data-transcribe="${o.id}"${working?" disabled":""}>${ic("file")}${working?"Transcrevendo…":"Transcrever agora"}</button></div>`;
+}
+async function requestInstantTranscription(offerId,videoUrl){
+  const o=offers.find(x=>x.id===offerId); if(!o)return;
+  videoUrl=videoUrl||videoForOffer(o);
+  const emb=videoUrl?videoEmbedUrl(videoUrl):null;
+  if(!emb||emb.type!=="video"){toast("A transcrição automática funciona só para vídeo MP4.",true);return;}
+  if(transcribing.has(offerId))return;
+  transcribing.add(offerId);
+  o.data=o.data||{}; o.data.transcricaoStatus="working";
+  const viewOpen=()=>currentSimpleId===offerId&&$("#viewOverlay").classList.contains("open");
+  if(viewOpen())openSimpleView(o,true);
+  let token="";
+  try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  let ok=false,msg="";
+  try{
+    const resp=await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,videoUrl})});
+    const j=await resp.json().catch(()=>({}));
+    if(resp.ok&&j&&j.ok){ok=true;o.data.transcricao=j.transcricao||"";o.data.transcricaoStatus="done";o.data.transcricaoLang=j.lang||"";}
+    else msg=(j&&j.error)||("HTTP "+resp.status);
+  }catch(e){msg="sem conexão";}
+  finally{transcribing.delete(offerId);}
+  if(!ok)o.data.transcricaoStatus="pending"; // rede de segurança: o workflow horário pega depois
+  renderGrid();writeCache();
+  if(viewOpen())openSimpleView(o,true);
+  toast(ok?"Transcrição pronta ✓":("Transcrição instantânea indisponível ("+msg+"); ficará pro processo automático."),!ok);
+}
+
 /* ===== VIEW DOS NOVOS SWIPES ===== */
-function openSimpleView(o){
+function openSimpleView(o,skipOpen){
+  currentSimpleId=o.id;
   const d=o.data||{}, kind=d.kind, cfg=sectionCfg(kind);
   $("#viewTag").textContent=(d.marca?d.marca+" · ":"")+cfg.label;
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openSimpleForm(kind,o.id);};
@@ -1756,7 +1799,7 @@ function openSimpleView(o){
     const va=videoOfCrv(d);
     const showVideo=!!va&&d.plataforma!=="taboola";
     if(showVideo){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d.transcricao,true,d.transcricaoStatus==="pending")}</section>`;
+      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d.transcricao,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
     }
     if(d.print){
       const lbl=d.plataforma==="taboola"?"Anúncio (Taboola)":"Imagem";
@@ -1775,9 +1818,9 @@ function openSimpleView(o){
     if(copy||copyLink){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Copy validada</span><span class="sec__line"></span></div>${copyLink?`<div class="linkbtns" style="margin-bottom:${copy?"14px":"0"}">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}${copy?`<div class="resumo">${esc(copy)}</div>`:""}</section>`;
     }
-    const vb=videoBlock(va,d.transcricao,false,d.transcricaoStatus==="pending");
+    const vb=videoBlock(va,d.transcricao,false,d.transcricaoStatus);
     if(vb){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo validado</span><span class="sec__line"></span></div>${vb}</section>`;
+      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo validado</span><span class="sec__line"></span></div>${vb}${transcribeBtn(o,va,d)}</section>`;
     }
     if(d.print){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Imagem do criativo</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",d.print)}</div></section>`;
@@ -1805,8 +1848,9 @@ function openSimpleView(o){
   </div>
   ${asideHtml}</div>`;
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   wireVideoPreviews($("#viewBody"));
-  openOverlay("#viewOverlay");
+  if(!skipOpen)openOverlay("#viewOverlay");
 }
 
 /* ===== FORM DOS NOVOS SWIPES ===== */
@@ -2027,6 +2071,10 @@ async function saveSimpleForm(){
     else{const i=offers.findIndex(o=>o.id===sEditingId);if(i>=0)offers[i]=row;else offers.push(row);}
   }
   sFormDirty=false;setSimpleSaveState("saved");setSync("ok","Salvo");renderGrid();writeCache();
+  // dispara a transcrição instantânea (Groq) em segundo plano p/ vídeo MP4 sem transcrição
+  const savedId=sEditingId, saved=offers.find(o=>o.id===savedId);
+  if(saved){const v=videoForOffer(saved),emb=v?videoEmbedUrl(v):null;
+    if(emb&&emb.type==="video"&&!((saved.data.transcricao||"").trim()))requestInstantTranscription(savedId,v);}
   return true;
 }
 function attemptCloseSimpleForm(){if(!sFormDirty){closeOverlay("#simpleFormOverlay");return;}pendingCloseForm="simple";openOverlay("#confirmOverlay");}

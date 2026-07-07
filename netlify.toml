@@ -4,6 +4,11 @@
   publish = "."
   command = ""
 
+# Função serverless de transcrição instantânea (Groq)
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # Garante que a raiz sirva o index.html
 [[redirects]]
   from = "/"
