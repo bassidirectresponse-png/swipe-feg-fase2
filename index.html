@@ -461,8 +461,10 @@
   /* ===== player de vídeo + transcrição (criativo / mega brain) ===== */
   .vcol{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;align-items:start;}
   @media(max-width:820px){.vcol{grid-template-columns:1fr;}}
-  .vplayer{width:100%;aspect-ratio:16/9;border:1px solid var(--border-2);border-radius:14px;background:#000;display:block;overflow:hidden;}
-  video.vplayer{object-fit:contain;}
+  .vplayer{border:1px solid var(--border-2);border-radius:14px;background:#000;display:block;overflow:hidden;}
+  iframe.vplayer{width:100%;aspect-ratio:16/9;}
+  video.vplayer{width:auto;height:auto;max-width:100%;max-height:68vh;margin:0 auto;object-fit:contain;}
+  .view-grid--full{grid-template-columns:1fr;}
   .vtrans{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:16px 18px;max-height:min(62vh,520px);overflow:auto;}
   .vtrans .vk{display:flex;align-items:center;gap:8px;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
   .vtrans .vk .ico{width:14px;height:14px;color:var(--accent);}
@@ -1549,7 +1551,6 @@ function criativoCard(o){
     ${mediaThumb(d.print,d.nome,hasVid)}
     <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
     ${nicheChip(d)}
-    ${commentPreview(d.comentario)}
     <div class="card__actions">${acts||emptyActions()}</div>
   </article>`;
 }
@@ -1620,7 +1621,7 @@ function videoEmbedUrl(url){
 }
 function videoEmbedHtml(url){
   const e=videoEmbedUrl(url);if(!e)return null;
-  if(e.type==="video")return `<video class="vplayer" controls preload="metadata" src="${esc(e.src)}"></video>`;
+  if(e.type==="video")return `<video class="vplayer" controls playsinline preload="metadata" src="${esc(e.src)}#t=0.1"></video>`;
   return `<iframe class="vplayer" src="${esc(e.src)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
 }
 function transBox(txt,alwaysShow){
@@ -1718,7 +1719,9 @@ function openSimpleView(o){
     sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo</span><span class="sec__line"></span></div><div class="resumo">${esc(d.resumo)}</div></section>`;
   }
 
-  $("#viewBody").innerHTML=`<div class="view-grid"><div>
+  const noAside=(kind==="criativo");
+  const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
+  $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">
       <div class="brand">${esc(kind==="noticia"?(d.fonte||cfg.label):(d.marca||cfg.label))}</div>
       <h2>${esc(d.nome||"Sem título")}</h2>
@@ -1727,9 +1730,7 @@ function openSimpleView(o){
     </div></div></section>
     ${sections}
   </div>
-  <aside class="sidebar">
-    <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div>
-  </aside></div>`;
+  ${asideHtml}</div>`;
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
   openOverlay("#viewOverlay");
 }
@@ -1864,10 +1865,6 @@ function renderSimpleForm(){
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
       <div class="fsec__hint">Print ou imagem do criativo. <b>No Taboola, este é o único formato</b> (apenas imagem).</div>
       ${printField}
-    </div>
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> Comentário</div>
-      ${comentField}
     </div>`;
   }else if(k==="noticia"){
     html=`
