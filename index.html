@@ -125,6 +125,7 @@
 
   /* ===== controle de acesso (somente leitura) ===== */
   .ro-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-soft);white-space:nowrap;}
+  .ro-pill[hidden]{display:none;}
   .ro-pill .ico{width:13px;height:13px;}
   body.readonly [data-admin-only]{display:none!important;}
 
@@ -485,6 +486,38 @@
   .cmedia__play{position:absolute;left:8px;bottom:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(3px);}
   .cmedia__play .ico{width:14px;height:14px;fill:#fff;stroke:none;margin-left:1px;}
 
+  /* ===== Radar TikTok ===== */
+  .tbadge--tt{background:linear-gradient(90deg,rgba(37,244,238,.14),rgba(254,44,85,.14));color:#fff;border:1px solid rgba(254,44,85,.4);}
+  .tbadge--tt .tdot{background:#fe2c55;}
+  .tteng{color:var(--accent);} .tteng .ico{width:13px;height:13px;fill:var(--accent);stroke:none;}
+  .grid--tt{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .ttcard .ttmedia{aspect-ratio:9/13;background:#0a0a0c;}
+  .ttmedia{position:relative;}
+  .ttdur{position:absolute;right:7px;bottom:7px;font-size:.72rem;font-weight:700;color:#fff;background:rgba(0,0,0,.66);padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px);}
+  .ttstats{display:flex;flex-wrap:wrap;gap:12px;margin:2px 0 2px;}
+  .ttstat{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted-fg);}
+  .ttstat .ico{width:14px;height:14px;color:var(--faint);}
+  .ttcaption{font-size:.86rem;line-height:1.45;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .ttfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.76rem;}
+  .ttauthor{color:var(--accent);font-weight:600;} .ttdate{color:var(--faint);}
+  .ttgroup{margin-bottom:30px;}
+  .ttgroup__head{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;margin-bottom:16px;font-weight:700;letter-spacing:.02em;}
+  .ttgroup__lbl{flex:1;} .ttgroup__cnt{font-size:.8rem;background:rgba(255,255,255,.1);padding:2px 10px;border-radius:999px;}
+  .ttgroup--viral .ttgroup__head{background:rgba(255,214,10,.12);color:#ffd60a;border:1px solid rgba(255,214,10,.3);}
+  .ttgroup--high .ttgroup__head{background:rgba(255,138,76,.1);color:#ff9d5c;border:1px solid rgba(255,138,76,.28);}
+  .ttgroup--mid .ttgroup__head{background:rgba(37,244,238,.08);color:#4fe3d8;border:1px solid rgba(37,244,238,.24);}
+  .ttgroup--low .ttgroup__head{background:var(--surface-3);color:var(--muted-fg);border:1px solid var(--border-2);}
+  .ttview{display:grid;grid-template-columns:280px 1fr;gap:22px;align-items:start;}
+  .ttmedia--view{display:block;border-radius:16px;overflow:hidden;border:1px solid var(--border-2);}
+  .ttmedia--view img{width:100%;display:block;aspect-ratio:9/13;object-fit:cover;}
+  .ttmetrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;}
+  .ttmetric{display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:11px 13px;}
+  .ttmetric .ico{width:18px;height:18px;color:var(--accent);}
+  .ttmetric__v{display:block;font-weight:800;font-size:1.05rem;} .ttmetric__l{display:block;font-size:.72rem;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;}
+  .ttsom{margin-top:14px;font-size:.85rem;color:var(--muted-fg);display:flex;align-items:center;gap:7px;}
+  .ttsom .ico{width:14px;height:14px;color:var(--faint);}
+  @media(max-width:640px){.ttview{grid-template-columns:1fr;}.ttmedia--view{max-width:280px;}}
+
   /* ===== gráfico de anúncios ativos (sparkline no card + gráfico na view) ===== */
   .spark{width:100%;height:34px;display:block;margin-top:10px;}
   .adschart{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:8px 6px;}
@@ -653,7 +686,8 @@ const SECTIONS=[
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"criativo",label:"Swipe Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos vencedores</b> — vídeo, transcrição e link do anúncio, por nicho e plataforma (Meta Ads e Taboola).'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
-  {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'}
+  {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
+  {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'}
 ];
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
@@ -662,7 +696,7 @@ let sb=null, offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all";
+let activeSection="oferta", critPlatform="all", tiktokSort="views";
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -672,6 +706,10 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 /* ===== ÍCONES (Lucide) ===== */
 const ICONS={
   search:'<circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>',
+  flame:'<path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1.5.5-2.5 1-3 .5 2 2 2.5 2 2.5C9 8 12 6 12 2Z"></path>',
+  share:'<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line>',
   library:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>',
   play:'<polygon points="6 3 20 12 6 21 6 3"></polygon>',
   newspaper:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path>',
@@ -960,6 +998,7 @@ function cardFor(o){
     case "criativo":return criativoCard(o);
     case "megabrain":return megabrainCard(o);
     case "noticia":return noticiaCard(o);
+    case "tiktok":return tiktokCard(o);
     default:return cardHtml(o);
   }
 }
@@ -982,7 +1021,17 @@ function renderGrid(){
     const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{activeNiche="";searchTerm="";critPlatform="all";const si=$("#searchInput");if(si)si.value="";renderGrid();});
     return;
   }
-  if(activeSection==="noticia"&&!activeNiche){
+  if(activeSection==="tiktok"){
+    const sorted=[...list].sort(ttSortFn);
+    const TIERS=[["viral","★ VIRAL — 1M+ views"],["high","🔥 HIGH — 100k–1M views"],["mid","📊 MID — 10k–100k views"],["low","🌱 LOW — <10k views"]];
+    let gh="";
+    TIERS.forEach(([key,lbl])=>{
+      const arr=sorted.filter(o=>((o.data||{}).faixa||faixaOf((o.data||{}).views))===key);
+      if(!arr.length)return;
+      gh+=`<div class="ttgroup ttgroup--${key}"><div class="ttgroup__head"><span class="ttgroup__lbl">${esc(lbl)}</span><span class="ttgroup__cnt">${arr.length}</span></div><div class="grid grid--tt">${arr.map(cardFor).join("")}</div></div>`;
+    });
+    area.innerHTML=gh||`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
+  }else if(activeSection==="noticia"&&!activeNiche){
     const groups=new Map();
     list.forEach(o=>{const n=(o.data||{}).nicho||"Sem nicho";if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
     const order=[...NICHOS.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
@@ -1534,6 +1583,13 @@ function setSectionHeader(){
 }
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
+  if(activeSection==="tiktok"){
+    el.style.display="";
+    const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
+    el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div>`;
+    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;renderGrid();}));
+    return;
+  }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
@@ -1603,6 +1659,33 @@ function megabrainCard(o){
     ${nicheChip(d)}
     ${assetChips}
     ${commentPreview(d.comentario)}
+  </article>`;
+}
+
+/* ===== RADAR TIKTOK ===== */
+function faixaOf(v){v=Number(v)||0;return v>=1e6?"viral":v>=1e5?"high":v>=1e4?"mid":"low";}
+function ttDate(unix){const t=Number(unix)||0;if(!t)return"";return relDate(new Date(t*1000).toISOString());}
+function ttDur(s){s=Number(s)||0;if(!s)return"";const m=Math.floor(s/60);return m+":"+String(s%60).padStart(2,"0");}
+function ttStat(icon,val){return `<span class="ttstat">${ic(icon)}${kfmt(val)}</span>`;}
+const TT_SORTS={views:(a,b)=>vv(b)-vv(a),engajamento:(a,b)=>ve(b)-ve(a),likes:(a,b)=>((b.data||{}).likes||0)-((a.data||{}).likes||0),comentarios:(a,b)=>((b.data||{}).comentarios||0)-((a.data||{}).comentarios||0),recente:(a,b)=>((b.data||{}).dataPub||0)-((a.data||{}).dataPub||0)};
+function vv(o){return Number((o.data||{}).views)||0;}
+function ve(o){return Number((o.data||{}).engajamento)||0;}
+function ttSortFn(a,b){return (TT_SORTS[tiktokSort]||TT_SORTS.views)(a,b);}
+function tiktokThumb(d){
+  if(d.thumb)return `<div class="cmedia ttmedia" data-lb="${esc(d.thumb)}"><img loading="lazy" decoding="async" src="${esc(d.thumb)}" alt="${esc(d.nome||"")}"><span class="cmedia__zoom">${ic("maximize")}</span><span class="cmedia__play">${ic("play")}</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
+  return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
+}
+function tiktokCard(o){
+  const d=o.data||{};
+  const eng=d.engajamento?(d.engajamento*100).toFixed(1)+"%":"–";
+  return `<article class="card kcard ttcard" data-id="${o.id}">
+    <div class="card__head"><span class="tbadge tbadge--tt"><span class="tdot"></span>TikTok</span><span class="ktag tteng">${ic("flame")}${eng}</span></div>
+    ${tiktokThumb(d)}
+    <div class="ttstats">${ttStat("eye",d.views)}${ttStat("heart",d.likes)}${ttStat("message",d.comentarios)}${ttStat("share",d.shares)}</div>
+    <div class="ttcaption">${esc(d.caption||d.nome||"")}</div>
+    <div class="ttfoot"><span class="ttauthor">@${esc(d.autor||"")}</span><span class="ttdate">${ttDate(d.dataPub)}</span></div>
+    ${nicheChip(d)}
+    <div class="card__actions">${qbtn("Abrir no TikTok",d.url,"external")||""}</div>
   </article>`;
 }
 
@@ -1776,6 +1859,11 @@ function openSimpleView(o,skipOpen){
     if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Data</div><div class="v">${relDate(d.dataPub)}</div></div>`);
     if(d.engajamento)kvs.push(`<div class="kv"><div class="k">Engajamento</div><div class="v">${esc(d.engajamento)}</div></div>`);
   }
+  if(kind==="tiktok"){
+    kvs.push(`<div class="kv"><div class="k">Autor</div><div class="v">@${esc(d.autor||"")}</div></div>`);
+    if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Publicado</div><div class="v">${ttDate(d.dataPub)}</div></div>`);
+    if(d.engajamento)kvs.push(`<div class="kv"><div class="k">Engajamento</div><div class="v" style="color:var(--accent)">${(d.engajamento*100).toFixed(1)}%</div></div>`);
+  }
 
   let mainLink="";
   if(kind==="presell"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir presell",d.link,true,"newspaper")}</div>`;
@@ -1785,6 +1873,7 @@ function openSimpleView(o,skipOpen){
     if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
   }
   if(kind==="noticia"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir notícia",d.link,true,"external")}</div>`;
+  if(kind==="tiktok"&&d.url)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir no TikTok",d.url,true,"external")}</div>`;
 
   let sn=0;const num=()=>String(++sn).padStart(2,"0");
   let sections="";
@@ -1835,7 +1924,18 @@ function openSimpleView(o,skipOpen){
     sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo</span><span class="sec__line"></span></div><div class="resumo">${esc(d.resumo)}</div></section>`;
   }
 
-  const noAside=(kind==="criativo");
+  /* tiktok: capa + métricas + legenda + hashtags + som */
+  if(kind==="tiktok"){
+    const thumb=d.thumb?`<a href="${esc(d.url)}" target="_blank" rel="noopener" class="cmedia ttmedia ttmedia--view"><img src="${esc(d.thumb)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</a>`:"";
+    const metrics=[["eye","Views",fmtNum(d.views)],["heart","Likes",fmtNum(d.likes)],["message","Comentários",fmtNum(d.comentarios)],["share","Shares",fmtNum(d.shares)],["heart","Saves",fmtNum(d.saves)]]
+      .map(([i,l,v])=>`<div class="ttmetric">${ic(i)}<div><span class="ttmetric__v">${v}</span><span class="ttmetric__l">${l}</span></div></div>`).join("");
+    const tags=(d.hashtags||[]).length?`<div class="card__chips" style="margin-top:14px">${d.hashtags.map(h=>`<span class="chip">#${esc(h)}</span>`).join("")}</div>`:"";
+    const som=d.som?`<div class="ttsom">${ic("play")}Som: <b>${esc(d.som)}</b>${d.somAutor?` · ${esc(d.somAutor)}`:""}</div>`:"";
+    sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Vídeo</span><span class="sec__line"></span></div>
+      <div class="ttview">${thumb}<div class="ttview__side"><div class="ttmetrics">${metrics}</div>${d.caption?`<div class="resumo" style="margin-top:14px">${esc(d.caption)}</div>`:""}${tags}${som}</div></div></section>`;
+  }
+
+  const noAside=(kind==="criativo"||kind==="tiktok");
   const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
   $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">

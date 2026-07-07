@@ -1,0 +1,45 @@
+name: Radar TikTok (mineração diária)
+
+# Minera vídeos orgânicos do TikTok por nicho e grava no Supabase (kind:"tiktok").
+# Roda 1x/dia e também dá pra disparar na mão em Actions → Run workflow.
+# Fonte de dados = PROVIDER (tikwm grátis por padrão; troca p/ pago quando a key chegar).
+
+on:
+  schedule:
+    - cron: "0 8 * * *"     # 05h BRT (08:00 UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tiktok-mining
+  cancel-in-progress: false
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROVIDER: tikwm         # tikwm | ensembledata | apify
+      MAX_PER_NICHE: "40"
+      MAX_AGE_DAYS: "45"
+      PER_KEYWORD: "30"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Minerar TikTok
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          # Chaves dos provedores pagos (preencher quando ligar):
+          ENSEMBLE_TOKEN: ${{ secrets.ENSEMBLE_TOKEN }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: python -u scripts/tiktok_mining.py
