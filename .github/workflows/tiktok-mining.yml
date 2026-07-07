@@ -21,10 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PROVIDER: tikwm         # tikwm | ensembledata | apify
+      PROVIDER: apify         # tikwm | ensembledata | apify
+      APIFY_SORT: MOST_LIKED  # MOST_RELEVANT | MOST_LIKED | LATEST
+      APIFY_DATE: PAST_MONTH  # ALL_TIME | PAST_WEEK | PAST_MONTH | PAST_24_HOURS
       MAX_PER_NICHE: "40"
-      MAX_AGE_DAYS: "45"
-      PER_KEYWORD: "30"
+      MAX_AGE_DAYS: "60"
+      PER_KEYWORD: "15"
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout
