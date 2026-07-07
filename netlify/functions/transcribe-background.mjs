@@ -21,8 +21,10 @@ const MAX_BYTES = 40 * 1024 * 1024;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function groqTranscribe(buf) {
-  // 1 retry em caso de rate limit (429), pois lote grande pode bater no limite
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // retry em rate limit (429) e erros transitórios (5xx) — lote grande/instabilidade
+  let last = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep(3000 * attempt);
     const form = new FormData();
     form.append("file", new Blob([buf], { type: "video/mp4" }), "audio.mp4");
     form.append("model", GROQ_MODEL);
@@ -32,10 +34,10 @@ async function groqTranscribe(buf) {
     });
     const txt = await g.text();
     if (g.ok) { const j = JSON.parse(txt); return { text: String(j.text || "").trim(), lang: String(j.language || "") }; }
-    if (g.status === 429 && attempt === 0) { await sleep(4000); continue; }
-    throw new Error(`Groq HTTP ${g.status}: ${txt.slice(0, 160)}`);
+    last = `Groq HTTP ${g.status}: ${txt.slice(0, 120)}`;
+    if (g.status !== 429 && g.status < 500) throw new Error(last);   // erro definitivo
   }
-  throw new Error("Groq 429 persistente");
+  throw new Error(last || "Groq falhou após retries");
 }
 
 export const handler = async (event) => {
