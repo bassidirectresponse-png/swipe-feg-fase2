@@ -420,6 +420,9 @@
   .cmedia:hover img{transform:scale(1.05);}
   .cmedia__zoom{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(3px);}
   .cmedia__zoom .ico{width:15px;height:15px;}
+  .cmedia--vid{cursor:pointer;background:#000;}
+  .cmedia__vid{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
+  .cmedia--vid:hover .cmedia__play{opacity:0;transition:opacity .2s var(--ease);}
   .cmedia--empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);cursor:default;aspect-ratio:16/7;}
   .cmedia--empty .ico{width:26px;height:26px;opacity:.5;}
   .cmedia--empty span{font-size:.78rem;}
@@ -983,6 +986,7 @@ function renderGrid(){
   });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();window.open(b.dataset.href,"_blank","noopener");}));
   $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
+  wireCardPreviews(area);
   const add=$("#addCard");
   if(add){
     add.addEventListener("click",openNewForActiveSection);
@@ -1519,9 +1523,13 @@ function renderSubFilter(){
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
-function mediaThumb(img,alt,hasVideo){
+function mediaThumb(img,alt,hasVideo,videoUrl){
   const play=hasVideo?`<span class="cmedia__play">${ic("play")}</span>`:"";
   if(img)return `<div class="cmedia" data-lb="${esc(img)}"><img loading="lazy" decoding="async" src="${img}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span>${play}</div>`;
+  /* sem print, mas com vídeo direto (mp4): mostra um quadro como capa e dá play no hover */
+  const emb=videoUrl?videoEmbedUrl(videoUrl):null;
+  if(emb&&emb.type==="video")
+    return `<div class="cmedia cmedia--vid" title="Passe o mouse para pré-visualizar"><video class="cmedia__vid" muted loop playsinline preload="metadata" src="${esc(emb.src)}#t=0.1"></video><span class="cmedia__play">${ic("play")}</span></div>`;
   if(hasVideo)return `<div class="cmedia cmedia--empty">${ic("film")}<span>Vídeo — abra para assistir</span></div>`;
   return `<div class="cmedia cmedia--empty">${ic("image")}<span>Sem print</span></div>`;
 }
@@ -1552,7 +1560,7 @@ function criativoCard(o){
   const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):""].filter(Boolean).join("");
   return `<article class="card kcard" data-id="${o.id}">
     <div class="card__head">${badge}<span class="ktag">${ic("play")}Criativo</span></div>
-    ${mediaThumb(d.print,d.nome,hasVid)}
+    ${mediaThumb(d.print,d.nome,hasVid,hasVid?va:"")}
     <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
     ${nicheChip(d)}
     <div class="card__actions">${acts||emptyActions()}</div>
@@ -1571,7 +1579,7 @@ function megabrainCard(o){
   const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:`<div class="muted-empty" style="font-size:.82rem">Sem materiais ainda — abra para adicionar</div>`;
   return `<article class="card kcard kcard--brain" data-id="${o.id}">
     <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
-    ${d.print?mediaThumb(d.print,d.nome,!!video):(video?mediaThumb("",d.nome,true):"")}
+    ${d.print?mediaThumb(d.print,d.nome,!!video):(video?mediaThumb("",d.nome,true,video):"")}
     <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
     ${nicheChip(d)}
     ${assetChips}
@@ -1671,6 +1679,22 @@ function wireVideoPreviews(root){
       if(v.parentNode)v.parentNode.insertBefore(box,v.nextSibling);
     });
     if(v.readyState>=1)paint(); else {try{v.load();}catch(e){}}
+  });
+}
+/* miniaturas de vídeo nos cards: pinta 1 quadro de capa e dá play (mudo) no hover */
+function wireCardPreviews(root){
+  (root||document).querySelectorAll("video.cmedia__vid").forEach(v=>{
+    if(v.dataset.prevWired)return; v.dataset.prevWired="1";
+    const frame=()=>Math.min(0.1,(isFinite(v.duration)&&v.duration>0)?v.duration/2:0.1);
+    let painted=false;
+    const paint=()=>{if(!painted&&v.readyState>=1&&isFinite(v.duration)&&v.duration>0){painted=true;try{v.currentTime=frame();}catch(e){}}};
+    v.addEventListener("loadedmetadata",paint);
+    v.addEventListener("loadeddata",paint);
+    if(v.readyState>=1)paint(); else {try{v.load();}catch(e){}}
+    const box=v.closest(".cmedia")||v.parentElement;
+    box.addEventListener("mouseenter",()=>{const p=v.play&&v.play();if(p&&p.catch)p.catch(()=>{});});
+    box.addEventListener("mouseleave",()=>{try{v.pause();v.currentTime=frame();}catch(e){}});
+    v.addEventListener("error",()=>{if(v.parentElement){v.parentElement.classList.add("cmedia--empty");v.remove();}});
   });
 }
 
