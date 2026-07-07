@@ -1803,8 +1803,8 @@ function wireCardPreviews(root){
   });
 }
 
-/* ===== TRANSCRIÇÃO INSTANTÂNEA (Groq via função serverless) ===== */
-const TRANSCRIBE_FN="/.netlify/functions/transcribe";
+/* ===== TRANSCRIÇÃO AUTOMÁTICA (Groq via background function) ===== */
+const TRANSCRIBE_FN="/.netlify/functions/transcribe-background";
 const transcribing=new Set();
 let currentSimpleId=null;
 function videoForOffer(o){const d=(o&&o.data)||{};return d.kind==="megabrain"?videoOfBrain(d):videoOfCrv(d);}
@@ -1815,6 +1815,22 @@ function transcribeBtn(o,va,d){
   if(((d.transcricao||"").trim()))return"";             // já transcrito
   const working=d.transcricaoStatus==="working"||transcribing.has(o.id);
   return `<div class="linkbtns" style="margin-top:12px"><button class="btn btn--outline btn--sm" data-transcribe="${o.id}"${working?" disabled":""}>${ic("file")}${working?"Transcrevendo…":"Transcrever agora"}</button></div>`;
+}
+/* lê a linha no Supabase até a transcrição aparecer (a background function grava lá) */
+async function pollTranscription(offerId,tries,intervalMs){
+  for(let i=0;i<tries;i++){
+    await new Promise(r=>setTimeout(r,intervalMs));
+    try{
+      const {data,error}=await sb.from("offers").select("data").eq("id",offerId).single();
+      const d=data&&data.data;
+      if(!error&&d&&(d.transcricao||"").trim()){
+        const o=offers.find(x=>x.id===offerId);
+        if(o){o.data.transcricao=d.transcricao;o.data.transcricaoStatus="done";o.data.transcricaoLang=d.transcricaoLang||"";}
+        return true;
+      }
+    }catch(e){}
+  }
+  return false;
 }
 async function requestInstantTranscription(offerId,videoUrl){
   const o=offers.find(x=>x.id===offerId); if(!o)return;
@@ -1828,18 +1844,16 @@ async function requestInstantTranscription(offerId,videoUrl){
   if(viewOpen())openSimpleView(o,true);
   let token="";
   try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  let ok=false,msg="";
-  try{
-    const resp=await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,videoUrl})});
-    const j=await resp.json().catch(()=>({}));
-    if(resp.ok&&j&&j.ok){ok=true;o.data.transcricao=j.transcricao||"";o.data.transcricaoStatus="done";o.data.transcricaoLang=j.lang||"";}
-    else msg=(j&&j.error)||("HTTP "+resp.status);
-  }catch(e){msg="sem conexão";}
-  finally{transcribing.delete(offerId);}
-  if(!ok)o.data.transcricaoStatus="pending"; // rede de segurança: o workflow horário pega depois
+  // dispara a background function (responde 202 na hora; roda até 15min, sem o limite de 10s)
+  try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,videoUrl})});}catch(e){}
+  // acompanha o resultado gravado no Supabase
+  const done=await pollTranscription(offerId,40,4000);   // até ~2,5min
+  transcribing.delete(offerId);
+  const cur=offers.find(x=>x.id===offerId)||o;
+  if(!done)cur.data.transcricaoStatus="pending";          // rede de segurança: workflow horário pega depois
   renderGrid();writeCache();
-  if(viewOpen())openSimpleView(o,true);
-  toast(ok?"Transcrição pronta ✓":("Transcrição instantânea indisponível ("+msg+"); ficará pro processo automático."),!ok);
+  if(viewOpen())openSimpleView(cur,true);
+  toast(done?"Transcrição pronta ✓":"Transcrevendo em segundo plano — aparece aqui em instantes.");
 }
 
 /* ===== VIEW DOS NOVOS SWIPES ===== */
