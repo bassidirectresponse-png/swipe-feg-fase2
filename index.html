@@ -470,6 +470,8 @@
   .vtrans .vk .ico{width:14px;height:14px;color:var(--accent);}
   .vtrans .vbody{font-size:.98rem;line-height:1.6;white-space:pre-wrap;}
   .vtrans .vbody.empty{color:var(--faint);font-style:italic;}
+  .vpending{display:inline-flex;align-items:flex-start;gap:7px;color:var(--accent);font-style:normal;font-weight:600;line-height:1.5;}
+  .vpending .ico{width:14px;height:14px;flex:none;margin-top:2px;}
   .cmedia__play{position:absolute;left:8px;bottom:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(3px);}
   .cmedia__play .ico{width:14px;height:14px;fill:#fff;stroke:none;margin-left:1px;}
 
@@ -1624,21 +1626,24 @@ function videoEmbedHtml(url){
   if(e.type==="video")return `<video class="vplayer" controls playsinline preload="metadata" src="${esc(e.src)}#t=0.1"></video>`;
   return `<iframe class="vplayer" src="${esc(e.src)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
 }
-function transBox(txt,alwaysShow){
-  if(!txt&&!alwaysShow)return"";
-  return `<div class="vtrans"><div class="vk">${ic("file")}Transcrição do vídeo</div><div class="vbody ${txt?"":"empty"}">${txt?esc(txt):"Sem transcrição cadastrada."}</div></div>`;
+function transBox(txt,alwaysShow,pending){
+  if(!txt&&!alwaysShow&&!pending)return"";
+  const body=txt?esc(txt):(pending
+    ?`<span class="vpending">${ic("clock")}Transcrição sendo gerada automaticamente… aparece aqui em alguns minutos.</span>`
+    :"Sem transcrição cadastrada.");
+  return `<div class="vtrans"><div class="vk">${ic("file")}Transcrição do vídeo</div><div class="vbody ${txt?"":"empty"}">${body}</div></div>`;
 }
 /* bloco de vídeo: embutido + transcrição ao lado + abrir em nova aba */
-function videoBlock(va,transcricao,forceTrans){
+function videoBlock(va,transcricao,forceTrans,pending){
   const embed=videoEmbedHtml(va);
   const openBtn=va?`<div class="linkbtns" style="margin-top:12px">${linkbtn("Abrir vídeo em nova aba",va,false,"external")}</div>`:"";
   if(embed){
-    const tb=transBox(transcricao,forceTrans);
+    const tb=transBox(transcricao,forceTrans,pending);
     if(tb)return `<div class="vcol"><div>${embed}${openBtn}</div>${tb}</div>`;
     return `<div>${embed}${openBtn}</div>`;
   }
   if(va){
-    const tb=transBox(transcricao,forceTrans);
+    const tb=transBox(transcricao,forceTrans,pending);
     return `<div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div>${tb?`<div style="margin-top:14px">${tb}</div>`:""}`;
   }
   return "";
@@ -1683,7 +1688,7 @@ function openSimpleView(o){
     const va=videoOfCrv(d);
     const showVideo=!!va&&d.plataforma!=="taboola";
     if(showVideo){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d.transcricao,true)}</section>`;
+      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d.transcricao,true,d.transcricaoStatus==="pending")}</section>`;
     }
     if(d.print){
       const lbl=d.plataforma==="taboola"?"Anúncio (Taboola)":"Imagem";
@@ -1702,7 +1707,7 @@ function openSimpleView(o){
     if(copy||copyLink){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Copy validada</span><span class="sec__line"></span></div>${copyLink?`<div class="linkbtns" style="margin-bottom:${copy?"14px":"0"}">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}${copy?`<div class="resumo">${esc(copy)}</div>`:""}</section>`;
     }
-    const vb=videoBlock(va,d.transcricao,false);
+    const vb=videoBlock(va,d.transcricao,false,d.transcricaoStatus==="pending");
     if(vb){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo validado</span><span class="sec__line"></span></div>${vb}</section>`;
     }
@@ -1782,6 +1787,7 @@ async function uploadVideoFile(file){
   }
   const url=sb.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
   sItem.video=url;
+  if(!((sItem.transcricao||"").trim()))sItem.transcricaoStatus="pending"; // a transcrição automática preenche depois
   const inp=$('[data-sk="video"]',$("#simpleFormBody"));if(inp)inp.value=url;
   setVidUpState(zone,"done",file.name);
   sMarkDirty();

@@ -1,0 +1,52 @@
+name: Transcrição automática de vídeos
+
+# Sempre que houver um MP4 novo (subido pelo app) sem transcrição, baixa,
+# roda o Whisper (local, sem API key) e grava a transcrição de volta — ela
+# aparece automaticamente ao lado do vídeo no app.
+# Roda de hora em hora (pega vídeos novos) + botão manual para forçar na hora.
+
+on:
+  schedule:
+    - cron: "0 * * * *"     # de hora em hora
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transcrever
+  cancel-in-progress: false
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WHISPER_MODEL: small     # tiny/base/small/medium/large-v3 (maior = + preciso, + lento)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: scripts/requirements-transcricao.txt
+
+      - name: Instalar faster-whisper
+        run: pip install -r scripts/requirements-transcricao.txt
+
+      - name: Cache do modelo Whisper
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-${{ env.WHISPER_MODEL }}
+
+      - name: Transcrever vídeos pendentes
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          MAX_VIDEOS: "5"
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/transcrever.py
