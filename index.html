@@ -493,6 +493,7 @@
   .grid--tt{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
   .ttcard .ttmedia{aspect-ratio:9/13;background:#0a0a0c;}
   .ttmedia{position:relative;}
+  .ttmedia--click{cursor:pointer;}
   .ttdur{position:absolute;right:7px;bottom:7px;font-size:.72rem;font-weight:700;color:#fff;background:rgba(0,0,0,.66);padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px);}
   .ttstats{display:flex;flex-wrap:wrap;gap:12px;margin:2px 0 2px;}
   .ttstat{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted-fg);}
@@ -593,8 +594,6 @@ create policy "public_all" on offers
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
     <span class="whoami" id="whoami"></span>
     <span class="ro-pill" id="roPill" hidden><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Somente leitura</span>
-    <button class="icon-btn" id="exportBtn" title="Exportar backup" aria-label="Exportar backup"><svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
-    <button class="icon-btn" id="settingsBtn" title="Configurações" aria-label="Configurações"><svg class="ico" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button>
     <button class="icon-btn" id="logoutBtn" title="Sair" aria-label="Sair"><svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
     <button class="btn btn--accent" id="newBtn" data-admin-only><svg class="ico" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="newBtn-txt">Nova oferta</span></button>
   </div>
@@ -850,7 +849,6 @@ $("#connectBtn").addEventListener("click",async()=>{
   $("#setupScreen").classList.add("hidden");toast("Conectado!");startAuth();
 });
 $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboard.writeText($("#sqlBox").childNodes[0].textContent).then(()=>toast("SQL copiado"));});
-$("#settingsBtn").addEventListener("click",()=>{if(confirm("Trocar credenciais do Supabase? (As ofertas continuam no banco.)")){$("#supUrl").value=localStorage.getItem(LS.url)||DEFAULT_URL;$("#supKey").value=localStorage.getItem(LS.key)||DEFAULT_KEY;showSetup();}});
 
 /* ===== GRID ===== */
 const NO_NICHE="__none__";
@@ -1672,7 +1670,7 @@ function vv(o){return Number((o.data||{}).views)||0;}
 function ve(o){return Number((o.data||{}).engajamento)||0;}
 function ttSortFn(a,b){return (TT_SORTS[tiktokSort]||TT_SORTS.views)(a,b);}
 function tiktokThumb(d){
-  if(d.thumb)return `<div class="cmedia ttmedia" data-lb="${esc(d.thumb)}"><img loading="lazy" decoding="async" src="${esc(d.thumb)}" alt="${esc(d.nome||"")}"><span class="cmedia__zoom">${ic("maximize")}</span><span class="cmedia__play">${ic("play")}</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
+  if(d.thumb)return `<div class="cmedia ttmedia ttmedia--click"><img loading="lazy" decoding="async" src="${esc(d.thumb)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
   return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
 }
 function tiktokCard(o){
@@ -2194,9 +2192,6 @@ async function saveSimpleForm(){
 function attemptCloseSimpleForm(){if(!sFormDirty){closeOverlay("#simpleFormOverlay");return;}pendingCloseForm="simple";openOverlay("#confirmOverlay");}
 $("#simpleFormSave").addEventListener("click",async()=>{if(await saveSimpleForm())toast("Salvo");});
 $("#simpleFormClose").addEventListener("click",attemptCloseSimpleForm);
-
-/* ===== EXPORT ===== */
-$("#exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(offers,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ofertas-backup.json";a.click();toast("Backup exportado");});
 
 startAuth();
 </script>
