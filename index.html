@@ -450,16 +450,19 @@
   .brain-metric__l{font-size:.63rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;}
   .brain-hl-author{color:#5db9ff !important;font-weight:700;}
   .brain-hl-metric{color:var(--accent) !important;font-weight:800;}
-  /* view: vídeo do criativo + copy escrita LADO A LADO */
-  .brainstage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start;}
+  /* view: vídeo do criativo (grande) + copy escrita LADO A LADO */
+  .brainstage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:26px;align-items:start;}
   .brainstage--full{grid-template-columns:1fr;}
   .brainstage__media{min-width:0;}
-  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:16px 18px;max-height:540px;overflow:auto;}
+  .brainstage__media .vplayer{border-radius:16px;background:#000;border:1px solid var(--border-2);display:block;box-shadow:var(--shadow);}
+  .brainstage__media iframe.vplayer{height:min(78vh,760px);width:auto;aspect-ratio:9/16;margin:0;}
+  .brainstage__media video.vplayer{height:min(78vh,760px);width:auto;max-width:100%;object-fit:contain;margin:0;}
+  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;max-height:min(78vh,760px);overflow:auto;}
   .brainstage__copy .vk{display:flex;align-items:center;gap:7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
   .brainstage__copy .vk .ico{width:14px;height:14px;color:var(--accent);}
   .brain-copy{white-space:pre-wrap;line-height:1.6;font-size:.96rem;color:var(--fg);}
   .brain-copy.empty{color:var(--faint);font-style:italic;}
-  @media(max-width:760px){.brainstage{grid-template-columns:1fr;}.brainstage__copy{max-height:none;}}
+  @media(max-width:820px){.brainstage{grid-template-columns:1fr;}.brainstage__media .vplayer{width:100%;height:auto;margin:0 auto;}.brainstage__media video.vplayer{max-height:70vh;}.brainstage__copy{max-height:none;}}
 
   /* view: asset do megabrain */
   .mbasset{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;}
@@ -1678,8 +1681,7 @@ function megabrainCard(o){
   const assets=[
     (copy||copyLink)?{ic:"type",label:"Copy"}:null,
     (d.video||d.videoVsl||d.videoCriativo)?{ic:"film",label:"Vídeo"}:null,
-    d.linkDrive?{ic:"folder",label:"Drive"}:null,
-    d.print?{ic:"image",label:"Imagem"}:null
+    d.linkDrive?{ic:"folder",label:"Drive"}:null
   ].filter(Boolean);
   const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:"";
   const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
@@ -1773,7 +1775,6 @@ function brainThumb(d,video){
   if(isMp4)return mediaThumb("",d.nome,true,mp4);
   const dt=driveThumbUrl(d.linkDrive)||driveThumbUrl(d.video);
   if(dt)return `<div class="cmedia cmedia--vid" title="Abra o card para assistir"><img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(dt)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span></div>`;
-  if(d.print)return mediaThumb(d.print,d.nome,!!video);
   if(video)return mediaThumb("",d.nome,true,video);
   return `<div class="cmedia cmedia--empty">${ic("film")}<span>Sem preview — abra o card</span></div>`;
 }
@@ -2004,10 +2005,7 @@ function openSimpleView(o,skipOpen){
         <div class="brainstage${mediaPane?"":" brainstage--full"}">${mediaPane}${copyPane}</div>
         ${transcribeBtn(o,va,d)}${tb?`<div style="margin-top:14px">${tb}</div>`:""}</section>`;
     }
-    if(d.print){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Imagem do criativo</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",d.print)}</div></section>`;
-    }
-    if(!mediaPane&&!copy&&!copyLink&&!d.print){
+    if(!mediaPane&&!copy&&!copyLink){
       sections+=`<div class="muted-empty">Nenhum material cadastrado ainda. Clique em Editar para adicionar copy ou criativo.</div>`;
     }
   }
@@ -2028,7 +2026,7 @@ function openSimpleView(o,skipOpen){
       <div class="ttview">${thumb}<div class="ttview__side"><div class="ttmetrics">${metrics}</div>${d.caption?`<div class="resumo" style="margin-top:14px">${esc(d.caption)}</div>`:""}${tags}${som}</div></div></section>`;
   }
 
-  const noAside=(kind==="criativo"||kind==="tiktok");
+  const noAside=(kind==="criativo"||kind==="tiktok"||kind==="megabrain");
   const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
   $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">
@@ -2206,7 +2204,7 @@ function renderSimpleForm(){
       <div class="fsec__title"><span class="num">01</span> Criativo &amp; Autor</div>
       <div class="field big"><label class="lbl">Nome do criativo *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>
       <div class="field"><label class="lbl">${ic("user")} Autor do criativo</label><input type="text" data-sk="autor" placeholder="Ex: Bruno Bismaq" value="${esc(it.autor||"")}"></div>
-      <div class="row">${nichoField}${marcaField}</div>
+      ${nichoField}
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">02</span> Performance validada</div>
@@ -2232,11 +2230,6 @@ function renderSimpleForm(){
       <div class="fsec__hint">A copy escrita do criativo — aparece <b>ao lado do vídeo</b> quando o card é aberto.</div>
       <div class="field"><label class="lbl">${ic("type")} Copy do criativo</label><textarea data-sk="copy" placeholder="Cole aqui a copy validada (VSL, anúncio, headline...)" style="min-height:170px">${esc(it.copy||"")}</textarea></div>
       <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy (doc) — opcional</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/..." value="${esc(it.copyLink||"")}"></div>
-    </div>
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Imagem &amp; Comentário</div>
-      ${printField}
-      ${comentField}
     </div>`;
   }
   const body=$("#simpleFormBody");
