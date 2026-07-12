@@ -1683,10 +1683,10 @@ function megabrainCard(o){
   ].filter(Boolean);
   const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:"";
   const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
-  const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricCompact(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
+  const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricValue(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
   return `<article class="card kcard kcard--brain" data-id="${o.id}">
     <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
-    ${d.print?mediaThumb(d.print,d.nome,!!video):(video?mediaThumb("",d.nome,true,video):"")}
+    ${brainThumb(d,video)}
     ${author}
     <div class="kcard__title">${esc(d.nome||"Sem título")}</div>
     ${metric}
@@ -1760,8 +1760,23 @@ function brainMetricNum(d){const raw=String((d&&d.metricaValor)||"").replace(/[^
 function brainHasMetric(d){return !!String((d&&d.metricaValor)||"").trim();}
 function brainIsFat(d){return (d&&d.metricaTipo)==="faturamento";}
 function brainMetricLabel(d){return brainIsFat(d)?"faturamento":"vendas";}
-function brainMetricCompact(d){const n=brainMetricNum(d);return brainIsFat(d)?("R$ "+kfmt(n)):kfmt(n);}
-function brainMetricFull(d){const n=brainMetricNum(d);return brainIsFat(d)?("R$ "+n.toLocaleString("pt-BR")):(n.toLocaleString("pt-BR")+" vendas");}
+/* faturamento em dólar (US$); vendas = contagem exata (ex: 8 vendas) */
+function brainMetricValue(d){const n=brainMetricNum(d);return brainIsFat(d)?("US$ "+n.toLocaleString("en-US")):n.toLocaleString("pt-BR");}
+function brainMetricFull(d){const n=brainMetricNum(d);return brainIsFat(d)?("US$ "+n.toLocaleString("en-US")):(n.toLocaleString("pt-BR")+" vendas");}
+/* thumbnail do Google Drive (frame do vídeo) p/ preview no card */
+function driveId(url){url=String(url||"");const m=url.match(/drive\.google\.com\/file\/d\/([\w-]+)/i)||url.match(/[?&]id=([\w-]+)/i);return m?m[1]:"";}
+function driveThumbUrl(url,w){const id=driveId(url);return id?`https://drive.google.com/thumbnail?id=${id}&sz=w${w||1000}`:"";}
+/* capa do card do Mega Brain: MP4 embutido → thumbnail do Drive → print → vazio */
+function brainThumb(d,video){
+  const mp4=(d.video||"").trim();
+  const isMp4=/\.(mp4|webm|ogg|ogv|m4v)(\?.*)?$/i.test(mp4);
+  if(isMp4)return mediaThumb("",d.nome,true,mp4);
+  const dt=driveThumbUrl(d.linkDrive)||driveThumbUrl(d.video);
+  if(dt)return `<div class="cmedia cmedia--vid" title="Abra o card para assistir"><img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(dt)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span></div>`;
+  if(d.print)return mediaThumb(d.print,d.nome,!!video);
+  if(video)return mediaThumb("",d.nome,true,video);
+  return `<div class="cmedia cmedia--empty">${ic("film")}<span>Sem preview — abra o card</span></div>`;
+}
 function brainTs(o){return Date.parse((o&&o.created_at)||"")||0;}
 const BRAIN_SORTS={
   metrica:(a,b)=>brainMetricNum(b.data||{})-brainMetricNum(a.data||{}),
@@ -1835,6 +1850,11 @@ function wireVideoPreviews(root){
 }
 /* miniaturas de vídeo nos cards: pinta 1 quadro de capa e dá play (mudo) no hover */
 function wireCardPreviews(root){
+  /* thumbnails do Drive: se a imagem falhar, cai para placeholder */
+  (root||document).querySelectorAll("img.cmedia__poster").forEach(img=>{
+    if(img.dataset.pw)return; img.dataset.pw="1";
+    img.addEventListener("error",()=>{const box=img.closest(".cmedia");if(box){box.classList.remove("cmedia--vid");box.classList.add("cmedia--empty");box.innerHTML=ic("film")+"<span>Vídeo — abra para assistir</span>";}});
+  });
   (root||document).querySelectorAll("video.cmedia__vid").forEach(v=>{
     if(v.dataset.prevWired)return; v.dataset.prevWired="1";
     const frame=()=>Math.min(0.1,(isFinite(v.duration)&&v.duration>0)?v.duration/2:0.1);
@@ -2197,7 +2217,7 @@ function renderSimpleForm(){
           <button type="button" class="seg-btn${isFat?" active":""}" data-saction="set-metrica" data-val="faturamento">${ic("dollar")}Faturamento</button>
         </div>
       </div>
-      <div class="field" style="margin-bottom:0"><label class="lbl" id="sMetricaLbl">${isFat?"Faturamento (R$)":"Quantidade de vendas"}</label><input type="text" inputmode="numeric" data-sk="metricaValor" placeholder="${isFat?"Ex: 250000":"Ex: 1200"}" value="${esc(it.metricaValor||"")}"></div>
+      <div class="field" style="margin-bottom:0"><label class="lbl" id="sMetricaLbl">${isFat?"Faturamento (US$)":"Quantas vendas o criativo fez"}</label><input type="text" inputmode="numeric" data-sk="metricaValor" placeholder="${isFat?"Ex: 5000":"Ex: 8"}" value="${esc(it.metricaValor||"")}"></div>
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Vídeo do criativo</div>
@@ -2231,7 +2251,7 @@ $("#simpleFormBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-saction]");if(!b)return;
   if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego=b.dataset.val;$$("#sTipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));sMarkDirty();}
   else if(b.dataset.saction==="set-plat"){sItem.plataforma=b.dataset.val;$$("#sPlatSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));$("#simpleFormBody").dataset.plat=b.dataset.val==="taboola"?"taboola":"meta";sMarkDirty();}
-  else if(b.dataset.saction==="set-metrica"){sItem.metricaTipo=b.dataset.val;$$("#sMetricaSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));const fat=b.dataset.val==="faturamento";const lbl=$("#sMetricaLbl");if(lbl)lbl.textContent=fat?"Faturamento (R$)":"Quantidade de vendas";const inp=$('[data-sk="metricaValor"]');if(inp)inp.placeholder=fat?"Ex: 250000":"Ex: 1200";sMarkDirty();}
+  else if(b.dataset.saction==="set-metrica"){sItem.metricaTipo=b.dataset.val;$$("#sMetricaSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));const fat=b.dataset.val==="faturamento";const lbl=$("#sMetricaLbl");if(lbl)lbl.textContent=fat?"Faturamento (US$)":"Quantas vendas o criativo fez";const inp=$('[data-sk="metricaValor"]');if(inp)inp.placeholder=fat?"Ex: 5000":"Ex: 8";sMarkDirty();}
 });
 
 async function compressSimpleImages(){if(typeof sItem.print==="string")sItem.print=await maybeCompress(sItem.print);}
