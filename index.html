@@ -439,6 +439,27 @@
   .kasset{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;color:var(--fg);background:var(--surface-3);border:1px solid var(--border-2);border-radius:9px;padding:6px 10px;}
   .kasset .ico{width:13px;height:13px;color:var(--accent);}
   .kcard--brain{border-color:rgba(229,255,45,.3);}
+  /* mega brain — autor + métrica em destaque */
+  .brain-author{display:inline-flex;align-items:center;gap:6px;font-size:.92rem;font-weight:700;color:#5db9ff;letter-spacing:-.01em;max-width:100%;}
+  .brain-author span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .brain-author .ico{width:14px;height:14px;color:#5db9ff;flex:none;}
+  .brain-metric{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:var(--accent-dim);border:1px solid rgba(229,255,45,.42);border-radius:11px;padding:7px 13px;}
+  .brain-metric__ic{display:inline-flex;}
+  .brain-metric__ic .ico{width:15px;height:15px;color:var(--accent);}
+  .brain-metric__v{font-size:1.15rem;font-weight:800;color:var(--accent);letter-spacing:-.02em;line-height:1;}
+  .brain-metric__l{font-size:.63rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;}
+  .brain-hl-author{color:#5db9ff !important;font-weight:700;}
+  .brain-hl-metric{color:var(--accent) !important;font-weight:800;}
+  /* view: vídeo do criativo + copy escrita LADO A LADO */
+  .brainstage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start;}
+  .brainstage--full{grid-template-columns:1fr;}
+  .brainstage__media{min-width:0;}
+  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:16px 18px;max-height:540px;overflow:auto;}
+  .brainstage__copy .vk{display:flex;align-items:center;gap:7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
+  .brainstage__copy .vk .ico{width:14px;height:14px;color:var(--accent);}
+  .brain-copy{white-space:pre-wrap;line-height:1.6;font-size:.96rem;color:var(--fg);}
+  .brain-copy.empty{color:var(--faint);font-style:italic;}
+  @media(max-width:760px){.brainstage{grid-template-columns:1fr;}.brainstage__copy{max-height:none;}}
 
   /* view: asset do megabrain */
   .mbasset{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;}
@@ -695,7 +716,7 @@ let sb=null, offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica";
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -732,7 +753,9 @@ const ICONS={
   film:'<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M7 3v18"></path><path d="M3 7.5h4"></path><path d="M3 12h18"></path><path d="M3 16.5h4"></path><path d="M17 3v18"></path><path d="M17 7.5h4"></path><path d="M17 16.5h4"></path>',
   type:'<polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" x2="15" y1="20" y2="20"></line><line x1="12" x2="12" y1="4" y2="20"></line>',
   message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
-  clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
+  clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+  dollar:'<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -859,7 +882,7 @@ function filtered(){
   if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:n===activeNiche;});}
   if(searchTerm){
     const t=searchTerm.toLowerCase();
-    list=list.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.formato,d.nicho].some(v=>(v||"").toLowerCase().includes(t));});
+    list=list.filter(o=>{const d=o.data||{};return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho].some(v=>(v||"").toLowerCase().includes(t));});
   }
   return list;
 }
@@ -1038,7 +1061,8 @@ function renderGrid(){
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
     area.innerHTML=gh;
   }else{
-    let html=list.map(cardFor).join("");
+    const items=activeSection==="megabrain"?[...list].sort(brainSortFn):list;
+    let html=items.map(cardFor).join("");
     if(isAdmin)html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
     area.innerHTML=`<div class="grid">${html}</div>`;
   }
@@ -1588,6 +1612,13 @@ function renderSubFilter(){
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;renderGrid();}));
     return;
   }
+  if(activeSection==="megabrain"){
+    el.style.display="";
+    const opts=[["metrica","Mais vendas / faturamento"],["recente","Recentes"],["az","A–Z"]];
+    el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>`;
+    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;renderGrid();}));
+    return;
+  }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
@@ -1646,17 +1677,21 @@ function megabrainCard(o){
   const video=videoOfBrain(d);
   const assets=[
     (copy||copyLink)?{ic:"type",label:"Copy"}:null,
-    video?{ic:"film",label:"Vídeo"}:null,
+    (d.video||d.videoVsl||d.videoCriativo)?{ic:"film",label:"Vídeo"}:null,
+    d.linkDrive?{ic:"folder",label:"Drive"}:null,
     d.print?{ic:"image",label:"Imagem"}:null
   ].filter(Boolean);
-  const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:`<div class="muted-empty" style="font-size:.82rem">Sem materiais ainda — abra para adicionar</div>`;
+  const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:"";
+  const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
+  const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricCompact(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
   return `<article class="card kcard kcard--brain" data-id="${o.id}">
     <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
     ${d.print?mediaThumb(d.print,d.nome,!!video):(video?mediaThumb("",d.nome,true,video):"")}
-    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
+    ${author}
+    <div class="kcard__title">${esc(d.nome||"Sem título")}</div>
+    ${metric}
     ${nicheChip(d)}
     ${assetChips}
-    ${commentPreview(d.comentario)}
   </article>`;
 }
 
@@ -1719,7 +1754,21 @@ function noticiaCard(o){
 
 /* ===== VÍDEO: embutir player (YouTube, Drive, Vimeo, mp4) ===== */
 function videoOfCrv(d){return (d.video||d.link||"").trim();}
-function videoOfBrain(d){return (d.video||d.videoVsl||d.videoCriativo||"").trim();}
+function videoOfBrain(d){return (d.video||d.linkDrive||d.videoVsl||d.videoCriativo||"").trim();}
+/* ===== MEGA BRAIN — métrica de performance (vendas OU faturamento) ===== */
+function brainMetricNum(d){const raw=String((d&&d.metricaValor)||"").replace(/[^\d]/g,"");return raw?parseInt(raw,10):0;}
+function brainHasMetric(d){return !!String((d&&d.metricaValor)||"").trim();}
+function brainIsFat(d){return (d&&d.metricaTipo)==="faturamento";}
+function brainMetricLabel(d){return brainIsFat(d)?"faturamento":"vendas";}
+function brainMetricCompact(d){const n=brainMetricNum(d);return brainIsFat(d)?("R$ "+kfmt(n)):kfmt(n);}
+function brainMetricFull(d){const n=brainMetricNum(d);return brainIsFat(d)?("R$ "+n.toLocaleString("pt-BR")):(n.toLocaleString("pt-BR")+" vendas");}
+function brainTs(o){return Date.parse((o&&o.created_at)||"")||0;}
+const BRAIN_SORTS={
+  metrica:(a,b)=>brainMetricNum(b.data||{})-brainMetricNum(a.data||{}),
+  recente:(a,b)=>brainTs(b)-brainTs(a),
+  az:(a,b)=>String((a.data||{}).nome||"").localeCompare(String((b.data||{}).nome||""),"pt-BR"),
+};
+function brainSortFn(a,b){return (BRAIN_SORTS[brainSort]||BRAIN_SORTS.metrica)(a,b);}
 function videoEmbedUrl(url){
   if(!url)return null;url=String(url).trim();
   let m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([\w-]{6,})/i);
@@ -1876,6 +1925,10 @@ function openSimpleView(o,skipOpen){
     if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Publicado</div><div class="v">${ttDate(d.dataPub)}</div></div>`);
     if(d.engajamento)kvs.push(`<div class="kv"><div class="k">Engajamento</div><div class="v" style="color:var(--accent)">${(d.engajamento*100).toFixed(1)}%</div></div>`);
   }
+  if(kind==="megabrain"){
+    if(d.autor)kvs.push(`<div class="kv"><div class="k">Autor do criativo</div><div class="v brain-hl-author">${esc(d.autor)}</div></div>`);
+    if(brainHasMetric(d))kvs.push(`<div class="kv"><div class="k">${brainIsFat(d)?"Faturamento":"Vendas"}</div><div class="v brain-hl-metric">${esc(brainMetricFull(d))}</div></div>`);
+  }
 
   let mainLink="";
   if(kind==="presell"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir presell",d.link,true,"newspaper")}</div>`;
@@ -1886,6 +1939,11 @@ function openSimpleView(o,skipOpen){
   }
   if(kind==="noticia"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir notícia",d.link,true,"external")}</div>`;
   if(kind==="tiktok"&&d.url)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir no TikTok",d.url,true,"external")}</div>`;
+  if(kind==="megabrain"){
+    const va=(d.video||d.videoVsl||d.videoCriativo||"").trim();
+    const btns=[d.linkDrive?linkbtn("Abrir no Drive",d.linkDrive,true,"folder"):"",va?linkbtn("Abrir vídeo",va,false,"play"):""].filter(Boolean).join("");
+    if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
+  }
 
   let sn=0;const num=()=>String(++sn).padStart(2,"0");
   let sections="";
@@ -1911,22 +1969,25 @@ function openSimpleView(o,skipOpen){
     }
   }
 
-  /* mega brain: copy validada + criativo/vídeo + imagem */
+  /* mega brain: vídeo do criativo + copy escrita LADO A LADO + imagem */
   if(kind==="megabrain"){
     const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
     const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
     const va=videoOfBrain(d);
-    if(copy||copyLink){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Copy validada</span><span class="sec__line"></span></div>${copyLink?`<div class="linkbtns" style="margin-bottom:${copy?"14px":"0"}">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}${copy?`<div class="resumo">${esc(copy)}</div>`:""}</section>`;
-    }
-    const vb=videoBlock(va,d.transcricao,false,d.transcricaoStatus);
-    if(vb){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo validado</span><span class="sec__line"></span></div>${vb}${transcribeBtn(o,va,d)}</section>`;
+    const embed=videoEmbedHtml(va);
+    const mediaPane=embed?`<div class="brainstage__media">${embed}</div>`
+      :(va?`<div class="brainstage__media"><div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div></div>`:"");
+    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}Copy do criativo</div>${copyLink?`<div class="linkbtns" style="margin-bottom:12px">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}<div class="brain-copy ${copy?"":"empty"}">${copy?esc(copy):"Sem copy cadastrada — clique em Editar para adicionar."}</div></div>`;
+    if(mediaPane||copy||copyLink){
+      const tb=transBox(d.transcricao,false,d.transcricaoStatus);
+      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo &amp; Copy</span><span class="sec__line"></span></div>
+        <div class="brainstage${mediaPane?"":" brainstage--full"}">${mediaPane}${copyPane}</div>
+        ${transcribeBtn(o,va,d)}${tb?`<div style="margin-top:14px">${tb}</div>`:""}</section>`;
     }
     if(d.print){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Imagem do criativo</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",d.print)}</div></section>`;
     }
-    if(!copy&&!copyLink&&!vb&&!d.print){
+    if(!mediaPane&&!copy&&!copyLink&&!d.print){
       sections+=`<div class="muted-empty">Nenhum material cadastrado ainda. Clique em Editar para adicionar copy ou criativo.</div>`;
     }
   }
@@ -1970,11 +2031,11 @@ function blankSimple(kind){
   const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
   if(kind==="presell")base.tipoTrafego="meta";
   if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:""});
-  if(kind==="megabrain")Object.assign(base,{copy:"",copyLink:"",video:"",transcricao:""});
+  if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
   if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
 }
-function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: Oferta validada — Glicose";}
+function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
 function setSimpleSaveState(s){const e=$("#simpleSaveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 function sMarkDirty(){sFormDirty=true;setSimpleSaveState("unsaved");}
 
@@ -2118,29 +2179,43 @@ function renderSimpleForm(){
       ${comentField}
     </div>`;
   }else{
-    /* megabrain — Copy Validadas: copy e/ou criativo, por nicho */
+    /* megabrain — Copy Validadas: banco de criativos validados da empresa */
+    const isFat=it.metricaTipo==="faturamento";
     html=`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">01</span> Identificação</div>
-      ${nomeField}
+      <div class="fsec__title"><span class="num">01</span> Criativo &amp; Autor</div>
+      <div class="field big"><label class="lbl">Nome do criativo *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>
+      <div class="field"><label class="lbl">${ic("user")} Autor do criativo</label><input type="text" data-sk="autor" placeholder="Ex: Bruno Bismaq" value="${esc(it.autor||"")}"></div>
       <div class="row">${nichoField}${marcaField}</div>
-      <div class="fhint-info">${ic("info")}<span>Banco interno de <b>copy e criativos validados</b>. Preencha o que tiver: só a <b>copy</b>, só o <b>criativo/vídeo</b>, ou os dois.</span></div>
     </div>
     <div class="fsec">
-      <div class="fsec__title"><span class="num">02</span> Copy validada</div>
-      <div class="field"><label class="lbl">${ic("type")} Copy</label><textarea data-sk="copy" placeholder="Cole aqui a copy validada (VSL, anúncio, headline...)">${esc(it.copy||"")}</textarea></div>
+      <div class="fsec__title"><span class="num">02</span> Performance validada</div>
+      <div class="fsec__hint">Escolha a métrica e informe o número — os cards são <b>ordenados por aqui</b>.</div>
+      <div class="field"><label class="lbl">Métrica</label>
+        <div class="seg" id="sMetricaSeg">
+          <button type="button" class="seg-btn${!isFat?" active":""}" data-saction="set-metrica" data-val="vendas">${ic("cart")}Vendas</button>
+          <button type="button" class="seg-btn${isFat?" active":""}" data-saction="set-metrica" data-val="faturamento">${ic("dollar")}Faturamento</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0"><label class="lbl" id="sMetricaLbl">${isFat?"Faturamento (R$)":"Quantidade de vendas"}</label><input type="text" inputmode="numeric" data-sk="metricaValor" placeholder="${isFat?"Ex: 250000":"Ex: 1200"}" value="${esc(it.metricaValor||"")}"></div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">03</span> Vídeo do criativo</div>
+      <div class="fsec__hint">Envie o <b>arquivo MP4</b> (toca embutido) e/ou cole o <b>link do Drive</b>.</div>
+      <div class="field"><label class="lbl">${ic("folder")} Link do Drive</label><input type="url" data-sk="linkDrive" placeholder="https://drive.google.com/..." value="${esc(it.linkDrive||"")}"></div>
+      <div class="field"><label class="lbl">${ic("film")} Link do vídeo (MP4 / YouTube / Vimeo)</label><input type="url" data-sk="video" placeholder="https://... .mp4 — ou envie abaixo" value="${esc(it.video||"")}"></div>
+      ${videoUpField}
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição do vídeo — opcional</label><textarea data-sk="transcricao" placeholder="Transcrição do vídeo (opcional).">${esc(it.transcricao||"")}</textarea></div>
+    </div>
+    <div class="fsec">
+      <div class="fsec__title"><span class="num">04</span> Copy validada</div>
+      <div class="fsec__hint">A copy escrita do criativo — aparece <b>ao lado do vídeo</b> quando o card é aberto.</div>
+      <div class="field"><label class="lbl">${ic("type")} Copy do criativo</label><textarea data-sk="copy" placeholder="Cole aqui a copy validada (VSL, anúncio, headline...)" style="min-height:170px">${esc(it.copy||"")}</textarea></div>
       <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy (doc) — opcional</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>
     <div class="fsec">
-      <div class="fsec__title"><span class="num">03</span> Criativo / vídeo validado</div>
-      <div class="fsec__hint">Envie o <b>arquivo MP4</b> (toca embutido) ou cole um link (Drive/YouTube/Vimeo). Adicione uma imagem se for criativo estático.</div>
-      <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
-      ${videoUpField}
-      <div class="field" style="margin-top:20px"><label class="lbl">${ic("file")} Transcrição do vídeo — opcional</label><textarea data-sk="transcricao" placeholder="Transcrição do vídeo (opcional).">${esc(it.transcricao||"")}</textarea></div>
+      <div class="fsec__title"><span class="num">05</span> Imagem &amp; Comentário</div>
       ${printField}
-    </div>
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> Comentário</div>
       ${comentField}
     </div>`;
   }
@@ -2156,10 +2231,11 @@ $("#simpleFormBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-saction]");if(!b)return;
   if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego=b.dataset.val;$$("#sTipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));sMarkDirty();}
   else if(b.dataset.saction==="set-plat"){sItem.plataforma=b.dataset.val;$$("#sPlatSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));$("#simpleFormBody").dataset.plat=b.dataset.val==="taboola"?"taboola":"meta";sMarkDirty();}
+  else if(b.dataset.saction==="set-metrica"){sItem.metricaTipo=b.dataset.val;$$("#sMetricaSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));const fat=b.dataset.val==="faturamento";const lbl=$("#sMetricaLbl");if(lbl)lbl.textContent=fat?"Faturamento (R$)":"Quantidade de vendas";const inp=$('[data-sk="metricaValor"]');if(inp)inp.placeholder=fat?"Ex: 250000":"Ex: 1200";sMarkDirty();}
 });
 
 async function compressSimpleImages(){if(typeof sItem.print==="string")sItem.print=await maybeCompress(sItem.print);}
-function hasSimpleContent(p){return !!(p.nome||p.link||p.linkAnuncio||p.video||p.transcricao||p.print||p.comentario||p.marca||p.copy||p.copyLink||p.resumo||p.copyVsl||p.copyVslLink||p.videoVsl||p.copyCriativo||p.copyCriativoLink||p.videoCriativo);}
+function hasSimpleContent(p){return !!(p.nome||p.link||p.linkAnuncio||p.video||p.transcricao||p.print||p.comentario||p.marca||p.autor||p.metricaValor||p.linkDrive||p.copy||p.copyLink||p.resumo||p.copyVsl||p.copyVslLink||p.videoVsl||p.copyCriativo||p.copyCriativoLink||p.videoCriativo);}
 async function saveSimpleForm(){
   if(!requireAdmin())return false;
   if(sSaving)return false;
