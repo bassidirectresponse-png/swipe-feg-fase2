@@ -874,9 +874,18 @@ async function boot(){
 }
 async function loadOffers(){
   setSync("load","Carregando");
-  const {data,error}=await sb.from("offers").select("*").order("created_at",{ascending:true});
-  if(error){setSync("err","Erro");console.warn(error);return false;}
-  offers=data||[];setSync("ok","Sincronizado");renderGrid();writeCache();return true;
+  // O PostgREST devolve no máx. 1000 linhas por requisição. Com o Radar TikTok
+  // o banco passou de 1000, então precisamos PAGINAR — senão os itens mais
+  // novos (ex.: Mega Brain recém-criados) ficam de fora e "somem" da tela.
+  const PAGE=1000; let all=[], from=0;
+  for(;;){
+    const {data,error}=await sb.from("offers").select("*").order("created_at",{ascending:true}).range(from,from+PAGE-1);
+    if(error){setSync("err","Erro");console.warn(error);return false;}
+    all=all.concat(data||[]);
+    if(!data||data.length<PAGE)break;
+    from+=PAGE;
+  }
+  offers=all;setSync("ok","Sincronizado");renderGrid();writeCache();return true;
 }
 async function deleteOffer(id){
   if(!requireAdmin())return;
