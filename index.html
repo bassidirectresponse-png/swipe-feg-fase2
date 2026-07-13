@@ -1748,8 +1748,10 @@ function vv(o){return Number((o.data||{}).views)||0;}
 function ve(o){return Number((o.data||{}).engajamento)||0;}
 function ttSortFn(a,b){return (TT_SORTS[tiktokSort]||TT_SORTS.views)(a,b);}
 function tiktokThumb(d){
-  if(d.thumb)return `<div class="cmedia ttmedia ttmedia--click"><img loading="lazy" decoding="async" src="${esc(d.thumb)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
-  return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:""}</div>`;
+  const dur=d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:"";
+  const alt=(d.thumbOrig&&d.thumbOrig!==d.thumb)?` data-alt="${esc(d.thumbOrig)}"`:"";
+  if(d.thumb)return `<div class="cmedia ttmedia ttmedia--click"><img class="ttthumb" loading="lazy" decoding="async" src="${esc(d.thumb)}"${alt} alt=""><span class="cmedia__play">${ic("play")}</span>${dur}</div>`;
+  return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${dur}</div>`;
 }
 function tiktokCard(o){
   const d=o.data||{};
@@ -1896,6 +1898,21 @@ function wireCardPreviews(root){
   (root||document).querySelectorAll("img.cmedia__poster").forEach(img=>{
     if(img.dataset.pw)return; img.dataset.pw="1";
     img.addEventListener("error",()=>{const box=img.closest(".cmedia");if(box){box.classList.remove("cmedia--vid");box.classList.add("cmedia--empty");box.innerHTML=ic("film")+"<span>Vídeo — abra para assistir</span>";}});
+  });
+  /* capas do TikTok: as URLs do CDN expiram (~24h). Se a imagem quebrar,
+     tenta a capa original 1x e, senão, mostra um placeholder limpo em vez
+     do texto "alt" gigante. */
+  (root||document).querySelectorAll("img.ttthumb").forEach(img=>{
+    if(img.dataset.pw)return; img.dataset.pw="1";
+    const fail=()=>{
+      if(img.dataset.alt){const u=img.dataset.alt;delete img.dataset.alt;img.src=u;return;}
+      const box=img.closest(".cmedia");if(!box)return;
+      const dur=box.querySelector(".ttdur");const durHtml=dur?dur.outerHTML:"";
+      box.classList.add("cmedia--empty");
+      box.innerHTML=`${ic("play")}<span>Prévia indisponível</span>${durHtml}`;
+    };
+    img.addEventListener("error",fail);
+    if(img.complete&&img.naturalWidth===0)fail();
   });
   (root||document).querySelectorAll("video.cmedia__vid").forEach(v=>{
     if(v.dataset.prevWired)return; v.dataset.prevWired="1";
