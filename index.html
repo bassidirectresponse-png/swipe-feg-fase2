@@ -576,49 +576,69 @@
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ===== Feguinho Copy Chief (Beta) ===== */
-  .snav--ai .snav-lbl{color:var(--accent);}
-  .scount--beta{background:var(--accent)!important;color:#0a0a06!important;font-weight:800!important;letter-spacing:.02em;}
-  .cchief{max-width:940px;margin:0 auto;padding:2px 0 40px;}
-  .cchief__guide{background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);margin-bottom:16px;overflow:hidden;}
-  .cchief__guide>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:12px 15px;font-size:.86rem;font-weight:700;color:var(--fg);user-select:none;}
+  .snav--ai{background:linear-gradient(135deg,var(--accent),#c9e21f)!important;border-color:var(--accent)!important;}
+  .snav--ai .snav-lbl,.snav--ai .ico{color:#0a0a06!important;}
+  .scount--beta{background:#0a0a06!important;color:var(--accent)!important;font-weight:800!important;letter-spacing:.03em;}
+  .cchief{max-width:1000px;margin:0 auto;padding:2px 0 64px;}
+  /* hero */
+  .cchief__hero{display:flex;align-items:center;gap:16px;margin-bottom:22px;}
+  .cchief__mark{display:grid;place-items:center;width:52px;height:52px;flex:0 0 auto;border-radius:15px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 10px 30px -10px rgba(229,255,45,.5);}
+  .cchief__mark .ico{width:26px;height:26px;}
+  .cchief__heroTitle{font-size:1.32rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;}
+  .cchief__beta{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
+  .cchief__heroTx p{margin:4px 0 0;font-size:.88rem;line-height:1.5;color:var(--muted-fg);max-width:640px;}
+  /* manual colapsável (slim) */
+  .cchief__guide{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden;}
+  .cchief__guide>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:11px 15px;font-size:.83rem;font-weight:700;color:var(--muted-fg);user-select:none;transition:.15s;}
+  .cchief__guide>summary:hover{color:var(--fg);}
   .cchief__guide>summary::-webkit-details-marker{display:none;}
-  .cchief__guide>summary .ico{width:16px;height:16px;color:var(--accent);}
-  .ccg__chev{margin-left:auto;transform:rotate(-90deg);transition:.2s;opacity:.6;}
+  .cchief__guide>summary .ico{width:15px;height:15px;color:var(--accent);}
+  .ccg__chev{margin-left:auto;transform:rotate(-90deg);transition:.2s;opacity:.55;}
   .cchief__guide[open] .ccg__chev{transform:rotate(90deg);}
-  .ccg__body{padding:0 15px 15px;}
+  .ccg__body{padding:2px 15px 16px;}
   .ccg__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-  .ccg__card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px 13px;}
+  .ccg__card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:13px 14px;}
   .ccg__t{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
   .ccg__t .ico{width:15px;height:15px;}
   .ccg__card p{font-size:.8rem;line-height:1.5;color:var(--muted-fg);margin:0 0 7px;}
   .ccg__tip{display:block;font-size:.74rem;line-height:1.4;color:var(--faint);border-left:2px solid var(--accent);padding-left:8px;}
   .ccg__foot{display:flex;align-items:flex-start;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font-size:.79rem;line-height:1.5;color:var(--muted-fg);}
   .ccg__foot .ico{width:15px;height:15px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
-  .cchief__tools{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
-  .ctool{display:flex;align-items:center;gap:11px;text-align:left;padding:13px 14px;border:1px solid var(--border-2);background:var(--surface);border-radius:var(--radius-sm);color:var(--fg);cursor:pointer;transition:.16s var(--ease);}
-  .ctool:hover{border-color:var(--border-strong);background:var(--surface-2);}
-  .ctool.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--ring);}
-  .ctool .ico{width:20px;height:20px;flex:0 0 auto;color:var(--accent);}
-  .ctool span{display:flex;flex-direction:column;gap:2px;min-width:0;}
-  .ctool b{font-size:.92rem;font-weight:700;}
-  .ctool small{font-size:.74rem;color:var(--faint);line-height:1.3;}
-  .cchief__controls{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-bottom:12px;}
-  .ccfield{display:flex;flex-direction:column;gap:6px;}
-  .ccfield>span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:600;}
-  .ccfield select{background:var(--surface-2);border:1px solid var(--border-2);color:var(--fg);border-radius:var(--radius-xs);padding:9px 12px;font:inherit;font-size:.9rem;min-width:190px;cursor:pointer;}
+  /* tool selector premium */
+  .cchief__tools{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .ctool{position:relative;display:flex;align-items:flex-start;gap:13px;text-align:left;padding:16px;border:1px solid var(--border-2);background:linear-gradient(180deg,var(--surface),var(--surface-2));border-radius:16px;color:var(--fg);cursor:pointer;transition:.18s var(--ease);}
+  .ctool:hover{border-color:var(--border-strong);transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(0,0,0,.9);}
+  .ctool.active{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent);box-shadow:0 0 0 1px var(--accent),0 16px 40px -22px rgba(229,255,45,.35);}
+  .ctool__ic{display:grid;place-items:center;width:40px;height:40px;flex:0 0 auto;border-radius:12px;background:var(--accent-dim);color:var(--accent);transition:.18s;}
+  .ctool__ic .ico{width:19px;height:19px;}
+  .ctool.active .ctool__ic{background:var(--accent);color:#0a0a06;box-shadow:0 6px 16px -6px rgba(229,255,45,.6);}
+  .ctool__tx{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .ctool__tx b{font-size:.95rem;font-weight:700;letter-spacing:-.01em;}
+  .ctool__tx small{font-size:.76rem;color:var(--faint);line-height:1.35;}
+  /* composer (input premium) */
+  .cchief__composer{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:20px;padding:18px 18px 16px;box-shadow:var(--shadow);transition:.18s var(--ease);}
+  .cchief__composer::before{content:"";position:absolute;top:0;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55;}
+  .cchief__composer:focus-within{border-color:var(--border-strong);box-shadow:0 0 0 1px var(--accent-soft),var(--shadow-lg);}
+  .composer__controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .ccfield{display:flex;flex-direction:column;gap:7px;}
+  .ccfield>span{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:700;}
+  .ccfield select{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:10px;padding:10px 13px;font:inherit;font-size:.9rem;min-width:210px;cursor:pointer;transition:.15s;}
+  .ccfield select:hover{border-color:var(--border-strong);}
   .ccfield select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
-  .ccseg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);padding:3px;gap:3px;}
-  .ccseg button{border:none;background:transparent;color:var(--muted-fg);padding:6px 16px;border-radius:6px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.14s;}
-  .ccseg button.active{background:var(--accent);color:#0a0a06;}
-  .cchief__input{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);color:var(--fg);padding:14px 16px;font:inherit;font-size:.95rem;line-height:1.55;resize:vertical;min-height:104px;}
-  .cchief__input:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
+  .ccseg{display:inline-flex;background:var(--surface-3);border:1px solid var(--border-2);border-radius:10px;padding:3px;gap:3px;}
+  .ccseg button{border:none;background:transparent;color:var(--muted-fg);padding:7px 18px;border-radius:7px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.14s;}
+  .ccseg button:hover{color:var(--fg);}
+  .ccseg button.active{background:var(--accent);color:#0a0a06;box-shadow:0 4px 12px -4px rgba(229,255,45,.5);}
+  .cchief__input{width:100%;background:transparent;border:none;color:var(--fg);padding:2px 2px;font:inherit;font-size:1rem;line-height:1.6;resize:vertical;min-height:130px;}
+  .cchief__input:focus{outline:none;}
   .cchief__input::placeholder{color:var(--faint);}
-  .cchief__actions{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;}
-  #ccRun{font-size:.95rem;padding:11px 20px;}
-  #ccRun.is-busy{opacity:.75;pointer-events:none;}
-  #ccRun.is-busy .ico{animation:spin .8s linear infinite;}
-  .cchief__hint{color:var(--faint);font-size:.8rem;line-height:1.4;flex:1;min-width:220px;}
-  .cchief__out{margin-top:26px;border-top:1px solid var(--border);padding-top:20px;}
+  .composer__foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;}
+  .cchief__hint{color:var(--faint);font-size:.8rem;line-height:1.4;flex:1;min-width:200px;}
+  .cchief__run{font-size:.95rem;font-weight:700;padding:12px 26px;border-radius:12px;box-shadow:0 12px 32px -12px rgba(229,255,45,.55);transition:.16s var(--ease);}
+  .cchief__run:hover{transform:translateY(-1px);box-shadow:0 16px 40px -12px rgba(229,255,45,.7);}
+  .cchief__run.is-busy{opacity:.7;pointer-events:none;}
+  .cchief__run.is-busy .ico{animation:spin .8s linear infinite;}
+  .cchief__out{margin-top:26px;background:var(--surface);border:1px solid var(--border-2);border-radius:20px;padding:22px 24px;box-shadow:var(--shadow);}
   .cchief__outbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
   .cchief__status{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted-fg);}
   .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
@@ -652,7 +672,7 @@
   .ccttc{font-size:.83rem;line-height:1.4;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .cctto{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--faint);margin-top:auto;}
   .cctto .ico{width:13px;height:13px;}
-  @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ctool small{display:none;}.ccg__grid{grid-template-columns:1fr;}}
+  @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ccg__grid{grid-template-columns:1fr;}.ccfield,.ccfield select{width:100%;}.composer__controls{gap:12px;}.cchief__run{width:100%;justify-content:center;}.cchief__hero{gap:12px;}.cchief__mark{width:44px;height:44px;}}
 
   /* ===== ingestão de criativo do Facebook ===== */
   .fbwork{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--accent);margin-top:2px;}
@@ -1852,7 +1872,21 @@ function renderCopyChief(){
   const area=$("#gridArea");if(!area)return;
   if($("#cchief"))return; // já montado — não destrói o trabalho em andamento
   area.innerHTML=`<div class="cchief" id="cchief">
-    <details class="cchief__guide" open>
+    <div class="cchief__hero">
+      <div class="cchief__mark">${ic("sparkles")}</div>
+      <div class="cchief__heroTx">
+        <div class="cchief__heroTitle">Feguinho Copy Chief <span class="cchief__beta">Beta</span></div>
+        <p>Escolha o modo, o nicho e o formato — o Feguinho <b>modela o que já vendeu</b> (vault + Mega Brain) e sugere hooks do Radar TikTok.</p>
+      </div>
+    </div>
+
+    <div class="cchief__tools" id="ccTools">
+      <button type="button" class="ctool active" data-tool="gerar"><span class="ctool__ic">${ic("wand")}</span><span class="ctool__tx"><b>Gerar Ad / VSL</b><small>hooks e corpo modelados nos campeões</small></span></button>
+      <button type="button" class="ctool" data-tool="dissecar"><span class="ctool__ic">${ic("scissors")}</span><span class="ctool__tx"><b>Dissecar</b><small>quebra a copy em blocos (Atlas)</small></span></button>
+      <button type="button" class="ctool" data-tool="modelar"><span class="ctool__ic">${ic("layers")}</span><span class="ctool__tx"><b>Modelar</b><small>variações a partir de um campeão</small></span></button>
+    </div>
+
+    <details class="cchief__guide">
       <summary>${ic("info")}<span>Como usar — manual rápido</span><span class="ccg__chev">${ic("back")}</span></summary>
       <div class="ccg__body">
         <div class="ccg__grid">
@@ -1863,20 +1897,19 @@ function renderCopyChief(){
         <div class="ccg__foot">${ic("zap")}<span>Escolha sempre o <b>nicho</b> e o <b>formato</b> certos — é o que define quais campeões viram base. Atalho: <b>Ctrl/⌘ + Enter</b> para gerar.</span></div>
       </div>
     </details>
-    <div class="cchief__tools" id="ccTools">
-      <button type="button" class="ctool active" data-tool="gerar">${ic("wand")}<span><b>Gerar Ad / VSL</b><small>hooks e corpo modelados nos campeões</small></span></button>
-      <button type="button" class="ctool" data-tool="dissecar">${ic("scissors")}<span><b>Dissecar</b><small>quebra a copy em blocos (Atlas)</small></span></button>
-      <button type="button" class="ctool" data-tool="modelar">${ic("layers")}<span><b>Modelar</b><small>variações a partir de um campeão</small></span></button>
+
+    <div class="cchief__composer">
+      <div class="composer__controls">
+        <label class="ccfield"><span>Nicho</span><select id="ccNicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select></label>
+        <div class="ccfield"><span>Formato</span><div class="ccseg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div></div>
+      </div>
+      <textarea id="ccInput" class="cchief__input" rows="5" placeholder=""></textarea>
+      <div class="composer__foot">
+        <span class="cchief__hint" id="ccHint"></span>
+        <button class="btn btn--accent cchief__run" id="ccRun">${ic("sparkles")}<span id="ccRunTxt">Gerar com o Feguinho</span></button>
+      </div>
     </div>
-    <div class="cchief__controls">
-      <label class="ccfield"><span>Nicho</span><select id="ccNicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select></label>
-      <div class="ccfield"><span>Formato</span><div class="ccseg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div></div>
-    </div>
-    <textarea id="ccInput" class="cchief__input" rows="4" placeholder=""></textarea>
-    <div class="cchief__actions">
-      <button class="btn btn--accent" id="ccRun">${ic("sparkles")}<span id="ccRunTxt">Gerar com o Feguinho</span></button>
-      <span class="cchief__hint" id="ccHint"></span>
-    </div>
+
     <div class="cchief__out" id="ccOut" hidden>
       <div class="cchief__outbar"><span class="cchief__status" id="ccStatus"></span><button class="btn btn--outline btn--sm" id="ccCopy">${ic("clipboard")}Copiar</button></div>
       <div class="cchief__md" id="ccMd"></div>
