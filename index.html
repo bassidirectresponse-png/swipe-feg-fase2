@@ -558,6 +558,7 @@
   .adschart{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:8px 6px;}
   .adschart .axl{fill:var(--faint);font-size:11px;font-weight:600;}
   .adschart .axv{fill:var(--accent);font-size:13px;font-weight:700;}
+  .adschart .axv--dim{fill:var(--muted-fg);font-size:11px;font-weight:600;}
   .adsmeta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:.7rem;color:var(--faint);font-weight:600;}
   .adsmeta .ico{width:12px;height:12px;}
   .adsmeta .adsupd{display:inline-flex;align-items:center;gap:5px;}
@@ -572,6 +573,85 @@
   .vidup__ok{color:var(--accent);font-weight:600;}
   .vidup__spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ===== Feguinho Copy Chief (Beta) ===== */
+  .snav--ai .snav-lbl{color:var(--accent);}
+  .scount--beta{background:var(--accent)!important;color:#0a0a06!important;font-weight:800!important;letter-spacing:.02em;}
+  .cchief{max-width:940px;margin:0 auto;padding:2px 0 40px;}
+  .cchief__guide{background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);margin-bottom:16px;overflow:hidden;}
+  .cchief__guide>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:12px 15px;font-size:.86rem;font-weight:700;color:var(--fg);user-select:none;}
+  .cchief__guide>summary::-webkit-details-marker{display:none;}
+  .cchief__guide>summary .ico{width:16px;height:16px;color:var(--accent);}
+  .ccg__chev{margin-left:auto;transform:rotate(-90deg);transition:.2s;opacity:.6;}
+  .cchief__guide[open] .ccg__chev{transform:rotate(90deg);}
+  .ccg__body{padding:0 15px 15px;}
+  .ccg__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .ccg__card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px 13px;}
+  .ccg__t{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
+  .ccg__t .ico{width:15px;height:15px;}
+  .ccg__card p{font-size:.8rem;line-height:1.5;color:var(--muted-fg);margin:0 0 7px;}
+  .ccg__tip{display:block;font-size:.74rem;line-height:1.4;color:var(--faint);border-left:2px solid var(--accent);padding-left:8px;}
+  .ccg__foot{display:flex;align-items:flex-start;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font-size:.79rem;line-height:1.5;color:var(--muted-fg);}
+  .ccg__foot .ico{width:15px;height:15px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
+  .cchief__tools{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .ctool{display:flex;align-items:center;gap:11px;text-align:left;padding:13px 14px;border:1px solid var(--border-2);background:var(--surface);border-radius:var(--radius-sm);color:var(--fg);cursor:pointer;transition:.16s var(--ease);}
+  .ctool:hover{border-color:var(--border-strong);background:var(--surface-2);}
+  .ctool.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--ring);}
+  .ctool .ico{width:20px;height:20px;flex:0 0 auto;color:var(--accent);}
+  .ctool span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .ctool b{font-size:.92rem;font-weight:700;}
+  .ctool small{font-size:.74rem;color:var(--faint);line-height:1.3;}
+  .cchief__controls{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-bottom:12px;}
+  .ccfield{display:flex;flex-direction:column;gap:6px;}
+  .ccfield>span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:600;}
+  .ccfield select{background:var(--surface-2);border:1px solid var(--border-2);color:var(--fg);border-radius:var(--radius-xs);padding:9px 12px;font:inherit;font-size:.9rem;min-width:190px;cursor:pointer;}
+  .ccfield select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
+  .ccseg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);padding:3px;gap:3px;}
+  .ccseg button{border:none;background:transparent;color:var(--muted-fg);padding:6px 16px;border-radius:6px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.14s;}
+  .ccseg button.active{background:var(--accent);color:#0a0a06;}
+  .cchief__input{width:100%;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);color:var(--fg);padding:14px 16px;font:inherit;font-size:.95rem;line-height:1.55;resize:vertical;min-height:104px;}
+  .cchief__input:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
+  .cchief__input::placeholder{color:var(--faint);}
+  .cchief__actions{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;}
+  #ccRun{font-size:.95rem;padding:11px 20px;}
+  #ccRun.is-busy{opacity:.75;pointer-events:none;}
+  #ccRun.is-busy .ico{animation:spin .8s linear infinite;}
+  .cchief__hint{color:var(--faint);font-size:.8rem;line-height:1.4;flex:1;min-width:220px;}
+  .cchief__out{margin-top:26px;border-top:1px solid var(--border);padding-top:20px;}
+  .cchief__outbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+  .cchief__status{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted-fg);}
+  .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
+  .ccdot--on{background:var(--accent);animation:ccpulse 1s ease-in-out infinite;}
+  .ccdot--done{background:var(--accent);}
+  @keyframes ccpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+  .cchief__md{font-size:.95rem;line-height:1.65;color:var(--fg);word-wrap:break-word;}
+  .cchief__md h3{font-size:1.28rem;margin:22px 0 10px;color:var(--accent);letter-spacing:-.01em;}
+  .cchief__md h4{font-size:1.08rem;margin:20px 0 8px;color:var(--fg);}
+  .cchief__md h5,.cchief__md h6{font-size:.96rem;margin:16px 0 6px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;}
+  .cchief__md p{margin:0 0 12px;}
+  .cchief__md ul,.cchief__md ol{margin:0 0 14px;padding-left:22px;}
+  .cchief__md li{margin:4px 0;}
+  .cchief__md strong{color:#fff;font-weight:700;}
+  .cchief__md code{background:var(--surface-3);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.86em;color:var(--accent);}
+  .cchief__md blockquote{border-left:3px solid var(--accent);background:var(--accent-soft);margin:0 0 14px;padding:10px 16px;border-radius:0 8px 8px 0;color:var(--muted-fg);}
+  .cchief__md hr{border:none;border-top:1px solid var(--border);margin:20px 0;}
+  .ccmd-tblwrap{overflow-x:auto;margin:0 0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);}
+  .ccmd-tbl{border-collapse:collapse;width:100%;font-size:.86rem;min-width:420px;}
+  .ccmd-tbl th{background:var(--surface-2);color:var(--accent);text-align:left;padding:9px 12px;font-weight:700;border-bottom:1px solid var(--border-2);white-space:nowrap;}
+  .ccmd-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--fg);}
+  .ccmd-tbl tr:last-child td{border-bottom:none;}
+  .ccerr{background:var(--red-soft);border:1px solid rgba(255,93,93,.3);color:#ffb3b3;padding:14px 16px;border-radius:var(--radius-sm);font-size:.9rem;}
+  .cchief__tt{margin-top:26px;}
+  .cchief__tthead{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:700;color:var(--muted-fg);margin-bottom:12px;}
+  .cchief__tthead .ico{width:16px;height:16px;color:var(--native);}
+  .cchief__ttgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;}
+  .ccttcard{display:flex;flex-direction:column;gap:8px;padding:13px;border:1px solid var(--border-2);background:var(--surface);border-radius:var(--radius-sm);color:var(--fg);text-decoration:none;transition:.15s var(--ease);}
+  .ccttcard:hover{border-color:var(--native);background:var(--surface-2);transform:translateY(-2px);}
+  .ccttv{font-size:.72rem;font-weight:700;color:var(--native);letter-spacing:.02em;}
+  .ccttc{font-size:.83rem;line-height:1.4;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .cctto{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--faint);margin-top:auto;}
+  .cctto .ico{width:13px;height:13px;}
+  @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ctool small{display:none;}.ccg__grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -729,6 +809,7 @@ const SECTIONS=[
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"criativo",label:"Swipe Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos vencedores</b> — vídeo, transcrição e link do anúncio, por nicho e plataforma (Meta Ads e Taboola).'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
+  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'}
 ];
@@ -778,7 +859,11 @@ const ICONS={
   message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
   clock:'<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
   user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
-  dollar:'<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>'
+  dollar:'<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
+  sparkles:'<path d="M12 3l1.9 4.8L18.7 9l-4.8 1.9L12 15.7 10.1 10.9 5.3 9l4.8-1.2L12 3Z"></path><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z"></path><path d="M5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8L2.5 16.5l1.8-.7L5 14Z"></path>',
+  wand:'<path d="M15 4V2"></path><path d="M15 10V8"></path><path d="M12.5 6.5H10.5"></path><path d="M19.5 6.5H17.5"></path><path d="M3 21l12-12"></path><path d="M12.5 9.5l2 2"></path>',
+  scissors:'<circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line>',
+  clipboard:'<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -920,6 +1005,8 @@ function filtered(){
 }
 function renderNicheBar(){
   const bar=$("#nicheBar");if(!bar)return;
+  if(activeSection==="copychief"){bar.innerHTML="";bar.style.display="none";return;}
+  bar.style.display="";
   const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
   const counts=new Map();let none=0;
   secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}counts.set(n,(counts.get(n)||0)+1);});
@@ -959,21 +1046,31 @@ function adsChartSvg(hist){
   const pts=hist.slice(-30);
   if(!pts.length)return`<div class="muted-empty">Sem histórico ainda — será preenchido automaticamente a cada atualização do robô.</div>`;
   if(pts.length<2)return`<div class="muted-empty">Apenas 1 leitura até agora (${fmtNum(pts[0].n)} anúncios em ${fmtDateShort(pts[0].d)}). O gráfico aparece a partir da 2ª leitura.</div>`;
-  const w=700,h=230,padL=54,padR=22,padT=18,padB=34;
+  const w=720,h=252,padL=54,padR=26,padT=30,padB=40;
   const ns=pts.map(p=>p.n);let mn=Math.min(...ns),mx=Math.max(...ns);if(mn===mx){mn=Math.max(0,mn-1);mx=mx+1;}
   const iw=w-padL-padR,ih=h-padT-padB,li=pts.length-1;
   const X=i=>padL+i*iw/li,Y=n=>padT+ih-((n-mn)/(mx-mn))*ih;
   let grid="",ylab="";const G=4;
   for(let g=0;g<=G;g++){const v=mn+(mx-mn)*g/G,y=Y(v);grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="var(--border)"/>`;ylab+=`<text x="${padL-8}" y="${(y+4).toFixed(1)}" text-anchor="end" class="axl">${kfmt(v)}</text>`;}
-  let xlab="";const step=Math.max(1,Math.floor(li/4));
-  for(let i=0;i<=li;i+=step)xlab+=`<text x="${X(i).toFixed(1)}" y="${h-12}" text-anchor="middle" class="axl">${fmtDateShort(pts[i].d)}</text>`;
-  if(li%step!==0)xlab+=`<text x="${X(li).toFixed(1)}" y="${h-12}" text-anchor="middle" class="axl">${fmtDateShort(pts[li].d)}</text>`;
+  // rótulos de valor/data só num subconjunto de pontos quando há muitos (evita poluição)
+  const step=pts.length<=12?1:Math.ceil(li/11);
+  const labeled=i=>i===0||i===li||i%step===0;
   const line=pts.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ");
   const area=`M${X(0).toFixed(1)} ${(padT+ih).toFixed(1)} `+pts.map((p,i)=>"L"+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ")+` L${X(li).toFixed(1)} ${(padT+ih).toFixed(1)} Z`;
-  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.n).toFixed(1)}" r="${i===li?3.4:2.1}" fill="${i===li?'var(--accent)':'var(--bg-2)'}" stroke="var(--accent)" stroke-width="1.5"><title>${fmtDateShort(p.d)}: ${fmtNum(p.n)} ads</title></circle>`).join("");
-  const lastX=X(li),edge=lastX>w-padR-34,lx=edge?lastX-6:lastX,anchor=edge?"end":"middle";
-  const lastLabel=`<text x="${lx.toFixed(1)}" y="${(Y(pts[li].n)-9).toFixed(1)}" text-anchor="${anchor}" class="axv">${fmtNum(pts[li].n)}</text>`;
-  return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por dia">${grid}${ylab}<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>${dots}${xlab}${lastLabel}</svg>`;
+  // marca CADA análise no gráfico + rótulo do nº de ads e do dia da leitura
+  let marks="",vlab="",xlab="";
+  pts.forEach((p,i)=>{
+    const x=X(i),y=Y(p.n),last=i===li;
+    marks+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?4.2:3}" fill="${last?'var(--accent)':'var(--bg-2)'}" stroke="var(--accent)" stroke-width="1.6"><title>${fmtDateShort(p.d)}: ${fmtNum(p.n)} ads ativos</title></circle>`;
+    if(labeled(i)){
+      const edge=x>w-padR-30,near=x<padL+22;
+      const lx=edge?x-6:(near?x+6:x),anchor=edge?"end":(near?"start":"middle");
+      const ly=Math.max(padT-8,y-11);
+      vlab+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="axv${last?"":" axv--dim"}">${fmtNum(p.n)}</text>`;
+      xlab+=`<text x="${x.toFixed(1)}" y="${h-14}" text-anchor="middle" class="axl">${fmtDateShort(p.d)}</text>`;
+    }
+  });
+  return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise">${grid}${ylab}<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
 }
 
 function cardHtml(o){
@@ -1060,6 +1157,7 @@ function renderGrid(){
   renderNicheBar();
   renderSubFilter();
   setSectionHeader();
+  if(activeSection==="copychief"){renderCopyChief();return;}
   const cfg=sectionCfg(activeSection);
   const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
@@ -1639,7 +1737,7 @@ function renderSectionNav(){
   const nav=$("#sectionNav");if(!nav)return;
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
   offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});
-  nav.innerHTML=SECTIONS.map(s=>`<button class="snav${activeSection===s.key?" active":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav-lbl">${esc(s.label)}</span><span class="scount">${counts[s.key]||0}</span></button>`).join("");
+  nav.innerHTML=SECTIONS.map(s=>{const chip=s.key==="copychief"?`<span class="scount scount--beta">Beta</span>`:`<span class="scount">${counts[s.key]||0}</span>`;return `<button class="snav${activeSection===s.key?" active":""}${s.key==="copychief"?" snav--ai":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav-lbl">${esc(s.label)}</span>${chip}</button>`;}).join("");
   $$(".snav",nav).forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.section)));
   syncSecNav();
 }
@@ -1653,13 +1751,20 @@ function switchSection(key){
 }
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
+  const cc=activeSection==="copychief";
   const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
+  const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
+  const nbt=$("#newBtn");if(nbt)nbt.style.display=cc?"none":"";
+  const nt=$("#nicheToggle");if(nt)nt.style.display=cc?"none":"";
+  const sw=$(".topbar .search");if(sw)sw.style.display=cc?"none":"";
+  if(cc)return;
   const lbl=$("#statLabel");if(lbl)lbl.textContent=cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;
 }
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
+  if(activeSection==="copychief"){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="tiktok"){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
@@ -1679,6 +1784,135 @@ function renderSubFilter(){
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
   el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>`;
   $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;renderGrid();}));
+}
+
+/* ===== FEGUINHO COPY CHIEF (Beta) ===== */
+const FEGUINHO_FN="/.netlify/functions/feguinho";
+let ccTool="gerar", ccFmt="anuncio", ccBusy=false;
+const CC_TOOLS={
+  gerar:{ph:"Descreva a ideia, o mecanismo ou o ângulo. Ex: “sal amargo japonês tomado antes do café que destrava o metabolismo lento depois dos 40”.",
+    hint:"Extrai os padrões dos campeões e entrega hooks + corpo (ou estrutura de VSL) no mesmo DNA.",cta:"Gerar com o Feguinho"},
+  dissecar:{ph:"Cole aqui a copy do anúncio (ou o roteiro da VSL) que você quer dissecar bloco a bloco.",
+    hint:"Quebra a copy em blocos (Lead, História/Descoberta, Mecanismo do problema/solução, Oferta, Fechamento) pelo método Atlas.",cta:"Dissecar copy"},
+  modelar:{ph:"Cole o criativo campeão (ou descreva-o) que você quer usar de molde para gerar variações.",
+    hint:"Gera variações mantendo o esqueleto vencedor — indicando de qual campeão veio cada estrutura.",cta:"Modelar variações"}
+};
+function ccNorm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");}
+function ccMega(nicho){const nz=ccNorm(nicho);
+  return offers.filter(o=>(o.data||{}).kind==="megabrain"&&ccNorm(o.data.nicho)===nz)
+    .sort((a,b)=>(Number((b.data||{}).metricaValor)||0)-(Number((a.data||{}).metricaValor)||0)).slice(0,6)
+    .map(o=>{const d=o.data||{};return{nome:d.nome||"",autor:d.autor||"",tipo:d.metricaTipo||"vendas",valor:d.metricaValor||"",copy:(d.copy||d.transcricao||"").slice(0,600)};});}
+function ccTiktok(nicho){const nz=ccNorm(nicho);
+  return offers.filter(o=>(o.data||{}).kind==="tiktok"&&ccNorm(o.data.nicho)===nz)
+    .sort((a,b)=>(Number((b.data||{}).views)||0)-(Number((a.data||{}).views)||0)).slice(0,6)
+    .map(o=>{const d=o.data||{};return{cap:(d.caption||d.nome||"").slice(0,140),views:Number(d.views)||0,eng:Number(d.engajamento)||0,url:d.url||""};});}
+
+function ccInline(s){s=esc(s);s=s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");s=s.replace(/`([^`]+)`/g,"<code>$1</code>");return s;}
+function ccMarkdown(src){
+  const lines=String(src||"").replace(/\r/g,"").split("\n");let html="",i=0;
+  const isTbl=l=>/^\s*\|.*\|\s*$/.test(l),isSep=l=>l.includes("-")&&/^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(l);
+  while(i<lines.length){let l=lines[i];
+    if(!l.trim()){i++;continue;}
+    let m=l.match(/^(#{1,6})\s+(.*)$/);
+    if(m){const lv=Math.min(m[1].length+2,6);html+=`<h${lv}>${ccInline(m[2])}</h${lv}>`;i++;continue;}
+    if(/^\s*([-*_])\1\1[\s-*_]*$/.test(l)){html+="<hr>";i++;continue;}
+    if(isTbl(l)&&i+1<lines.length&&isSep(lines[i+1])){
+      const head=l.split("|").slice(1,-1).map(c=>c.trim());i+=2;const rows=[];
+      while(i<lines.length&&isTbl(lines[i])){rows.push(lines[i].split("|").slice(1,-1).map(c=>c.trim()));i++;}
+      html+=`<div class="ccmd-tblwrap"><table class="ccmd-tbl"><thead><tr>${head.map(c=>`<th>${ccInline(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${ccInline(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;continue;}
+    if(/^\s*>\s?/.test(l)){const q=[];while(i<lines.length&&/^\s*>\s?/.test(lines[i])){q.push(lines[i].replace(/^\s*>\s?/,""));i++;}html+=`<blockquote>${ccInline(q.join(" "))}</blockquote>`;continue;}
+    if(/^\s*[-*+]\s+/.test(l)){const it=[];while(i<lines.length&&/^\s*[-*+]\s+/.test(lines[i])){it.push(lines[i].replace(/^\s*[-*+]\s+/,""));i++;}html+=`<ul>${it.map(t=>`<li>${ccInline(t)}</li>`).join("")}</ul>`;continue;}
+    if(/^\s*\d+[.)]\s+/.test(l)){const it=[];while(i<lines.length&&/^\s*\d+[.)]\s+/.test(lines[i])){it.push(lines[i].replace(/^\s*\d+[.)]\s+/,""));i++;}html+=`<ol>${it.map(t=>`<li>${ccInline(t)}</li>`).join("")}</ol>`;continue;}
+    const para=[l];i++;
+    while(i<lines.length&&lines[i].trim()&&!/^(#{1,6}\s|\s*[-*+]\s|\s*\d+[.)]\s|\s*>\s|\s*\|)/.test(lines[i])){para.push(lines[i]);i++;}
+    html+=`<p>${ccInline(para.join(" "))}</p>`;
+  }
+  return html;
+}
+function ccApplyTool(){
+  const t=CC_TOOLS[ccTool]||CC_TOOLS.gerar;
+  const inp=$("#ccInput");if(inp)inp.placeholder=t.ph;
+  const hint=$("#ccHint");if(hint)hint.textContent=t.hint;
+  const run=$("#ccRunTxt");if(run)run.textContent=t.cta;
+  $$("#ccTools .ctool").forEach(b=>b.classList.toggle("active",b.dataset.tool===ccTool));
+}
+function renderCopyChief(){
+  const area=$("#gridArea");if(!area)return;
+  if($("#cchief"))return; // já montado — não destrói o trabalho em andamento
+  area.innerHTML=`<div class="cchief" id="cchief">
+    <details class="cchief__guide" open>
+      <summary>${ic("info")}<span>Como usar — manual rápido</span><span class="ccg__chev">${ic("back")}</span></summary>
+      <div class="ccg__body">
+        <div class="ccg__grid">
+          <div class="ccg__card"><div class="ccg__t">${ic("wand")}Gerar Ad / VSL</div><p>Dê um <b>mecanismo, ângulo ou ideia</b> e receba hooks + corpo (ou estrutura de VSL) <b>clonados dos criativos com mais vendas</b> do vault e do Mega Brain.</p><span class="ccg__tip">Quanto mais específico o mecanismo, melhor o clone.</span></div>
+          <div class="ccg__card"><div class="ccg__t">${ic("scissors")}Dissecar</div><p>Cole um <b>anúncio ou VSL</b> e ele quebra em blocos (Lead · História · Mecanismo do problema/solução · Oferta · Fechamento) pelo <b>método Atlas</b>, nomeando cada técnica.</p><span class="ccg__tip">Ideal pra engenharia reversa de campeões do concorrente.</span></div>
+          <div class="ccg__card"><div class="ccg__t">${ic("layers")}Modelar</div><p>Cole um <b>criativo campeão</b> e receba <b>variações</b> mantendo o esqueleto vencedor — cada uma com um ângulo novo, dizendo de qual campeão veio.</p><span class="ccg__tip">Perfeito pra escalar um criativo que já validou.</span></div>
+        </div>
+        <div class="ccg__foot">${ic("zap")}<span>Escolha sempre o <b>nicho</b> e o <b>formato</b> certos — é o que define quais campeões viram base. Atalho: <b>Ctrl/⌘ + Enter</b> para gerar.</span></div>
+      </div>
+    </details>
+    <div class="cchief__tools" id="ccTools">
+      <button type="button" class="ctool active" data-tool="gerar">${ic("wand")}<span><b>Gerar Ad / VSL</b><small>hooks e corpo modelados nos campeões</small></span></button>
+      <button type="button" class="ctool" data-tool="dissecar">${ic("scissors")}<span><b>Dissecar</b><small>quebra a copy em blocos (Atlas)</small></span></button>
+      <button type="button" class="ctool" data-tool="modelar">${ic("layers")}<span><b>Modelar</b><small>variações a partir de um campeão</small></span></button>
+    </div>
+    <div class="cchief__controls">
+      <label class="ccfield"><span>Nicho</span><select id="ccNicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select></label>
+      <div class="ccfield"><span>Formato</span><div class="ccseg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div></div>
+    </div>
+    <textarea id="ccInput" class="cchief__input" rows="4" placeholder=""></textarea>
+    <div class="cchief__actions">
+      <button class="btn btn--accent" id="ccRun">${ic("sparkles")}<span id="ccRunTxt">Gerar com o Feguinho</span></button>
+      <span class="cchief__hint" id="ccHint"></span>
+    </div>
+    <div class="cchief__out" id="ccOut" hidden>
+      <div class="cchief__outbar"><span class="cchief__status" id="ccStatus"></span><button class="btn btn--outline btn--sm" id="ccCopy">${ic("clipboard")}Copiar</button></div>
+      <div class="cchief__md" id="ccMd"></div>
+      <div class="cchief__tt" id="ccTt"></div>
+    </div>
+  </div>`;
+  ccApplyTool();
+  $$("#ccTools .ctool").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccTool=b.dataset.tool;ccApplyTool();}));
+  $$("#ccFormato button").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccFmt=b.dataset.fmt;$$("#ccFormato button").forEach(x=>x.classList.toggle("active",x===b));}));
+  $("#ccRun").addEventListener("click",ccRun);
+  $("#ccInput").addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter")ccRun();});
+  $("#ccCopy").addEventListener("click",()=>{const t=$("#ccMd");if(!t)return;navigator.clipboard.writeText(t.innerText||"").then(()=>toast("Copiado ✓"));});
+}
+async function ccRun(){
+  if(ccBusy)return;
+  const input=($("#ccInput").value||"").trim();
+  if(!input){toast("Escreva algo para o Feguinho trabalhar",true);$("#ccInput").focus();return;}
+  const nicho=$("#ccNicho").value;
+  ccBusy=true;
+  const btn=$("#ccRun");btn.disabled=true;btn.classList.add("is-busy");
+  const out=$("#ccOut"),md=$("#ccMd"),status=$("#ccStatus"),tt=$("#ccTt");
+  out.hidden=false;md.innerHTML="";tt.innerHTML="";status.innerHTML=`<span class="ccdot"></span>Conectando…`;
+  out.scrollIntoView({behavior:"smooth",block:"nearest"});
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  let acc="",gotAny=false,errMsg="";
+  try{
+    const res=await fetch(FEGUINHO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({tool:ccTool,nicho,formato:ccFmt,input,mega:ccMega(nicho),tiktok:ccTiktok(nicho)})});
+    if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+    for(;;){const {done,value}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let nl;
+      while((nl=buf.indexOf("\n"))>=0){const line=buf.slice(0,nl);buf=buf.slice(nl+1);
+        if(!line.trim())continue;let ev;try{ev=JSON.parse(line);}catch(e){continue;}
+        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=ccMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;}
+        else if(ev.t==="meta"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Analisando os campeões${ev.sources?` · ${(ev.sources.ads||0)} ads · ${(ev.sources.mega||0)} do brain · ${(ev.sources.tiktok||0)} TikTok`:""}…`;}
+        else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Feguinho está pensando…`;}
+        else if(ev.t==="error"){errMsg=ev.v||"erro";}
+      }
+    }
+  }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
+  ccBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
+  if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"o Feguinho não respondeu — tente de novo")}</div>`;status.innerHTML="";}
+  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
+  if(gotAny&&ccTool==="gerar"){const hooks=ccTiktok(nicho);
+    if(hooks.length)tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
+      hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
+  }
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
