@@ -131,6 +131,7 @@
 
   /* ===== shell + sidebar de nichos ===== */
   .shell{display:grid;grid-template-columns:var(--side-w) 1fr;align-items:start;}
+  .shell--full{grid-template-columns:1fr;}   /* seções sem barra de nichos (ex.: Feguinho) ocupam tudo */
   .main{min-width:0;}
   .nichebar{position:sticky;top:calc(var(--topbar-h) + var(--secnav-h));align-self:start;max-height:calc(100vh - var(--topbar-h) - var(--secnav-h));overflow-y:auto;border-right:1px solid var(--border);padding:24px 14px 50px;display:flex;flex-direction:column;gap:3px;}
   .nichebar__title{display:flex;align-items:center;gap:8px;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;padding:2px 10px 14px;}
@@ -818,9 +819,9 @@ const SECTIONS=[
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"criativo",label:"Swipe Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos vencedores</b> — vídeo, transcrição e link do anúncio, por nicho e plataforma (Meta Ads e Taboola).'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
-  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
-  {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'}
+  {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
+  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'}
 ];
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
@@ -1762,6 +1763,7 @@ function switchSection(key){
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=activeSection==="copychief";
+  const shell=$(".shell");if(shell)shell.classList.toggle("shell--full",cc);
   const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc?"none":"";
