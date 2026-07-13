@@ -36,7 +36,19 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
 
 // ---------- helpers ----------
-const clip = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n) + "…" : s; };
+// Remove surrogates órfãos (emoji cortado ao meio / dado corrompido) — senão a API
+// do Claude rejeita com "no low surrogate in string" (HTTP 400). Legendas do TikTok
+// vêm cheias de emoji, e cortar por tamanho pode partir um par de surrogates.
+const clean = (s) => String(s == null ? "" : s)
+  .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+  .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+const clip = (s, n) => {
+  s = clean(String(s == null ? "" : s));
+  if (s.length <= n) return s;
+  let c = s.slice(0, n);
+  if (/[\uD800-\uDBFF]$/.test(c)) c = c.slice(0, -1); // não termina no meio de um emoji
+  return c + "…";
+};
 const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const esc = (s) => String(s == null ? "" : s);
 
@@ -183,7 +195,8 @@ export default async (req) => {
   // sem streamar (e, com max_tokens baixo, chega a consumir tudo e voltar vazio). Desligado,
   // o texto começa em ~1,5s — essencial pro streaming não estourar o timeout da Netlify.
   // A análise dos campeões continua acontecendo no TEXTO (o prompt força a tabela de padrões).
-  const payload = { model, max_tokens, system, stream: true, thinking: { type: "disabled" }, messages: [{ role: "user", content: user }] };
+  // clean() final: garante que NENHUM surrogate órfão chegue ao JSON.stringify → Claude
+  const payload = { model, max_tokens, system: clean(system), stream: true, thinking: { type: "disabled" }, messages: [{ role: "user", content: clean(user) }] };
 
   const stream = new ReadableStream({
     async start(controller) {
