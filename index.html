@@ -652,6 +652,15 @@
   .cctto{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--faint);margin-top:auto;}
   .cctto .ico{width:13px;height:13px;}
   @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ctool small{display:none;}.ccg__grid{grid-template-columns:1fr;}}
+
+  /* ===== ingestão de criativo do Facebook ===== */
+  .fbwork{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--accent);margin-top:2px;}
+  .fbwork .ico{width:14px;height:14px;animation:fbpulse 1.1s ease-in-out infinite;}
+  @keyframes fbpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .fbnote{display:flex;align-items:flex-start;gap:7px;margin-top:10px;font-size:.8rem;line-height:1.45;color:var(--muted-fg);background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);padding:9px 11px;}
+  .fbnote .ico{width:15px;height:15px;flex:0 0 auto;margin-top:1px;color:var(--accent);}
+  .fbnote--err{color:#ffb3b3;background:var(--red-soft);border-color:rgba(255,93,93,.3);}
+  .fbnote--err .ico{color:var(--red);}
 </style>
 </head>
 <body>
@@ -863,7 +872,8 @@ const ICONS={
   sparkles:'<path d="M12 3l1.9 4.8L18.7 9l-4.8 1.9L12 15.7 10.1 10.9 5.3 9l4.8-1.2L12 3Z"></path><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z"></path><path d="M5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8L2.5 16.5l1.8-.7L5 14Z"></path>',
   wand:'<path d="M15 4V2"></path><path d="M15 10V8"></path><path d="M12.5 6.5H10.5"></path><path d="M19.5 6.5H17.5"></path><path d="M3 21l12-12"></path><path d="M12.5 9.5l2 2"></path>',
   scissors:'<circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line>',
-  clipboard:'<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>'
+  clipboard:'<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -1951,11 +1961,15 @@ function criativoCard(o){
   const va=videoOfCrv(d);
   const hasVid=!!va&&!tab;
   const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):""].filter(Boolean).join("");
+  const st=fbStatusOf(o);
+  const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
+  const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
+  const fbwork=st==="working"?`<div class="fbwork">${ic("download")}Baixando criativo do Facebook…</div>`:"";
   return `<article class="card kcard" data-id="${o.id}">
     <div class="card__head">${badge}<span class="ktag">${ic("play")}Criativo</span></div>
     ${mediaThumb(d.print,d.nome,hasVid,hasVid?va:"")}
     <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
-    ${nicheChip(d)}
+    ${chips}${fbwork}
     <div class="card__actions">${acts||emptyActions()}</div>
   </article>`;
 }
@@ -2225,6 +2239,65 @@ async function requestInstantTranscription(offerId,videoUrl){
   toast(done?"Transcrição pronta ✓":"Transcrevendo em segundo plano — aparece aqui em instantes.");
 }
 
+/* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (Apify → Storage) ===== */
+const FB_INGEST_FN="/.netlify/functions/fb-ingest-background";
+const fbIngesting=new Set();
+function isFbUrl(u){return /facebook\.com|fb\.com|fb\.watch/i.test(String(u||""));}
+function fbStatusOf(o){const d=(o&&o.data)||{};return fbIngesting.has(o.id)?"working":(d.fbIngestStatus||"");}
+function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
+/* lê a linha no Supabase até a ingestão do FB terminar (a background function grava lá) */
+async function pollFbIngest(offerId,tries,intervalMs){
+  for(let i=0;i<tries;i++){
+    await new Promise(r=>setTimeout(r,intervalMs));
+    try{
+      const {data,error}=await sb.from("offers").select("data").eq("id",offerId).single();
+      const d=data&&data.data;
+      if(!error&&d&&d.fbIngestStatus&&d.fbIngestStatus!=="working"){
+        const o=offers.find(x=>x.id===offerId);
+        if(o)Object.assign(o.data,{video:d.video||o.data.video,fbIngestStatus:d.fbIngestStatus,fbDaysActive:d.fbDaysActive,fbActive:d.fbActive,fbStartDate:d.fbStartDate,fbEndDate:d.fbEndDate,fbPageName:d.fbPageName,fbMetrics:d.fbMetrics,fbIngestError:d.fbIngestError,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
+        return d.fbIngestStatus;
+      }
+    }catch(e){}
+  }
+  return "";
+}
+async function triggerFbIngest(offerId,adUrl){
+  const o=offers.find(x=>x.id===offerId);if(!o)return;
+  adUrl=adUrl||(o.data||{}).linkAnuncio;
+  if(!isFbUrl(adUrl)){toast("Cole o link do anúncio do Facebook primeiro.",true);return;}
+  if(fbIngesting.has(offerId))return;
+  fbIngesting.add(offerId);
+  o.data=o.data||{};o.data.fbIngestStatus="working";o.data.fbIngestError="";
+  const viewOpen=()=>currentSimpleId===offerId&&$("#viewOverlay").classList.contains("open");
+  if(viewOpen())openSimpleView(o,true);
+  renderGrid();
+  toast("Baixando o criativo do Facebook…");
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  try{await fetch(FB_INGEST_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,adUrl})});}catch(e){}
+  const status=await pollFbIngest(offerId,60,4000);   // até ~4min
+  fbIngesting.delete(offerId);
+  const cur=offers.find(x=>x.id===offerId)||o;
+  if(!status)cur.data.fbIngestStatus="pending";
+  renderGrid();writeCache();
+  if(viewOpen())openSimpleView(cur,true);
+  if(status==="done"){
+    toast("Criativo do Facebook salvo ✓");
+    const v=videoForOffer(cur),emb=v?videoEmbedUrl(v):null;
+    if(emb&&emb.type==="video"&&!((cur.data.transcricao||"").trim()))requestInstantTranscription(offerId,v);
+  }else if(status==="partial")toast("Peguei os dados do anúncio, mas não o vídeo — veja a observação no card.",true);
+  else if(status==="error")toast("Falha no Facebook: "+((cur.data||{}).fbIngestError||"tente de novo"),true);
+  else toast("Processando em segundo plano — aparece aqui em instantes.");
+}
+function fbIngestControl(o){
+  const d=o.data||{};
+  if(d.kind!=="criativo"||!isFbUrl(d.linkAnuncio))return"";
+  const st=fbStatusOf(o),working=st==="working";
+  const btn=isAdmin?`<button class="btn btn--outline btn--sm" data-fbingest="${o.id}"${working?" disabled":""}>${ic("download")}${working?"Baixando do Facebook…":(d.video?"Rebaixar do Facebook":"Baixar criativo do Facebook")}</button>`:"";
+  const note=st==="partial"?`<div class="fbnote">${ic("alert")}Dados do anúncio salvos, mas o vídeo não pôde ser baixado${d.fbIngestError?` (${esc(d.fbIngestError)})`:""}.</div>`
+    :st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
+  return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
+}
+
 /* ===== VIEW DOS NOVOS SWIPES ===== */
 function openSimpleView(o,skipOpen){
   currentSimpleId=o.id;
@@ -2236,7 +2309,12 @@ function openSimpleView(o,skipOpen){
   const kvs=[];
   if(d.nicho)kvs.push(`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`);
   if(kind==="presell")kvs.push(`<div class="kv"><div class="k">Origem</div><div class="v">${d.tipoTrafego==="native"?"Native · Taboola":"Meta Ads"}</div></div>`);
-  if(kind==="criativo")kvs.push(`<div class="kv"><div class="k">Plataforma</div><div class="v">${d.plataforma==="taboola"?"Taboola":"Meta Ads"}</div></div>`);
+  if(kind==="criativo"){
+    kvs.push(`<div class="kv"><div class="k">Plataforma</div><div class="v">${d.plataforma==="taboola"?"Taboola":"Meta Ads"}</div></div>`);
+    if(d.fbDaysActive!=null)kvs.push(`<div class="kv"><div class="k">No ar (Facebook)</div><div class="v" style="color:var(--accent)">${esc(fbDaysText(d))}</div></div>`);
+    if(d.fbPageName)kvs.push(`<div class="kv"><div class="k">Página</div><div class="v">${esc(d.fbPageName)}</div></div>`);
+    if(d.fbMetrics&&d.fbMetrics.impressions!=null)kvs.push(`<div class="kv"><div class="k">Impressões (FB)</div><div class="v">${esc(String(d.fbMetrics.impressions))}</div></div>`);
+  }
   if(kind==="noticia"){
     if(d.fonte)kvs.push(`<div class="kv"><div class="k">Fonte</div><div class="v">${esc(d.fonte)}</div></div>`);
     if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Data</div><div class="v">${relDate(d.dataPub)}</div></div>`);
@@ -2258,6 +2336,7 @@ function openSimpleView(o,skipOpen){
     const va=videoOfCrv(d);
     const btns=[d.linkAnuncio?linkbtn("Abrir anúncio",d.linkAnuncio,true,"external"):"",va?linkbtn("Abrir vídeo",va,false,"play"):""].filter(Boolean).join("");
     if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
+    mainLink+=fbIngestControl(o);
   }
   if(kind==="noticia"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir notícia",d.link,true,"external")}</div>`;
   if(kind==="tiktok"&&d.url)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir no TikTok",d.url,true,"external")}</div>`;
@@ -2341,6 +2420,7 @@ function openSimpleView(o,skipOpen){
   ${asideHtml}</div>`;
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
+  $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
 }
@@ -2464,7 +2544,9 @@ function renderSimpleForm(){
       </div>
       ${nomeField}
       <div class="row">${nichoField}${marcaField}</div>
-      <div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}"></div>
+      <div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
+        <div class="fsec__hint" style="margin-top:8px">Se for um link de <b>anúncio do Facebook</b>, ao salvar o criativo é baixado automaticamente (vídeo salvo no acervo + "ativo há X dias"). Views/likes não são públicos nos anúncios do FB.</div>
+      </div>
     </div>
     <div class="fsec only-video">
       <div class="fsec__title"><span class="num">02</span> Vídeo do criativo</div>
@@ -2577,6 +2659,9 @@ async function saveSimpleForm(){
   const savedId=sEditingId, saved=offers.find(o=>o.id===savedId);
   if(saved){const v=videoForOffer(saved),emb=v?videoEmbedUrl(v):null;
     if(emb&&emb.type==="video"&&!((saved.data.transcricao||"").trim()))requestInstantTranscription(savedId,v);}
+  // criativo com link do Facebook e sem vídeo ainda → baixa o criativo automaticamente
+  if(saved&&saved.data.kind==="criativo"&&isFbUrl(saved.data.linkAnuncio)&&!((saved.data.video||"").trim())&&!saved.data.fbIngestStatus&&!fbIngesting.has(savedId))
+    triggerFbIngest(savedId,saved.data.linkAnuncio);
   return true;
 }
 function attemptCloseSimpleForm(){if(!sFormDirty){closeOverlay("#simpleFormOverlay");return;}pendingCloseForm="simple";openOverlay("#confirmOverlay");}

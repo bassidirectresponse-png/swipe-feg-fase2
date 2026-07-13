@@ -21,7 +21,7 @@ Env:
   SUPABASE_BOT_EMAIL, SUPABASE_BOT_PASSWORD (obrigatórias, exceto --dry)
   PROVIDER=tikwm
   ENSEMBLE_TOKEN / APIFY_TOKEN (conforme o provedor)
-  MAX_PER_NICHE=40   MAX_AGE_DAYS=45   PER_KEYWORD=30
+  MAX_PER_NICHE=12   MAX_AGE_DAYS=45   PER_KEYWORD=8   (teto ~100/dia, ~metade do custo)
 
 Uso:
   python scripts/tiktok_mining.py --dry     # só busca e imprime, não grava
@@ -35,9 +35,12 @@ ANON = os.environ.get("SUPABASE_ANON_KEY",
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 PROVIDER = os.environ.get("PROVIDER", "tikwm").lower()
-MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "40"))
+# Teto de volume/custo: guarda no máx. MAX_PER_NICHE por nicho (12 × 8 nichos ≈ 96/dia,
+# abaixo do teto de 100/dia) e raspa PER_KEYWORD por query (8 corta ~metade do que a
+# Apify cobra vs. o antigo 15/30). Tudo sobrescrevível por env no workflow.
+MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "12"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "45"))
-PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "30"))
+PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "8"))
 HISTORY_CAP = 60
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())

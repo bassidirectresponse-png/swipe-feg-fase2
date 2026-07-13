@@ -24,9 +24,12 @@ jobs:
       PROVIDER: apify         # tikwm | ensembledata | apify
       APIFY_SORT: MOST_LIKED  # MOST_RELEVANT | MOST_LIKED | LATEST
       APIFY_DATE: PAST_MONTH  # ALL_TIME | PAST_WEEK | PAST_MONTH | PAST_24_HOURS
-      MAX_PER_NICHE: "40"
+      # Teto de custo Apify: guarda no máx. ~100/dia (12 por nicho × 8 nichos ≈ 96)
+      # e raspa ~metade do volume anterior (PER_KEYWORD 15→8 corta ~47% dos itens
+      # raspados, que é o que a Apify cobra). Ajuste aqui se mudar o nº de nichos.
+      MAX_PER_NICHE: "12"
       MAX_AGE_DAYS: "60"
-      PER_KEYWORD: "15"
+      PER_KEYWORD: "8"
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout
