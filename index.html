@@ -393,6 +393,16 @@
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:6000;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out;}
   .lightbox.open{display:flex;}
   .lightbox img{max-width:96%;max-height:94vh;border-radius:8px;box-shadow:0 20px 80px -10px rgba(0,0,0,.9);}
+  /* popup da copy (aberto direto do card) */
+  .copypop{max-width:640px;width:100%;margin:6vh auto;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;}
+  .copypop__head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border);}
+  .copypop__hl{min-width:0;}
+  .copypop__t{font-size:1.15rem;font-weight:700;letter-spacing:-.01em;word-break:break-word;}
+  .copypop__s{font-size:.8rem;color:var(--muted-fg);margin-top:4px;}
+  .copypop__body{padding:20px 22px;white-space:pre-wrap;line-height:1.6;font-size:.98rem;color:var(--fg);max-height:60vh;overflow:auto;}
+  .copypop__body.empty{color:var(--faint);font-style:italic;}
+  .copypop__foot{display:flex;flex-wrap:wrap;gap:10px;padding:16px 22px;border-top:1px solid var(--border);}
+  .copypop__foot:empty{display:none;}
 
   /* skeleton */
   .sk-card{height:230px;border-radius:var(--radius);border:1px solid var(--border-2);background:linear-gradient(110deg,var(--surface) 30%,var(--surface-2) 50%,var(--surface) 70%);background-size:220% 100%;animation:shimmer 1.2s linear infinite;}
@@ -695,6 +705,16 @@ create policy "public_all" on offers
 
 <div class="toast" id="toast"></div>
 <div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div class="overlay" id="copyPop">
+  <div class="copypop">
+    <div class="copypop__head">
+      <div class="copypop__hl"><div class="copypop__t" id="copyPopTitle"></div><div class="copypop__s" id="copyPopSub"></div></div>
+      <button class="icon-btn" id="copyPopClose" aria-label="Fechar"><svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    </div>
+    <div class="copypop__body" id="copyPopText"></div>
+    <div class="copypop__foot" id="copyPopFoot"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1075,7 +1095,7 @@ function renderGrid(){
     c.addEventListener("click",open);
     c.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target===c){e.preventDefault();open();}});
   });
-  $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();window.open(b.dataset.href,"_blank","noopener");}));
+  $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
   $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
   wireCardPreviews(area);
   const add=$("#addCard");
@@ -1552,6 +1572,29 @@ document.addEventListener("paste",e=>{
 function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("open");}
 $("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("open"));
 
+/* ===== POPUP DA COPY (ver copy direto do card) ===== */
+function openCopyPop(id){
+  const o=offers.find(x=>x.id===id);if(!o)return;
+  const d=o.data||{};
+  const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
+  const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
+  const video=videoOfBrain(d);
+  $("#copyPopTitle").textContent=d.nome||"Copy do criativo";
+  const sub=[d.autor?"por "+d.autor:"",d.nicho||""].filter(Boolean).join(" · ");
+  $("#copyPopSub").textContent=sub;
+  const body=$("#copyPopText");
+  body.textContent=copy||"Sem copy escrita cadastrada.";
+  body.classList.toggle("empty",!copy);
+  const btns=[];
+  if(copy)btns.push(`<button class="btn btn--outline btn--sm" id="copyPopCopy">${ic("type")}Copiar texto</button>`);
+  if(video)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(video))}" target="_blank" rel="noopener">${ic("play")}Abrir criativo</a>`);
+  if(copyLink)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(copyLink))}" target="_blank" rel="noopener">${ic("file")}Abrir doc</a>`);
+  $("#copyPopFoot").innerHTML=btns.join("");
+  const cc=$("#copyPopCopy");if(cc)cc.addEventListener("click",()=>{navigator.clipboard.writeText(copy).then(()=>toast("Copy copiada ✓")).catch(()=>toast("Não deu para copiar",true));});
+  openOverlay("#copyPop");
+}
+$("#copyPopClose").addEventListener("click",()=>closeOverlay("#copyPop"));
+
 /* ===== OVERLAY (com foco acessível) ===== */
 let lastFocused=null;
 const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]';
@@ -1675,17 +1718,15 @@ function criativoCard(o){
 }
 function megabrainCard(o){
   const d=o.data||{};
-  const copy=d.copy||d.copyVsl||d.copyCriativo||"";
-  const copyLink=d.copyLink||d.copyVslLink||d.copyCriativoLink||"";
+  const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
+  const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
   const video=videoOfBrain(d);
-  const assets=[
-    (copy||copyLink)?{ic:"type",label:"Copy"}:null,
-    (d.video||d.videoVsl||d.videoCriativo)?{ic:"film",label:"Vídeo"}:null,
-    d.linkDrive?{ic:"folder",label:"Drive"}:null
-  ].filter(Boolean);
-  const assetChips=assets.length?`<div class="kassets">${assets.map(a=>`<span class="kasset">${ic(a.ic)}${a.label}</span>`).join("")}</div>`:"";
   const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
   const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricValue(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
+  const acts=[
+    video?qbtn("Abrir criativo",video,"play"):"",
+    (copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
+  ].filter(Boolean).join("");
   return `<article class="card kcard kcard--brain" data-id="${o.id}">
     <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
     ${brainThumb(d,video)}
@@ -1693,7 +1734,7 @@ function megabrainCard(o){
     <div class="kcard__title">${esc(d.nome||"Sem título")}</div>
     ${metric}
     ${nicheChip(d)}
-    ${assetChips}
+    ${acts?`<div class="card__actions">${acts}</div>`:""}
   </article>`;
 }
 
