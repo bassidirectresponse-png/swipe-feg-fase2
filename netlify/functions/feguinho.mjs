@@ -30,7 +30,7 @@ const MODELS = {
   dissecar: process.env.FEGUINHO_MODEL_DISSECAR || "claude-sonnet-5",
   modelar:  process.env.FEGUINHO_MODEL_MODELAR  || "claude-sonnet-5",
 };
-const MAX_TOKENS = { gerar: 3400, dissecar: 4800, modelar: 3400 };
+const MAX_TOKENS = { gerar: 5000, dissecar: 4800, modelar: 5000 };
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
@@ -94,7 +94,7 @@ function sourcesBlock(ctx, mega, tiktok) {
 
 function build(tool, nicho, formato, input, ctx, mega, tiktok) {
   const S = sourcesBlock(ctx, mega, tiktok);
-  const fmtLabel = formato === "vsl" ? "VSL (video sales letter)" : "anúncio (criativo curto)";
+  const fmtLabel = formato === "vsl" ? "VSL (video sales letter)" : "anúncio (criativo completo)";
 
   if (tool === "dissecar") {
     const atlas = (ctx.extra || [])[0];
@@ -113,16 +113,19 @@ ${clip(S.ctxAds, 3500)}`;
   }
 
   if (tool === "modelar") {
-    const alvo = formato === "vsl"
-      ? "3 variações de ESTRUTURA de VSL (por blocos: Lead, História/Descoberta, Mecanismo do problema, Mecanismo da solução, Oferta, Fechamento), cada uma com um ângulo diferente"
-      : "5 variações do criativo (hook + corpo curto), cada uma com um ângulo distinto";
     const system = PERSONA;
-    const user = `TAREFA: a partir do criativo/ideia CAMPEÃ abaixo, gere ${alvo}. Antes, extraia em 1 tabela os padrões que fazem ele vender (gatilho, promessa, mecanismo, prova, oferta). Cada variação deve manter o DNA vencedor e indicar de qual campeão veio a estrutura.
+    const user = `TAREFA — modelar o CRIATIVO INTEIRO (não só o hook):
+
+1) ESTRUTURA INVISÍVEL: extraia o esqueleto do criativo campeão abaixo, bloco a bloco (gancho → contexto/história → mecanismo do problema → mecanismo da solução → prova/credibilidade → oferta → fechamento/CTA). Descreva em 1 linha a FUNÇÃO de cada bloco — sem copiar o texto original. Seja breve aqui.
+
+2) COPY NOVA E COMPLETA: escreva um criativo NOVO seguindo EXATAMENTE essa mesma estrutura invisível — o anúncio inteiro, bloco a bloco, com o texto pronto pra gravar, mantendo o DNA vencedor mas aplicado ao ângulo/produto pedido. NÃO resuma e NÃO entregue só o gancho: escreva a copy completa, do primeiro ao último bloco. Diga de qual campeão veio a estrutura.
+
+3) 3 HOOKS para essa copy: 3 aberturas diferentes que puxam para o MESMO corpo.
 
 NICHO: ${nicho}  ·  FORMATO: ${fmtLabel}
-CRIATIVO/IDEIA CAMPEÃ (base a modelar): ${clip(input, 6000)}
+CRIATIVO / IDEIA CAMPEÃ (base a modelar): ${clip(input, 6000)}
 
-=== CRIATIVOS VALIDADOS DO VAULT (ordem por vendas) ===
+=== CRIATIVOS VALIDADOS DO VAULT (ordem por vendas — modele a estrutura dos de MAIS vendas) ===
 ${S.ctxAds}
 
 === ANÁLISE MASTER DO NICHO ===
@@ -135,13 +138,14 @@ ${S.ctxMega}`;
 
   // gerar (default)
   const entrega = formato === "vsl"
-    ? "1 ESTRUTURA de VSL completa por blocos (Lead / História / Mecanismo do problema / Mecanismo da solução / Oferta / Fechamento), com o texto de cada bloco, modelada nos campeões"
-    : "5 HOOKS novos + 1 CORPO de anúncio curto, modelados nos criativos validados (priorize os de MAIS vendas)";
+    ? "uma ESTRUTURA de VSL COMPLETA por blocos (Lead → História/Descoberta → Mecanismo do problema → Mecanismo da solução → Prova → Oferta → Fechamento), com o texto de CADA bloco escrito por extenso, modelada nos campeões"
+    : "uma COPY DE ANÚNCIO COMPLETA (o corpo inteiro, do gancho ao CTA, texto pronto pra gravar — não resuma), modelada nos criativos de MAIS vendas";
   const system = PERSONA;
   const user = `TAREFA:
-1) Primeiro, extraia numa tabela os PADRÕES dos CAMPEÕES abaixo (estrutura → exemplo → nº de vendas).
-2) Depois entregue: ${entrega}. Para cada peça, diga de QUAL campeão você clonou a estrutura (e as vendas dele).
-3) No fim, indique QUAIS vídeos do Radar TikTok usar como hook e COMO (usar o vídeo para edição / a legenda como base do gancho).
+1) Extraia numa tabela CURTA os PADRÕES dos CAMPEÕES abaixo (estrutura → exemplo → nº de vendas).
+2) Entregue ${entrega}. Diga de QUAL campeão você clonou a estrutura (e as vendas dele).
+3) Gere 3 HOOKS para esse corpo — 3 aberturas diferentes que puxam para a MESMA copy.
+4) No fim, indique QUAIS vídeos do Radar TikTok usar como hook e COMO (usar o vídeo para edição / a legenda como base do gancho).
 
 NICHO: ${nicho}  ·  FORMATO: ${fmtLabel}
 IDEIA / MECANISMO / ÂNGULO DO USUÁRIO: ${clip(input, 4000)}
