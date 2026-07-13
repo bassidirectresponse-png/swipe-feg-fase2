@@ -1,0 +1,56 @@
+name: Sincronizar Mega Brain (vault → Supabase)
+
+# Re-ingere o vault MEGABRAIN (repo à parte) na tabela `conhecimento`, que é a
+# base do Feguinho Copy Chief. Full-refresh: apaga e regrava, ficando idêntico
+# ao vault. Roda sozinho a cada 3h (rede de segurança), na mão (Run workflow) e
+# na hora em que o vault avisa (repository_dispatch: vault-updated — ver README).
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"      # a cada 3 horas
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [vault-updated]     # disparo instantâneo vindo do repo do vault
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest-vault
+  cancel-in-progress: true
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VAULT_REPO: bassidirectresponse-png/MEGABRAIN-COPYB7
+    steps:
+      - name: Checkout (scripts do dashboard)
+        uses: actions/checkout@v4
+
+      - name: Clonar o vault MEGABRAIN
+        env:
+          # opcional: só necessário se o repo do vault for PRIVADO.
+          VAULT_PAT: ${{ secrets.VAULT_PAT }}
+        run: |
+          if [ -n "$VAULT_PAT" ]; then
+            git clone --depth 1 "https://x-access-token:${VAULT_PAT}@github.com/${VAULT_REPO}.git" vault
+          else
+            git clone --depth 1 "https://github.com/${VAULT_REPO}.git" vault
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Ingerir vault → Supabase
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          if [ -d vault/bassi.brain ]; then export VAULT_DIR=vault/bassi.brain; else export VAULT_DIR=vault; fi
+          echo "VAULT_DIR=$VAULT_DIR"
+          python -u scripts/ingest_vault.py
