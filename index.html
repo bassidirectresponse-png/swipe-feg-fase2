@@ -2311,8 +2311,9 @@ function brainThumb(d,video){
   const mp4=(d.video||"").trim();
   const isMp4=/\.(mp4|webm|ogg|ogv|m4v)(\?.*)?$/i.test(mp4);
   if(isMp4)return mediaThumb("",d.nome,true,mp4);
-  const dt=driveThumbUrl(d.linkDrive)||driveThumbUrl(d.video);
-  if(dt)return `<div class="cmedia cmedia--vid" title="Abra o card para assistir"><img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(dt)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span></div>`;
+  const did=driveId(d.linkDrive)||driveId(d.video);
+  const dt=did?driveThumbUrl(d.linkDrive)||driveThumbUrl(d.video):"";
+  if(dt)return `<div class="cmedia cmedia--vid" title="Abra o card para assistir"><img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(dt)}" data-did="${esc(did)}" alt="${esc(d.nome||"")}"><span class="cmedia__play">${ic("play")}</span></div>`;
   if(video)return mediaThumb("",d.nome,true,video);
   return `<div class="cmedia cmedia--empty">${ic("film")}<span>Sem preview — abra o card</span></div>`;
 }
@@ -2389,10 +2390,18 @@ function wireVideoPreviews(root){
 }
 /* miniaturas de vídeo nos cards: pinta 1 quadro de capa e dá play (mudo) no hover */
 function wireCardPreviews(root){
-  /* thumbnails do Drive: se a imagem falhar, cai para placeholder */
+  /* thumbnails do Drive: 1º tenta drive.google.com/thumbnail; se falhar, tenta o
+     espelho lh3.googleusercontent.com (mais estável p/ arquivos públicos); só então
+     cai para o placeholder. Isso faz o preview voltar assim que o arquivo é
+     compartilhado como "qualquer pessoa com o link". */
   (root||document).querySelectorAll("img.cmedia__poster").forEach(img=>{
     if(img.dataset.pw)return; img.dataset.pw="1";
-    img.addEventListener("error",()=>{const box=img.closest(".cmedia");if(box){box.classList.remove("cmedia--vid");box.classList.add("cmedia--empty");box.innerHTML=ic("film")+"<span>Vídeo — abra para assistir</span>";}});
+    const fail=()=>{
+      if(img.dataset.did&&!img.dataset.did2){img.dataset.did2="1";img.src="https://lh3.googleusercontent.com/d/"+img.dataset.did+"=w1000";return;}
+      const box=img.closest(".cmedia");if(box){box.classList.remove("cmedia--vid");box.classList.add("cmedia--empty");box.innerHTML=ic("film")+"<span>Vídeo — abra para assistir</span>";}
+    };
+    img.addEventListener("error",fail);
+    if(img.complete&&img.naturalWidth===0)fail();
   });
   /* capas do TikTok: as URLs do CDN expiram (~24h). Se a imagem quebrar,
      tenta a capa original 1x e, senão, mostra um placeholder limpo em vez
