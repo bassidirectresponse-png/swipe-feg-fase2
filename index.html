@@ -713,15 +713,12 @@
   .cctto .ico{width:13px;height:13px;}
 
   /* ===== Furtado Skill — Head Copy Ads IA ===== */
-  .fur__proj{display:flex;align-items:center;gap:7px;}
-  .fur__proj>.ico{width:16px;height:16px;color:var(--accent);flex:0 0 auto;}
-  .fur__projsel{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:9px;padding:7px 11px;font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;max-width:280px;transition:.15s;}
-  .fur__projsel:hover{border-color:var(--border-strong);}
-  .fur__projsel:focus{outline:none;border-color:var(--accent);}
-  .fur__new{display:flex;gap:8px;align-items:center;flex:1 1 100%;margin-top:2px;}
-  .fur__new input{flex:1;min-width:160px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:.9rem;padding:9px 12px;outline:none;transition:border-color .15s,box-shadow .15s;}
-  .fur__new input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-  .fur__docs{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-left:auto;}
+  .fur__reset{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border-2);color:var(--muted-fg);border-radius:999px;padding:6px 13px;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s;}
+  .fur__reset:hover{border-color:var(--accent);color:var(--accent);}
+  .fur__reset .ico{width:13px;height:13px;}
+  .fur__nicho{display:inline-flex;align-items:center;gap:6px;}
+  .fur__nicho>.ico{width:15px;height:15px;color:var(--accent);flex:0 0 auto;}
+  .fur__docs{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
   .fur__doc{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);background:var(--surface-3);border:1px solid var(--border-2);border-radius:999px;padding:5px 10px;}
   .fur__doc .ico{width:12px;height:12px;}
   .fur__doc.ok{color:var(--accent);background:var(--accent-dim);border-color:rgba(229,255,45,.3);}
@@ -731,7 +728,7 @@
   .fur__prereq{display:flex;align-items:flex-start;gap:7px;font-size:.77rem;line-height:1.42;color:#ffcf7a;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.3);border-radius:12px;padding:8px 11px;margin:0 4px 9px;}
   .fur__prereq .ico{width:14px;height:14px;flex:0 0 auto;margin-top:1px;color:#ffcf7a;}
   .fur__prereq b{color:#ffe0a3;}
-  @media(max-width:720px){.fur__docs{margin-left:0;width:100%;}.fur__projsel{max-width:60vw;}}
+  @media(max-width:720px){.fur__docs{width:100%;}.chat__top{flex-wrap:wrap;}}
 
   /* ===== ingestão de criativo do Facebook ===== */
   .fbwork{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--accent);margin-top:2px;}
@@ -2123,34 +2120,35 @@ const FUR_PHASES=[
     desc:"Escreve um anúncio por vez (corpo + hooks), pronto pra gravar, com lastro na Bíblia + VOC + briefing e frases curtas de vídeo.",
     hint:"Escreve 1 anúncio por vez (corpo + hooks) com lastro na Bíblia, no VOC e no briefing.",ph:""},
 ];
-let furPhase="biblia", furBusy=false, furProjectId=null, furLastOutput="", furCreating=false;
-function furProjects(){return offers.filter(o=>(o.data||{}).kind==="furtado").sort((a,b)=>String((a.data||{}).nome||"").localeCompare(String((b.data||{}).nome||""),"pt-BR"));}
-function furProj(){return offers.find(o=>o.id===furProjectId&&(o.data||{}).kind==="furtado")||null;}
-function furHasDoc(k){const p=furProj();if(!p)return false;const d=p.data||{};if(k==="anuncios")return (d.anuncios||[]).length>0;return !!String(d[k]||"").trim();}
+// Estado da conversa (em memória, encadeado — NÃO salva projeto no banco).
+// É uma skill conversacional: cada envio segue a lógica da fase e alimenta a próxima.
+let furPhase="biblia", furBusy=false;
+let furState={nicho:"",biblia:"",voc:"",briefing:"",nCorpos:3,nHooks:3,anuncios:[]};
 function furMarkdown(src){return ccMarkdown(src);}   // reaproveita o renderer do Feguinho
+function furHasDoc(k){if(k==="anuncios")return furState.anuncios.length>0;return !!String(furState[k]||"").trim();}
+function furReset(){
+  const nicho=furState.nicho||"";
+  furState={nicho,biblia:"",voc:"",briefing:"",nCorpos:3,nHooks:3,anuncios:[]};
+  furPhase="biblia";
+  const f=$("#furtado");if(f){f.remove();renderFurtado();}
+  toast("Nova conversa ✓");
+}
 
 function renderFurtado(){
   const area=$("#gridArea");if(!area)return;
   if($("#furtado"))return;
-  const projs=furProjects();
-  if(!furProjectId&&projs.length)furProjectId=projs[0].id;
+  if(!furState.nicho)furState.nicho=NICHOS[0];
   const pcard=(p,i)=>`<button type="button" class="chat__icard" data-setphase="${p.key}"><div class="chat__icard__t">${ic(p.icon)}${i+1} · ${esc(p.label)}</div><p>${esc(p.desc)}</p><span class="chat__icard__go">${ic("wand")}Ir para a fase ${i+1}</span></button>`;
   area.innerHTML=`<div class="chat furtado" id="furtado">
     <div class="chat__top">
-      <div class="fur__proj">${ic("folder")}
-        <select id="furProjSel" class="fur__projsel" title="Projeto / Nicho">${projs.map(p=>`<option value="${p.id}"${p.id===furProjectId?" selected":""}>${esc((p.data||{}).nome||"(sem nome)")}</option>`).join("")}<option value="__new">➕ Novo projeto…</option></select>
-      </div>
-      <div class="fur__docs" id="furDocs"></div>
-      <div class="fur__new" id="furNewWrap" ${furCreating||!projs.length?"":"hidden"}>
-        <input id="furNewName" type="text" placeholder="Nome do projeto / nicho — ex.: Emagrecimento feminino 40+">
-        <button class="btn btn--accent btn--sm" id="furCreate">${ic("plus")}Criar</button>
-      </div>
+      <div class="fur__docs" id="furDocs" title="Documentos desta conversa (encadeados em memória)"></div>
+      <button class="fur__reset" id="furReset" title="Começar uma conversa nova (limpa Bíblia, VOC e Briefing desta sessão)">${ic("plus")}Nova conversa</button>
     </div>
     <div class="chat__thread" id="furThread">
       <div class="chat__welcome">
         <div class="chat__mark">${ic("wand")}</div>
         <div class="chat__wtitle">Furtado Skill — Head Copy Ads IA <span class="chat__beta">Beta</span></div>
-        <p class="chat__wsub">Novo modelo de criação de ads em <b>4 fases encadeadas</b> — cada fase alimenta a próxima e fica salva no projeto. Siga a ordem <b>1 → 2 → 3 → 4</b> e clique em <b>Salvar no projeto</b> a cada resultado para liberar a fase seguinte.</p>
+        <p class="chat__wsub">Uma skill de criação de ads em <b>4 fases encadeadas</b> — é só ir mandando: cada fase segue a lógica da skill e <b>alimenta a próxima automaticamente</b> nesta conversa. Sem projeto, sem salvar. Escolha o nicho, cole seus anúncios campeões e siga <b>1 → 2 → 3 → 4</b>.</p>
         <div class="chat__intro is-4">${FUR_PHASES.map(pcard).join("")}</div>
       </div>
     </div>
@@ -2168,14 +2166,8 @@ function renderFurtado(){
     </div>
   </div>`;
 
-  $("#furProjSel").addEventListener("change",e=>{
-    if(e.target.value==="__new"){furCreating=true;const w=$("#furNewWrap");if(w){w.hidden=false;}const n=$("#furNewName");if(n)n.focus();return;}
-    furProjectId=e.target.value;furCreating=false;const w=$("#furNewWrap");if(w)w.hidden=true;
-    furLastOutput="";furRenderDocs();furApplyPhase();
-  });
-  $("#furCreate").addEventListener("click",furCreateProject);
-  $("#furNewName").addEventListener("keydown",e=>{if(e.key==="Enter")furCreateProject();});
-  const furSetPhase=(k)=>{if(furBusy||!k)return;furPhase=k;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===k));furLastOutput="";furApplyPhase();const t=$("#furInput");if(t&&t.style.display!=="none")t.focus();};
+  $("#furReset").addEventListener("click",furReset);
+  const furSetPhase=(k)=>{if(furBusy||!k)return;furPhase=k;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===k));furApplyPhase();const t=$("#furInput");if(t&&t.style.display!=="none")t.focus();};
   $$("#furModes .chat__mode").forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.phase)));
   $$(".chat__icard",area).forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.setphase)));
   $("#furRun").addEventListener("click",furRun);
@@ -2185,95 +2177,61 @@ function renderFurtado(){
   furRenderDocs();furApplyPhase();
 }
 function furRenderDocs(){
-  const el=$("#furDocs");if(!el)return;const p=furProj();
-  if(!p){el.innerHTML="";return;}
+  const el=$("#furDocs");if(!el)return;
   const chip=(ok,label)=>`<span class="fur__doc${ok?" ok":""}">${ic(ok?"info":"file")}${label}${ok?" ✓":""}</span>`;
-  const nAds=((p.data||{}).anuncios||[]).length;
+  const nAds=furState.anuncios.length;
   el.innerHTML=chip(furHasDoc("biblia"),"Bíblia")+chip(furHasDoc("voc"),"VOC")+chip(furHasDoc("briefing"),"Briefing")+`<span class="fur__doc${nAds?" ok":""}">${ic("wand")}${nAds} anúncio${nAds===1?"":"s"}</span>`;
 }
 function furApplyPhase(){
   const cfg=FUR_PHASES.find(p=>p.key===furPhase)||FUR_PHASES[0];
-  const p=furProj();const d=(p&&p.data)||{};
   const hint=$("#furModeHint span");if(hint)hint.textContent=cfg.hint;
   const run=$("#furRun");if(run)run.title=cfg.cta+" — Ctrl/⌘+Enter";
   const ta=$("#furInput"),controls=$("#furControls"),prereq=$("#furPrereq");
   if(!ta||!controls||!prereq)return;
-  controls.innerHTML="";prereq.hidden=true;prereq.innerHTML="";
-  // controles + textarea por fase
+  prereq.hidden=true;prereq.innerHTML="";
+  const nsel=`<label class="fur__nicho">${ic("folder")}<select id="furNicho" class="chat__sel" title="Nicho">${NICHOS.map(n=>`<option value="${esc(n)}"${n===furState.nicho?" selected":""}>${esc(n)}</option>`).join("")}</select></label>`;
+  let extra="";
   if(furPhase==="biblia"){
     ta.style.display="";ta.placeholder=cfg.ph;
   }else if(furPhase==="voc"){
     ta.style.display="none";
-    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Gere e <b>salve a Bíblia do Nicho</b> (fase 1) antes — o VOC busca a linguagem com base nela.`;}
+    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Gere a <b>Bíblia do Nicho</b> (fase 1) antes — o VOC usa o avatar e a linguagem dela para pesquisar.`;}
   }else if(furPhase==="remessa"){
     ta.style.display="";ta.placeholder=cfg.ph;
-    const nc=d.nCorpos||3,nh=d.nHooks||3;
-    controls.innerHTML=`<label class="fur__num">Corpos <input type="number" id="furNCorpos" min="1" max="8" value="${nc}"></label><label class="fur__num">Hooks/corpo <input type="number" id="furNHooks" min="1" max="6" value="${nh}"></label>`;
-    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Sem Bíblia salva o briefing fica genérico — gere a fase 1 antes.`;}
+    const nc=furState.nCorpos||3,nh=furState.nHooks||3;
+    extra=`<label class="fur__num">Corpos <input type="number" id="furNCorpos" min="1" max="8" value="${nc}"></label><label class="fur__num">Hooks/corpo <input type="number" id="furNHooks" min="1" max="6" value="${nh}"></label>`;
+    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Sem a Bíblia o briefing fica genérico — gere a fase 1 antes.`;}
   }else{ // escrita
     ta.style.display="none";
-    const nc=d.nCorpos||3;
+    const nc=furState.nCorpos||3;
     const opts=Array.from({length:nc},(_,i)=>`<option value="${i+1}">Anúncio ${i+1} (Corpo ${i+1})</option>`).join("");
-    controls.innerHTML=`<select id="furCorpo" class="chat__sel" title="Qual anúncio escrever">${opts}</select>`;
+    extra=`<select id="furCorpo" class="chat__sel" title="Qual anúncio escrever">${opts}</select>`;
     const faltam=[!furHasDoc("biblia")&&"Bíblia",!furHasDoc("voc")&&"VOC",!furHasDoc("briefing")&&"Briefing"].filter(Boolean);
-    if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta salvar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
+    if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta gerar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
   }
+  controls.innerHTML=nsel+extra;
+  const nn=$("#furNicho");if(nn)nn.addEventListener("change",()=>{furState.nicho=nn.value;});
   chatAutosize(ta);
-}
-async function furCreateProject(){
-  const nmeIn=$("#furNewName");const nome=(nmeIn&&nmeIn.value||"").trim();
-  if(!nome){toast("Dê um nome/nicho ao projeto",true);if(nmeIn)nmeIn.focus();return;}
-  const data={kind:"furtado",nome,nicho:nome,biblia:"",voc:"",briefing:"",anuncios:[],nCorpos:3,nHooks:3,createdAt:new Date().toISOString()};
-  setSync("load","Criando projeto");
-  let res;try{res=await sb.from("offers").insert({data}).select();}catch(err){res={error:err};}
-  if(res.error){setSync("err","Erro");toast("Não deu para criar: "+((res.error.message)||res.error),true);return;}
-  const row=res.data&&res.data[0];
-  if(row){offers.push(row);furProjectId=row.id;furCreating=false;writeCache();setSync("ok","Salvo");toast("Projeto criado ✓");
-    // re-render completo pra atualizar o seletor
-    const area=$("#gridArea");if(area){const f=$("#furtado");if(f)f.remove();renderFurtado();}
-  }
-}
-async function furSaveDoc(outArg,phaseArg){
-  const p=furProj();if(!p){toast("Selecione ou crie um projeto",true);return;}
-  const out=(typeof outArg==="string"&&outArg)||furLastOutput;
-  const phase=phaseArg||furPhase;
-  if(!String(out||"").trim()){toast("Gere algo antes de salvar",true);return;}
-  const data=Object.assign({},p.data);
-  if(phase==="biblia")data.biblia=out;
-  else if(phase==="voc")data.voc=out;
-  else if(phase==="remessa"){data.briefing=out;
-    const nc=parseInt(($("#furNCorpos")||{}).value,10),nh=parseInt(($("#furNHooks")||{}).value,10);
-    if(!isNaN(nc))data.nCorpos=Math.max(1,Math.min(8,nc));if(!isNaN(nh))data.nHooks=Math.max(1,Math.min(6,nh));
-  }else{ // escrita → acumula por corpo
-    const corpo=parseInt(($("#furCorpo")||{}).value,10)||1;
-    data.anuncios=Array.isArray(data.anuncios)?data.anuncios.slice():[];
-    const idx=data.anuncios.findIndex(a=>a.corpo===corpo);
-    const item={corpo,texto:out,at:new Date().toISOString()};
-    if(idx>=0)data.anuncios[idx]=item;else data.anuncios.push(item);
-  }
-  data.updatedAt=new Date().toISOString();
-  setSync("load","Salvando");
-  let res;try{res=await sb.from("offers").update({data}).eq("id",p.id).select();}catch(err){res={error:err};}
-  if(res.error){setSync("err","Erro");toast("Erro ao salvar: "+((res.error.message)||res.error),true);return;}
-  const row=res.data&&res.data[0];const i=offers.findIndex(o=>o.id===p.id);if(row&&i>=0)offers[i]=row;else if(i>=0)offers[i].data=data;
-  writeCache();setSync("ok","Salvo");toast("Salvo no projeto ✓");
-  furRenderDocs();furApplyPhase();
 }
 async function furRun(){
   if(furBusy)return;
-  const p=furProj();
-  if(!p){toast("Crie ou selecione um projeto primeiro",true);const s=$("#furProjSel");if(s)s.focus();return;}
-  const d=p.data||{};const nicho=d.nome||d.nicho||"";
+  const nn=$("#furNicho");if(nn)furState.nicho=nn.value;
+  const nicho=furState.nicho||"";
   const cfg=FUR_PHASES.find(x=>x.key===furPhase)||FUR_PHASES[0];
   const phaseAtRun=furPhase;
   const phaseNum={biblia:"1",voc:"2",remessa:"3",escrita:"4"}[furPhase]||"";
-  let input="",nCorpos=d.nCorpos||3,nHooks=d.nHooks||3,corpo="",userMsg="";
+  let input="",nCorpos=furState.nCorpos||3,nHooks=furState.nHooks||3,corpo="",userMsg="";
   if(furPhase==="biblia"){input=($("#furInput").value||"").trim();if(!input){toast("Cole 2 a 4 anúncios validados",true);$("#furInput").focus();return;}userMsg=input;}
+  else if(furPhase==="voc"){
+    if(!furHasDoc("biblia")){toast("Gere a Bíblia (fase 1) antes do VOC",true);return;}
+    userMsg="Pesquisar a Voz do Prospect na web com base na Bíblia.";}
   else if(furPhase==="remessa"){input=($("#furInput").value||"").trim();if(!input){toast("Informe os dados da oferta",true);$("#furInput").focus();return;}
     nCorpos=Math.max(1,Math.min(8,parseInt(($("#furNCorpos")||{}).value,10)||3));nHooks=Math.max(1,Math.min(6,parseInt(($("#furNHooks")||{}).value,10)||3));
+    furState.nCorpos=nCorpos;furState.nHooks=nHooks;
     userMsg=`${input}\n\n(${nCorpos} corpos · ${nHooks} hooks por corpo)`;}
-  else if(furPhase==="escrita"){corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;userMsg=`Escrever o Anúncio ${corpo} (corpo ${corpo}).`;}
-  else{userMsg="Pesquisar a Voz do Prospect na web com base na Bíblia salva.";}
+  else{ // escrita
+    if(!furHasDoc("briefing")){toast("Gere o Briefing (fase 3) antes de escrever",true);return;}
+    corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;userMsg=`Escrever o Anúncio ${corpo} (corpo ${corpo}).`;}
 
   const thread=chatThreadEl("furThread");
   chatPushUser(thread,[esc(phaseNum+" · "+cfg.label),esc(nicho)],userMsg);
@@ -2282,12 +2240,11 @@ async function furRun(){
   chatScroll(thread);
   furBusy=true;const btn=$("#furRun");btn.disabled=true;btn.classList.add("is-busy");
   $$("#furModes .chat__mode").forEach(x=>x.classList.add("is-locked"));
-  furLastOutput="";
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
   let acc="",gotAny=false,errMsg="";
   try{
     const res=await fetch(FURTADO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-      body:JSON.stringify({phase:furPhase,nicho,input,biblia:d.biblia||"",voc:d.voc||"",briefing:d.briefing||"",nCorpos,nHooks,corpo})});
+      body:JSON.stringify({phase:furPhase,nicho,input,biblia:furState.biblia||"",voc:furState.voc||"",briefing:furState.briefing||"",nCorpos,nHooks,corpo})});
     if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
     const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
     for(;;){const {done,value}=await reader.read();if(done)break;
@@ -2303,12 +2260,21 @@ async function furRun(){
   }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
   furBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
   $$("#furModes .chat__mode").forEach(x=>x.classList.remove("is-locked"));
-  furLastOutput=acc;
   if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"não respondeu — tente de novo")}</div>`;status.innerHTML="";}
-  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto · <b>salve no projeto</b> para usar na próxima fase${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
-    ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--accent btn--sm" data-fursave>${ic("download")}Salvar no projeto</button><button class="btn btn--outline btn--sm" data-furcopy>${ic("clipboard")}Copiar</button>`;
-    const sv=ai.bar.querySelector("[data-fursave]");if(sv)sv.addEventListener("click",()=>furSaveDoc(acc,phaseAtRun));
+  else{
+    // ENCADEIA em memória (a próxima fase usa isto automaticamente)
+    if(phaseAtRun==="biblia")furState.biblia=acc;
+    else if(phaseAtRun==="voc")furState.voc=acc;
+    else if(phaseAtRun==="remessa")furState.briefing=acc;
+    else{const c=corpo||1;const idx=furState.anuncios.findIndex(a=>a.corpo===c);const item={corpo:c,texto:acc};if(idx>=0)furState.anuncios[idx]=item;else furState.anuncios.push(item);}
+    furRenderDocs();
+    const nextName={biblia:"a Voz do Prospect (fase 2)",voc:"a Arquitetura da Remessa (fase 3)",remessa:"a Escrita dos Anúncios (fase 4)"}[phaseAtRun];
+    status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${nextName?` · pode seguir para <b>${nextName}</b>`:" · anúncio pronto"}${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+    ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--outline btn--sm" data-furcopy>${ic("clipboard")}Copiar</button>`;
     const cp=ai.bar.querySelector("[data-furcopy]");if(cp)cp.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
+    // avança a fase ativa automaticamente (o usuário pode voltar clicando no chip)
+    const next={biblia:"voc",voc:"remessa",remessa:"escrita"}[phaseAtRun];
+    if(next&&furPhase===phaseAtRun){furPhase=next;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===next));furApplyPhase();}
   }
   chatScroll(thread);
 }

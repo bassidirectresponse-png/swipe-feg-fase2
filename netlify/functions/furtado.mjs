@@ -27,7 +27,7 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.FURTADO_MODEL || "claude-sonnet-5";  // suporta web_search_20260209
 const MAX_TOKENS = { biblia: 6000, voc: 6000, remessa: 5000, escrita: 5000 };
-const WEB_MAX_USES = 8;   // teto de buscas na Fase 2 (evita estourar o loop de 10 do servidor)
+const WEB_MAX_USES = 5;   // teto de buscas na Fase 2 (equilíbrio entre profundidade e tempo da função)
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
@@ -239,20 +239,35 @@ ${clip(voc, 6000) || "(sem VOC — gere a Fase 2 antes)"}`;
   return { system: PERSONA, user, max_tokens: MAX_TOKENS.escrita };
 }
 
-// ---------- Anthropic: streaming (fases 1/3/4) ----------
-async function streamAnthropic(payload, send) {
-  const up = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ ...payload, stream: true }),
-  });
+// ---------- Anthropic: streaming (todas as fases; opcionalmente com web_search) ----------
+// Retorna { gotText, searches }. Com opts.soft = true, NÃO emite {t:"error"} (deixa
+// o chamador decidir o fallback). Com opts.searchStatus = true, avisa cada busca.
+async function streamAnthropic(payload, send, opts = {}) {
+  const body = {
+    model: payload.model, max_tokens: payload.max_tokens, system: clean(payload.system),
+    thinking: { type: "disabled" },
+    messages: payload.messages || [{ role: "user", content: clean(payload.user) }],
+    stream: true,
+  };
+  if (payload.tools) body.tools = payload.tools;
+  let up;
+  try {
+    up = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    if (!opts.soft) send({ t: "error", v: "falha de conexão com o Claude" });
+    return { gotText: false, searches: 0 };
+  }
   if (!up.ok || !up.body) {
     const t = await up.text().catch(() => "");
-    send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(t, 200)}` });
-    return;
+    if (!opts.soft) send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(t, 200)}` });
+    return { gotText: false, searches: 0, httpErr: up.status };
   }
   const reader = up.body.getReader(); const dec = new TextDecoder();
-  let buf = "", lastStatus = 0, gotText = false;
+  let buf = "", lastStatus = 0, gotText = false, searches = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -264,49 +279,43 @@ async function streamAnthropic(payload, send) {
       const raw = line.slice(5).trim();
       if (!raw || raw === "[DONE]") continue;
       let ev; try { ev = JSON.parse(raw); } catch { continue; }
-      if (ev.type === "content_block_delta") {
+      if (ev.type === "content_block_start") {
+        const cb = ev.content_block || {};
+        if (cb.type === "server_tool_use") {           // 1 busca disparada
+          searches++;
+          if (opts.searchStatus) send({ t: "status", v: `pesquisando na web… (${searches})` });
+        } else if (cb.type === "web_search_tool_result" && opts.searchStatus) {
+          send({ t: "status", v: `lendo resultados… (${searches})` });
+        }
+      } else if (ev.type === "content_block_delta") {
         const d = ev.delta || {};
         if (d.type === "text_delta" && d.text) { gotText = true; send({ t: "text", v: d.text }); }
         else if (d.type === "thinking_delta") { const now = Date.now(); if (now - lastStatus > 1200) { lastStatus = now; send({ t: "status", v: "pensando" }); } }
       } else if (ev.type === "error") {
-        send({ t: "error", v: (ev.error && ev.error.message) || "erro do modelo" });
+        if (!opts.soft) send({ t: "error", v: (ev.error && ev.error.message) || "erro do modelo" });
       }
     }
   }
-  if (!gotText) send({ t: "error", v: "o modelo não retornou texto — tente de novo em instantes" });
+  if (!gotText && !opts.soft) send({ t: "error", v: "o modelo não retornou texto — tente de novo em instantes" });
+  return { gotText, searches };
 }
 
-// ---------- Anthropic: web_search (fase 2) — não-stream + heartbeat + resume ----------
-async function webSearchAnthropic(payload, send) {
-  const messages = [{ role: "user", content: clean(payload.user) }];
-  const base = {
-    model: payload.model, max_tokens: payload.max_tokens, system: clean(payload.system),
-    thinking: { type: "disabled" },
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: WEB_MAX_USES }],
-  };
-  const textParts = [];
-  let searches = 0, ok = false;
-  for (let round = 0; round < 4; round++) {
-    const up = await fetch(ANTHROPIC_URL, {
-      method: "POST",
-      headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ ...base, messages }),
-    });
-    const txt = await up.text();
-    if (!up.ok) { send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(txt, 200)}` }); return; }
-    let j; try { j = JSON.parse(txt); } catch { send({ t: "error", v: "resposta do Claude inválida" }); return; }
-    for (const b of j.content || []) {
-      if (b.type === "text" && b.text) textParts.push(b.text);
-      else if (b.type === "server_tool_use" && b.name === "web_search") searches++;
-    }
-    if (j.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: j.content }); continue; }
-    ok = true; break;
-  }
-  const full = clean(textParts.join(""));
-  if (!full.trim()) { send({ t: "error", v: "a busca não retornou texto — tente de novo" }); return; }
-  send({ t: "meta2", searches });
-  send({ t: "text", v: full });
-  if (!ok) send({ t: "status", v: "busca interrompida no limite — resultado parcial" });
+// Fallback do VOC quando a web não está disponível/estourou: compõe a partir do
+// conhecimento do público + Bíblia (sempre entrega algo útil — nenhuma fase fica vazia).
+function vocFallbackUser(nicho, biblia) {
+  return `TAREFA — montar a VOZ DO PROSPECT (VOC) do nicho "${nicho}". A busca na web não retornou agora, então componha a partir do seu conhecimento profundo de como ESSE público realmente fala. Na PRIMEIRA linha, em itálico, avise: "_Falas representativas do padrão do público (a busca web não retornou nesta rodada) — rode de novo para tentar coletar citações reais._". Depois entregue, em português do Brasil, tom cru e real, na MESMA estrutura de 5 categorias (5 falas cada) + Síntese, coerente com a Bíblia.
+
+# Voz do Prospect — ${nicho}
+
+## Dores e Frustrações Reais
+## Desejos e Sonhos Reais
+## Crenças e Opiniões sobre o Tema
+## Ceticismo e Objeções
+## Falsas Crenças sobre Como o Problema Funciona
+## Síntese
+
+=== BÍBLIA DO NICHO ===
+${clip(biblia, 9000) || "(sem Bíblia informada — use o nicho acima)"}`;
 }
 
 // ---------- handler (Netlify Functions v2, streaming NDJSON) ----------
@@ -360,14 +369,23 @@ export default async (req) => {
       let hb = null;
       try {
         if (phase === "voc") {
-          // heartbeat: mantém a conexão viva enquanto o modelo pesquisa (sem texto por vários segundos)
+          // STREAMING com web_search: o texto flui token a token (conexão viva) e,
+          // se a plataforma cortar, o cliente ainda fica com o resultado parcial.
           const t0 = Date.now();
           send({ t: "status", v: "pesquisando na web…" });
           hb = setInterval(() => send({ t: "status", v: `pesquisando na web… ${Math.round((Date.now() - t0) / 1000)}s` }), 3000);
-          await webSearchAnthropic({ system: built.system, user: built.user, model: built.model, max_tokens: built.max_tokens }, send);
+          const vp = { system: built.system, user: built.user, model: built.model, max_tokens: built.max_tokens,
+            tools: [{ type: "web_search_20260209", name: "web_search", max_uses: WEB_MAX_USES }] };
+          const r = await streamAnthropic(vp, send, { soft: true, searchStatus: true });
+          if (hb) { clearInterval(hb); hb = null; }
+          if (r.searches) send({ t: "meta2", searches: r.searches });
+          if (!r.gotText) {
+            // web indisponível/limite/timeout da busca → garante o VOC pelo conhecimento do público
+            send({ t: "status", v: "web indisponível — compilando pelo conhecimento do público…" });
+            await streamAnthropic({ system: built.system, user: vocFallbackUser(nicho, biblia), model: built.model, max_tokens: built.max_tokens }, send);
+          }
         } else {
-          const payload = { model: built.model, max_tokens: built.max_tokens, system: clean(built.system), thinking: { type: "disabled" }, messages: [{ role: "user", content: clean(built.user) }] };
-          await streamAnthropic(payload, send);
+          await streamAnthropic({ model: built.model, max_tokens: built.max_tokens, system: built.system, user: built.user }, send);
         }
       } catch (e) {
         send({ t: "error", v: "falha: " + clip(e && e.message ? e.message : e, 160) });
