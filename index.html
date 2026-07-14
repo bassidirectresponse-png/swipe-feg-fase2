@@ -611,22 +611,22 @@
   body.chatmode .page{display:none;}
   body.chatmode .grid-wrap{padding:0;}
   body.chatmode #subFilter{display:none;}
-  .chat{display:flex;flex-direction:column;height:calc(100dvh - var(--topbar-h));max-width:900px;margin:0 auto;}
+  .chat{display:flex;flex-direction:column;height:calc(100dvh - var(--topbar-h));max-width:1060px;margin:0 auto;padding:0 clamp(14px,3vw,32px);}
   /* header fino (só Furtado usa) */
   .chat__top{flex:0 0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 4px;border-bottom:1px solid var(--border);}
   /* thread rolável */
-  .chat__thread{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:18px 6px 22px;scrollbar-width:thin;scroll-behavior:smooth;}
+  .chat__thread{flex:1 1 auto;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:22px 8px 26px;scrollbar-width:thin;scroll-behavior:smooth;}
   .chat__thread::-webkit-scrollbar{width:8px;}
   .chat__thread::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:8px;}
   /* estado vazio / boas-vindas */
-  .chat__welcome{display:flex;flex-direction:column;align-items:center;text-align:center;padding:clamp(14px,4vh,46px) 12px 6px;}
-  .chat__mark{display:grid;place-items:center;width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 14px 38px -12px rgba(229,255,45,.5);margin-bottom:15px;}
-  .chat__mark .ico{width:28px;height:28px;}
-  .chat__wtitle{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:11px;justify-content:center;flex-wrap:wrap;}
-  .chat__beta{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
-  .chat__wsub{margin:9px auto 0;font-size:.92rem;line-height:1.55;color:var(--muted-fg);max-width:560px;}
+  .chat__welcome{margin:auto 0;display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 12px;width:100%;}
+  .chat__mark{display:grid;place-items:center;width:64px;height:64px;border-radius:19px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 16px 44px -12px rgba(229,255,45,.5);margin-bottom:18px;}
+  .chat__mark .ico{width:32px;height:32px;}
+  .chat__wtitle{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .chat__beta{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
+  .chat__wsub{margin:12px auto 0;font-size:1.02rem;line-height:1.6;color:var(--muted-fg);max-width:620px;}
   /* cartões que explicam cada modo/fase */
-  .chat__intro{display:grid;gap:10px;width:100%;max-width:700px;margin:26px auto 0;grid-template-columns:repeat(3,1fr);}
+  .chat__intro{display:grid;gap:12px;width:100%;max-width:820px;margin:32px auto 0;grid-template-columns:repeat(3,1fr);}
   .chat__intro.is-4{grid-template-columns:repeat(2,1fr);}
   .chat__icard{text-align:left;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:14px 15px;cursor:pointer;transition:.16s var(--ease);}
   .chat__icard:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(0,0,0,.9);}
@@ -637,7 +637,7 @@
   .chat__icard__go .ico{width:13px;height:13px;}
   .chat__icard:hover .chat__icard__go{color:var(--accent);}
   /* mensagens */
-  .chat__msg{display:flex;gap:12px;margin:0 0 22px;animation:chatIn .28s var(--ease) both;}
+  .chat__msg{display:flex;gap:14px;margin:0 0 26px;animation:chatIn .28s var(--ease) both;}
   @keyframes chatIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .chat__av{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;margin-top:1px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;}
   .chat__av .ico{width:16px;height:16px;}
@@ -646,7 +646,7 @@
   .chat__msg--user .chat__bubble{flex:0 1 auto;max-width:82%;background:var(--surface-3);border:1px solid var(--border-2);border-radius:16px 16px 5px 16px;padding:11px 15px;}
   .chat__utag{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .chat__chip{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;letter-spacing:.02em;color:var(--accent);background:var(--accent-dim);border-radius:999px;padding:3px 9px;}
-  .chat__utext{font-size:.92rem;line-height:1.55;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;}
+  .chat__utext{font-size:.98rem;line-height:1.58;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;}
   .chat__status{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted-fg);margin-bottom:8px;}
   .chat__aibar{display:flex;align-items:center;gap:8px;margin-top:15px;flex-wrap:wrap;}
   /* composer fixo embaixo */
@@ -659,9 +659,9 @@
   .chat__mode.is-locked{opacity:.5;pointer-events:none;}
   .chat__modehint{font-size:.78rem;line-height:1.42;color:var(--faint);margin:0 4px 9px;display:flex;align-items:flex-start;gap:6px;}
   .chat__modehint .ico{width:14px;height:14px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
-  .chat__box{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:20px;padding:13px 15px 11px;box-shadow:var(--shadow);transition:.16s var(--ease);}
+  .chat__box{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:22px;padding:16px 18px 13px;box-shadow:var(--shadow);transition:.16s var(--ease);}
   .chat__box:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft),var(--shadow-lg);}
-  .chat__input{width:100%;background:transparent;border:none;color:var(--fg);font:inherit;font-size:1rem;line-height:1.55;resize:none;max-height:210px;min-height:26px;display:block;}
+  .chat__input{width:100%;background:transparent;border:none;color:var(--fg);font:inherit;font-size:1.04rem;line-height:1.55;resize:none;max-height:230px;min-height:32px;display:block;}
   .chat__input:focus{outline:none;}
   .chat__input::placeholder{color:var(--faint);}
   .chat__boxfoot{display:flex;align-items:center;gap:10px;margin-top:9px;}
@@ -678,12 +678,12 @@
   .chat__send:hover{transform:translateY(-1px);box-shadow:0 12px 28px -8px rgba(229,255,45,.75);}
   .chat__send:disabled,.chat__send.is-busy{opacity:.55;pointer-events:none;box-shadow:none;}
   .chat__send.is-busy .ico{animation:spin .8s linear infinite;}
-  @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.28rem;}.chat__sel{max-width:46%;}}
+  @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));padding:0 12px;}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.42rem;}.chat__wsub{font-size:.95rem;}.chat__md{font-size:.98rem;}.chat__sel{max-width:46%;}}
   .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
   .ccdot--on{background:var(--accent);animation:ccpulse 1s ease-in-out infinite;}
   .ccdot--done{background:var(--accent);}
   @keyframes ccpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
-  .chat__md{font-size:.95rem;line-height:1.68;color:var(--fg);word-wrap:break-word;}
+  .chat__md{font-size:1.02rem;line-height:1.72;color:var(--fg);word-wrap:break-word;}
   .chat__md>*:first-child{margin-top:0;}
   .chat__md h3{font-size:1.24rem;margin:22px 0 10px;color:var(--accent);letter-spacing:-.01em;}
   .chat__md h4{font-size:1.06rem;margin:20px 0 8px;color:var(--fg);}
@@ -712,7 +712,7 @@
   .cctto{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--faint);margin-top:auto;}
   .cctto .ico{width:13px;height:13px;}
 
-  /* ===== Furtado Skill — Head Copy Ads IA ===== */
+  /* ===== Furtado - Copy Chief ADS IA ===== */
   .fur__reset{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border-2);color:var(--muted-fg);border-radius:999px;padding:6px 13px;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s;}
   .fur__reset:hover{border-color:var(--accent);color:var(--accent);}
   .fur__reset .ico{width:13px;height:13px;}
@@ -932,7 +932,7 @@ const SECTIONS=[
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
-  {key:"furtado",label:"Furtado Skill — Head Copy Ads IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado Skill — Head Copy Ads IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
+  {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
 ];
 function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado";}
@@ -1133,7 +1133,7 @@ function filtered(){
   return list;
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado Skill — Head Copy Ads IA"};
+const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA"};
 const AI_SECTIONS=new Set(["copychief","transcritor","furtado"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
@@ -2102,7 +2102,7 @@ async function ccRun(){
   chatScroll(thread);
 }
 
-/* ===== FURTADO SKILL — Head Copy Ads IA (Beta) ===== */
+/* ===== FURTADO - Copy Chief ADS IA (Beta) ===== */
 const FURTADO_FN="/.netlify/functions/furtado";
 const FUR_PHASES=[
   {key:"biblia",icon:"brain",label:"Bíblia do Nicho",cta:"Gerar Bíblia do Nicho",
@@ -2147,7 +2147,7 @@ function renderFurtado(){
     <div class="chat__thread" id="furThread">
       <div class="chat__welcome">
         <div class="chat__mark">${ic("wand")}</div>
-        <div class="chat__wtitle">Furtado Skill — Head Copy Ads IA <span class="chat__beta">Beta</span></div>
+        <div class="chat__wtitle">Furtado - Copy Chief ADS IA <span class="chat__beta">Beta</span></div>
         <p class="chat__wsub">Uma skill de criação de ads em <b>4 fases encadeadas</b> — é só ir mandando: cada fase segue a lógica da skill e <b>alimenta a próxima automaticamente</b> nesta conversa. Sem projeto, sem salvar. Escolha o nicho, cole seus anúncios campeões e siga <b>1 → 2 → 3 → 4</b>.</p>
         <div class="chat__intro is-4">${FUR_PHASES.map(pcard).join("")}</div>
       </div>
