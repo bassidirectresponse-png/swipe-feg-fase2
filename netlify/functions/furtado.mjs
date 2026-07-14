@@ -27,7 +27,12 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.FURTADO_MODEL || "claude-sonnet-5";  // suporta web_search_20260209
 const MAX_TOKENS = { biblia: 6000, voc: 6000, remessa: 5000, escrita: 5000 };
-const WEB_MAX_USES = 5;   // teto de buscas na Fase 2 (equilíbrio entre profundidade e tempo da função)
+const WEB_MAX_USES = 6;   // teto de buscas na Fase 2 (equilíbrio entre profundidade e tempo da função)
+// Busca básica (web_search_20250305): NÃO usa o "dynamic filtering" (code_execution) da
+// versão 2026 — que estava estourando o limite do ambiente de código e fazendo o modelo
+// narrar as tentativas. A básica é previsível e suficiente para coletar falas.
+const WEB_TOOL = process.env.FURTADO_WEB_TOOL || "web_search_20250305";
+const WEB_COUNTRY = process.env.FURTADO_WEB_COUNTRY || "US";   // busca no mercado dos EUA (inglês)
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
@@ -128,29 +133,35 @@ ${clip(ctxMaster, 2500)}`;
 }
 
 function vocPrompt(nicho, biblia) {
-  const user = `TAREFA — montar a VOZ DO PROSPECT (VOC): capturar como o público deste nicho REALMENTE fala, pesquisando na internet.
+  const user = `TASK — Build the VOICE OF CUSTOMER (VOC) for the "${nicho}" niche: capture how REAL people in the US market actually talk about this problem, by researching the web.
 
-Use a ferramenta de busca (web_search) para achar comentários REAIS de pessoas reais em YouTube, Facebook, Instagram, Reddit Brasil, blogs e fóruns brasileiros sobre o tema. Regras da coleta:
-- Copie as falas EXATAMENTE como foram escritas, incluindo erros de português. Não parafraseie, não resuma, não limpe.
-- Não suavize: traga o que as pessoas realmente dizem, mesmo cru ou contraditório.
-- Priorize as falas mais fortes/reveladoras de cada categoria.
-- Guarde a FONTE (plataforma, e se possível o link/identificação do post ou vídeo) de cada fala.
-- Se após uma busca genuína não achar 5 falas fortes em alguma categoria, entregue as que achou e diga isso — não invente falas para completar a cota.
+LANGUAGE & MARKET:
+- This is US-MARKET research. Search in ENGLISH only — never in Portuguese.
+- First translate "${nicho}" to its natural English market term (e.g. "Emagrecimento" → "weight loss"; "Disfunção Erétil" → "erectile dysfunction"; "Neuropatia" → "nerve pain / neuropathy"; "Memória" → "memory / brain fog"; "Diabetes / Glicose" → "blood sugar"). Search using that English term.
 
-Categorias — 5 falas de cada:
-1. Dores e frustrações reais
-2. Desejos e sonhos reais
-3. Crenças e opiniões sobre o tema
-4. Ceticismo e objeções
-5. Falsas crenças sobre como o problema funciona
+WHERE TO SEARCH (real people, real comments):
+- Reddit, YouTube video comments, TikTok, Facebook groups, health/wellness forums, and product review pages (Amazon reviews, etc.).
+- Prioritize RECENT discussions — roughly the LAST 30 DAYS (up to ~6 months is acceptable). Note the approximate date when available.
 
-Formato de saída (Markdown):
+HOW TO SEARCH (be efficient — avoid hitting limits):
+- Run only a SMALL number of focused searches (AT MOST 5–6 total). Craft targeted English queries, e.g.: "[english niche] reddit what finally worked", "[english niche] youtube comments frustrated", "[english niche] tiktok", "[english niche] amazon reviews disappointed", "[english niche] forum can't believe".
+- Do a broad pass, then STOP searching and write the document with what you gathered. Do NOT retry endlessly.
+
+COLLECTION RULES:
+- Copy quotes EXACTLY as written (keep the original English, slang and typos). Never paraphrase, translate, or clean them up.
+- Keep the SOURCE for each quote (platform · approx date · link/handle if available).
+- If a category has fewer than 5 strong real quotes after a genuine search, deliver what you found and say so — never invent quotes.
+
+CRITICAL — your reply MUST contain ONLY the final VOC document in the exact format below. Do NOT narrate your search process. Do NOT mention tools, web_search, code execution, "code_execution", usage limits, retries, or what you are "going to" do. No preamble, no sign-off.
+
+OUTPUT FORMAT (Markdown — quotes stay in English; section titles and the Síntese are in Portuguese, as shown):
 
 # Voz do Prospect — ${nicho}
+_Fonte: mercado dos EUA — falas reais em inglês coletadas na web (Reddit, YouTube, TikTok, fóruns, reviews)._
 
 ## Dores e Frustrações Reais
-1. "[fala exata]" — [fonte/plataforma]
-...
+1. "[exact English quote]" — [platform · ~date · link/handle]
+...(up to 5)
 
 ## Desejos e Sonhos Reais
 ...
@@ -164,15 +175,16 @@ Formato de saída (Markdown):
 ## Falsas Crenças sobre Como o Problema Funciona
 ...
 
-## Síntese
-- Padrões de linguagem observados (palavras/expressões que se repetem)
-- Perfil que emerge dessas falas (compare com o avatar da Bíblia — reforça ou contradiz?)
+## Síntese (em português)
+- Expressões/gírias em inglês que se repetem (liste entre aspas)
+- Perfil que emerge dessas falas (compara com o avatar da Bíblia — reforça ou contradiz?)
 - Crença limitante dominante confirmada pela pesquisa
+- 5 a 8 expressões/gatilhos em inglês prontos para modelar nos anúncios
 
-NICHO: ${nicho}
+NICHE (Portuguese label): ${nicho}
 
-=== BÍBLIA DO NICHO (use o avatar, a linguagem e os ângulos para saber o que buscar) ===
-${clip(biblia, 9000) || "(sem Bíblia informada — pesquise pelo nicho acima)"}`;
+=== BÍBLIA DO NICHO (use the avatar, language and angles to decide what to search for) ===
+${clip(biblia, 9000) || "(no Bible provided — research by the niche above)"}`;
   return { system: PERSONA, user, max_tokens: MAX_TOKENS.voc };
 }
 
@@ -303,7 +315,7 @@ async function streamAnthropic(payload, send, opts = {}) {
 // Fallback do VOC quando a web não está disponível/estourou: compõe a partir do
 // conhecimento do público + Bíblia (sempre entrega algo útil — nenhuma fase fica vazia).
 function vocFallbackUser(nicho, biblia) {
-  return `TAREFA — montar a VOZ DO PROSPECT (VOC) do nicho "${nicho}". A busca na web não retornou agora, então componha a partir do seu conhecimento profundo de como ESSE público realmente fala. Na PRIMEIRA linha, em itálico, avise: "_Falas representativas do padrão do público (a busca web não retornou nesta rodada) — rode de novo para tentar coletar citações reais._". Depois entregue, em português do Brasil, tom cru e real, na MESMA estrutura de 5 categorias (5 falas cada) + Síntese, coerente com a Bíblia.
+  return `TASK — Build the VOICE OF CUSTOMER (VOC) for the "${nicho}" niche (US market). The web search did not return this round, so compose from your deep knowledge of how this US/English-speaking audience really talks. On the FIRST line, in italics, warn (in Portuguese): "_Falas representativas do padrão do público dos EUA (a busca web não retornou nesta rodada) — rode de novo para tentar coletar citações reais._". Then deliver the SAME structure: 5 categories with 5 lines each, quotes in ENGLISH (natural, raw, real), each with a short Portuguese gloss in parentheses; section titles and the Síntese in Portuguese. Do not narrate your process or mention tools/limits.
 
 # Voz do Prospect — ${nicho}
 
@@ -312,10 +324,10 @@ function vocFallbackUser(nicho, biblia) {
 ## Crenças e Opiniões sobre o Tema
 ## Ceticismo e Objeções
 ## Falsas Crenças sobre Como o Problema Funciona
-## Síntese
+## Síntese (em português)
 
 === BÍBLIA DO NICHO ===
-${clip(biblia, 9000) || "(sem Bíblia informada — use o nicho acima)"}`;
+${clip(biblia, 9000) || "(no Bible provided — use the niche above)"}`;
 }
 
 // ---------- handler (Netlify Functions v2, streaming NDJSON) ----------
@@ -375,7 +387,7 @@ export default async (req) => {
           send({ t: "status", v: "pesquisando na web…" });
           hb = setInterval(() => send({ t: "status", v: `pesquisando na web… ${Math.round((Date.now() - t0) / 1000)}s` }), 3000);
           const vp = { system: built.system, user: built.user, model: built.model, max_tokens: built.max_tokens,
-            tools: [{ type: "web_search_20260209", name: "web_search", max_uses: WEB_MAX_USES }] };
+            tools: [{ type: WEB_TOOL, name: "web_search", max_uses: WEB_MAX_USES, user_location: { type: "approximate", country: WEB_COUNTRY } }] };
           const r = await streamAnthropic(vp, send, { soft: true, searchStatus: true });
           if (hb) { clearInterval(hb); hb = null; }
           if (r.searches) send({ t: "meta2", searches: r.searches });
