@@ -607,119 +607,131 @@
   .vidup__spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ===== Feguinho Copy Chief (Beta) ===== */
-  .cchief{max-width:1000px;margin:0 auto;padding:2px 0 64px;}
-  /* hero */
-  .cchief__hero{display:flex;align-items:center;gap:16px;margin-bottom:22px;}
-  .cchief__mark{display:grid;place-items:center;width:52px;height:52px;flex:0 0 auto;border-radius:15px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 10px 30px -10px rgba(229,255,45,.5);}
-  .cchief__mark .ico{width:26px;height:26px;}
-  .cchief__heroTitle{font-size:1.32rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;}
-  .cchief__beta{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
-  .cchief__heroTx p{margin:4px 0 0;font-size:.88rem;line-height:1.5;color:var(--muted-fg);max-width:640px;}
-  /* manual colapsável (slim) */
-  .cchief__guide{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden;}
-  .cchief__guide>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:11px 15px;font-size:.83rem;font-weight:700;color:var(--muted-fg);user-select:none;transition:.15s;}
-  .cchief__guide>summary:hover{color:var(--fg);}
-  .cchief__guide>summary::-webkit-details-marker{display:none;}
-  .cchief__guide>summary .ico{width:15px;height:15px;color:var(--accent);}
-  .ccg__chev{margin-left:auto;transform:rotate(-90deg);transition:.2s;opacity:.55;}
-  .cchief__guide[open] .ccg__chev{transform:rotate(90deg);}
-  .ccg__body{padding:2px 15px 16px;}
-  .ccg__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-  .ccg__card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:13px 14px;}
-  .ccg__t{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
-  .ccg__t .ico{width:15px;height:15px;}
-  .ccg__card p{font-size:.8rem;line-height:1.5;color:var(--muted-fg);margin:0 0 7px;}
-  .ccg__tip{display:block;font-size:.74rem;line-height:1.4;color:var(--faint);border-left:2px solid var(--accent);padding-left:8px;}
-  .ccg__foot{display:flex;align-items:flex-start;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font-size:.79rem;line-height:1.5;color:var(--muted-fg);}
-  .ccg__foot .ico{width:15px;height:15px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
-  /* tool selector premium */
-  .cchief__tools{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
-  .ctool{position:relative;display:flex;align-items:flex-start;gap:13px;text-align:left;padding:16px;border:1px solid var(--border-2);background:linear-gradient(180deg,var(--surface),var(--surface-2));border-radius:16px;color:var(--fg);cursor:pointer;transition:.18s var(--ease);}
-  .ctool:hover{border-color:var(--border-strong);transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(0,0,0,.9);}
-  .ctool.active{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent);box-shadow:0 0 0 1px var(--accent),0 16px 40px -22px rgba(229,255,45,.35);}
-  .ctool__ic{display:grid;place-items:center;width:40px;height:40px;flex:0 0 auto;border-radius:12px;background:var(--accent-dim);color:var(--accent);transition:.18s;}
-  .ctool__ic .ico{width:19px;height:19px;}
-  .ctool.active .ctool__ic{background:var(--accent);color:#0a0a06;box-shadow:0 6px 16px -6px rgba(229,255,45,.6);}
-  .ctool__tx{display:flex;flex-direction:column;gap:3px;min-width:0;}
-  .ctool__tx b{font-size:.95rem;font-weight:700;letter-spacing:-.01em;}
-  .ctool__tx small{font-size:.76rem;color:var(--faint);line-height:1.35;}
-  /* composer (input premium) */
-  .cchief__composer{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:20px;padding:18px 18px 16px;box-shadow:var(--shadow);transition:.18s var(--ease);}
-  .cchief__composer::before{content:"";position:absolute;top:0;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55;}
-  .cchief__composer:focus-within{border-color:var(--border-strong);box-shadow:0 0 0 1px var(--accent-soft),var(--shadow-lg);}
-  .composer__controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
-  .ccfield{display:flex;flex-direction:column;gap:7px;}
-  .ccfield>span{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:700;}
-  .ccfield select{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:10px;padding:10px 13px;font:inherit;font-size:.9rem;min-width:210px;cursor:pointer;transition:.15s;}
-  .ccfield select:hover{border-color:var(--border-strong);}
-  .ccfield select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
-  .ccseg{display:inline-flex;background:var(--surface-3);border:1px solid var(--border-2);border-radius:10px;padding:3px;gap:3px;}
-  .ccseg button{border:none;background:transparent;color:var(--muted-fg);padding:7px 18px;border-radius:7px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.14s;}
-  .ccseg button:hover{color:var(--fg);}
-  .ccseg button.active{background:var(--accent);color:#0a0a06;box-shadow:0 4px 12px -4px rgba(229,255,45,.5);}
-  .cchief__input{width:100%;background:transparent;border:none;color:var(--fg);padding:2px 2px;font:inherit;font-size:1rem;line-height:1.6;resize:vertical;min-height:130px;}
-  .cchief__input:focus{outline:none;}
-  .cchief__input::placeholder{color:var(--faint);}
-  .composer__foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;}
-  .cchief__hint{color:var(--faint);font-size:.8rem;line-height:1.4;flex:1;min-width:200px;}
-  .cchief__run{font-size:.95rem;font-weight:700;padding:12px 26px;border-radius:12px;box-shadow:0 12px 32px -12px rgba(229,255,45,.55);transition:.16s var(--ease);}
-  .cchief__run:hover{transform:translateY(-1px);box-shadow:0 16px 40px -12px rgba(229,255,45,.7);}
-  .cchief__run.is-busy{opacity:.7;pointer-events:none;}
-  .cchief__run.is-busy .ico{animation:spin .8s linear infinite;}
-  .cchief__out{margin-top:26px;background:var(--surface);border:1px solid var(--border-2);border-radius:20px;padding:22px 24px;box-shadow:var(--shadow);}
-  .cchief__outbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
-  .cchief__status{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted-fg);}
+  /* ===== Chat (Feguinho + Furtado) — layout de conversa ===== */
+  body.chatmode .page{display:none;}
+  body.chatmode .grid-wrap{padding:0;}
+  body.chatmode #subFilter{display:none;}
+  .chat{display:flex;flex-direction:column;height:calc(100dvh - var(--topbar-h));max-width:900px;margin:0 auto;}
+  /* header fino (só Furtado usa) */
+  .chat__top{flex:0 0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 4px;border-bottom:1px solid var(--border);}
+  /* thread rolável */
+  .chat__thread{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:18px 6px 22px;scrollbar-width:thin;scroll-behavior:smooth;}
+  .chat__thread::-webkit-scrollbar{width:8px;}
+  .chat__thread::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:8px;}
+  /* estado vazio / boas-vindas */
+  .chat__welcome{display:flex;flex-direction:column;align-items:center;text-align:center;padding:clamp(14px,4vh,46px) 12px 6px;}
+  .chat__mark{display:grid;place-items:center;width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 14px 38px -12px rgba(229,255,45,.5);margin-bottom:15px;}
+  .chat__mark .ico{width:28px;height:28px;}
+  .chat__wtitle{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:11px;justify-content:center;flex-wrap:wrap;}
+  .chat__beta{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
+  .chat__wsub{margin:9px auto 0;font-size:.92rem;line-height:1.55;color:var(--muted-fg);max-width:560px;}
+  /* cartões que explicam cada modo/fase */
+  .chat__intro{display:grid;gap:10px;width:100%;max-width:700px;margin:26px auto 0;grid-template-columns:repeat(3,1fr);}
+  .chat__intro.is-4{grid-template-columns:repeat(2,1fr);}
+  .chat__icard{text-align:left;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:14px 15px;cursor:pointer;transition:.16s var(--ease);}
+  .chat__icard:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(0,0,0,.9);}
+  .chat__icard__t{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
+  .chat__icard__t .ico{width:16px;height:16px;flex:0 0 auto;}
+  .chat__icard p{margin:0;font-size:.79rem;line-height:1.5;color:var(--muted-fg);}
+  .chat__icard__go{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--faint);}
+  .chat__icard__go .ico{width:13px;height:13px;}
+  .chat__icard:hover .chat__icard__go{color:var(--accent);}
+  /* mensagens */
+  .chat__msg{display:flex;gap:12px;margin:0 0 22px;animation:chatIn .28s var(--ease) both;}
+  @keyframes chatIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .chat__av{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;margin-top:1px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;}
+  .chat__av .ico{width:16px;height:16px;}
+  .chat__bubble{min-width:0;flex:1;}
+  .chat__msg--user{justify-content:flex-end;}
+  .chat__msg--user .chat__bubble{flex:0 1 auto;max-width:82%;background:var(--surface-3);border:1px solid var(--border-2);border-radius:16px 16px 5px 16px;padding:11px 15px;}
+  .chat__utag{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .chat__chip{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;letter-spacing:.02em;color:var(--accent);background:var(--accent-dim);border-radius:999px;padding:3px 9px;}
+  .chat__utext{font-size:.92rem;line-height:1.55;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;}
+  .chat__status{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted-fg);margin-bottom:8px;}
+  .chat__aibar{display:flex;align-items:center;gap:8px;margin-top:15px;flex-wrap:wrap;}
+  /* composer fixo embaixo */
+  .chat__composer{flex:0 0 auto;padding:6px 2px calc(env(safe-area-inset-bottom, 0px) + 14px);}
+  .chat__modes{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;}
+  .chat__mode{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;border:1px solid var(--border-2);background:var(--surface);color:var(--muted-fg);font-size:.82rem;font-weight:600;cursor:pointer;transition:.15s var(--ease);}
+  .chat__mode .ico{width:15px;height:15px;}
+  .chat__mode:hover{border-color:var(--border-strong);color:var(--fg);}
+  .chat__mode.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+  .chat__mode.is-locked{opacity:.5;pointer-events:none;}
+  .chat__modehint{font-size:.78rem;line-height:1.42;color:var(--faint);margin:0 4px 9px;display:flex;align-items:flex-start;gap:6px;}
+  .chat__modehint .ico{width:14px;height:14px;color:var(--accent);flex:0 0 auto;margin-top:1px;}
+  .chat__box{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:20px;padding:13px 15px 11px;box-shadow:var(--shadow);transition:.16s var(--ease);}
+  .chat__box:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft),var(--shadow-lg);}
+  .chat__input{width:100%;background:transparent;border:none;color:var(--fg);font:inherit;font-size:1rem;line-height:1.55;resize:none;max-height:210px;min-height:26px;display:block;}
+  .chat__input:focus{outline:none;}
+  .chat__input::placeholder{color:var(--faint);}
+  .chat__boxfoot{display:flex;align-items:center;gap:10px;margin-top:9px;}
+  .chat__inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}
+  .chat__sel{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:9px;padding:7px 10px;font:inherit;font-size:.82rem;cursor:pointer;transition:.15s;max-width:200px;}
+  .chat__sel:hover{border-color:var(--border-strong);}
+  .chat__sel:focus{outline:none;border-color:var(--accent);}
+  .chat__seg{display:inline-flex;background:var(--surface-3);border:1px solid var(--border-2);border-radius:9px;padding:3px;gap:2px;}
+  .chat__seg button{border:none;background:transparent;color:var(--muted-fg);padding:6px 13px;border-radius:6px;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:.14s;}
+  .chat__seg button:hover{color:var(--fg);}
+  .chat__seg button.active{background:var(--accent);color:#0a0a06;}
+  .chat__send{flex:0 0 auto;margin-left:auto;width:40px;height:40px;border-radius:12px;border:none;display:grid;place-items:center;background:var(--accent);color:#0a0a06;cursor:pointer;transition:.15s var(--ease);box-shadow:0 8px 22px -8px rgba(229,255,45,.6);}
+  .chat__send .ico{width:19px;height:19px;}
+  .chat__send:hover{transform:translateY(-1px);box-shadow:0 12px 28px -8px rgba(229,255,45,.75);}
+  .chat__send:disabled,.chat__send.is-busy{opacity:.55;pointer-events:none;box-shadow:none;}
+  .chat__send.is-busy .ico{animation:spin .8s linear infinite;}
+  @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.28rem;}.chat__sel{max-width:46%;}}
   .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
   .ccdot--on{background:var(--accent);animation:ccpulse 1s ease-in-out infinite;}
   .ccdot--done{background:var(--accent);}
   @keyframes ccpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
-  .cchief__md{font-size:.95rem;line-height:1.65;color:var(--fg);word-wrap:break-word;}
-  .cchief__md h3{font-size:1.28rem;margin:22px 0 10px;color:var(--accent);letter-spacing:-.01em;}
-  .cchief__md h4{font-size:1.08rem;margin:20px 0 8px;color:var(--fg);}
-  .cchief__md h5,.cchief__md h6{font-size:.96rem;margin:16px 0 6px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;}
-  .cchief__md p{margin:0 0 12px;}
-  .cchief__md ul,.cchief__md ol{margin:0 0 14px;padding-left:22px;}
-  .cchief__md li{margin:4px 0;}
-  .cchief__md strong{color:#fff;font-weight:700;}
-  .cchief__md code{background:var(--surface-3);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.86em;color:var(--accent);}
-  .cchief__md blockquote{border-left:3px solid var(--accent);background:var(--accent-soft);margin:0 0 14px;padding:10px 16px;border-radius:0 8px 8px 0;color:var(--muted-fg);}
-  .cchief__md hr{border:none;border-top:1px solid var(--border);margin:20px 0;}
+  .chat__md{font-size:.95rem;line-height:1.68;color:var(--fg);word-wrap:break-word;}
+  .chat__md>*:first-child{margin-top:0;}
+  .chat__md h3{font-size:1.24rem;margin:22px 0 10px;color:var(--accent);letter-spacing:-.01em;}
+  .chat__md h4{font-size:1.06rem;margin:20px 0 8px;color:var(--fg);}
+  .chat__md h5,.chat__md h6{font-size:.95rem;margin:16px 0 6px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;}
+  .chat__md p{margin:0 0 12px;}
+  .chat__md ul,.chat__md ol{margin:0 0 14px;padding-left:22px;}
+  .chat__md li{margin:4px 0;}
+  .chat__md strong{color:#fff;font-weight:700;}
+  .chat__md code{background:var(--surface-3);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.86em;color:var(--accent);}
+  .chat__md blockquote{border-left:3px solid var(--accent);background:var(--accent-soft);margin:0 0 14px;padding:10px 16px;border-radius:0 8px 8px 0;color:var(--muted-fg);}
+  .chat__md hr{border:none;border-top:1px solid var(--border);margin:20px 0;}
   .ccmd-tblwrap{overflow-x:auto;margin:0 0 16px;border:1px solid var(--border);border-radius:var(--radius-sm);}
   .ccmd-tbl{border-collapse:collapse;width:100%;font-size:.86rem;min-width:420px;}
   .ccmd-tbl th{background:var(--surface-2);color:var(--accent);text-align:left;padding:9px 12px;font-weight:700;border-bottom:1px solid var(--border-2);white-space:nowrap;}
   .ccmd-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--fg);}
   .ccmd-tbl tr:last-child td{border-bottom:none;}
   .ccerr{background:var(--red-soft);border:1px solid rgba(255,93,93,.3);color:#ffb3b3;padding:14px 16px;border-radius:var(--radius-sm);font-size:.9rem;}
-  .cchief__tt{margin-top:26px;}
+  .cchief__tt{margin-top:18px;}
   .cchief__tthead{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:700;color:var(--muted-fg);margin-bottom:12px;}
   .cchief__tthead .ico{width:16px;height:16px;color:var(--native);}
-  .cchief__ttgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;}
+  .cchief__ttgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
   .ccttcard{display:flex;flex-direction:column;gap:8px;padding:13px;border:1px solid var(--border-2);background:var(--surface);border-radius:var(--radius-sm);color:var(--fg);text-decoration:none;transition:.15s var(--ease);}
   .ccttcard:hover{border-color:var(--native);background:var(--surface-2);transform:translateY(-2px);}
   .ccttv{font-size:.72rem;font-weight:700;color:var(--native);letter-spacing:.02em;}
   .ccttc{font-size:.83rem;line-height:1.4;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .cctto{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--faint);margin-top:auto;}
   .cctto .ico{width:13px;height:13px;}
-  @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ccg__grid{grid-template-columns:1fr;}.ccfield,.ccfield select{width:100%;}.composer__controls{gap:12px;}.cchief__run{width:100%;justify-content:center;}.cchief__hero{gap:12px;}.cchief__mark{width:44px;height:44px;}}
 
   /* ===== Furtado Skill — Head Copy Ads IA ===== */
-  .fur__phases{grid-template-columns:repeat(4,1fr);}
-  .fur__projbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:14px 16px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);}
-  .fur__projsel{flex:1 1 260px;min-width:200px;}
-  .fur__new{display:flex;gap:8px;align-items:center;flex:1 1 100%;}
-  .fur__new input{flex:1;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:.92rem;padding:11px 13px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .fur__proj{display:flex;align-items:center;gap:7px;}
+  .fur__proj>.ico{width:16px;height:16px;color:var(--accent);flex:0 0 auto;}
+  .fur__projsel{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:9px;padding:7px 11px;font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;max-width:280px;transition:.15s;}
+  .fur__projsel:hover{border-color:var(--border-strong);}
+  .fur__projsel:focus{outline:none;border-color:var(--accent);}
+  .fur__new{display:flex;gap:8px;align-items:center;flex:1 1 100%;margin-top:2px;}
+  .fur__new input{flex:1;min-width:160px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:.9rem;padding:9px 12px;outline:none;transition:border-color .15s,box-shadow .15s;}
   .fur__new input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
   .fur__docs{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-left:auto;}
-  .fur__doc{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);background:var(--surface-3);border:1px solid var(--border-2);border-radius:999px;padding:5px 10px;}
+  .fur__doc{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);background:var(--surface-3);border:1px solid var(--border-2);border-radius:999px;padding:5px 10px;}
   .fur__doc .ico{width:12px;height:12px;}
   .fur__doc.ok{color:var(--accent);background:var(--accent-dim);border-color:rgba(229,255,45,.3);}
-  .fur__num{max-width:150px;}
-  .fur__prereq{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;line-height:1.45;color:#ffcf7a;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.3);border-radius:var(--radius-xs);padding:10px 12px;margin-bottom:12px;}
-  .fur__prereq .ico{width:15px;height:15px;flex:0 0 auto;margin-top:1px;}
+  .fur__num{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted-fg);}
+  .fur__num input{width:56px;background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:8px;padding:6px 8px;font:inherit;font-size:.82rem;text-align:center;}
+  .fur__num input:focus{outline:none;border-color:var(--accent);}
+  .fur__prereq{display:flex;align-items:flex-start;gap:7px;font-size:.77rem;line-height:1.42;color:#ffcf7a;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.3);border-radius:12px;padding:8px 11px;margin:0 4px 9px;}
+  .fur__prereq .ico{width:14px;height:14px;flex:0 0 auto;margin-top:1px;color:#ffcf7a;}
   .fur__prereq b{color:#ffe0a3;}
-  .furtado .ctool.is-locked{opacity:.55;pointer-events:none;}
-  @media(max-width:720px){.fur__phases{grid-template-columns:1fr 1fr;}.fur__docs{margin-left:0;}}
+  @media(max-width:720px){.fur__docs{margin-left:0;width:100%;}.fur__projsel{max-width:60vw;}}
 
   /* ===== ingestão de criativo do Facebook ===== */
   .fbwork{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--accent);margin-top:2px;}
@@ -730,7 +742,23 @@
   .fbnote--err{color:#ffb3b3;background:var(--red-soft);border-color:rgba(255,93,93,.3);}
   .fbnote--err .ico{color:var(--red);}
 
-  /* ===== Transcritor ===== */
+  /* ===== Transcritor (usa o shell clássico .cchief) ===== */
+  .cchief{max-width:1000px;margin:0 auto;padding:2px 0 64px;}
+  .cchief__hero{display:flex;align-items:center;gap:16px;margin-bottom:22px;}
+  .cchief__mark{display:grid;place-items:center;width:52px;height:52px;flex:0 0 auto;border-radius:15px;background:linear-gradient(135deg,var(--accent),#b9d117);color:#0a0a06;box-shadow:0 10px 30px -10px rgba(229,255,45,.5);}
+  .cchief__mark .ico{width:26px;height:26px;}
+  .cchief__heroTitle{font-size:1.32rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;}
+  .cchief__heroTx p{margin:4px 0 0;font-size:.88rem;line-height:1.5;color:var(--muted-fg);max-width:640px;}
+  .cchief__composer{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:20px;padding:18px 18px 16px;box-shadow:var(--shadow);}
+  .composer__controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .ccfield{display:flex;flex-direction:column;gap:7px;}
+  .ccfield>span{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:700;}
+  .ccfield select{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:10px;padding:10px 13px;font:inherit;font-size:.9rem;min-width:210px;cursor:pointer;transition:.15s;}
+  .ccfield select:hover{border-color:var(--border-strong);}
+  .ccfield select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
+  .cchief__out{margin-top:26px;background:var(--surface);border:1px solid var(--border-2);border-radius:20px;padding:22px 24px;box-shadow:var(--shadow);}
+  .cchief__outbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .cchief__status{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted-fg);}
   .trdrop{border:1.5px dashed var(--border-strong);border-radius:16px;background:var(--surface-3);padding:34px 20px;text-align:center;cursor:pointer;transition:.16s var(--ease);}
   .trdrop:hover,.trdrop:focus-visible{border-color:var(--accent);background:var(--accent-soft);outline:none;}
   .trdrop.active{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.005);}
@@ -907,10 +935,11 @@ const SECTIONS=[
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
-  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'},
-  {key:"furtado",label:"Furtado Skill — Head Copy Ads IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado Skill — Head Copy Ads IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'}
+  {key:"furtado",label:"Furtado Skill — Head Copy Ads IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado Skill — Head Copy Ads IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
+  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
 ];
 function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado";}
+function isChatSection(k){return k==="copychief"||k==="furtado";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
@@ -965,7 +994,8 @@ const ICONS={
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
   mic:'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>',
   upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>',
-  x:'<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>'
+  x:'<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
+  send:'<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -1879,6 +1909,7 @@ function switchSection(key){
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=isToolSection(activeSection);
+  document.body.classList.toggle("chatmode",isChatSection(activeSection));
   const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc?"none":"";
@@ -1919,14 +1950,38 @@ function renderSubFilter(){
 /* ===== FEGUINHO COPY CHIEF (Beta) ===== */
 const FEGUINHO_FN="/.netlify/functions/feguinho";
 let ccTool="gerar", ccFmt="anuncio", ccBusy=false;
+const CC_ORDER=["gerar","dissecar","modelar"];
 const CC_TOOLS={
-  gerar:{ph:"Descreva a ideia, o mecanismo ou o ângulo. Ex: “sal amargo japonês tomado antes do café que destrava o metabolismo lento depois dos 40”.",
+  gerar:{icon:"wand",label:"Gerar Ad / VSL",
+    desc:"Dê um mecanismo, ângulo ou ideia e receba hooks + corpo (ou estrutura de VSL) clonados dos criativos com mais vendas do vault e do Mega Brain.",
+    ph:"Descreva a ideia, o mecanismo ou o ângulo. Ex: “sal amargo japonês tomado antes do café que destrava o metabolismo lento depois dos 40”.",
     hint:"Extrai os padrões dos campeões e entrega hooks + corpo (ou estrutura de VSL) no mesmo DNA.",cta:"Gerar com o Feguinho"},
-  dissecar:{ph:"Cole aqui a copy do anúncio (ou o roteiro da VSL) que você quer dissecar bloco a bloco.",
+  dissecar:{icon:"scissors",label:"Dissecar",
+    desc:"Cole um anúncio ou VSL e o Feguinho quebra em blocos (Lead · História · Mecanismo · Oferta · Fechamento) pelo método Atlas, nomeando cada técnica.",
+    ph:"Cole aqui a copy do anúncio (ou o roteiro da VSL) que você quer dissecar bloco a bloco.",
     hint:"Quebra a copy em blocos (Lead, História/Descoberta, Mecanismo do problema/solução, Oferta, Fechamento) pelo método Atlas.",cta:"Dissecar copy"},
-  modelar:{ph:"Cole o criativo campeão (ou descreva-o) que você quer usar de molde para gerar variações.",
+  modelar:{icon:"layers",label:"Modelar",
+    desc:"Cole um criativo campeão e receba variações mantendo o esqueleto vencedor — cada uma com um ângulo novo e dizendo de qual campeão veio.",
+    ph:"Cole o criativo campeão (ou descreva-o) que você quer usar de molde para gerar variações.",
     hint:"Gera variações mantendo o esqueleto vencedor — indicando de qual campeão veio cada estrutura.",cta:"Modelar variações"}
 };
+
+/* ===== helpers de chat (compartilhados Feguinho + Furtado) ===== */
+function chatThreadEl(id){const t=document.getElementById(id);if(t){const w=t.querySelector(".chat__welcome");if(w)w.remove();}return t;}
+function chatPushUser(thread,chips,text){
+  if(!thread)return null;
+  const el=document.createElement("div");el.className="chat__msg chat__msg--user";
+  el.innerHTML=`<div class="chat__bubble">${(chips&&chips.length)?`<div class="chat__utag">${chips.map(c=>`<span class="chat__chip">${c}</span>`).join("")}</div>`:""}<div class="chat__utext">${esc(text||"")}</div></div>`;
+  thread.appendChild(el);return el;
+}
+function chatPushAI(thread,avIcon){
+  const el=document.createElement("div");el.className="chat__msg chat__msg--ai";
+  el.innerHTML=`<div class="chat__av">${ic(avIcon||"sparkles")}</div><div class="chat__bubble"><div class="chat__status"><span class="ccdot ccdot--on"></span>Conectando…</div><div class="chat__md"></div><div class="chat__aibar" hidden></div></div>`;
+  thread.appendChild(el);
+  return {el,status:el.querySelector(".chat__status"),md:el.querySelector(".chat__md"),bar:el.querySelector(".chat__aibar")};
+}
+function chatScroll(thread){if(thread)thread.scrollTop=thread.scrollHeight;}
+function chatAutosize(ta){if(!ta)return;ta.style.height="auto";ta.style.height=Math.min(210,ta.scrollHeight)+"px";}
 function ccNorm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");}
 function ccMega(nicho){const nz=ccNorm(nicho);
   return offers.filter(o=>(o.data||{}).kind==="megabrain"&&ccNorm(o.data.nicho)===nz)
@@ -1962,75 +2017,59 @@ function ccMarkdown(src){
 function ccApplyTool(){
   const t=CC_TOOLS[ccTool]||CC_TOOLS.gerar;
   const inp=$("#ccInput");if(inp)inp.placeholder=t.ph;
-  const hint=$("#ccHint");if(hint)hint.textContent=t.hint;
-  const run=$("#ccRunTxt");if(run)run.textContent=t.cta;
-  $$("#ccTools .ctool").forEach(b=>b.classList.toggle("active",b.dataset.tool===ccTool));
+  const hint=$("#ccModeHint span");if(hint)hint.textContent=t.hint;
+  const run=$("#ccRun");if(run)run.title=t.cta+" — Ctrl/⌘+Enter";
+  $$("#ccModes .chat__mode").forEach(b=>b.classList.toggle("active",b.dataset.tool===ccTool));
 }
 function renderCopyChief(){
   const area=$("#gridArea");if(!area)return;
-  if($("#cchief"))return; // já montado — não destrói o trabalho em andamento
-  area.innerHTML=`<div class="cchief" id="cchief">
-    <div class="cchief__hero">
-      <div class="cchief__mark">${ic("sparkles")}</div>
-      <div class="cchief__heroTx">
-        <div class="cchief__heroTitle">Feguinho — Copy Chief IA <span class="cchief__beta">Beta</span></div>
-        <p>Escolha o modo, o nicho e o formato — o Feguinho <b>modela o que já vendeu</b> (vault + Mega Brain) e sugere hooks do Radar TikTok.</p>
+  if($("#cchief"))return; // já montado — não destrói a conversa em andamento
+  const icard=k=>{const t=CC_TOOLS[k];return `<button type="button" class="chat__icard" data-setmode="${k}"><div class="chat__icard__t">${ic(t.icon)}${esc(t.label)}</div><p>${esc(t.desc)}</p><span class="chat__icard__go">${ic("wand")}Usar este modo</span></button>`;};
+  area.innerHTML=`<div class="chat" id="cchief">
+    <div class="chat__thread" id="ccThread">
+      <div class="chat__welcome">
+        <div class="chat__mark">${ic("sparkles")}</div>
+        <div class="chat__wtitle">Feguinho — Copy Chief IA <span class="chat__beta">Beta</span></div>
+        <p class="chat__wsub">Seu chefe de copy que <b>modela o que já vendeu</b> (vault + Mega Brain) e sugere hooks do Radar TikTok. Escolha um <b>modo</b> abaixo, ajuste <b>nicho</b> e <b>formato</b> e mande sua ideia — a resposta vem aqui, como uma conversa.</p>
+        <div class="chat__intro">${CC_ORDER.map(icard).join("")}</div>
       </div>
     </div>
-
-    <div class="cchief__tools" id="ccTools">
-      <button type="button" class="ctool active" data-tool="gerar"><span class="ctool__ic">${ic("wand")}</span><span class="ctool__tx"><b>Gerar Ad / VSL</b><small>hooks e corpo modelados nos campeões</small></span></button>
-      <button type="button" class="ctool" data-tool="dissecar"><span class="ctool__ic">${ic("scissors")}</span><span class="ctool__tx"><b>Dissecar</b><small>quebra a copy em blocos (Atlas)</small></span></button>
-      <button type="button" class="ctool" data-tool="modelar"><span class="ctool__ic">${ic("layers")}</span><span class="ctool__tx"><b>Modelar</b><small>variações a partir de um campeão</small></span></button>
-    </div>
-
-    <details class="cchief__guide">
-      <summary>${ic("info")}<span>Como usar — manual rápido</span><span class="ccg__chev">${ic("back")}</span></summary>
-      <div class="ccg__body">
-        <div class="ccg__grid">
-          <div class="ccg__card"><div class="ccg__t">${ic("wand")}Gerar Ad / VSL</div><p>Dê um <b>mecanismo, ângulo ou ideia</b> e receba hooks + corpo (ou estrutura de VSL) <b>clonados dos criativos com mais vendas</b> do vault e do Mega Brain.</p><span class="ccg__tip">Quanto mais específico o mecanismo, melhor o clone.</span></div>
-          <div class="ccg__card"><div class="ccg__t">${ic("scissors")}Dissecar</div><p>Cole um <b>anúncio ou VSL</b> e ele quebra em blocos (Lead · História · Mecanismo do problema/solução · Oferta · Fechamento) pelo <b>método Atlas</b>, nomeando cada técnica.</p><span class="ccg__tip">Ideal pra engenharia reversa de campeões do concorrente.</span></div>
-          <div class="ccg__card"><div class="ccg__t">${ic("layers")}Modelar</div><p>Cole um <b>criativo campeão</b> e receba <b>variações</b> mantendo o esqueleto vencedor — cada uma com um ângulo novo, dizendo de qual campeão veio.</p><span class="ccg__tip">Perfeito pra escalar um criativo que já validou.</span></div>
+    <div class="chat__composer">
+      <div class="chat__modes" id="ccModes">${CC_ORDER.map(k=>`<button type="button" class="chat__mode${k===ccTool?" active":""}" data-tool="${k}">${ic(CC_TOOLS[k].icon)}${esc(CC_TOOLS[k].label)}</button>`).join("")}</div>
+      <div class="chat__modehint" id="ccModeHint">${ic("info")}<span></span></div>
+      <div class="chat__box">
+        <textarea id="ccInput" class="chat__input" rows="1" placeholder=""></textarea>
+        <div class="chat__boxfoot">
+          <div class="chat__inline">
+            <select id="ccNicho" class="chat__sel" title="Nicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select>
+            <div class="chat__seg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div>
+          </div>
+          <button class="chat__send" id="ccRun" aria-label="Enviar">${ic("send")}</button>
         </div>
-        <div class="ccg__foot">${ic("zap")}<span>Escolha sempre o <b>nicho</b> e o <b>formato</b> certos — é o que define quais campeões viram base. Atalho: <b>Ctrl/⌘ + Enter</b> para gerar.</span></div>
       </div>
-    </details>
-
-    <div class="cchief__composer">
-      <div class="composer__controls">
-        <label class="ccfield"><span>Nicho</span><select id="ccNicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select></label>
-        <div class="ccfield"><span>Formato</span><div class="ccseg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div></div>
-      </div>
-      <textarea id="ccInput" class="cchief__input" rows="5" placeholder=""></textarea>
-      <div class="composer__foot">
-        <span class="cchief__hint" id="ccHint"></span>
-        <button class="btn btn--accent cchief__run" id="ccRun">${ic("sparkles")}<span id="ccRunTxt">Gerar com o Feguinho</span></button>
-      </div>
-    </div>
-
-    <div class="cchief__out" id="ccOut" hidden>
-      <div class="cchief__outbar"><span class="cchief__status" id="ccStatus"></span><button class="btn btn--outline btn--sm" id="ccCopy">${ic("clipboard")}Copiar</button></div>
-      <div class="cchief__md" id="ccMd"></div>
-      <div class="cchief__tt" id="ccTt"></div>
     </div>
   </div>`;
   ccApplyTool();
-  $$("#ccTools .ctool").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccTool=b.dataset.tool;ccApplyTool();}));
+  $$("#ccModes .chat__mode").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccTool=b.dataset.tool;ccApplyTool();const t=$("#ccInput");if(t)t.focus();}));
+  $$(".chat__icard",area).forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccTool=b.dataset.setmode;ccApplyTool();const t=$("#ccInput");if(t)t.focus();}));
   $$("#ccFormato button").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccFmt=b.dataset.fmt;$$("#ccFormato button").forEach(x=>x.classList.toggle("active",x===b));}));
   $("#ccRun").addEventListener("click",ccRun);
-  $("#ccInput").addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter")ccRun();});
-  $("#ccCopy").addEventListener("click",()=>{const t=$("#ccMd");if(!t)return;navigator.clipboard.writeText(t.innerText||"").then(()=>toast("Copiado ✓"));});
+  const ta=$("#ccInput");
+  ta.addEventListener("input",()=>chatAutosize(ta));
+  ta.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();ccRun();}});
 }
 async function ccRun(){
   if(ccBusy)return;
-  const input=($("#ccInput").value||"").trim();
-  if(!input){toast("Escreva algo para o Feguinho trabalhar",true);$("#ccInput").focus();return;}
+  const ta=$("#ccInput");const input=(ta.value||"").trim();
+  if(!input){toast("Escreva algo para o Feguinho trabalhar",true);ta.focus();return;}
   const nicho=$("#ccNicho").value;
-  ccBusy=true;
-  const btn=$("#ccRun");btn.disabled=true;btn.classList.add("is-busy");
-  const out=$("#ccOut"),md=$("#ccMd"),status=$("#ccStatus"),tt=$("#ccTt");
-  out.hidden=false;md.innerHTML="";tt.innerHTML="";status.innerHTML=`<span class="ccdot"></span>Conectando…`;
-  out.scrollIntoView({behavior:"smooth",block:"nearest"});
+  const thread=chatThreadEl("ccThread");
+  chatPushUser(thread,[esc(CC_TOOLS[ccTool].label),esc(nicho),ccFmt==="vsl"?"VSL":"Anúncio"],input);
+  ta.value="";chatAutosize(ta);
+  const ai=chatPushAI(thread,"sparkles");const md=ai.md,status=ai.status;
+  chatScroll(thread);
+  ccBusy=true;const btn=$("#ccRun");btn.disabled=true;btn.classList.add("is-busy");
+  $$("#ccModes .chat__mode").forEach(x=>x.classList.add("is-locked"));
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
   let acc="",gotAny=false,errMsg="";
   try{
@@ -2042,7 +2081,7 @@ async function ccRun(){
       buf+=dec.decode(value,{stream:true});let nl;
       while((nl=buf.indexOf("\n"))>=0){const line=buf.slice(0,nl);buf=buf.slice(nl+1);
         if(!line.trim())continue;let ev;try{ev=JSON.parse(line);}catch(e){continue;}
-        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=ccMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;}
+        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=ccMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;chatScroll(thread);}
         else if(ev.t==="meta"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Analisando os campeões${ev.sources?` · ${(ev.sources.ads||0)} ads · ${(ev.sources.mega||0)} do brain · ${(ev.sources.tiktok||0)} TikTok`:""}…`;}
         else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Feguinho está pensando…`;}
         else if(ev.t==="error"){errMsg=ev.v||"erro";}
@@ -2050,26 +2089,38 @@ async function ccRun(){
     }
   }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
   ccBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
+  $$("#ccModes .chat__mode").forEach(x=>x.classList.remove("is-locked"));
   if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"o Feguinho não respondeu — tente de novo")}</div>`;status.innerHTML="";}
-  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
-  if(gotAny&&ccTool==="gerar"){const hooks=ccTiktok(nicho);
-    if(hooks.length)tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
-      hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
+  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+    ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--outline btn--sm" data-cccopy>${ic("clipboard")}Copiar</button>`;
+    const cb=ai.bar.querySelector("[data-cccopy]");if(cb)cb.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
   }
+  if(gotAny&&ccTool==="gerar"){const hooks=ccTiktok(nicho);
+    if(hooks.length){const tt=document.createElement("div");tt.className="cchief__tt";
+      tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
+        hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
+      ai.bar.parentNode.insertBefore(tt,ai.bar);
+    }
+  }
+  chatScroll(thread);
 }
 
 /* ===== FURTADO SKILL — Head Copy Ads IA (Beta) ===== */
 const FURTADO_FN="/.netlify/functions/furtado";
 const FUR_PHASES=[
   {key:"biblia",icon:"brain",label:"Bíblia do Nicho",cta:"Gerar Bíblia do Nicho",
+    desc:"Cole 2 a 4 anúncios que já venderam (separe com -----) e a IA extrai o DNA do nicho — avatar, linguagem, mecanismo, promessa, provas e ângulos, enriquecido com o Mega Brain + vault.",
     hint:"Cole 2 a 4 anúncios validados — a IA extrai os padrões (enriquecidos com o Mega Brain + vault).",
     ph:"Cole aqui de 2 a 4 anúncios que JÁ VENDERAM, separando cada um com uma linha só com -----\n\nAnúncio 1…\n-----\nAnúncio 2…"},
   {key:"voc",icon:"message",label:"Voz do Prospect",cta:"Pesquisar VOC na web",
+    desc:"Busca REAL na web (YouTube, Reddit BR, fóruns) as falas cruas do público — dores, desejos, ceticismo e falsas crenças, com a fonte. Vira munição de linguagem.",
     hint:"Usa a Bíblia salva + busca REAL na web (YouTube, Reddit BR, fóruns) a linguagem crua do público.",ph:""},
   {key:"remessa",icon:"layers",label:"Arquitetura da Remessa",cta:"Montar briefing",
+    desc:"Informe a oferta e quantos corpos/hooks. A IA propõe o briefing de cada anúncio — promessa, ângulo, avatar, formato e hipótese de teste, para você aprovar antes de escrever.",
     hint:"Informe a oferta e quantos corpos/hooks — a IA propõe o briefing de cada anúncio.",
     ph:"Dados da oferta:\nExpert: …\nMecanismo do problema: …\nMecanismo da solução / nome chiclete: …\nPromessa principal: …"},
   {key:"escrita",icon:"wand",label:"Escrita dos Anúncios",cta:"Escrever anúncio",
+    desc:"Escreve um anúncio por vez (corpo + hooks), pronto pra gravar, com lastro na Bíblia + VOC + briefing e frases curtas de vídeo.",
     hint:"Escreve 1 anúncio por vez (corpo + hooks) com lastro na Bíblia, no VOC e no briefing.",ph:""},
 ];
 let furPhase="biblia", furBusy=false, furProjectId=null, furLastOutput="", furCreating=false;
@@ -2083,77 +2134,54 @@ function renderFurtado(){
   if($("#furtado"))return;
   const projs=furProjects();
   if(!furProjectId&&projs.length)furProjectId=projs[0].id;
-  area.innerHTML=`<div class="cchief furtado" id="furtado">
-    <div class="cchief__hero">
-      <div class="cchief__mark">${ic("wand")}</div>
-      <div class="cchief__heroTx">
-        <div class="cchief__heroTitle">Furtado Skill — Head Copy Ads IA <span class="cchief__beta">Beta</span></div>
-        <p>Novo modelo de criação de ads em <b>4 fases encadeadas</b> — cada fase alimenta a próxima e fica salva por projeto.</p>
-      </div>
-    </div>
-
-    <div class="fur__projbar">
-      <label class="ccfield fur__projsel"><span>Projeto / Nicho</span>
-        <select id="furProjSel">${projs.map(p=>`<option value="${p.id}"${p.id===furProjectId?" selected":""}>${esc((p.data||{}).nome||"(sem nome)")}</option>`).join("")}<option value="__new">➕ Novo projeto…</option></select>
-      </label>
-      <div class="fur__new" id="furNewWrap" ${furCreating||!projs.length?"":"hidden"}>
-        <input id="furNewName" class="ccfield" type="text" placeholder="Nome do projeto / nicho — ex.: Emagrecimento feminino 40+">
-        <button class="btn btn--accent btn--sm" id="furCreate">${ic("plus")}Criar</button>
+  const pcard=(p,i)=>`<button type="button" class="chat__icard" data-setphase="${p.key}"><div class="chat__icard__t">${ic(p.icon)}${i+1} · ${esc(p.label)}</div><p>${esc(p.desc)}</p><span class="chat__icard__go">${ic("wand")}Ir para a fase ${i+1}</span></button>`;
+  area.innerHTML=`<div class="chat furtado" id="furtado">
+    <div class="chat__top">
+      <div class="fur__proj">${ic("folder")}
+        <select id="furProjSel" class="fur__projsel" title="Projeto / Nicho">${projs.map(p=>`<option value="${p.id}"${p.id===furProjectId?" selected":""}>${esc((p.data||{}).nome||"(sem nome)")}</option>`).join("")}<option value="__new">➕ Novo projeto…</option></select>
       </div>
       <div class="fur__docs" id="furDocs"></div>
-    </div>
-
-    <details class="cchief__guide">
-      <summary>${ic("info")}<span>Como usar — manual rápido</span><span class="ccg__chev">${ic("back")}</span></summary>
-      <div class="ccg__body">
-        <div class="ccg__grid">
-          <div class="ccg__card"><div class="ccg__t">${ic("brain")}1 · Bíblia do Nicho</div><p>Cole <b>2 a 4 anúncios que já venderam</b> (separe com <code>-----</code>). A IA extrai avatar, linguagem, mecanismo, promessa, provas e ângulos — o DNA do nicho.</p><span class="ccg__tip">Quanto mais parecidos os anúncios entre si, mais forte a Bíblia.</span></div>
-          <div class="ccg__card"><div class="ccg__t">${ic("message")}2 · Voz do Prospect</div><p>Busca <b>real na web</b> as falas cruas do público (dores, desejos, ceticismo, falsas crenças) com a fonte — vira munição de linguagem.</p><span class="ccg__tip">Pode levar alguns segundos: a IA pesquisa de verdade.</span></div>
-          <div class="ccg__card"><div class="ccg__t">${ic("layers")}3 · Arquitetura da Remessa</div><p>Informe a <b>oferta</b> e quantos corpos/hooks. A IA propõe o <b>briefing</b> de cada anúncio (promessa, ângulo, avatar, formato, hipótese de teste).</p><span class="ccg__tip">Você aprova/ajusta antes de escrever.</span></div>
-          <div class="ccg__card"><div class="ccg__t">${ic("wand")}4 · Escrita dos Anúncios</div><p>Escreve <b>um anúncio por vez</b> (corpo + hooks), pronto pra gravar, com lastro na Bíblia + VOC + briefing e frases curtas de vídeo.</p><span class="ccg__tip">Revise o 1º e ajuste antes de replicar os outros.</span></div>
-        </div>
-        <div class="ccg__foot">${ic("zap")}<span>Siga a ordem <b>1 → 2 → 3 → 4</b>. Cada resultado tem <b>Salvar no projeto</b> — é o que alimenta as fases seguintes e permite reabrir depois.</span></div>
+      <div class="fur__new" id="furNewWrap" ${furCreating||!projs.length?"":"hidden"}>
+        <input id="furNewName" type="text" placeholder="Nome do projeto / nicho — ex.: Emagrecimento feminino 40+">
+        <button class="btn btn--accent btn--sm" id="furCreate">${ic("plus")}Criar</button>
       </div>
-    </details>
-
-    <div class="cchief__tools fur__phases" id="furPhases">
-      ${FUR_PHASES.map((p,i)=>`<button type="button" class="ctool${p.key===furPhase?" active":""}" data-phase="${p.key}"><span class="ctool__ic">${ic(p.icon)}</span><span class="ctool__tx"><b>${i+1} · ${esc(p.label)}</b><small>fase ${i+1}</small></span></button>`).join("")}
     </div>
-
-    <div class="cchief__composer">
-      <div class="composer__controls" id="furControls"></div>
+    <div class="chat__thread" id="furThread">
+      <div class="chat__welcome">
+        <div class="chat__mark">${ic("wand")}</div>
+        <div class="chat__wtitle">Furtado Skill — Head Copy Ads IA <span class="chat__beta">Beta</span></div>
+        <p class="chat__wsub">Novo modelo de criação de ads em <b>4 fases encadeadas</b> — cada fase alimenta a próxima e fica salva no projeto. Siga a ordem <b>1 → 2 → 3 → 4</b> e clique em <b>Salvar no projeto</b> a cada resultado para liberar a fase seguinte.</p>
+        <div class="chat__intro is-4">${FUR_PHASES.map(pcard).join("")}</div>
+      </div>
+    </div>
+    <div class="chat__composer">
+      <div class="chat__modes" id="furModes">${FUR_PHASES.map((p,i)=>`<button type="button" class="chat__mode${p.key===furPhase?" active":""}" data-phase="${p.key}">${ic(p.icon)}${i+1} · ${esc(p.label)}</button>`).join("")}</div>
+      <div class="chat__modehint" id="furModeHint">${ic("info")}<span></span></div>
       <div class="fur__prereq" id="furPrereq" hidden></div>
-      <textarea id="furInput" class="cchief__input" rows="7"></textarea>
-      <div class="composer__foot">
-        <span class="cchief__hint" id="furHint"></span>
-        <button class="btn btn--accent cchief__run" id="furRun">${ic("sparkles")}<span id="furRunTxt">Gerar</span></button>
-      </div>
-    </div>
-
-    <div class="cchief__out" id="furOut" hidden>
-      <div class="cchief__outbar"><span class="cchief__status" id="furStatus"></span>
-        <div class="tractions">
-          <button class="btn btn--accent btn--sm" id="furSave">${ic("download")}Salvar no projeto</button>
-          <button class="btn btn--outline btn--sm" id="furCopy">${ic("clipboard")}Copiar</button>
+      <div class="chat__box">
+        <textarea id="furInput" class="chat__input" rows="1"></textarea>
+        <div class="chat__boxfoot">
+          <div class="chat__inline" id="furControls"></div>
+          <button class="chat__send" id="furRun" aria-label="Enviar">${ic("send")}</button>
         </div>
       </div>
-      <div class="cchief__md" id="furMd"></div>
     </div>
   </div>`;
 
   $("#furProjSel").addEventListener("change",e=>{
-    if(e.target.value==="__new"){furCreating=true;const w=$("#furNewWrap");if(w){w.hidden=false;}$("#furNewName").focus();return;}
+    if(e.target.value==="__new"){furCreating=true;const w=$("#furNewWrap");if(w){w.hidden=false;}const n=$("#furNewName");if(n)n.focus();return;}
     furProjectId=e.target.value;furCreating=false;const w=$("#furNewWrap");if(w)w.hidden=true;
-    furLastOutput="";const o=$("#furOut");if(o)o.hidden=true;
-    furRenderDocs();furApplyPhase();
+    furLastOutput="";furRenderDocs();furApplyPhase();
   });
   $("#furCreate").addEventListener("click",furCreateProject);
   $("#furNewName").addEventListener("keydown",e=>{if(e.key==="Enter")furCreateProject();});
-  $$("#furPhases .ctool").forEach(b=>b.addEventListener("click",()=>{if(furBusy)return;furPhase=b.dataset.phase;$$("#furPhases .ctool").forEach(x=>x.classList.toggle("active",x===b));furLastOutput="";const o=$("#furOut");if(o)o.hidden=true;furApplyPhase();}));
+  const furSetPhase=(k)=>{if(furBusy||!k)return;furPhase=k;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===k));furLastOutput="";furApplyPhase();const t=$("#furInput");if(t&&t.style.display!=="none")t.focus();};
+  $$("#furModes .chat__mode").forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.phase)));
+  $$(".chat__icard",area).forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.setphase)));
   $("#furRun").addEventListener("click",furRun);
-  $("#furInput").addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter")furRun();});
-  $("#furSave").addEventListener("click",furSaveDoc);
-  $("#furCopy").addEventListener("click",()=>{const t=$("#furMd");if(!t)return;navigator.clipboard.writeText(t.innerText||"").then(()=>toast("Copiado ✓"));});
+  const fta=$("#furInput");
+  fta.addEventListener("input",()=>chatAutosize(fta));
+  fta.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();furRun();}});
   furRenderDocs();furApplyPhase();
 }
 function furRenderDocs(){
@@ -2166,8 +2194,8 @@ function furRenderDocs(){
 function furApplyPhase(){
   const cfg=FUR_PHASES.find(p=>p.key===furPhase)||FUR_PHASES[0];
   const p=furProj();const d=(p&&p.data)||{};
-  const hint=$("#furHint");if(hint)hint.textContent=cfg.hint;
-  const runTxt=$("#furRunTxt");if(runTxt)runTxt.textContent=cfg.cta;
+  const hint=$("#furModeHint span");if(hint)hint.textContent=cfg.hint;
+  const run=$("#furRun");if(run)run.title=cfg.cta+" — Ctrl/⌘+Enter";
   const ta=$("#furInput"),controls=$("#furControls"),prereq=$("#furPrereq");
   if(!ta||!controls||!prereq)return;
   controls.innerHTML="";prereq.hidden=true;prereq.innerHTML="";
@@ -2180,17 +2208,17 @@ function furApplyPhase(){
   }else if(furPhase==="remessa"){
     ta.style.display="";ta.placeholder=cfg.ph;
     const nc=d.nCorpos||3,nh=d.nHooks||3;
-    controls.innerHTML=`<label class="ccfield fur__num"><span>Nº de corpos</span><input type="number" id="furNCorpos" min="1" max="8" value="${nc}"></label>
-      <label class="ccfield fur__num"><span>Hooks por corpo</span><input type="number" id="furNHooks" min="1" max="6" value="${nh}"></label>`;
+    controls.innerHTML=`<label class="fur__num">Corpos <input type="number" id="furNCorpos" min="1" max="8" value="${nc}"></label><label class="fur__num">Hooks/corpo <input type="number" id="furNHooks" min="1" max="6" value="${nh}"></label>`;
     if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Sem Bíblia salva o briefing fica genérico — gere a fase 1 antes.`;}
   }else{ // escrita
     ta.style.display="none";
     const nc=d.nCorpos||3;
     const opts=Array.from({length:nc},(_,i)=>`<option value="${i+1}">Anúncio ${i+1} (Corpo ${i+1})</option>`).join("");
-    controls.innerHTML=`<label class="ccfield"><span>Qual anúncio escrever</span><select id="furCorpo">${opts}</select></label>`;
+    controls.innerHTML=`<select id="furCorpo" class="chat__sel" title="Qual anúncio escrever">${opts}</select>`;
     const faltam=[!furHasDoc("biblia")&&"Bíblia",!furHasDoc("voc")&&"VOC",!furHasDoc("briefing")&&"Briefing"].filter(Boolean);
     if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta salvar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
   }
+  chatAutosize(ta);
 }
 async function furCreateProject(){
   const nmeIn=$("#furNewName");const nome=(nmeIn&&nmeIn.value||"").trim();
@@ -2205,20 +2233,22 @@ async function furCreateProject(){
     const area=$("#gridArea");if(area){const f=$("#furtado");if(f)f.remove();renderFurtado();}
   }
 }
-async function furSaveDoc(){
+async function furSaveDoc(outArg,phaseArg){
   const p=furProj();if(!p){toast("Selecione ou crie um projeto",true);return;}
-  if(!furLastOutput.trim()){toast("Gere algo antes de salvar",true);return;}
+  const out=(typeof outArg==="string"&&outArg)||furLastOutput;
+  const phase=phaseArg||furPhase;
+  if(!String(out||"").trim()){toast("Gere algo antes de salvar",true);return;}
   const data=Object.assign({},p.data);
-  if(furPhase==="biblia")data.biblia=furLastOutput;
-  else if(furPhase==="voc")data.voc=furLastOutput;
-  else if(furPhase==="remessa"){data.briefing=furLastOutput;
+  if(phase==="biblia")data.biblia=out;
+  else if(phase==="voc")data.voc=out;
+  else if(phase==="remessa"){data.briefing=out;
     const nc=parseInt(($("#furNCorpos")||{}).value,10),nh=parseInt(($("#furNHooks")||{}).value,10);
     if(!isNaN(nc))data.nCorpos=Math.max(1,Math.min(8,nc));if(!isNaN(nh))data.nHooks=Math.max(1,Math.min(6,nh));
   }else{ // escrita → acumula por corpo
     const corpo=parseInt(($("#furCorpo")||{}).value,10)||1;
     data.anuncios=Array.isArray(data.anuncios)?data.anuncios.slice():[];
     const idx=data.anuncios.findIndex(a=>a.corpo===corpo);
-    const item={corpo,texto:furLastOutput,at:new Date().toISOString()};
+    const item={corpo,texto:out,at:new Date().toISOString()};
     if(idx>=0)data.anuncios[idx]=item;else data.anuncios.push(item);
   }
   data.updatedAt=new Date().toISOString();
@@ -2234,18 +2264,25 @@ async function furRun(){
   const p=furProj();
   if(!p){toast("Crie ou selecione um projeto primeiro",true);const s=$("#furProjSel");if(s)s.focus();return;}
   const d=p.data||{};const nicho=d.nome||d.nicho||"";
-  let input="",nCorpos=d.nCorpos||3,nHooks=d.nHooks||3,corpo="";
-  if(furPhase==="biblia"){input=($("#furInput").value||"").trim();if(!input){toast("Cole 2 a 4 anúncios validados",true);$("#furInput").focus();return;}}
+  const cfg=FUR_PHASES.find(x=>x.key===furPhase)||FUR_PHASES[0];
+  const phaseAtRun=furPhase;
+  const phaseNum={biblia:"1",voc:"2",remessa:"3",escrita:"4"}[furPhase]||"";
+  let input="",nCorpos=d.nCorpos||3,nHooks=d.nHooks||3,corpo="",userMsg="";
+  if(furPhase==="biblia"){input=($("#furInput").value||"").trim();if(!input){toast("Cole 2 a 4 anúncios validados",true);$("#furInput").focus();return;}userMsg=input;}
   else if(furPhase==="remessa"){input=($("#furInput").value||"").trim();if(!input){toast("Informe os dados da oferta",true);$("#furInput").focus();return;}
-    nCorpos=Math.max(1,Math.min(8,parseInt(($("#furNCorpos")||{}).value,10)||3));nHooks=Math.max(1,Math.min(6,parseInt(($("#furNHooks")||{}).value,10)||3));}
-  else if(furPhase==="escrita"){corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;}
-  // voc: sem input (usa a Bíblia salva)
+    nCorpos=Math.max(1,Math.min(8,parseInt(($("#furNCorpos")||{}).value,10)||3));nHooks=Math.max(1,Math.min(6,parseInt(($("#furNHooks")||{}).value,10)||3));
+    userMsg=`${input}\n\n(${nCorpos} corpos · ${nHooks} hooks por corpo)`;}
+  else if(furPhase==="escrita"){corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;userMsg=`Escrever o Anúncio ${corpo} (corpo ${corpo}).`;}
+  else{userMsg="Pesquisar a Voz do Prospect na web com base na Bíblia salva.";}
 
+  const thread=chatThreadEl("furThread");
+  chatPushUser(thread,[esc(phaseNum+" · "+cfg.label),esc(nicho)],userMsg);
+  if(furPhase==="biblia"||furPhase==="remessa"){const t=$("#furInput");if(t){t.value="";chatAutosize(t);}}
+  const ai=chatPushAI(thread,"wand");const md=ai.md,status=ai.status;
+  chatScroll(thread);
   furBusy=true;const btn=$("#furRun");btn.disabled=true;btn.classList.add("is-busy");
-  $$("#furPhases .ctool").forEach(x=>x.classList.add("is-locked"));
-  const out=$("#furOut"),md=$("#furMd"),status=$("#furStatus");
-  out.hidden=false;md.innerHTML="";furLastOutput="";status.innerHTML=`<span class="ccdot"></span>Conectando…`;
-  out.scrollIntoView({behavior:"smooth",block:"nearest"});
+  $$("#furModes .chat__mode").forEach(x=>x.classList.add("is-locked"));
+  furLastOutput="";
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
   let acc="",gotAny=false,errMsg="";
   try{
@@ -2257,7 +2294,7 @@ async function furRun(){
       buf+=dec.decode(value,{stream:true});let nl;
       while((nl=buf.indexOf("\n"))>=0){const line=buf.slice(0,nl);buf=buf.slice(nl+1);
         if(!line.trim())continue;let ev;try{ev=JSON.parse(line);}catch(e){continue;}
-        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=furMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;}
+        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=furMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;chatScroll(thread);}
         else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>${esc(ev.v||"processando…")}`;}
         else if(ev.t==="meta2"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Compilando as falas${ev.searches?` · ${ev.searches} buscas`:""}…`;}
         else if(ev.t==="error"){errMsg=ev.v||"erro";}
@@ -2265,10 +2302,15 @@ async function furRun(){
     }
   }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
   furBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
-  $$("#furPhases .ctool").forEach(x=>x.classList.remove("is-locked"));
+  $$("#furModes .chat__mode").forEach(x=>x.classList.remove("is-locked"));
   furLastOutput=acc;
   if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"não respondeu — tente de novo")}</div>`;status.innerHTML="";}
-  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto · <b>salve no projeto</b> para usar na próxima fase${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
+  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto · <b>salve no projeto</b> para usar na próxima fase${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+    ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--accent btn--sm" data-fursave>${ic("download")}Salvar no projeto</button><button class="btn btn--outline btn--sm" data-furcopy>${ic("clipboard")}Copiar</button>`;
+    const sv=ai.bar.querySelector("[data-fursave]");if(sv)sv.addEventListener("click",()=>furSaveDoc(acc,phaseAtRun));
+    const cp=ai.bar.querySelector("[data-furcopy]");if(cp)cp.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
+  }
+  chatScroll(thread);
 }
 
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */
