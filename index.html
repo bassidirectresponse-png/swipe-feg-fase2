@@ -157,25 +157,27 @@
   .snav__sec.active .snav__cnt{color:#000;background:var(--accent);}
   .snav__badge{font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0a0a06;background:var(--accent);border-radius:999px;padding:3px 8px;flex:none;}
 
-  /* Feguinho: destaque IA */
+  /* Feguinho: destaque IA (nome longo pode quebrar em 2 linhas) */
   .snav__sec--ai .ico{color:var(--accent);opacity:1;}
+  .snav__sec--ai .snav__lbl{white-space:normal;overflow:visible;line-height:1.18;}
   .snav__sec--ai:hover{background:rgba(229,255,45,.08);color:var(--fg);}
   .snav__sec--ai.active{background:linear-gradient(135deg,var(--accent),#c9e21f);color:#0a0a06;border-color:var(--accent);box-shadow:0 8px 26px -12px rgba(229,255,45,.6);}
   .snav__sec--ai.active .ico{color:#0a0a06;}
   .snav__sec--ai.active .snav__badge{background:rgba(0,0,0,.18);color:#0a0a06;}
 
   /* nichos aninhados sob a seção ativa */
-  .snav__niches{margin:2px 0 9px 19px;padding-left:12px;border-left:1px solid var(--border-2);display:flex;flex-direction:column;gap:1px;animation:navReveal .24s var(--ease);}
-  @keyframes navReveal{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:none;}}
-  .snav__niche{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;padding:7px 11px;border-radius:9px;color:var(--muted-fg);font-size:.85rem;font-weight:500;transition:background .16s,color .16s;}
+  .snav__niches{margin:2px 0 9px 19px;padding-left:12px;border-left:1px solid var(--border-2);display:flex;flex-direction:column;gap:1px;}
+  .snav__niches--in{animation:navReveal .3s cubic-bezier(.22,.75,.28,1) both;will-change:opacity,transform;}
+  @keyframes navReveal{from{opacity:0;transform:translateY(-7px);}to{opacity:1;transform:none;}}
+  .snav__niche{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;padding:7px 11px;border-radius:9px;color:var(--muted-fg);font-size:.85rem;font-weight:600;transition:background .2s var(--ease),color .2s var(--ease);}
   .snav__niche .nl{display:flex;align-items:center;gap:9px;min-width:0;}
   .snav__niche .nl>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .snav__niche .ndot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex:none;transition:background .16s;}
+  .snav__niche .ndot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex:none;transition:background .2s var(--ease),box-shadow .2s var(--ease);}
   .snav__niche:hover{background:var(--surface-2);color:var(--fg);}
   .snav__niche:hover .ndot{background:var(--muted-fg);}
-  .snav__niche.active{color:var(--accent);font-weight:700;}
+  .snav__niche.active{color:var(--accent);background:var(--accent-dim);}
   .snav__niche.active .ndot{background:var(--accent);box-shadow:0 0 7px var(--accent);}
-  .snav__niche .cnt{font-size:.68rem;font-weight:700;color:var(--faint);flex:none;}
+  .snav__niche .cnt{font-size:.68rem;font-weight:700;color:var(--faint);flex:none;transition:color .2s var(--ease);}
   .snav__niche.active .cnt{color:var(--accent);}
 
   .sidenav-backdrop{display:none;}
@@ -878,7 +880,7 @@ const SECTIONS=[
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
-  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
+  {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
 ];
 function isToolSection(k){return k==="copychief"||k==="transcritor";}
@@ -1077,8 +1079,9 @@ function filtered(){
   return list;
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho",transcritor:"Transcritor"};
+const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor"};
 const AI_SECTIONS=new Set(["copychief","transcritor"]);
+let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
 function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
 function closeSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.remove("open");if(b)b.classList.remove("open");}
@@ -1103,6 +1106,10 @@ function renderSideNav(){
     if(none)nicheHtml+=nitem(NO_NICHE,"Sem nicho",none,activeNiche===NO_NICHE);
   }
 
+  /* anima o slide dos nichos só quando a SEÇÃO muda (não a cada clique de nicho) */
+  const sectionChanged=navPrevSection!==activeSection;
+  navPrevSection=activeSection;
+
   let html=`<div class="sidenav__head"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
   html+=`<div class="snav__group">Seções</div>`;
   let aiDone=false;
@@ -1111,14 +1118,17 @@ function renderSideNav(){
     const active=activeSection===s.key;
     const chip=s.key==="copychief"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
     html+=`<button class="snav__sec${active?" active":""}${s.key==="copychief"?" snav__sec--ai":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</button>`;
-    if(active&&nicheHtml)html+=`<div class="snav__niches">${nicheHtml}</div>`;
+    if(active&&nicheHtml)html+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
   });
   nav.innerHTML=html;
   $$(".snav__sec",nav).forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.section)));
   $$(".snav__niche",nav).forEach(b=>b.addEventListener("click",()=>{
+    if(activeNiche===b.dataset.niche&&b.dataset.niche!=="")return;
     activeNiche=b.dataset.niche;
+    /* fluido: só move o destaque, sem reconstruir a barra nem replayar a animação */
+    $$(".snav__niche",nav).forEach(x=>x.classList.toggle("active",x.dataset.niche===activeNiche));
     if(isMobileNav())closeSideNav();
-    renderGrid();
+    renderGrid(true);
   }));
   const xb=$("#sideNavClose");if(xb)xb.addEventListener("click",closeSideNav);
 }
@@ -1248,8 +1258,8 @@ function cardFor(o){
     default:return cardHtml(o);
   }
 }
-function renderGrid(){
-  renderSideNav();
+function renderGrid(skipNav){
+  if(!skipNav)renderSideNav();
   renderSubFilter();
   setSectionHeader();
   if(activeSection==="copychief"){renderCopyChief();return;}
@@ -1931,7 +1941,7 @@ function renderCopyChief(){
     <div class="cchief__hero">
       <div class="cchief__mark">${ic("sparkles")}</div>
       <div class="cchief__heroTx">
-        <div class="cchief__heroTitle">Feguinho Copy Chief <span class="cchief__beta">Beta</span></div>
+        <div class="cchief__heroTitle">Feguinho — Copy Chief IA <span class="cchief__beta">Beta</span></div>
         <p>Escolha o modo, o nicho e o formato — o Feguinho <b>modela o que já vendeu</b> (vault + Mega Brain) e sugere hooks do Radar TikTok.</p>
       </div>
     </div>
