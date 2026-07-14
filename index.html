@@ -448,6 +448,14 @@
 
   /* sub-filtro (plataforma criativos) */
   .subfilter{margin-bottom:20px;}
+  .subfilter__row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .subfilter__row .seg{flex:0 1 auto;}
+  #brainImportAll{margin-left:auto;}
+  @media(max-width:600px){#brainImportAll{margin-left:0;}}
+  .chip.brain-ing{display:inline-flex;align-items:center;gap:5px;}
+  .chip.brain-ing .ico{width:12px;height:12px;animation:pulse 1s infinite;}
+  .chip.brain-err{display:inline-flex;align-items:center;gap:5px;color:#ff9a9a;background:var(--red-soft);border-color:rgba(255,93,93,.32);}
+  .chip.brain-err .ico{width:12px;height:12px;}
 
   /* ===== cards de swipe (presell / criativo / megabrain) ===== */
   .kcard{gap:12px;}
@@ -1873,8 +1881,11 @@ function renderSubFilter(){
   if(activeSection==="megabrain"){
     el.style.display="";
     const opts=[["metrica","Mais vendas / faturamento"],["recente","Recentes"],["az","A–Z"]];
-    el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>`;
+    const need=isAdmin?offers.filter(brainNeedsImport).length:0;
+    const importBtn=need?`<button type="button" class="btn btn--outline btn--sm" id="brainImportAll" title="Baixa os criativos do Drive e salva no Storage (permanente)">${ic("download")}Importar do Drive (${need})</button>`:"";
+    el.innerHTML=`<div class="subfilter__row"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}</div>`;
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;renderGrid();}));
+    const ib=$("#brainImportAll");if(ib)ib.addEventListener("click",importAllBrainDrive);
     return;
   }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
@@ -2222,13 +2233,18 @@ function megabrainCard(o){
     video?qbtn("Abrir criativo",video,"play"):"",
     (copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
   ].filter(Boolean).join("");
+  const ist=brainStatusOf(o);
+  const ichip=ist==="working"?`<span class="chip accent brain-ing">${ic("download")}Baixando do Drive…</span>`
+    :ist==="error"?`<span class="chip brain-err">${ic("alert")}Falha no Drive</span>`:"";
+  const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
+  const chipsRow=(nicheSpan||ichip)?`<div class="card__chips">${nicheSpan}${ichip}</div>`:"";
   return `<article class="card kcard kcard--brain" data-id="${o.id}">
     <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
     ${brainThumb(d,video)}
     ${author}
     <div class="kcard__title">${esc(d.nome||"Sem título")}</div>
     ${metric}
-    ${nicheChip(d)}
+    ${chipsRow}
     ${acts?`<div class="card__actions">${acts}</div>`:""}
   </article>`;
 }
@@ -2545,6 +2561,87 @@ function fbIngestControl(o){
   return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
 }
 
+/* ===== MEGA BRAIN: import permanente do Drive → Storage ===== */
+const BRAIN_INGEST_FN="/.netlify/functions/brain-drive-ingest-background";
+const brainIngesting=new Set();
+function isDriveFileLink(u){u=String(u||"");if(/drive\.google\.com\/drive\/folders/i.test(u))return false;if(/docs\.google\.com/i.test(u))return false;return /drive\.google\.com/i.test(u)&&!!driveId(u);}
+function isHostedVideo(u){return /\/storage\/v1\/object\/public\//i.test(String(u||""));}
+function driveSrcOf(d){for(const f of [d&&d.video,d&&d.linkDrive,d&&d.videoVsl,d&&d.videoCriativo]){if(isDriveFileLink(f))return String(f).trim();}return"";}
+function brainNeedsImport(o){const d=(o&&o.data)||{};if(d.kind!=="megabrain")return false;if(isHostedVideo(d.video))return false;if(d.driveIngestStatus==="done")return false;return !!driveSrcOf(d);}
+function brainStatusOf(o){const d=(o&&o.data)||{};return brainIngesting.has(o.id)?"working":(d.driveIngestStatus||"");}
+async function pollBrainIngest(offerId,tries,intervalMs){
+  for(let i=0;i<tries;i++){
+    await new Promise(r=>setTimeout(r,intervalMs));
+    try{
+      const {data,error}=await sb.from("offers").select("data").eq("id",offerId).single();
+      const d=data&&data.data;
+      if(!error&&d&&d.driveIngestStatus&&d.driveIngestStatus!=="working"){
+        const o=offers.find(x=>x.id===offerId);
+        if(o)Object.assign(o.data,{video:d.video||o.data.video,linkDrive:d.linkDrive||o.data.linkDrive,driveIngestStatus:d.driveIngestStatus,driveIngestError:d.driveIngestError,driveIngestAt:d.driveIngestAt,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
+        return d.driveIngestStatus;
+      }
+    }catch(e){}
+  }
+  return "";
+}
+async function triggerBrainIngest(offerId,driveUrl,quiet){
+  const o=offers.find(x=>x.id===offerId);if(!o)return"";
+  driveUrl=driveUrl||driveSrcOf(o.data||{});
+  if(!driveUrl){if(!quiet)toast("Este item não tem link de vídeo do Drive.",true);return"";}
+  if(!requireAdmin())return"";
+  if(brainIngesting.has(offerId))return"";
+  brainIngesting.add(offerId);
+  o.data=o.data||{};o.data.driveIngestStatus="working";o.data.driveIngestError="";
+  const viewOpen=()=>currentSimpleId===offerId&&$("#viewOverlay").classList.contains("open");
+  if(viewOpen())openSimpleView(o,true);
+  if(!quiet){renderGrid();toast("Baixando o criativo do Drive…");}
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  try{await fetch(BRAIN_INGEST_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,driveUrl})});}catch(e){}
+  const status=await pollBrainIngest(offerId,90,4000);   // até ~6min (VSL grande demora)
+  brainIngesting.delete(offerId);
+  const cur=offers.find(x=>x.id===offerId)||o;
+  if(!status)cur.data.driveIngestStatus="pending";
+  if(!quiet){renderGrid();writeCache();if(viewOpen())openSimpleView(cur,true);}
+  if(!quiet){
+    if(status==="done"){toast("Criativo salvo no Storage ✓");const v=videoForOffer(cur),emb=v?videoEmbedUrl(v):null;if(emb&&emb.type==="video"&&!((cur.data.transcricao||"").trim()))requestInstantTranscription(offerId,v);}
+    else if(status==="error")toast("Falha: "+((cur.data||{}).driveIngestError||"tente de novo"),true);
+    else toast("Processando em segundo plano — aparece aqui em instantes.");
+  }
+  return status;
+}
+async function importAllBrainDrive(){
+  if(!requireAdmin())return;
+  const list=offers.filter(brainNeedsImport);
+  if(!list.length){toast("Nenhum criativo do Drive pendente 🎉");return;}
+  const total=list.length;
+  toast(`Importando ${total} criativo(s) do Drive em segundo plano…`);
+  let done=0,ok=0,bad=0,idx=0;const POOL=3;
+  const setLbl=()=>{const b=$("#brainImportAll");if(b){b.disabled=true;b.innerHTML=ic("download")+`Importando ${done}/${total}…`;}};
+  renderGrid();setLbl();
+  async function worker(){
+    while(idx<list.length){
+      const o=list[idx++];
+      const st=await triggerBrainIngest(o.id,driveSrcOf(o.data),true);
+      done++;if(st==="done")ok++;else bad++;
+      setLbl();renderGrid();
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(POOL,total)},worker));
+  renderGrid();writeCache();
+  toast(`Import do Drive: ${ok} ok${bad?`, ${bad} com problema`:""} (de ${total}).`,bad>0);
+}
+function brainIngestControl(o){
+  const d=o.data||{};if(d.kind!=="megabrain")return"";
+  const src=driveSrcOf(d);const hosted=isHostedVideo(d.video);
+  const st=brainStatusOf(o),working=st==="working";
+  if(!src&&!working&&st!=="error")return"";
+  const label=working?"Baixando do Drive…":hosted?"Rebaixar do Drive":"Baixar criativo do Drive";
+  const btn=isAdmin&&src?`<button class="btn btn--outline btn--sm" data-brainingest="${o.id}"${working?" disabled":""}>${ic("download")}${label}</button>`:"";
+  const note=st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.driveIngestError||"falha ao baixar do Drive")}</div>`
+    :hosted?`<div class="fbnote" style="color:var(--accent)">${ic("info")}Vídeo salvo no Storage (permanente).</div>`:"";
+  return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
+}
+
 /* ===== VIEW DOS NOVOS SWIPES ===== */
 function openSimpleView(o,skipOpen){
   currentSimpleId=o.id;
@@ -2591,6 +2688,7 @@ function openSimpleView(o,skipOpen){
     const va=(d.video||d.videoVsl||d.videoCriativo||"").trim();
     const btns=[d.linkDrive?linkbtn("Abrir no Drive",d.linkDrive,true,"folder"):"",va?linkbtn("Abrir vídeo",va,false,"play"):""].filter(Boolean).join("");
     if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
+    mainLink+=brainIngestControl(o);
   }
 
   let sn=0;const num=()=>String(++sn).padStart(2,"0");
@@ -2668,6 +2766,7 @@ function openSimpleView(o,skipOpen){
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
+  $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
 }
