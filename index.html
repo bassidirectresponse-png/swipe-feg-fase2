@@ -703,6 +703,24 @@
   .cctto .ico{width:13px;height:13px;}
   @media(max-width:720px){.cchief__tools{grid-template-columns:1fr;}.ccg__grid{grid-template-columns:1fr;}.ccfield,.ccfield select{width:100%;}.composer__controls{gap:12px;}.cchief__run{width:100%;justify-content:center;}.cchief__hero{gap:12px;}.cchief__mark{width:44px;height:44px;}}
 
+  /* ===== Furtado Skill — Head Copy Ads IA ===== */
+  .fur__phases{grid-template-columns:repeat(4,1fr);}
+  .fur__projbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:14px 16px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);}
+  .fur__projsel{flex:1 1 260px;min-width:200px;}
+  .fur__new{display:flex;gap:8px;align-items:center;flex:1 1 100%;}
+  .fur__new input{flex:1;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);font-size:.92rem;padding:11px 13px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .fur__new input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .fur__docs{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-left:auto;}
+  .fur__doc{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);background:var(--surface-3);border:1px solid var(--border-2);border-radius:999px;padding:5px 10px;}
+  .fur__doc .ico{width:12px;height:12px;}
+  .fur__doc.ok{color:var(--accent);background:var(--accent-dim);border-color:rgba(229,255,45,.3);}
+  .fur__num{max-width:150px;}
+  .fur__prereq{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;line-height:1.45;color:#ffcf7a;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.3);border-radius:var(--radius-xs);padding:10px 12px;margin-bottom:12px;}
+  .fur__prereq .ico{width:15px;height:15px;flex:0 0 auto;margin-top:1px;}
+  .fur__prereq b{color:#ffe0a3;}
+  .furtado .ctool.is-locked{opacity:.55;pointer-events:none;}
+  @media(max-width:720px){.fur__phases{grid-template-columns:1fr 1fr;}.fur__docs{margin-left:0;}}
+
   /* ===== ingestão de criativo do Facebook ===== */
   .fbwork{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--accent);margin-top:2px;}
   .fbwork .ico{width:14px;height:14px;animation:fbpulse 1.1s ease-in-out infinite;}
@@ -889,9 +907,10 @@ const SECTIONS=[
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
-  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
+  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'},
+  {key:"furtado",label:"Furtado Skill — Head Copy Ads IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado Skill — Head Copy Ads IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'}
 ];
-function isToolSection(k){return k==="copychief"||k==="transcritor";}
+function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
@@ -1087,8 +1106,8 @@ function filtered(){
   return list;
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor"};
-const AI_SECTIONS=new Set(["copychief","transcritor"]);
+const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado Skill — Head Copy Ads IA"};
+const AI_SECTIONS=new Set(["copychief","transcritor","furtado"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
 function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
@@ -1124,8 +1143,9 @@ function renderSideNav(){
   SECTIONS.forEach(s=>{
     if(AI_SECTIONS.has(s.key)&&!aiDone){html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;aiDone=true;}
     const active=activeSection===s.key;
-    const chip=s.key==="copychief"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
-    html+=`<button class="snav__sec${active?" active":""}${s.key==="copychief"?" snav__sec--ai":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</button>`;
+    const chip=(s.key==="copychief"||s.key==="furtado")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
+    const aiHi=(s.key==="copychief"||s.key==="furtado")?" snav__sec--ai":"";
+    html+=`<button class="snav__sec${active?" active":""}${aiHi}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</button>`;
     if(active&&nicheHtml)html+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
   });
   nav.innerHTML=html;
@@ -1272,6 +1292,7 @@ function renderGrid(skipNav){
   setSectionHeader();
   if(activeSection==="copychief"){renderCopyChief();return;}
   if(activeSection==="transcritor"){renderTranscritor();return;}
+  if(activeSection==="furtado"){renderFurtado();return;}
   const cfg=sectionCfg(activeSection);
   const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
@@ -2035,6 +2056,219 @@ async function ccRun(){
     if(hooks.length)tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
       hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
   }
+}
+
+/* ===== FURTADO SKILL — Head Copy Ads IA (Beta) ===== */
+const FURTADO_FN="/.netlify/functions/furtado";
+const FUR_PHASES=[
+  {key:"biblia",icon:"brain",label:"Bíblia do Nicho",cta:"Gerar Bíblia do Nicho",
+    hint:"Cole 2 a 4 anúncios validados — a IA extrai os padrões (enriquecidos com o Mega Brain + vault).",
+    ph:"Cole aqui de 2 a 4 anúncios que JÁ VENDERAM, separando cada um com uma linha só com -----\n\nAnúncio 1…\n-----\nAnúncio 2…"},
+  {key:"voc",icon:"message",label:"Voz do Prospect",cta:"Pesquisar VOC na web",
+    hint:"Usa a Bíblia salva + busca REAL na web (YouTube, Reddit BR, fóruns) a linguagem crua do público.",ph:""},
+  {key:"remessa",icon:"layers",label:"Arquitetura da Remessa",cta:"Montar briefing",
+    hint:"Informe a oferta e quantos corpos/hooks — a IA propõe o briefing de cada anúncio.",
+    ph:"Dados da oferta:\nExpert: …\nMecanismo do problema: …\nMecanismo da solução / nome chiclete: …\nPromessa principal: …"},
+  {key:"escrita",icon:"wand",label:"Escrita dos Anúncios",cta:"Escrever anúncio",
+    hint:"Escreve 1 anúncio por vez (corpo + hooks) com lastro na Bíblia, no VOC e no briefing.",ph:""},
+];
+let furPhase="biblia", furBusy=false, furProjectId=null, furLastOutput="", furCreating=false;
+function furProjects(){return offers.filter(o=>(o.data||{}).kind==="furtado").sort((a,b)=>String((a.data||{}).nome||"").localeCompare(String((b.data||{}).nome||""),"pt-BR"));}
+function furProj(){return offers.find(o=>o.id===furProjectId&&(o.data||{}).kind==="furtado")||null;}
+function furHasDoc(k){const p=furProj();if(!p)return false;const d=p.data||{};if(k==="anuncios")return (d.anuncios||[]).length>0;return !!String(d[k]||"").trim();}
+function furMarkdown(src){return ccMarkdown(src);}   // reaproveita o renderer do Feguinho
+
+function renderFurtado(){
+  const area=$("#gridArea");if(!area)return;
+  if($("#furtado"))return;
+  const projs=furProjects();
+  if(!furProjectId&&projs.length)furProjectId=projs[0].id;
+  area.innerHTML=`<div class="cchief furtado" id="furtado">
+    <div class="cchief__hero">
+      <div class="cchief__mark">${ic("wand")}</div>
+      <div class="cchief__heroTx">
+        <div class="cchief__heroTitle">Furtado Skill — Head Copy Ads IA <span class="cchief__beta">Beta</span></div>
+        <p>Novo modelo de criação de ads em <b>4 fases encadeadas</b> — cada fase alimenta a próxima e fica salva por projeto.</p>
+      </div>
+    </div>
+
+    <div class="fur__projbar">
+      <label class="ccfield fur__projsel"><span>Projeto / Nicho</span>
+        <select id="furProjSel">${projs.map(p=>`<option value="${p.id}"${p.id===furProjectId?" selected":""}>${esc((p.data||{}).nome||"(sem nome)")}</option>`).join("")}<option value="__new">➕ Novo projeto…</option></select>
+      </label>
+      <div class="fur__new" id="furNewWrap" ${furCreating||!projs.length?"":"hidden"}>
+        <input id="furNewName" class="ccfield" type="text" placeholder="Nome do projeto / nicho — ex.: Emagrecimento feminino 40+">
+        <button class="btn btn--accent btn--sm" id="furCreate">${ic("plus")}Criar</button>
+      </div>
+      <div class="fur__docs" id="furDocs"></div>
+    </div>
+
+    <details class="cchief__guide">
+      <summary>${ic("info")}<span>Como usar — manual rápido</span><span class="ccg__chev">${ic("back")}</span></summary>
+      <div class="ccg__body">
+        <div class="ccg__grid">
+          <div class="ccg__card"><div class="ccg__t">${ic("brain")}1 · Bíblia do Nicho</div><p>Cole <b>2 a 4 anúncios que já venderam</b> (separe com <code>-----</code>). A IA extrai avatar, linguagem, mecanismo, promessa, provas e ângulos — o DNA do nicho.</p><span class="ccg__tip">Quanto mais parecidos os anúncios entre si, mais forte a Bíblia.</span></div>
+          <div class="ccg__card"><div class="ccg__t">${ic("message")}2 · Voz do Prospect</div><p>Busca <b>real na web</b> as falas cruas do público (dores, desejos, ceticismo, falsas crenças) com a fonte — vira munição de linguagem.</p><span class="ccg__tip">Pode levar alguns segundos: a IA pesquisa de verdade.</span></div>
+          <div class="ccg__card"><div class="ccg__t">${ic("layers")}3 · Arquitetura da Remessa</div><p>Informe a <b>oferta</b> e quantos corpos/hooks. A IA propõe o <b>briefing</b> de cada anúncio (promessa, ângulo, avatar, formato, hipótese de teste).</p><span class="ccg__tip">Você aprova/ajusta antes de escrever.</span></div>
+          <div class="ccg__card"><div class="ccg__t">${ic("wand")}4 · Escrita dos Anúncios</div><p>Escreve <b>um anúncio por vez</b> (corpo + hooks), pronto pra gravar, com lastro na Bíblia + VOC + briefing e frases curtas de vídeo.</p><span class="ccg__tip">Revise o 1º e ajuste antes de replicar os outros.</span></div>
+        </div>
+        <div class="ccg__foot">${ic("zap")}<span>Siga a ordem <b>1 → 2 → 3 → 4</b>. Cada resultado tem <b>Salvar no projeto</b> — é o que alimenta as fases seguintes e permite reabrir depois.</span></div>
+      </div>
+    </details>
+
+    <div class="cchief__tools fur__phases" id="furPhases">
+      ${FUR_PHASES.map((p,i)=>`<button type="button" class="ctool${p.key===furPhase?" active":""}" data-phase="${p.key}"><span class="ctool__ic">${ic(p.icon)}</span><span class="ctool__tx"><b>${i+1} · ${esc(p.label)}</b><small>fase ${i+1}</small></span></button>`).join("")}
+    </div>
+
+    <div class="cchief__composer">
+      <div class="composer__controls" id="furControls"></div>
+      <div class="fur__prereq" id="furPrereq" hidden></div>
+      <textarea id="furInput" class="cchief__input" rows="7"></textarea>
+      <div class="composer__foot">
+        <span class="cchief__hint" id="furHint"></span>
+        <button class="btn btn--accent cchief__run" id="furRun">${ic("sparkles")}<span id="furRunTxt">Gerar</span></button>
+      </div>
+    </div>
+
+    <div class="cchief__out" id="furOut" hidden>
+      <div class="cchief__outbar"><span class="cchief__status" id="furStatus"></span>
+        <div class="tractions">
+          <button class="btn btn--accent btn--sm" id="furSave">${ic("download")}Salvar no projeto</button>
+          <button class="btn btn--outline btn--sm" id="furCopy">${ic("clipboard")}Copiar</button>
+        </div>
+      </div>
+      <div class="cchief__md" id="furMd"></div>
+    </div>
+  </div>`;
+
+  $("#furProjSel").addEventListener("change",e=>{
+    if(e.target.value==="__new"){furCreating=true;const w=$("#furNewWrap");if(w){w.hidden=false;}$("#furNewName").focus();return;}
+    furProjectId=e.target.value;furCreating=false;const w=$("#furNewWrap");if(w)w.hidden=true;
+    furLastOutput="";const o=$("#furOut");if(o)o.hidden=true;
+    furRenderDocs();furApplyPhase();
+  });
+  $("#furCreate").addEventListener("click",furCreateProject);
+  $("#furNewName").addEventListener("keydown",e=>{if(e.key==="Enter")furCreateProject();});
+  $$("#furPhases .ctool").forEach(b=>b.addEventListener("click",()=>{if(furBusy)return;furPhase=b.dataset.phase;$$("#furPhases .ctool").forEach(x=>x.classList.toggle("active",x===b));furLastOutput="";const o=$("#furOut");if(o)o.hidden=true;furApplyPhase();}));
+  $("#furRun").addEventListener("click",furRun);
+  $("#furInput").addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter")furRun();});
+  $("#furSave").addEventListener("click",furSaveDoc);
+  $("#furCopy").addEventListener("click",()=>{const t=$("#furMd");if(!t)return;navigator.clipboard.writeText(t.innerText||"").then(()=>toast("Copiado ✓"));});
+  furRenderDocs();furApplyPhase();
+}
+function furRenderDocs(){
+  const el=$("#furDocs");if(!el)return;const p=furProj();
+  if(!p){el.innerHTML="";return;}
+  const chip=(ok,label)=>`<span class="fur__doc${ok?" ok":""}">${ic(ok?"info":"file")}${label}${ok?" ✓":""}</span>`;
+  const nAds=((p.data||{}).anuncios||[]).length;
+  el.innerHTML=chip(furHasDoc("biblia"),"Bíblia")+chip(furHasDoc("voc"),"VOC")+chip(furHasDoc("briefing"),"Briefing")+`<span class="fur__doc${nAds?" ok":""}">${ic("wand")}${nAds} anúncio${nAds===1?"":"s"}</span>`;
+}
+function furApplyPhase(){
+  const cfg=FUR_PHASES.find(p=>p.key===furPhase)||FUR_PHASES[0];
+  const p=furProj();const d=(p&&p.data)||{};
+  const hint=$("#furHint");if(hint)hint.textContent=cfg.hint;
+  const runTxt=$("#furRunTxt");if(runTxt)runTxt.textContent=cfg.cta;
+  const ta=$("#furInput"),controls=$("#furControls"),prereq=$("#furPrereq");
+  if(!ta||!controls||!prereq)return;
+  controls.innerHTML="";prereq.hidden=true;prereq.innerHTML="";
+  // controles + textarea por fase
+  if(furPhase==="biblia"){
+    ta.style.display="";ta.placeholder=cfg.ph;
+  }else if(furPhase==="voc"){
+    ta.style.display="none";
+    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Gere e <b>salve a Bíblia do Nicho</b> (fase 1) antes — o VOC busca a linguagem com base nela.`;}
+  }else if(furPhase==="remessa"){
+    ta.style.display="";ta.placeholder=cfg.ph;
+    const nc=d.nCorpos||3,nh=d.nHooks||3;
+    controls.innerHTML=`<label class="ccfield fur__num"><span>Nº de corpos</span><input type="number" id="furNCorpos" min="1" max="8" value="${nc}"></label>
+      <label class="ccfield fur__num"><span>Hooks por corpo</span><input type="number" id="furNHooks" min="1" max="6" value="${nh}"></label>`;
+    if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Sem Bíblia salva o briefing fica genérico — gere a fase 1 antes.`;}
+  }else{ // escrita
+    ta.style.display="none";
+    const nc=d.nCorpos||3;
+    const opts=Array.from({length:nc},(_,i)=>`<option value="${i+1}">Anúncio ${i+1} (Corpo ${i+1})</option>`).join("");
+    controls.innerHTML=`<label class="ccfield"><span>Qual anúncio escrever</span><select id="furCorpo">${opts}</select></label>`;
+    const faltam=[!furHasDoc("biblia")&&"Bíblia",!furHasDoc("voc")&&"VOC",!furHasDoc("briefing")&&"Briefing"].filter(Boolean);
+    if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta salvar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
+  }
+}
+async function furCreateProject(){
+  const nmeIn=$("#furNewName");const nome=(nmeIn&&nmeIn.value||"").trim();
+  if(!nome){toast("Dê um nome/nicho ao projeto",true);if(nmeIn)nmeIn.focus();return;}
+  const data={kind:"furtado",nome,nicho:nome,biblia:"",voc:"",briefing:"",anuncios:[],nCorpos:3,nHooks:3,createdAt:new Date().toISOString()};
+  setSync("load","Criando projeto");
+  let res;try{res=await sb.from("offers").insert({data}).select();}catch(err){res={error:err};}
+  if(res.error){setSync("err","Erro");toast("Não deu para criar: "+((res.error.message)||res.error),true);return;}
+  const row=res.data&&res.data[0];
+  if(row){offers.push(row);furProjectId=row.id;furCreating=false;writeCache();setSync("ok","Salvo");toast("Projeto criado ✓");
+    // re-render completo pra atualizar o seletor
+    const area=$("#gridArea");if(area){const f=$("#furtado");if(f)f.remove();renderFurtado();}
+  }
+}
+async function furSaveDoc(){
+  const p=furProj();if(!p){toast("Selecione ou crie um projeto",true);return;}
+  if(!furLastOutput.trim()){toast("Gere algo antes de salvar",true);return;}
+  const data=Object.assign({},p.data);
+  if(furPhase==="biblia")data.biblia=furLastOutput;
+  else if(furPhase==="voc")data.voc=furLastOutput;
+  else if(furPhase==="remessa"){data.briefing=furLastOutput;
+    const nc=parseInt(($("#furNCorpos")||{}).value,10),nh=parseInt(($("#furNHooks")||{}).value,10);
+    if(!isNaN(nc))data.nCorpos=Math.max(1,Math.min(8,nc));if(!isNaN(nh))data.nHooks=Math.max(1,Math.min(6,nh));
+  }else{ // escrita → acumula por corpo
+    const corpo=parseInt(($("#furCorpo")||{}).value,10)||1;
+    data.anuncios=Array.isArray(data.anuncios)?data.anuncios.slice():[];
+    const idx=data.anuncios.findIndex(a=>a.corpo===corpo);
+    const item={corpo,texto:furLastOutput,at:new Date().toISOString()};
+    if(idx>=0)data.anuncios[idx]=item;else data.anuncios.push(item);
+  }
+  data.updatedAt=new Date().toISOString();
+  setSync("load","Salvando");
+  let res;try{res=await sb.from("offers").update({data}).eq("id",p.id).select();}catch(err){res={error:err};}
+  if(res.error){setSync("err","Erro");toast("Erro ao salvar: "+((res.error.message)||res.error),true);return;}
+  const row=res.data&&res.data[0];const i=offers.findIndex(o=>o.id===p.id);if(row&&i>=0)offers[i]=row;else if(i>=0)offers[i].data=data;
+  writeCache();setSync("ok","Salvo");toast("Salvo no projeto ✓");
+  furRenderDocs();furApplyPhase();
+}
+async function furRun(){
+  if(furBusy)return;
+  const p=furProj();
+  if(!p){toast("Crie ou selecione um projeto primeiro",true);const s=$("#furProjSel");if(s)s.focus();return;}
+  const d=p.data||{};const nicho=d.nome||d.nicho||"";
+  let input="",nCorpos=d.nCorpos||3,nHooks=d.nHooks||3,corpo="";
+  if(furPhase==="biblia"){input=($("#furInput").value||"").trim();if(!input){toast("Cole 2 a 4 anúncios validados",true);$("#furInput").focus();return;}}
+  else if(furPhase==="remessa"){input=($("#furInput").value||"").trim();if(!input){toast("Informe os dados da oferta",true);$("#furInput").focus();return;}
+    nCorpos=Math.max(1,Math.min(8,parseInt(($("#furNCorpos")||{}).value,10)||3));nHooks=Math.max(1,Math.min(6,parseInt(($("#furNHooks")||{}).value,10)||3));}
+  else if(furPhase==="escrita"){corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;}
+  // voc: sem input (usa a Bíblia salva)
+
+  furBusy=true;const btn=$("#furRun");btn.disabled=true;btn.classList.add("is-busy");
+  $$("#furPhases .ctool").forEach(x=>x.classList.add("is-locked"));
+  const out=$("#furOut"),md=$("#furMd"),status=$("#furStatus");
+  out.hidden=false;md.innerHTML="";furLastOutput="";status.innerHTML=`<span class="ccdot"></span>Conectando…`;
+  out.scrollIntoView({behavior:"smooth",block:"nearest"});
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  let acc="",gotAny=false,errMsg="";
+  try{
+    const res=await fetch(FURTADO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({phase:furPhase,nicho,input,biblia:d.biblia||"",voc:d.voc||"",briefing:d.briefing||"",nCorpos,nHooks,corpo})});
+    if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+    for(;;){const {done,value}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let nl;
+      while((nl=buf.indexOf("\n"))>=0){const line=buf.slice(0,nl);buf=buf.slice(nl+1);
+        if(!line.trim())continue;let ev;try{ev=JSON.parse(line);}catch(e){continue;}
+        if(ev.t==="text"){acc+=ev.v;gotAny=true;md.innerHTML=furMarkdown(acc);status.innerHTML=`<span class="ccdot ccdot--on"></span>Escrevendo…`;}
+        else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>${esc(ev.v||"processando…")}`;}
+        else if(ev.t==="meta2"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Compilando as falas${ev.searches?` · ${ev.searches} buscas`:""}…`;}
+        else if(ev.t==="error"){errMsg=ev.v||"erro";}
+      }
+    }
+  }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
+  furBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
+  $$("#furPhases .ctool").forEach(x=>x.classList.remove("is-locked"));
+  furLastOutput=acc;
+  if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"não respondeu — tente de novo")}</div>`;status.innerHTML="";}
+  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto · <b>salve no projeto</b> para usar na próxima fase${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
 }
 
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */

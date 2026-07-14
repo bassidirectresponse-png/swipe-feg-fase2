@@ -1,0 +1,387 @@
+// Furtado Skill — Head Copy Ads IA (FEG)
+//
+// Escreve anúncios de vídeo (VSL/UGC) modelando o que já foi validado no nicho,
+// em 4 FASES encadeadas (a skill "escritor-de-anuncios"):
+//   1) biblia   — Bíblia do Nicho: extrai padrões de 2–4 anúncios validados
+//                 (enriquecida com o vault + Mega Brain do dashboard, como o Feguinho).
+//   2) voc      — Voz do Prospect: pesquisa REAL na web a linguagem do público
+//                 (usa a ferramenta de busca do Claude — web_search).
+//   3) remessa  — Arquitetura da Remessa: briefing de cada anúncio (promessa/ângulo/
+//                 avatar/formato/hipótese) a partir da oferta + Bíblia.
+//   4) escrita  — Escreve a copy final (corpo + hooks), pronta pra gravar.
+//
+// Cada fase recebe do cliente os documentos das fases anteriores (biblia/voc/briefing),
+// que ficam salvos por projeto no Supabase. Qualquer usuário LOGADO pode usar
+// (a função é só leitura — nunca grava nada).
+//
+// Fases 1/3/4: STREAMING token a token (NDJSON), igual ao Feguinho.
+// Fase 2 (voc): chamada com web_search, não-stream + heartbeat (mantém a conexão viva
+//   durante as buscas) + resume em pause_turn; devolve o texto no fim.
+//
+// Env (Netlify): ANTHROPIC_API_KEY (obrigatória), SUPABASE_URL, SUPABASE_ANON_KEY (com default),
+//                FURTADO_MODEL (opcional; default claude-sonnet-5 — mesmo do Feguinho).
+
+const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
+const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = process.env.FURTADO_MODEL || "claude-sonnet-5";  // suporta web_search_20260209
+const MAX_TOKENS = { biblia: 6000, voc: 6000, remessa: 5000, escrita: 5000 };
+const WEB_MAX_USES = 8;   // teto de buscas na Fase 2 (evita estourar o loop de 10 do servidor)
+
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
+const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+
+// ---------- helpers (surrogate-safe, igual ao Feguinho) ----------
+const clean = (s) => String(s == null ? "" : s)
+  .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+  .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+const clip = (s, n) => {
+  s = clean(String(s == null ? "" : s));
+  if (s.length <= n) return s;
+  let c = s.slice(0, n);
+  if (/[\uD800-\uDBFF]$/.test(c)) c = c.slice(0, -1);
+  return c + "…";
+};
+const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const clampInt = (v, lo, hi, d) => { const n = parseInt(v, 10); return isNaN(n) ? d : Math.max(lo, Math.min(hi, n)); };
+
+async function sbGet(path, token) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
+    return r.ok ? await r.json() : [];
+  } catch { return []; }
+}
+// enriquecimento da Fase 1 com a base interna (ads validados + análise-master do nicho)
+async function vaultCtx(nichoSlug, token) {
+  const nz = encodeURIComponent(nichoSlug);
+  const [ads, master] = await Promise.all([
+    sbGet(`conhecimento?select=titulo,vendas,conteudo&tipo=eq.ads-validado&nicho=eq.${nz}&order=vendas.desc.nullslast&limit=5`, token),
+    sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.analise-master&nicho=eq.${nz}`, token),
+  ]);
+  return { ads: ads || [], master: master || [] };
+}
+
+// ---------- persona + prompts ----------
+const PERSONA =
+  "Você é o FURTADO SKILL — HEAD DE COPY DE ADS da FEG (nutra/suplementos, mercado dos EUA vendido em português do Brasil). " +
+  "Você escreve anúncios de VÍDEO (VSL/UGC) que convertem MODELANDO padrões já validados no nicho — mesmo avatar, mesmo tipo de mecanismo, mesmo formato de promessa, mesmos tipos de prova que aquele público já aceitou. " +
+  "Princípios inegociáveis: (1) EXTRAIA, não interprete — capture o que ESTÁ no material/na fala real, não a sua leitura; quando faltar, escreva 'não fica claro' em vez de inventar. " +
+  "(2) Nunca invente números de estudo/dados como se fossem reais. (3) Anúncios serão GRAVADOS em vídeo: frases curtas, fluidez de leitura em voz alta, ritmo de fala — nada de parágrafos densos. " +
+  "Seja objetivo: entregue direto o que foi pedido, sem preâmbulos, sem se apresentar e sem despedidas. Responda SEMPRE em português do Brasil e em Markdown.";
+
+function bibliaPrompt(nicho, ads, ctx) {
+  const ctxAds = (ctx.ads || []).map(a => `### ${a.titulo} (${a.vendas != null ? a.vendas + " vendas" : "s/nº"})\n${clip(a.conteudo, 1200)}`).join("\n\n") || "(sem ads validados do vault para este nicho)";
+  const ctxMaster = (ctx.master || []).map(m => clip(m.conteudo, 2500)).join("\n\n") || "(sem análise-master para este nicho)";
+  const user = `TAREFA — montar a BÍBLIA DO NICHO a partir dos anúncios validados abaixo.
+
+Para CADA anúncio colado, extraia internamente 5 blocos (Perfil do Público; Estrutura: formato/blocos/tempo/ângulo; Mecanismo do problema e da solução + nome chiclete; Promessa: resultado+prazo, benefícios funcionais/dimensionais/emocionais; Provas: autoridades/vilões/estudos). São EXTRAÇÕES, não interpretações — copie o que está no texto; se algo estiver ausente/ambíguo, escreva "não fica claro no anúncio".
+
+Depois CRUZE todos e consolide numa única Bíblia, seguindo EXATAMENTE esta estrutura em Markdown:
+
+# Bíblia do Nicho — ${nicho}
+
+## 1. Avatar
+- Perfil demográfico recorrente
+- Crença limitante dominante no nicho
+- O que esse público já tentou e não funcionou
+
+## 2. Linguagem do Nicho
+- Palavras e expressões que aparecem em mais de um anúncio (liste-as entre aspas)
+
+## 3. Mecanismo
+- O que torna o mecanismo da solução diferente do que o público já testou
+- Causa raiz apresentada para o problema, e por que ela é nova para o público
+- Nome(s) chiclete do mecanismo
+
+## 4. Promessa
+- Padrão de promessa observado (resultado + prazo)
+- Benefícios funcionais, dimensionais e emocionais mais explorados
+
+## 5. Autoridade e Prova
+- Heróis (autoridades) que aparecem em mais de um anúncio
+- Vilões institucionais que aparecem em mais de um anúncio
+- Tipos de prova que esse público aceita
+
+## 6. Ângulos Recorrentes
+- Ângulos que aparecem em mais de um anúncio
+- Ângulo que parece mais forte (mais explorado)
+
+## 7. Call to Action
+- Padrões de urgência usados
+- Principais narrativas de fechamento
+
+## 8. Elementos Obrigatórios do Nicho
+- APENAS os elementos persuasivos que apareceram na MAIORIA dos anúncios analisados (os que não podem faltar em um novo anúncio deste nicho)
+
+NICHO: ${nicho}
+
+=== ANÚNCIOS VALIDADOS COLADOS (separados por "-----") ===
+${clip(ads, 16000)}
+
+=== REFORÇO — BASE INTERNA (vault: campeões validados do nicho, ordem por vendas) ===
+${clip(ctxAds, 4000)}
+
+=== REFORÇO — ANÁLISE MASTER DO NICHO ===
+${clip(ctxMaster, 2500)}`;
+  return { system: PERSONA, user, max_tokens: MAX_TOKENS.biblia };
+}
+
+function vocPrompt(nicho, biblia) {
+  const user = `TAREFA — montar a VOZ DO PROSPECT (VOC): capturar como o público deste nicho REALMENTE fala, pesquisando na internet.
+
+Use a ferramenta de busca (web_search) para achar comentários REAIS de pessoas reais em YouTube, Facebook, Instagram, Reddit Brasil, blogs e fóruns brasileiros sobre o tema. Regras da coleta:
+- Copie as falas EXATAMENTE como foram escritas, incluindo erros de português. Não parafraseie, não resuma, não limpe.
+- Não suavize: traga o que as pessoas realmente dizem, mesmo cru ou contraditório.
+- Priorize as falas mais fortes/reveladoras de cada categoria.
+- Guarde a FONTE (plataforma, e se possível o link/identificação do post ou vídeo) de cada fala.
+- Se após uma busca genuína não achar 5 falas fortes em alguma categoria, entregue as que achou e diga isso — não invente falas para completar a cota.
+
+Categorias — 5 falas de cada:
+1. Dores e frustrações reais
+2. Desejos e sonhos reais
+3. Crenças e opiniões sobre o tema
+4. Ceticismo e objeções
+5. Falsas crenças sobre como o problema funciona
+
+Formato de saída (Markdown):
+
+# Voz do Prospect — ${nicho}
+
+## Dores e Frustrações Reais
+1. "[fala exata]" — [fonte/plataforma]
+...
+
+## Desejos e Sonhos Reais
+...
+
+## Crenças e Opiniões sobre o Tema
+...
+
+## Ceticismo e Objeções
+...
+
+## Falsas Crenças sobre Como o Problema Funciona
+...
+
+## Síntese
+- Padrões de linguagem observados (palavras/expressões que se repetem)
+- Perfil que emerge dessas falas (compare com o avatar da Bíblia — reforça ou contradiz?)
+- Crença limitante dominante confirmada pela pesquisa
+
+NICHO: ${nicho}
+
+=== BÍBLIA DO NICHO (use o avatar, a linguagem e os ângulos para saber o que buscar) ===
+${clip(biblia, 9000) || "(sem Bíblia informada — pesquise pelo nicho acima)"}`;
+  return { system: PERSONA, user, max_tokens: MAX_TOKENS.voc };
+}
+
+function remessaPrompt(nicho, biblia, oferta, nCorpos, nHooks) {
+  const user = `TAREFA — ARQUITETURA DA REMESSA: antes de escrever qualquer anúncio, defina a estratégia de CADA um (promessa, ângulo, avatar do narrador, formato e hipótese de teste). Apoie TODAS as escolhas no que já foi validado no nicho (Bíblia), não em preferência genérica. NÃO escolha pelo usuário — proponha com raciocínio para ele aprovar/ajustar.
+
+Produza um briefing para CADA um dos ${nCorpos} corpo(s), cada um com ${nHooks} hook(s). Formato (Markdown):
+
+# Briefing da Remessa — ${nicho}
+
+## Oferta
+- Expert: ...
+- Mecanismo do problema: ...
+- Mecanismo da solução / nome chiclete: ...
+- Promessa principal: ...
+
+## Anúncio 1 (Corpo 1) — ${nHooks} hooks
+- Promessa: (pode variar entre anúncios, testando ênfases)
+- Ângulo: (qual ângulo da Bíblia explora)
+- Avatar/narrador: (sexo, idade, aparência — coerente com o avatar da Bíblia)
+- Formato: (Jornada do Herói / Storytelling / Conspiração / Especialista-educacional)
+- Hipótese sendo testada: (o que ESSA variação testa em relação às outras)
+- Raciocínio: (por que essa promessa/ângulo/formato, com base na Bíblia)
+
+## Anúncio 2 (Corpo 2) — ${nHooks} hooks
+... (repita a estrutura para todos os ${nCorpos} corpos)
+
+NICHO: ${nicho}
+
+=== DADOS DA OFERTA (informados pelo usuário) ===
+${clip(oferta, 4000)}
+
+=== BÍBLIA DO NICHO (base das escolhas) ===
+${clip(biblia, 9000) || "(sem Bíblia informada — peça para gerar a Fase 1 antes)"}`;
+  return { system: PERSONA, user, max_tokens: MAX_TOKENS.remessa };
+}
+
+function escritaPrompt(nicho, biblia, voc, briefing, corpo, nHooks) {
+  const user = `TAREFA — ESCREVER a copy final do ANÚNCIO ${corpo} (corpo completo + ${nHooks} hooks), pronta para GRAVAÇÃO em vídeo, com lastro total no que foi validado no nicho e no briefing.
+
+O anúncio precisa:
+- Abrir com ${nHooks} HOOKS fortes que conectem direto com dores/desejos/gatilhos do público (as ${nHooks} aberturas puxam para o MESMO corpo).
+- Qualificar o público com identificação imediata logo no início.
+- Apresentar o nome chiclete do mecanismo e fazer a promessa principal do briefing.
+- Usar a LINGUAGEM NATIVA do prospect — puxe expressões reais do VOC, não linguagem de marca.
+- Seguir o formato narrativo definido no briefing / dominante na Bíblia.
+- Trabalhar benefícios funcionais, dimensionais e emocionais + dores/desejos.
+- Fechar com CTA forte seguindo o padrão de urgência validado na Bíblia, sem soar óbvio/forçado.
+- Manter congruência com a oferta (mecanismo do problema/solução, nome chiclete, expert) — sem contradizê-los.
+- FRASES CURTAS, ritmo de fala natural, respeitando o tempo médio padrão do nicho.
+
+Formato (Markdown): comece indicando a qual corpo do briefing corresponde; depois os ${nHooks} hooks (rotulados Hook A, B, C...); depois o CORPO completo do primeiro ao último bloco.
+
+NICHO: ${nicho}  ·  ANÚNCIO: ${corpo}
+
+=== BRIEFING DA REMESSA (o que foi definido para este anúncio) ===
+${clip(briefing, 6000) || "(sem briefing — gere a Fase 3 antes)"}
+
+=== BÍBLIA DO NICHO (padrões validados) ===
+${clip(biblia, 7000) || "(sem Bíblia — gere a Fase 1 antes)"}
+
+=== VOZ DO PROSPECT (linguagem real — puxe expressões daqui) ===
+${clip(voc, 6000) || "(sem VOC — gere a Fase 2 antes)"}`;
+  return { system: PERSONA, user, max_tokens: MAX_TOKENS.escrita };
+}
+
+// ---------- Anthropic: streaming (fases 1/3/4) ----------
+async function streamAnthropic(payload, send) {
+  const up = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ ...payload, stream: true }),
+  });
+  if (!up.ok || !up.body) {
+    const t = await up.text().catch(() => "");
+    send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(t, 200)}` });
+    return;
+  }
+  const reader = up.body.getReader(); const dec = new TextDecoder();
+  let buf = "", lastStatus = 0, gotText = false;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const raw = line.slice(5).trim();
+      if (!raw || raw === "[DONE]") continue;
+      let ev; try { ev = JSON.parse(raw); } catch { continue; }
+      if (ev.type === "content_block_delta") {
+        const d = ev.delta || {};
+        if (d.type === "text_delta" && d.text) { gotText = true; send({ t: "text", v: d.text }); }
+        else if (d.type === "thinking_delta") { const now = Date.now(); if (now - lastStatus > 1200) { lastStatus = now; send({ t: "status", v: "pensando" }); } }
+      } else if (ev.type === "error") {
+        send({ t: "error", v: (ev.error && ev.error.message) || "erro do modelo" });
+      }
+    }
+  }
+  if (!gotText) send({ t: "error", v: "o modelo não retornou texto — tente de novo em instantes" });
+}
+
+// ---------- Anthropic: web_search (fase 2) — não-stream + heartbeat + resume ----------
+async function webSearchAnthropic(payload, send) {
+  const messages = [{ role: "user", content: clean(payload.user) }];
+  const base = {
+    model: payload.model, max_tokens: payload.max_tokens, system: clean(payload.system),
+    thinking: { type: "disabled" },
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: WEB_MAX_USES }],
+  };
+  const textParts = [];
+  let searches = 0, ok = false;
+  for (let round = 0; round < 4; round++) {
+    const up = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ ...base, messages }),
+    });
+    const txt = await up.text();
+    if (!up.ok) { send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(txt, 200)}` }); return; }
+    let j; try { j = JSON.parse(txt); } catch { send({ t: "error", v: "resposta do Claude inválida" }); return; }
+    for (const b of j.content || []) {
+      if (b.type === "text" && b.text) textParts.push(b.text);
+      else if (b.type === "server_tool_use" && b.name === "web_search") searches++;
+    }
+    if (j.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: j.content }); continue; }
+    ok = true; break;
+  }
+  const full = clean(textParts.join(""));
+  if (!full.trim()) { send({ t: "error", v: "a busca não retornou texto — tente de novo" }); return; }
+  send({ t: "meta2", searches });
+  send({ t: "text", v: full });
+  if (!ok) send({ t: "status", v: "busca interrompida no limite — resultado parcial" });
+}
+
+// ---------- handler (Netlify Functions v2, streaming NDJSON) ----------
+export default async (req) => {
+  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
+  if (req.method === "GET") return json(200, { ok: true, service: "furtado", ready: !!ANTHROPIC_KEY });
+  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
+  if (!ANTHROPIC_KEY) return json(500, { ok: false, error: "ANTHROPIC_API_KEY não configurada no Netlify" });
+
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return json(401, { ok: false, error: "sem autenticação" });
+  try {
+    const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
+    if (!u.ok) return json(401, { ok: false, error: "sessão inválida — faça login de novo" });
+  } catch { return json(401, { ok: false, error: "não deu para validar a sessão" }); }
+
+  let body;
+  try { body = await req.json(); } catch { return json(400, { ok: false, error: "corpo inválido" }); }
+  const phase = ["biblia", "voc", "remessa", "escrita"].includes(body.phase) ? body.phase : "biblia";
+  const nicho = clip(body.nicho || "", 80) || "(nicho não informado)";
+  const biblia = String(body.biblia || "");
+  const voc = String(body.voc || "");
+  const briefing = String(body.briefing || "");
+  const nCorpos = clampInt(body.nCorpos, 1, 8, 3);
+  const nHooks = clampInt(body.nHooks, 1, 6, 3);
+
+  // valida inputs por fase
+  let built;
+  if (phase === "biblia") {
+    const ads = String(body.input || "").trim();
+    if (!ads) return json(400, { ok: false, error: "cole 2 a 4 anúncios validados para gerar a Bíblia" });
+    const ctx = await vaultCtx(slug(nicho), token);
+    built = { ...bibliaPrompt(nicho, ads, ctx), model: MODEL };
+  } else if (phase === "voc") {
+    built = { ...vocPrompt(nicho, biblia), model: MODEL };
+  } else if (phase === "remessa") {
+    const oferta = String(body.input || "").trim();
+    if (!oferta) return json(400, { ok: false, error: "informe os dados da oferta (expert, mecanismos, nome chiclete, promessa)" });
+    built = { ...remessaPrompt(nicho, biblia, oferta, nCorpos, nHooks), model: MODEL };
+  } else {
+    const corpo = clip(body.input || `Corpo ${clampInt(body.corpo, 1, 8, 1)}`, 40);
+    built = { ...escritaPrompt(nicho, biblia, voc, briefing, corpo, nHooks), model: MODEL };
+  }
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      let closed = false;
+      const send = (obj) => { if (closed) return; try { controller.enqueue(enc.encode(JSON.stringify(obj) + "\n")); } catch {} };
+      send({ t: "meta", phase, model: MODEL, nicho });
+      let hb = null;
+      try {
+        if (phase === "voc") {
+          // heartbeat: mantém a conexão viva enquanto o modelo pesquisa (sem texto por vários segundos)
+          const t0 = Date.now();
+          send({ t: "status", v: "pesquisando na web…" });
+          hb = setInterval(() => send({ t: "status", v: `pesquisando na web… ${Math.round((Date.now() - t0) / 1000)}s` }), 3000);
+          await webSearchAnthropic({ system: built.system, user: built.user, model: built.model, max_tokens: built.max_tokens }, send);
+        } else {
+          const payload = { model: built.model, max_tokens: built.max_tokens, system: clean(built.system), thinking: { type: "disabled" }, messages: [{ role: "user", content: clean(built.user) }] };
+          await streamAnthropic(payload, send);
+        }
+      } catch (e) {
+        send({ t: "error", v: "falha: " + clip(e && e.message ? e.message : e, 160) });
+      } finally {
+        if (hb) clearInterval(hb);
+        send({ t: "done" });
+        closed = true;
+        try { controller.close(); } catch {}
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no", ...CORS },
+  });
+};
