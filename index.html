@@ -682,6 +682,23 @@
   .fbnote .ico{width:15px;height:15px;flex:0 0 auto;margin-top:1px;color:var(--accent);}
   .fbnote--err{color:#ffb3b3;background:var(--red-soft);border-color:rgba(255,93,93,.3);}
   .fbnote--err .ico{color:var(--red);}
+
+  /* ===== Transcritor ===== */
+  .trdrop{border:1.5px dashed var(--border-strong);border-radius:16px;background:var(--surface-3);padding:34px 20px;text-align:center;cursor:pointer;transition:.16s var(--ease);}
+  .trdrop:hover,.trdrop:focus-visible{border-color:var(--accent);background:var(--accent-soft);outline:none;}
+  .trdrop.active{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.005);}
+  .trdrop__in{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--muted-fg);font-size:.9rem;line-height:1.5;}
+  .trdrop__in .ico{width:30px;height:30px;color:var(--accent);margin-bottom:4px;}
+  .trdrop__in b{color:var(--fg);}
+  .trdrop__in small{color:var(--faint);font-size:.78rem;}
+  .trstatus{margin-top:14px;font-size:.85rem;color:var(--muted-fg);display:flex;align-items:center;gap:8px;}
+  .trerr{color:#ffb3b3;}
+  .tractions{display:flex;gap:8px;flex-wrap:wrap;}
+  .trtext{font-size:.95rem;line-height:1.7;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;max-height:min(62vh,620px);overflow:auto;padding-right:6px;}
+  .trseg{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border);}
+  .trseg:last-child{border-bottom:none;}
+  .trseg__t{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--accent);font-size:.8rem;font-weight:700;padding-top:2px;min-width:44px;}
+  .trseg__x{color:var(--fg);}
 </style>
 </head>
 <body>
@@ -841,8 +858,10 @@ const SECTIONS=[
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
-  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'}
+  {key:"copychief",label:"Feguinho Copy Chief",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho Copy Chief — FEG</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
+  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
 ];
+function isToolSection(k){return k==="copychief"||k==="transcritor";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
@@ -894,7 +913,9 @@ const ICONS={
   wand:'<path d="M15 4V2"></path><path d="M15 10V8"></path><path d="M12.5 6.5H10.5"></path><path d="M19.5 6.5H17.5"></path><path d="M3 21l12-12"></path><path d="M12.5 9.5l2 2"></path>',
   scissors:'<circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line>',
   clipboard:'<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>',
-  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>'
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
+  mic:'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>'
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
@@ -1036,7 +1057,7 @@ function filtered(){
 }
 function renderNicheBar(){
   const bar=$("#nicheBar");if(!bar)return;
-  if(activeSection==="copychief"){bar.innerHTML="";bar.style.display="none";return;}
+  if(isToolSection(activeSection)){bar.innerHTML="";bar.style.display="none";return;}
   bar.style.display="";
   const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
   const counts=new Map();let none=0;
@@ -1189,6 +1210,7 @@ function renderGrid(){
   renderSubFilter();
   setSectionHeader();
   if(activeSection==="copychief"){renderCopyChief();return;}
+  if(activeSection==="transcritor"){renderTranscritor();return;}
   const cfg=sectionCfg(activeSection);
   const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
@@ -1768,7 +1790,7 @@ function renderSectionNav(){
   const nav=$("#sectionNav");if(!nav)return;
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
   offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});
-  nav.innerHTML=SECTIONS.map(s=>{const chip=s.key==="copychief"?`<span class="scount scount--beta">Beta</span>`:`<span class="scount">${counts[s.key]||0}</span>`;return `<button class="snav${activeSection===s.key?" active":""}${s.key==="copychief"?" snav--ai":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav-lbl">${esc(s.label)}</span>${chip}</button>`;}).join("");
+  nav.innerHTML=SECTIONS.map(s=>{const chip=s.key==="copychief"?`<span class="scount scount--beta">Beta</span>`:s.key==="transcritor"?"":`<span class="scount">${counts[s.key]||0}</span>`;return `<button class="snav${activeSection===s.key?" active":""}${s.key==="copychief"?" snav--ai":""}" data-section="${s.key}">${ic(s.icon)}<span class="snav-lbl">${esc(s.label)}</span>${chip}</button>`;}).join("");
   $$(".snav",nav).forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.section)));
   syncSecNav();
 }
@@ -1782,7 +1804,7 @@ function switchSection(key){
 }
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
-  const cc=activeSection==="copychief";
+  const cc=isToolSection(activeSection);
   const shell=$(".shell");if(shell)shell.classList.toggle("shell--full",cc);
   const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
@@ -1796,7 +1818,7 @@ function setSectionHeader(){
 }
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
-  if(activeSection==="copychief"){el.innerHTML="";el.style.display="none";return;}
+  if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="tiktok"){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
@@ -1958,6 +1980,117 @@ async function ccRun(){
     if(hooks.length)tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
       hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
   }
+}
+
+/* ===== TRANSCRITOR (Whisper via Groq) ===== */
+const TR_FN="/.netlify/functions/transcribe-file";
+const TR_MAX=25*1024*1024;
+const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
+let trBusy=false, trLang="auto", trText="", trSegs=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="";
+function trTime(s){s=Math.max(0,Math.round(+s||0));const m=Math.floor(s/60),ss=s%60;return `${m}:${String(ss).padStart(2,"0")}`;}
+function trSetStatus(html){const el=$("#trStatus");if(!el)return;el.hidden=!html;el.innerHTML=html||"";}
+function renderTrOutput(){
+  const out=$("#trOut");if(!out)return;
+  if(!trText&&!trSegs.length){out.hidden=true;return;}
+  out.hidden=false;
+  const words=trText?trText.trim().split(/\s+/).filter(Boolean).length:0;
+  const meta=$("#trOutMeta");if(meta)meta.innerHTML=`<span class="ccdot ccdot--done"></span>${trDetLang?esc(trDetLang)+" · ":""}${words} palavras${trDur?` · ${trTime(trDur)}`:""}`;
+  const body=$("#trText");if(!body)return;
+  if(trShowTimes&&trSegs.length){
+    body.innerHTML=trSegs.map(s=>`<div class="trseg"><span class="trseg__t">${trTime(s.start)}</span><span class="trseg__x">${esc(s.text)}</span></div>`).join("");
+  }else{
+    body.textContent=trText||trSegs.map(s=>s.text).join(" ");
+  }
+  const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
+}
+async function trHandleFile(file){
+  if(!file||trBusy)return;
+  if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo (MP4).",true);return;}
+  if(file.size>TR_MAX){toast("Arquivo acima de ~25MB. Use um vídeo mais curto (limite do Whisper).",true);return;}
+  if(!isAdmin){toast("Somente o admin pode transcrever por enquanto.",true);return;}
+  trBusy=true; trFileName=file.name; trText=""; trSegs=[]; trShowTimes=false;
+  const out=$("#trOut");if(out)out.hidden=true;
+  const run=$("#trRun");if(run)run.disabled=true;
+  trSetStatus(`<span class="vidup__spin"></span>Enviando ${esc(file.name)}…`);
+  let url="";
+  try{
+    const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
+    const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
+    const path=`transcricoes/${uid}.${ext}`;
+    const res=await sb.storage.from("criativos").upload(path,file,{contentType:"video/mp4",upsert:false});
+    if(res.error)throw res.error;
+    url=sb.storage.from("criativos").getPublicUrl(path).data.publicUrl;
+  }catch(e){
+    const m=(e&&e.message)||String(e);
+    trSetStatus(`<span class="trerr">⚠ ${/row-level|denied|unauthor/i.test(m)?"Sem permissão de upload — rode a policy de Storage.":"Falha no upload: "+esc(m)}</span>`);
+    trBusy=false;if(run)run.disabled=false;return;
+  }
+  trSetStatus(`<span class="vidup__spin"></span>Transcrevendo com o Whisper…`);
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  try{
+    const r=await fetch(TR_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({videoUrl:url,language:trLang})});
+    let j={};try{j=await r.json();}catch(e){}
+    if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
+    trText=j.text||""; trSegs=Array.isArray(j.segments)?j.segments:[]; trDetLang=j.language||""; trDur=j.duration||0;
+    trSetStatus("");
+    if(!trText&&!trSegs.length){trSetStatus(`<span class="trerr">⚠ Não consegui captar fala nesse arquivo.</span>`);}
+    else{renderTrOutput();toast("Transcrição pronta ✓");}
+  }catch(e){trSetStatus(`<span class="trerr">⚠ ${esc((e&&e.message)||"falha na transcrição")}</span>`);}
+  trBusy=false;if(run)run.disabled=false;
+}
+function renderTranscritor(){
+  const area=$("#gridArea");if(!area)return;
+  if($("#transcritor"))return;
+  area.innerHTML=`<div class="cchief" id="transcritor">
+    <div class="cchief__hero">
+      <div class="cchief__mark">${ic("mic")}</div>
+      <div class="cchief__heroTx">
+        <div class="cchief__heroTitle">Transcritor</div>
+        <p>Envie um vídeo e receba a transcrição via <b>Whisper</b>. Escolha o idioma ou deixe no automático.</p>
+      </div>
+    </div>
+    <div class="cchief__composer">
+      <div class="composer__controls">
+        <label class="ccfield"><span>Idioma</span><select id="trLang">${TR_LANGS.map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join("")}</select></label>
+      </div>
+      <div class="trdrop" id="trDrop" tabindex="0" role="button" aria-label="Enviar vídeo">
+        <div class="trdrop__in">${ic("upload")}<div><b>Clique ou arraste</b> um vídeo (MP4) aqui</div><small>Até ~25MB (limite do Whisper). Para vídeos maiores, envie um trecho.</small></div>
+      </div>
+      <div class="trstatus" id="trStatus" hidden></div>
+      ${isAdmin?"":`<div class="cchief__hint" style="margin-top:12px">Somente o admin pode transcrever por enquanto.</div>`}
+      <input type="file" id="trFile" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
+    </div>
+    <div class="cchief__out" id="trOut" hidden>
+      <div class="cchief__outbar">
+        <span class="cchief__status" id="trOutMeta"></span>
+        <div class="tractions">
+          <button class="btn btn--outline btn--sm" id="trTimes">Mostrar tempos</button>
+          <button class="btn btn--outline btn--sm" id="trCopy">${ic("clipboard")}Copiar</button>
+          <button class="btn btn--outline btn--sm" id="trDownload">${ic("download")}.txt</button>
+        </div>
+      </div>
+      <div class="trtext" id="trText"></div>
+    </div>
+  </div>`;
+  const lang=$("#trLang");if(lang){lang.value=trLang;lang.addEventListener("change",()=>trLang=lang.value);}
+  const fileInput=$("#trFile"), drop=$("#trDrop");
+  const pick=()=>{if(!trBusy)fileInput.click();};
+  if(fileInput)fileInput.addEventListener("change",()=>{if(fileInput.files[0])trHandleFile(fileInput.files[0]);fileInput.value="";});
+  if(drop){
+    drop.addEventListener("click",pick);
+    drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+    drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("active");});
+    drop.addEventListener("dragleave",()=>drop.classList.remove("active"));
+    drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>/^(video|audio)\//.test(f.type));if(f)trHandleFile(f);else toast("Arraste um arquivo de vídeo.",true);});
+  }
+  $("#trTimes").addEventListener("click",()=>{trShowTimes=!trShowTimes;renderTrOutput();});
+  $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
+  $("#trDownload").addEventListener("click",()=>{
+    const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));
+    const blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,""):"transcricao")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  });
+  if(trText||trSegs.length)renderTrOutput();
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
