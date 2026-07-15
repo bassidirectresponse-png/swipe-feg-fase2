@@ -2715,6 +2715,9 @@ function criativoCard(o){
     actions:acts
   });
 }
+/* Selo temporario para validar o fluxo manual do Mega Brain sem alterar o nome do criativo. */
+const BRAIN_VALIDATION_TEST_IDS=new Set(["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"]);
+function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.id));}
 function megabrainCard(o){
   const d=o.data||{};
   const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
@@ -2727,10 +2730,11 @@ function megabrainCard(o){
     (copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
   ].filter(Boolean).join("");
   const ist=brainStatusOf(o);
+  const testChip=brainIsValidationTest(o)?`<span class="chip brain-err">${ic("alert")}CRIATIVO TESTE</span>`:"";
   const ichip=ist==="working"?`<span class="chip accent brain-ing">${ic("download")}Baixando do Drive…</span>`
-    :ist==="error"?`<span class="chip brain-err">${ic("alert")}Falha no Drive</span>`:"";
+    :ist==="error"?`<span class="chip brain-err">${ic("film")}${brainIsValidationTest(o)?"Vídeo não encontrado":"Falha no Drive"}</span>`:"";
   const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
-  const chipsRow=(nicheSpan||ichip)?`<div class="card__chips">${nicheSpan}${ichip}</div>`:"";
+  const chipsRow=(testChip||nicheSpan||ichip)?`<div class="card__chips">${testChip}${nicheSpan}${ichip}</div>`:"";
   return card({
     id:o.id,variant:"kcard kcard--brain",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span>`,
@@ -3130,7 +3134,7 @@ function brainIngestControl(o){
   if(!src&&!working&&st!=="error")return"";
   const label=working?"Baixando do Drive…":hosted?"Rebaixar do Drive":"Baixar criativo do Drive";
   const btn=isAdmin&&src?`<button class="btn btn--outline btn--sm" data-brainingest="${o.id}"${working?" disabled":""}>${ic("download")}${label}</button>`:"";
-  const note=st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.driveIngestError||"falha ao baixar do Drive")}</div>`
+  const note=st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${brainIsValidationTest(o)?"Falta adicionar o vídeo — vídeo não encontrado.":esc(d.driveIngestError||"falha ao baixar do Drive")}</div>`
     :hosted?`<div class="fbnote" style="color:var(--accent)">${ic("info")}Vídeo salvo no Storage (permanente).</div>`:"";
   return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
 }

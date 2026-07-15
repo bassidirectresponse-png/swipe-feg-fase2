@@ -39,6 +39,12 @@ test("cards usam a estrutura canônica e mídia uniforme", () => {
   assert.match(html, /Imagem indisponível/);
 });
 
+test("criativo de validação é marcado sem aceitar vídeo de outra variação", () => {
+  assert.match(html, /BRAIN_VALIDATION_TEST_IDS=new Set\(\["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"\]\)/);
+  assert.match(html, /CRIATIVO TESTE/);
+  assert.match(html, /Falta adicionar o vídeo — vídeo não encontrado\./);
+});
+
 test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
   assert.doesNotMatch(html, /angulosResumo|angulosLink|fPrecos|renderPrecos|data-pri/);
   assert.match(html, /storageUploadWithProgress/);
