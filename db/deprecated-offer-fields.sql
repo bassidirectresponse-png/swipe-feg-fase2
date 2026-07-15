@@ -1,0 +1,10 @@
+-- Campos órfãos preservados em offers.data (JSONB).
+--
+-- A interface não lê nem grava estes campos desde a refatoração de 2026-07:
+--   data.precos
+--   data.angulosResumo
+--   data.angulosLink
+--
+-- Não há DROP nem migração destrutiva. Registros existentes continuam intactos
+-- para auditoria e eventual exportação. Este arquivo é somente documentação do
+-- contrato legado; não precisa ser executado.

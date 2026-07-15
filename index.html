@@ -355,13 +355,6 @@
 
   .resumo{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:20px;font-size:1.05rem;line-height:1.55;white-space:pre-wrap;}
 
-  .price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
-  .price{border:1px solid var(--border-2);border-radius:14px;padding:20px;background:var(--surface);}
-  .price.assina{background:linear-gradient(180deg,var(--accent),#cfe800);color:#000;border-color:var(--accent);}
-  .price .ptag{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;opacity:.7;display:inline-block;margin-bottom:8px;}
-  .price .pk{font-size:.9rem;font-weight:600;opacity:.85;}
-  .price .pv{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-top:6px;line-height:1;}
-
   .sidebar{position:sticky;top:84px;display:flex;flex-direction:column;gap:16px;}
   .note{border:1px solid rgba(229,255,45,.35);background:linear-gradient(180deg,var(--accent-soft),transparent);border-radius:14px;padding:20px;}
   .note .nk{display:flex;align-items:center;gap:8px;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:12px;}
@@ -395,6 +388,11 @@
   .dz .hint b{color:var(--accent);}
   .dz img{display:block;width:100%;height:auto;}
   .dz .rm{position:absolute;top:8px;right:8px;background:var(--red);color:#000;font-weight:700;font-size:.68rem;padding:6px 10px;border-radius:6px;z-index:2;}
+  .dz__upload{width:min(360px,100%);display:grid;gap:10px;text-align:left;}
+  .dz__upload strong{font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dz__progress{height:7px;border-radius:999px;background:var(--border-strong);overflow:hidden;}
+  .dz__progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .12s linear;}
+  .dz__status{font-size:.76rem;color:var(--muted-fg);font-variant-numeric:tabular-nums;}
 
   .block-edit{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;margin-bottom:14px;}
   .block-edit .behead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
@@ -445,9 +443,17 @@
   .toast.show{transform:translateX(-50%) translateY(0);}
   .toast.err{background:var(--red);}
 
-  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:6000;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out;}
-  .lightbox.open{display:flex;}
-  .lightbox img{max-width:96%;max-height:94vh;border-radius:8px;box-shadow:0 20px 80px -10px rgba(0,0,0,.9);}
+  .lightbox{position:fixed;inset:0;background:var(--overlay);z-index:var(--z-lightbox);display:none;grid-template-rows:auto minmax(0,1fr);padding:18px;}
+  .lightbox.open{display:grid;}
+  .lightbox__bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px;}
+  .lightbox__tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .lightbox__stage{position:relative;min-height:0;overflow:hidden;display:grid;place-items:center;touch-action:none;cursor:grab;}
+  .lightbox__stage.dragging{cursor:grabbing;}
+  .lightbox__stage img{max-width:96%;max-height:100%;border-radius:var(--radius-xs);transform-origin:center;will-change:transform;user-select:none;-webkit-user-drag:none;}
+  .lightbox__nav{position:absolute;top:50%;transform:translateY(-50%);z-index:1;}
+  .lightbox__nav--prev{left:12px}.lightbox__nav--next{right:12px}
+  .lightbox__count{font-size:.78rem;color:var(--muted-fg);font-variant-numeric:tabular-nums;}
+  @media(max-width:600px){.lightbox{padding:10px}.lightbox__open span{display:none}.lightbox__nav--prev{left:4px}.lightbox__nav--next{right:4px}}
   /* popup da copy (aberto direto do card) */
   .copypop{max-width:640px;width:100%;margin:6vh auto;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;}
   .copypop__head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border);}
@@ -930,7 +936,20 @@ create policy "public_all" on offers
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Visualização do print" aria-hidden="true">
+  <div class="lightbox__bar">
+    <span class="lightbox__count" id="lightboxCount"></span>
+    <div class="lightbox__tools">
+      <a class="btn btn--outline btn--sm lightbox__open" id="lightboxOpen" href="#" target="_blank" rel="noopener noreferrer">Abrir em nova aba</a>
+      <button class="icon-btn" id="lightboxClose" type="button" aria-label="Fechar visualização">✕</button>
+    </div>
+  </div>
+  <div class="lightbox__stage" id="lightboxStage">
+    <button class="icon-btn lightbox__nav lightbox__nav--prev" id="lightboxPrev" type="button" aria-label="Print anterior">←</button>
+    <img id="lightboxImg" src="" alt="">
+    <button class="icon-btn lightbox__nav lightbox__nav--next" id="lightboxNext" type="button" aria-label="Próximo print">→</button>
+  </div>
+</div>
 <div class="overlay" id="copyPop">
   <div class="copypop">
     <div class="copypop__head">
@@ -951,7 +970,7 @@ const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 const SECTIONS=[
-  {key:"oferta",label:"Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Vitrine de <b>ofertas</b> completas: bibliotecas, domínios, checkouts, criativos e preços.'},
+  {key:"oferta",label:"Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Vitrine de <b>ofertas</b> completas: bibliotecas, domínios, checkouts, criativos e inteligência de tráfego.'},
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"criativo",label:"Swipe Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos vencedores</b> — vídeo, transcrição e link do anúncio, por nicho e plataforma (Meta Ads e Taboola).'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
@@ -966,8 +985,8 @@ function isChatSection(k){return k==="copychief"||k==="furtado";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
-let sb=null, offers=[], searchTerm="", activeNiche="", editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
+let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeNiche="", editingId=null;
+let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false;
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica";
@@ -1039,21 +1058,14 @@ function normalize(raw){
   }
   if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
   if(!Array.isArray(d.bibliotecas)){d.bibliotecas=[];if(d.linkBiblioteca)d.bibliotecas.push({nome:"",link:d.linkBiblioteca});}
-  if(!Array.isArray(d.precos)){
-    d.precos=[];
-    if(d.temUnico&&d.precoUnico)d.precos.push({descricao:"Compra única",valor:d.precoUnico,tipo:"Compra única"});
-    if(d.temAssinatura&&d.precoAssinatura)d.precos.push({descricao:"Assinatura",valor:d.precoAssinatura,tipo:"Assinatura"});
-  }
-  if(typeof d.angulosResumo!=="string"){
-    d.angulosResumo=Array.isArray(d.angulos)?d.angulos.map(a=>a&&a.descricao?"• "+a.descricao:"").filter(Boolean).join("\n"):"";
-  }
-  if(typeof d.angulosLink!=="string")d.angulosLink="";
   if(d.tipoTrafego!=="native"&&d.tipoTrafego!=="meta")d.tipoTrafego="meta";
   d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";});
   if(!Array.isArray(d.taboolaAds))d.taboolaAds=[];
   if(typeof d.trafego28d!=="string")d.trafego28d="";
   if(typeof d.trafego3m!=="string")d.trafego3m="";
   if(typeof d.printSemrush!=="string")d.printSemrush="";
+  if(typeof d.printSemrushOriginal!=="string")d.printSemrushOriginal=d.printSemrush||"";
+  if(typeof d.printSemrushThumb!=="string")d.printSemrushThumb=d.printSemrush||"";
   return d;
 }
 
@@ -1098,10 +1110,10 @@ document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(conf
 /* ===== SUPABASE ===== */
 function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").classList.add("hidden");}
 function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList.remove("hidden");}
-function initSupabase(u,k){try{sb=window.supabase.createClient(u,k);return true;}catch(e){console.error(e);return false;}}
+function initSupabase(u,k){try{currentSbUrl=String(u||"").replace(/\/+$/,"");currentSbKey=k;sb=window.supabase.createClient(currentSbUrl,k);return true;}catch(e){console.error(e);return false;}}
 
 function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
-function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
+function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
   if(!sb){showSetup();return;}
@@ -1176,7 +1188,7 @@ function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
   if(slug==="sem-nicho")return NO_NICHE;
   const present=new Set(offers.filter(o=>sectionOf(o)===section).map(nicheOf).filter(Boolean));
-  const hit=[...present,...NICHOS].find(n=>routeSlug(n)===slug);
+  const hit=[...present].find(n=>routeSlug(n)===slug);
   return hit||null;   // null => categoria inexistente (404)
 }
 function qsFromState(){
@@ -1490,7 +1502,7 @@ function renderGrid(skipNav){
     }
   });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
-  $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
+  wireLightboxLinks(area);
   wireCardPreviews(area);
   const add=$("#addCard");
   if(add){
@@ -1509,9 +1521,9 @@ $("#sideNavBackdrop").addEventListener("click",closeSideNav);
 
 /* ===== VIEW ===== */
 function linkbtn(label,url,accent,icon){if(!url)return"";return `<a class="linkbtn${accent?' accent':''}" href="${esc(fixUrl(url))}" target="_blank" rel="noopener">${icon?ic(icon):""}<span class="lbtxt">${esc(label)}</span><span class="arr">${ic("external")}</span></a>`;}
-function shotView(label,img){
+function shotView(label,img,thumb){
   if(!img)return`<div class="shot"><div class="shot__lbl">${label}</div><div class="none">Sem print</div></div>`;
-  return`<div class="shot"><div class="shot__lbl">${label}<span class="zoom lb" data-img="${img}">${ic("maximize")}ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${img}" src="${img}" alt="${label}"></div>`;
+  return`<a class="shot" href="${esc(img)}" data-lightbox="${esc(img)}"><div class="shot__lbl">${label}<span class="zoom">${ic("maximize")}ampliar</span></div><span class="shot__media"><img loading="lazy" decoding="async" src="${esc(thumb||img)}" alt="${esc(label)}"></span></a>`;
 }
 function openView(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
@@ -1537,7 +1549,7 @@ function openView(id){
   if(native){
     adsTitle="Anúncios encontrados (Taboola)";
     const tabsAll=d.taboolaAds.filter(x=>x.img||x.nome);
-    adsInner=tabsAll.length?`<div class="taboola-grid">${tabsAll.map((a,i)=>a.img?`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}<span class="zoom lb" data-img="${a.img}">${ic("maximize")}ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${a.img}" src="${a.img}" alt=""></div>`:`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}</div><div class="none">Sem print</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum anúncio do Taboola cadastrado.</div>`;
+    adsInner=tabsAll.length?`<div class="taboola-grid">${tabsAll.map((a,i)=>shotView(esc(a.nome||"Anúncio "+(i+1)),a.img)).join("")}</div>`:`<div class="muted-empty">Nenhum anúncio do Taboola cadastrado.</div>`;
   }else{
     adsTitle="Criativos";
     const crvsAll=d.criativos.filter(x=>x.link||x.transcricao||x.nome);
@@ -1546,7 +1558,9 @@ function openView(id){
       <div class="linkbtns">${linkbtn("Ver criativo",c.link,true,"play")}${c.transcricao?linkbtn("Ver transcrição do ad",c.transcricao,false,"file"):""}</div></div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
   }
 
-  const taShot=d.printSemrush?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("Volume de tráfego (SEMrush)",d.printSemrush)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`;
+  const semrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
+  const semrushThumb=d.printSemrushThumb||semrushOriginal;
+  const taShot=semrushOriginal?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("SEMrush — últimos 3 meses",semrushOriginal,semrushThumb)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`;
   const trafficInner=`
     <div class="ta-grid">
       <div class="ta-metric"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>
@@ -1554,9 +1568,6 @@ function openView(id){
     </div>
     <div class="ta-info">${ic("info")}<span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
     ${taShot}`;
-
-  const precos=d.precos.filter(p=>p.descricao||p.valor);
-  const precosHtml=precos.length?`<div class="price-grid">${precos.map(p=>`<div class="price ${/assin/i.test(p.tipo||"")?'assina':''}">${p.tipo?`<span class="ptag">${esc(p.tipo)}</span>`:""}<div class="pk">${esc(p.descricao||"Preço")}</div><div class="pv">${esc(p.valor||"?")}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum preço cadastrado.</div>`;
 
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
@@ -1589,7 +1600,7 @@ function openView(id){
     <div>
       <section class="sec">
         <div class="prod-head">
-          ${d.imagemProduto?`<img class="img lb" data-img="${d.imagemProduto}" src="${d.imagemProduto}" alt="">`:""}
+          ${d.imagemProduto?`<a href="${esc(d.imagemProduto)}" data-lightbox="${esc(d.imagemProduto)}"><img class="img" src="${esc(d.imagemProduto)}" alt=""></a>`:""}
           <div class="info">
             <div class="brand">${esc(d.nomeMarca||"Sem marca")}</div>
             <h2>${esc(d.nomeOferta||"Oferta sem nome")}</h2>
@@ -1604,22 +1615,17 @@ function openView(id){
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${adsTitle}</span><span class="sec__line"></span></div>${adsInner}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Traffic Analytics</span><span class="sec__line"></span></div>${trafficInner}</section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo dos ângulos</span><span class="sec__line"></span></div>
-        ${d.angulosResumo?`<div class="resumo">${esc(d.angulosResumo)}</div>`:`<div class="muted-empty">Sem resumo.</div>`}
-        ${d.angulosLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir no Drive",d.angulosLink,true,"folder")}</div>`:""}
-      </section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
         ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir presell",d.advertorialLink,false,"newspaper")}</div>`:""}
       </section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
     </div>
     <aside class="sidebar">
       <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div></div>
       ${drive.length?`<div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div>`:""}
     </aside>
   </div>`;
-  $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  wireLightboxLinks($("#viewBody"));
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeView());
@@ -1633,10 +1639,10 @@ function openForm(id){
   setSaveState(id?"saved":"new");
   fProductImg=d.imagemProduto||"";
   fTipo=d.tipoTrafego==="native"?"native":"meta";
-  fSemrush=d.printSemrush||"";
+  fSemrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
+  fSemrushThumb=d.printSemrushThumb||fSemrushOriginal;
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
-  fPrecos=d.precos.length?JSON.parse(JSON.stringify(d.precos)):[{descricao:"",valor:"",tipo:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
   fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
 
@@ -1689,45 +1695,30 @@ function openForm(id){
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> Traffic Analytics</div>
-      <div class="fsec__hint">Volume de tráfego do domínio (SEMrush). Anexe o print e registre os volumes abaixo.</div>
-      <div class="fhint-info">${ic("info")}<span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
+      <div class="fsec__title"><span class="num">04</span> SEMrush — últimos 3 meses</div>
+      <div class="fsec__hint">Guarde o print original em resolução integral. O dashboard cria uma derivada otimizada apenas para exibição.</div>
       <div class="row">
         <div class="field"><label class="lbl">Volume — últimos 28 dias</label><input type="text" id="f_trafego28d" placeholder="Ex: 320 mil visitas/mês" value="${esc(d.trafego28d)}"></div>
         <div class="field"><label class="lbl">Volume — últimos 3 meses</label><input type="text" id="f_trafego3m" placeholder="Ex: 1,2 mi visitas" value="${esc(d.trafego3m)}"></div>
       </div>
-      <div class="field"><label class="lbl">Print do volume de tráfego (SEMrush)</label><div class="dz" data-zone="semrush" tabindex="0"></div></div>
+      <div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz dz--storage" data-zone="semrush" tabindex="0"></div></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Resumo dos ângulos</div>
-      <div class="fsec__hint">Uma breve descrição dos principais ângulos e/ou um link de Drive.</div>
-      <div class="field"><label class="lbl">Resumo</label><textarea id="f_angulosResumo" placeholder="Ex:&#10;• Voz feminina sobre a dor de não performar&#10;• Prova social com depoimentos&#10;• Médico explicando o mecanismo">${esc(d.angulosResumo)}</textarea></div>
-      <div class="field"><label class="lbl">Link de Drive (opcional)</label><input type="url" id="f_angulosLink" placeholder="https://drive.google.com/..." value="${esc(d.angulosLink)}"></div>
-    </div>
-
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">06</span> Funil de vendas</div>
+      <div class="fsec__title"><span class="num">05</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
       <div class="field"><label class="lbl">Link da presell / advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://... — página de pré-venda exibida antes da PV" value="${esc(d.advertorialLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">07</span> Preços</div>
-      <div class="fsec__hint">O preço varia por kit. Adicione quantos quiser, com descrição e valor. Ex: "1 pote" → "$79", "3 potes" → "$49".</div>
-      <div id="priWrap"></div>
-      <button type="button" class="add-block" data-action="add-pri">+ Adicionar preço</button>
-    </div>
-
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">08</span> Materiais & Comentário</div>
+      <div class="fsec__title"><span class="num">06</span> Materiais & Comentário</div>
       <div class="field"><label class="lbl">Links de Drive / Docs (um por linha)</label><textarea id="f_driveLinks" placeholder="https://docs.google.com/...&#10;https://drive.google.com/...">${esc(d.driveLinks)}</textarea></div>
       <div class="field"><label class="lbl">★ Comentário / orientação sobre a oferta</label><textarea id="f_comentario" placeholder="Observações, insights, orientações...">${esc(d.comentario)}</textarea></div>
     </div>
   `;
   $("#formBody").dataset.tipo=fTipo;
   wireZones($("#formBody"));
-  renderDominios();renderCriativos();renderPrecos();renderBibliotecas();renderTaboola();
+  renderDominios();renderCriativos();renderBibliotecas();renderTaboola();
   openOverlay("#formOverlay");
   $("#f_nomeOferta").focus();
 }
@@ -1760,21 +1751,6 @@ function renderCriativos(){
       </div>
     </div>`).join("");
 }
-function renderPrecos(){
-  $("#priWrap").innerHTML=fPrecos.map((p,i)=>`
-    <div class="block-edit">
-      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Preço ${i+1}</span>${fPrecos.length>1?`<button type="button" class="rm-block" data-action="rm-pri" data-i="${i}">✕ Remover</button>`:""}</div>
-      <div class="row3">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Descrição</label><input type="text" data-pri="${i}" data-k="descricao" placeholder="Ex: 3 potes / Kit 90 dias" value="${esc(p.descricao)}"></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Valor</label><input type="text" data-pri="${i}" data-k="valor" placeholder="Ex: $ 49 / un" value="${esc(p.valor)}"></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Tipo</label><select data-pri="${i}" data-k="tipo">
-          <option value="" ${!p.tipo?"selected":""}>—</option>
-          <option value="Compra única" ${p.tipo==="Compra única"?"selected":""}>Compra única</option>
-          <option value="Assinatura" ${p.tipo==="Assinatura"?"selected":""}>Assinatura</option>
-        </select></div>
-      </div>
-    </div>`).join("");
-}
 function renderBibliotecas(){
   $("#bibWrap").innerHTML=fBibliotecas.map((b,i)=>`
     <div class="block-edit">
@@ -1799,7 +1775,6 @@ function renderTaboola(){
 function onFieldChange(t){
   if(t.dataset.dom!=null){fDominios[+t.dataset.dom][t.dataset.k]=t.value;return true;}
   if(t.dataset.crv!=null){fCriativos[+t.dataset.crv][t.dataset.k]=t.value;return true;}
-  if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
   if(t.dataset.bib!=null){fBibliotecas[+t.dataset.bib][t.dataset.k]=t.value;return true;}
   if(t.dataset.tab!=null){fTaboola[+t.dataset.tab][t.dataset.k]=t.value;return true;}
   return false;
@@ -1813,8 +1788,6 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
-  else if(a==="add-pri"){fPrecos.push({descricao:"",valor:"",tipo:""});renderPrecos();}
-  else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
   else if(a==="add-bib"){fBibliotecas.push({nome:"",link:""});renderBibliotecas();}
   else if(a==="rm-bib"){fBibliotecas.splice(+b.dataset.i,1);renderBibliotecas();}
   else if(a==="add-tab"){fTaboola.push({nome:"",img:""});renderTaboola();}
@@ -1826,7 +1799,8 @@ $("#formBody").addEventListener("click",e=>{
 
 /* ===== SAVE (explícito) ===== */
 function buildPayload(){
-  return {
+  const legacy=editingId?Object.assign({},(offers.find(x=>x.id===editingId)||{}).data||{}):{};
+  return Object.assign(legacy,{
     tipoTrafego:fTipo==="native"?"native":"meta",
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
@@ -1835,18 +1809,18 @@ function buildPayload(){
     dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
     taboolaAds:fTaboola.filter(x=>x.nome||x.img),
-    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),printSemrush:fSemrush||"",
-    angulosResumo:val("f_angulosResumo"),angulosLink:val("f_angulosLink"),
+    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),
+    printSemrushOriginal:fSemrushOriginal||"",printSemrushThumb:fSemrushThumb||fSemrushOriginal||"",
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
-    precos:fPrecos.filter(p=>p.descricao||p.valor),
     driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
-  };
+  });
 }
-function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrush);}
+function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrushOriginal);}
 function markDirty(){formDirty=true;setSaveState("unsaved");}
 
 async function saveForm(){
   if(!requireAdmin())return false;
+  if(semrushUploading){toast("Aguarde o upload do SEMrush terminar.",true);return false;}
   if(saving)return false;
   saving=true;setSaveState("saving");setSync("load","Salvando");
   await compressStateImages();
@@ -1886,7 +1860,7 @@ $("#cfSave").addEventListener("click",async()=>{if(pendingCloseForm==="simple"){
 /* ===== IMAGE ZONES ===== */
 function getZone(key){
   if(key==="produto")return fProductImg;
-  if(key==="semrush")return fSemrush;
+  if(key==="semrush")return fSemrushThumb||fSemrushOriginal;
   if(key.slice(0,2)==="s|")return sItem[key.slice(2)]||"";
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
@@ -1895,7 +1869,7 @@ function getZone(key){
 }
 function setZone(key,v){
   if(key==="produto"){fProductImg=v;return;}
-  if(key==="semrush"){fSemrush=v;return;}
+  if(key==="semrush"){fSemrushOriginal=v;fSemrushThumb=v;return;}
   if(key.slice(0,2)==="s|"){sItem[key.slice(2)]=v;return;}
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
@@ -1909,11 +1883,11 @@ function paintZone(dz){
 function wireZones(scope){
   $$(".dz",scope).forEach(dz=>{
     paintZone(dz);
-    dz.addEventListener("click",e=>{if(e.target.classList.contains("rm"))return;setActiveZone(dz);const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=()=>{if(inp.files[0])fileToImage(inp.files[0],dz);};inp.click();});
+    dz.addEventListener("click",e=>{if(e.target.classList.contains("rm")||semrushUploading)return;setActiveZone(dz);const inp=document.createElement("input");inp.type="file";inp.accept="image/jpeg,image/png,image/webp";inp.onchange=()=>{if(inp.files[0])handleZoneFile(inp.files[0],dz);};inp.click();});
     dz.addEventListener("focus",()=>setActiveZone(dz));
     dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("active");});
     dz.addEventListener("dragleave",()=>dz.classList.remove("active"));
-    dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/"));if(f)fileToImage(f,dz);});
+    dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/"));if(f)handleZoneFile(f,dz);});
   });
 }
 function setActiveZone(dz){$$(".dz").forEach(z=>z.classList.remove("active"));dz.classList.add("active");activeZone=dz.dataset.zone;}
@@ -1944,7 +1918,6 @@ async function maybeCompress(d){
 }
 async function compressStateImages(){
   fProductImg=await maybeCompress(fProductImg);
-  fSemrush=await maybeCompress(fSemrush);
   for(const dm of fDominios){dm.printPV=await maybeCompress(dm.printPV);dm.printCheckout=await maybeCompress(dm.printCheckout);}
   for(const a of fTaboola){a.img=await maybeCompress(a.img);}
 }
@@ -1956,16 +1929,57 @@ function fileToImage(file,dz){
   };
   r.readAsDataURL(file);
 }
+const SEMRUSH_MAX_BYTES=12*1024*1024;
+function handleZoneFile(file,dz){return dz.dataset.zone==="semrush"?uploadSemrushFile(file,dz):fileToImage(file,dz);}
+function imageFileToWebp(file,maxW=1280,maxH=1800,quality=.78){
+  return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{try{const scale=Math.min(1,maxW/img.naturalWidth,maxH/img.naturalHeight),w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);c.toBlob(b=>b?resolve(b):reject(new Error("não foi possível gerar a miniatura")),"image/webp",quality);}catch(e){reject(e);}finally{URL.revokeObjectURL(url);}};
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("imagem inválida"));};img.src=url;
+  });
+}
+async function storageUploadWithProgress(file,path,onProgress){
+  const session=await sb.auth.getSession(),token=(session.data&&session.data.session&&session.data.session.access_token)||currentSbKey;
+  const safePath=path.split("/").map(encodeURIComponent).join("/");
+  return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",file.type||"application/octet-stream");xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
+}
+async function uploadSemrushFile(file,dz){
+  if(semrushUploading)return;
+  if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("Use JPG, PNG ou WebP no print do SEMrush.",true);return;}
+  if(file.size>SEMRUSH_MAX_BYTES){toast("O print do SEMrush deve ter no máximo 12 MB.",true);return;}
+  if(!sb||!currentSbUrl){toast("Conexão com o Storage indisponível.",true);return;}
+  semrushUploading=true;const clean=(file.name||"semrush").replace(/[^a-z0-9._-]+/gi,"-").toLowerCase(),id=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2)),base=`semrush/${new Date().toISOString().slice(0,10)}/${id}`;
+  dz.classList.remove("has");dz.innerHTML=`<div class="dz__upload"><strong>${esc(file.name)}</strong><div class="dz__progress"><span></span></div><div class="dz__status">Preparando upload…</div></div>`;
+  const bar=$(".dz__progress span",dz),status=$(".dz__status",dz);
+  try{const thumb=await imageFileToWebp(file),ext=(clean.match(/\.[a-z0-9]+$/i)||[".bin"])[0],originalPath=base+ext,thumbPath=base+"-thumb.webp";
+    status.textContent="Enviando original… 0%";await storageUploadWithProgress(file,originalPath,p=>{bar.style.width=(p*.82)+"%";status.textContent=`Enviando original… ${p}%`;});
+    status.textContent="Enviando miniatura otimizada…";await storageUploadWithProgress(thumb,thumbPath,p=>{bar.style.width=(82+p*.18)+"%";});
+    const bucket=sb.storage.from("criativos");fSemrushOriginal=bucket.getPublicUrl(originalPath).data.publicUrl;fSemrushThumb=bucket.getPublicUrl(thumbPath).data.publicUrl;bar.style.width="100%";status.textContent="Upload concluído";markDirty();setTimeout(()=>paintZone(dz),350);toast("Print SEMrush enviado ✓");
+  }catch(e){paintZone(dz);toast("Falha no upload: "+((e&&e.message)||e),true);}finally{semrushUploading=false;}
+}
 document.addEventListener("paste",e=>{
   if((!$("#formOverlay").classList.contains("open")&&!$("#simpleFormOverlay").classList.contains("open"))||!activeZone)return;
   const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(!item)return;
   const file=item.getAsFile();const dz=$(`.dz[data-zone="${activeZone}"]`);
-  if(file&&dz){fileToImage(file,dz);toast("Print colado");}
+  if(file&&dz){handleZoneFile(file,dz);if(dz.dataset.zone!=="semrush")toast("Print colado");}
 });
+document.addEventListener("error",e=>{if(!(e.target instanceof HTMLImageElement))return;const frame=e.target.closest(".cmedia,.shot__media");if(frame)frame.classList.add("image-error");},true);
 
-/* ===== LIGHTBOX ===== */
-function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("open");}
-$("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("open"));
+/* ===== LIGHTBOX acessível: âncoras continuam nativas em Ctrl/⌘/meio-clique ===== */
+let lbItems=[],lbIndex=0,lbTrigger=null,lbScale=1,lbX=0,lbY=0,lbDrag=null;
+function lbPaint(){const img=$("#lightboxImg");img.style.transform=`translate(${lbX}px,${lbY}px) scale(${lbScale})`;}
+function lbReset(){lbScale=1;lbX=0;lbY=0;lbPaint();}
+function lbShow(index){if(!lbItems.length)return;lbIndex=(index+lbItems.length)%lbItems.length;const it=lbItems[lbIndex],src=it.src;$("#lightboxImg").src=src;$("#lightboxImg").alt=it.alt||"Print ampliado";$("#lightboxOpen").href=src;$("#lightboxCount").textContent=lbItems.length>1?`${lbIndex+1} / ${lbItems.length}`:"";$("#lightboxPrev").hidden=lbItems.length<2;$("#lightboxNext").hidden=lbItems.length<2;lbReset();}
+function openLightbox(srcOrItems,index=0,trigger=null){lbItems=Array.isArray(srcOrItems)?srcOrItems:[{src:String(srcOrItems||""),alt:""}];lbTrigger=trigger||document.activeElement;lbShow(index);const box=$("#lightbox");box.classList.add("open");box.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";$("#lightboxClose").focus();}
+function closeLightbox(){const box=$("#lightbox");if(!box.classList.contains("open"))return;box.classList.remove("open");box.setAttribute("aria-hidden","true");$("#lightboxImg").src="";document.body.style.overflow="";if(lbTrigger&&lbTrigger.focus)lbTrigger.focus();}
+function wireLightboxLinks(root){const links=$$("a[data-lightbox]",root);const items=links.map(a=>({src:a.getAttribute("href")||a.dataset.lightbox,alt:($("img",a)||{}).alt||""}));links.forEach((a,i)=>a.addEventListener("click",e=>{e.stopPropagation();if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();openLightbox(items,i,a);}));}
+$("#lightboxClose").addEventListener("click",closeLightbox);
+$("#lightboxPrev").addEventListener("click",()=>lbShow(lbIndex-1));
+$("#lightboxNext").addEventListener("click",()=>lbShow(lbIndex+1));
+$("#lightboxStage").addEventListener("wheel",e=>{e.preventDefault();lbScale=Math.max(1,Math.min(6,lbScale*(e.deltaY<0?1.18:.84)));if(lbScale===1){lbX=0;lbY=0;}lbPaint();},{passive:false});
+$("#lightboxStage").addEventListener("dblclick",e=>{if(e.target.closest("button"))return;lbScale=lbScale>1?1:2.25;lbX=lbY=0;lbPaint();});
+$("#lightboxImg").addEventListener("pointerdown",e=>{if(lbScale<=1)return;lbDrag={id:e.pointerId,x:e.clientX,y:e.clientY,ox:lbX,oy:lbY};e.currentTarget.setPointerCapture(e.pointerId);$("#lightboxStage").classList.add("dragging");});
+$("#lightboxImg").addEventListener("pointermove",e=>{if(!lbDrag||lbDrag.id!==e.pointerId)return;lbX=lbDrag.ox+e.clientX-lbDrag.x;lbY=lbDrag.oy+e.clientY-lbDrag.y;lbPaint();});
+$("#lightboxImg").addEventListener("pointerup",()=>{lbDrag=null;$("#lightboxStage").classList.remove("dragging");});
 
 /* ===== POPUP DA COPY (ver copy direto do card) ===== */
 function openCopyPop(id){
@@ -2018,7 +2032,15 @@ document.addEventListener("keydown",e=>{
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus({preventScroll:true});}
 },true);
 $$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}if(ov.id==="simpleFormOverlay"){attemptCloseSimpleForm();return;}closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}if($("#viewOverlay").classList.contains("open")){closeView();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+document.addEventListener("keydown",e=>{
+  if($("#lightbox").classList.contains("open")){
+    if(e.key==="Escape"){e.preventDefault();closeLightbox();return;}
+    if(e.key==="ArrowLeft"){e.preventDefault();lbShow(lbIndex-1);return;}
+    if(e.key==="ArrowRight"){e.preventDefault();lbShow(lbIndex+1);return;}
+    if(e.key==="Tab"){const f=$$('a[href],button:not([hidden]):not([disabled])',$("#lightbox"));if(f.length){const first=f[0],last=f[f.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}return;}
+  }
+  if(e.key!=="Escape")return;if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}if($("#viewOverlay").classList.contains("open")){closeView();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));
+});
 
 /* ===== SEÇÕES (swipes) ===== */
 function switchSection(key){
@@ -3173,7 +3195,7 @@ function openSimpleView(o,skipOpen){
     ${sections}
   </div>
   ${asideHtml}</div>`;
-  $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  wireLightboxLinks($("#viewBody"));
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
