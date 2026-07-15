@@ -1,0 +1,60 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
+const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
+const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
+
+test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
+  assert.match(html, /height:calc\(100dvh - var\(--topbar-h\)\)/);
+  assert.match(html, /\.chat__thread\{[^}]*min-height:0/);
+  assert.match(html, /Novas mensagens ↓/);
+  assert.match(html, /setTimeout\(flush,80\)/);
+  assert.match(html, /e\.key==="Enter"&&!e\.shiftKey/);
+});
+
+test("cards usam a estrutura canônica e mídia uniforme", () => {
+  assert.match(html, /function card\(\{id,variant=/);
+  assert.match(html, /grid-auto-rows:1fr/);
+  assert.match(html, /\.card\{[^}]*height:100%/);
+  assert.match(html, /-webkit-line-clamp:2/);
+  assert.match(html, /aspect-ratio:16\/10/);
+  assert.match(html, /Imagem indisponível/);
+});
+
+test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
+  assert.doesNotMatch(html, /angulosResumo|angulosLink|fPrecos|renderPrecos|data-pri/);
+  assert.match(html, /storageUploadWithProgress/);
+  assert.match(html, /printSemrushOriginal/);
+  assert.match(html, /printSemrushThumb/);
+  assert.match(html, /SEMRUSH_MAX_BYTES=12\*1024\*1024/);
+});
+
+test("lightbox mantém links nativos e oferece teclado, zoom e pan", () => {
+  assert.match(html, /a\[data-lightbox\]/);
+  assert.match(html, /e\.metaKey\|\|e\.ctrlKey/);
+  assert.match(html, /e\.key==="ArrowLeft"/);
+  assert.match(html, /addEventListener\("wheel"/);
+  assert.match(html, /addEventListener\("pointermove"/);
+});
+
+test("transcritor pede timestamps reais e sincroniza por busca binária", () => {
+  assert.match(fn, /timestamp_granularities\[\]", "word"/);
+  assert.match(fn, /timestamp_granularities\[\]", "segment"/);
+  assert.match(fn, /const words = Array\.isArray\(gj\.words\)/);
+  assert.match(html, /function trWordAt\(time\)/);
+  assert.match(html, /requestAnimationFrame\(trFrame\)/);
+  assert.match(html, /data-trword/);
+});
+
+test("rotas profundas recebem o fallback da SPA", () => {
+  assert.match(netlify, /from = "\/\*"[\s\S]*to = "\/index\.html"[\s\S]*status = 200/);
+  assert.match(html, /function parseLocation\(\)/);
+  assert.match(html, /function renderNotFound\(msg\)/);
+  assert.match(html, /history\.replaceState\(history\.state,"","\/transcritor\/"\+id\)/);
+  assert.match(html, /TR_SAVE_FN="\/\.netlify\/functions\/transcript"/);
+  assert.match(transcriptFn, /getStore\(\{ name: "transcricoes", consistency: "strong" \}\)/);
+  assert.match(transcriptFn, /store\.setJSON\(id, transcript\)/);
+});

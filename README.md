@@ -1,23 +1,35 @@
-# Swipe FEG — Fase 2 · Dashboard de Ofertas
+# Swipe FEG — Fase 2 · Benchmarking
 
-Dashboard de apresentação de ofertas (sem login). Cada card é uma oferta completa:
-produto, biblioteca de anúncios (Meta), domínios + checkouts + prints vinculados,
-criativos com transcrição, funil, preços e comentário.
+Acervo autenticado de benchmarking do Grupo FEG: ofertas, presells, criativos,
+Mega Brain, notícias e Radar TikTok. Também inclui os assistentes Feguinho/Furtado
+e um transcritor com player sincronizado por palavra.
 
 ## Stack
 - **Arquivo único** `index.html` (HTML + CSS + JS vanilla)
-- **Backend:** Supabase (tabela `offers`, coluna `jsonb`)
-- **Deploy:** Netlify (site estático, sem build)
+- **Backend:** Supabase (`offers.data` em JSONB + bucket público `criativos`) e
+  Netlify Blobs para os permalinks das transcrições avulsas
+- **Funções:** Netlify Functions + Groq (transcrição)
+- **Deploy:** Netlify (site estático, sem etapa de build)
 
 ## Rodar localmente
-Basta abrir o `index.html` no navegador. As credenciais do Supabase já vêm embutidas
-(chave `anon`, pública por natureza).
+Sirva a raiz por HTTP para testar as rotas da SPA (por exemplo, com
+`python3 -m http.server 8080`). A chave `anon` do Supabase é pública; o acesso e
+as gravações continuam protegidos por autenticação/RLS.
 
 ## Deploy na Netlify
 1. **Add new site → Import from Git** e selecione este repositório.
 2. Build command: *(vazio)* · Publish directory: `.`
    (já configurado em `netlify.toml`).
 3. Deploy. Cada `git push` na branch principal republica o site.
+
+O repositório já possui o fallback de SPA e os headers de segurança em
+`netlify.toml`. A variável `GROQ_API_KEY` deve existir no ambiente da Netlify.
+
+## Dados legados
+
+Os campos de preço por pote e resumo/link de ângulos não são mais lidos nem
+gravados pela interface. Eles permanecem preservados no JSONB existente para
+compatibilidade e auditoria; consulte `db/deprecated-offer-fields.sql`.
 
 ## Banco (Supabase)
 Tabela criada com:

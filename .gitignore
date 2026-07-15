@@ -28,3 +28,7 @@ __pycache__/
 # Skills / tooling de agentes (não vai pro deploy)
 .agents/
 skills-lock.json
+node_modules/
+
+# Local Netlify folder
+.netlify
