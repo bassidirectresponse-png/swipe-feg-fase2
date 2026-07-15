@@ -9,9 +9,11 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# Garante que a raiz sirva o index.html
+# SPA fallback: qualquer rota (ex.: /ofertas/emagrecimento) serve o index.html
+# com status 200, para que deep-links e F5 funcionem. Arquivos reais e funções
+# (/.netlify/functions/*) são servidos ANTES desta regra pela Netlify.
 [[redirects]]
-  from = "/"
+  from = "/*"
   to = "/index.html"
   status = 200
 
