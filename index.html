@@ -1242,12 +1242,17 @@ function parseLocation(){
   if(!section)return {notFound:true,q};
   let niche="",id=null,notFound=false;
   if(NICHE_SECTIONS.has(section)){
+    if(seg.length>3)return {section,niche:"",id:null,notFound:true,q};
     if(seg[1]!=null){niche=nicheFromSlug(section,seg[1]);if(niche===null){niche="";notFound=true;}}
     if(seg[2]!=null)id=seg[2];
-  }else if(seg[1]!=null)id=seg[1];   // ex.: /transcritor/{id}
+  }else{
+    if(seg.length>2||section!=="transcritor"&&seg[1]!=null)return {section,niche:"",id:null,notFound:true,q};
+    if(seg[1]!=null)id=seg[1];
+  }
   return {section,niche,id,notFound,q};
 }
 function renderNotFound(msg){
+  document.body.classList.remove("route-detail-full");
   document.title="Não encontrado — Benchmarking FEG";
   document.body.classList.remove("chatmode");
   const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/ofertas/todos" style="margin-top:18px">Voltar para as ofertas</a></div>`;
@@ -1255,7 +1260,8 @@ function renderNotFound(msg){
 }
 function maybeOpenView(id){
   const o=offers.find(x=>x.id===id);
-  if(!o){if(routeReady&&offers.length)renderNotFound("Item não encontrado.");return;}
+  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?!nicheOf(o):nicheOf(o)===activeNiche));
+  if(!o||sectionOf(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
 function applyRoute(){
@@ -1269,19 +1275,21 @@ function applyRoute(){
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
   if(activeSection==="megabrain")brainSort=r.q.get("ordem")||"metrica";
   // canoniza URL "nua" de seção com nicho -> /base/todos (ex.: /ofertas -> /ofertas/todos)
-  if(NICHE_SECTIONS.has(activeSection)&&!r.id){
+  if(NICHE_SECTIONS.has(activeSection)&&!r.id&&location.pathname!=="/"){
     const segN=decodeURIComponent(location.pathname).replace(/\/+$/,"").split("/").filter(Boolean).length;
-    if(segN<2){try{history.replaceState(null,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
+    if(segN<2){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   }
   const si=$("#searchInput");if(si&&si.value!==searchTerm)si.value=searchTerm;
   setDocTitle();
+  document.body.classList.toggle("route-detail-full",!!r.id&&!isToolSection(activeSection)&&!(history.state&&history.state.modal));
   renderGrid();
   if(isMobileNav())closeSideNav();
-  if(r.id)maybeOpenView(r.id);
+  if(r.id&&activeSection==="transcritor")loadTrRoute(r.id);
+  else if(r.id)maybeOpenView(r.id);
   else if($("#viewOverlay")&&$("#viewOverlay").classList.contains("open"))closeOverlay("#viewOverlay");
 }
-function navigate(path,opts){opts=opts||{};try{history[opts.replace?"replaceState":"pushState"](null,"",path);}catch(e){}applyRoute();}
-function closeView(){navigate(listPath(activeSection,activeNiche)+qsFromState(),{replace:true});}
+function navigate(path,opts){opts=opts||{};try{history[opts.replace?"replaceState":"pushState"](opts.state||null,"",path);}catch(e){}applyRoute();}
+function closeView(){if(history.state&&history.state.modal){history.back();return;}navigate(listPath(activeSection,activeNiche)+qsFromState(),{replace:true});}
 /* interceptor: clique simples em link interno navega; Ctrl/⌘/Shift/meio-clique = comportamento nativo (nova aba) */
 document.addEventListener("click",e=>{
   const a=e.target.closest("a[data-nav]");
@@ -1290,7 +1298,8 @@ document.addEventListener("click",e=>{
   if(!href||href[0]!=="/")return;
   e.preventDefault();
   if(href===location.pathname+location.search)return;
-  navigate(href);
+  const parsed=href.split("?")[0].split("/").filter(Boolean),sec=PATH2SEC[parsed[0]],isDetail=!!sec&&((NICHE_SECTIONS.has(sec)&&parsed.length>=3)||(!NICHE_SECTIONS.has(sec)&&parsed.length>=2));
+  navigate(href,{state:isDetail?{modal:true}:null});
 });
 window.addEventListener("popstate",applyRoute);
 const AI_SECTIONS=new Set(["copychief","transcritor","furtado"]);
