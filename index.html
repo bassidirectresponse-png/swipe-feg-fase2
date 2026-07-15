@@ -804,6 +804,27 @@
   .trseg:last-child{border-bottom:none;}
   .trseg__t{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--accent);font-size:.8rem;font-weight:700;padding-top:2px;min-width:44px;}
   .trseg__x{color:var(--fg);}
+  .trplayer{margin:18px 0 20px;padding:14px 16px;border:1px solid var(--border-2);border-radius:var(--radius);background:var(--surface-2);}
+  .trplayer__row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;}
+  .trplayer__play{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);}
+  .trplayer__play .ico{width:18px;height:18px;}
+  .trplayer__track{position:relative;height:22px;display:flex;align-items:center;cursor:pointer;}
+  .trplayer__rail{position:absolute;left:0;right:0;height:5px;border-radius:999px;background:var(--border-strong);overflow:hidden;}
+  .trplayer__fill{display:block;width:0;height:100%;background:var(--accent);}
+  .trplayer__range{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer;}
+  .trplayer__time{font-size:.78rem;color:var(--muted-fg);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .trplayer__speed{background:var(--surface-3);border:1px solid var(--border-2);color:var(--fg);border-radius:var(--radius-xs);padding:7px 9px;font:inherit;font-size:.78rem;}
+  .trkaraoke{white-space:normal;line-height:2;}
+  .trword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:color .1s,background .1s;}
+  .trword:hover,.trword:focus-visible{color:var(--fg);background:var(--surface-3);}
+  .trword.is-past{color:var(--fg);}
+  .trword.is-active{color:var(--on-accent);background:var(--accent);}
+  @media(max-width:640px){.trplayer__row{grid-template-columns:auto minmax(0,1fr) auto}.trplayer__speed{grid-column:2/4;justify-self:end}}
+
+  body.route-detail-full .shell{display:none;}
+  body.route-detail-full{overflow:auto!important;}
+  body.route-detail-full #viewOverlay{position:static;display:block;background:transparent;backdrop-filter:none;padding:0;overflow:visible;}
+  body.route-detail-full #viewOverlay .modal{max-width:none;border-radius:0;border-left:0;border-right:0;margin:0;box-shadow:none;}
 </style>
 </head>
 <body>
@@ -2445,22 +2466,39 @@ async function furRun(){
 const TR_FN="/.netlify/functions/transcribe-file";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
-let trBusy=false, trLang="auto", trText="", trSegs=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="";
+let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1;
+const TR_STORE="feg_transcricoes_v1";
+const TR_SAVE_FN="/.netlify/functions/transcript";
+function trStoreRead(){try{return JSON.parse(localStorage.getItem(TR_STORE)||"{}");}catch(_){return{};}}
+function trCache(entry){const all=trStoreRead();all[entry.id]=entry;const ordered=Object.values(all).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,20),next={};ordered.forEach(x=>next[x.id]=x);try{localStorage.setItem(TR_STORE,JSON.stringify(next));}catch(_){} }
+function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
+async function trToken(){try{const r=await sb.auth.getSession();return(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(_){return"";}}
+async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,duration:trDur,fileName:trFileName,createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
+async function loadTrRoute(id){let x=trStoreRead()[id];if(!x){trSetStatus(`<span class="vidup__spin"></span>Carregando transcrição…`);try{const response=await fetch(TR_SAVE_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+await trToken()}}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"não encontrada");x=result.transcript;trCache(x);}catch(_){if(parseLocation().id!==id)return;trSetStatus("");renderNotFound("Transcrição não encontrada.");return;}}if(parseLocation().id!==id)return;trSetStatus("");trLoadEntry(x);}
 function trTime(s){s=Math.max(0,Math.round(+s||0));const m=Math.floor(s/60),ss=s%60;return `${m}:${String(ss).padStart(2,"0")}`;}
 function trSetStatus(html){const el=$("#trStatus");if(!el)return;el.hidden=!html;el.innerHTML=html||"";}
 function renderTrOutput(){
   const out=$("#trOut");if(!out)return;
-  if(!trText&&!trSegs.length){out.hidden=true;return;}
+  if(!trText&&!trSegs.length&&!trAudioUrl){out.hidden=true;return;}
   out.hidden=false;
   const words=trText?trText.trim().split(/\s+/).filter(Boolean).length:0;
   const meta=$("#trOutMeta");if(meta)meta.innerHTML=`<span class="ccdot ccdot--done"></span>${trDetLang?esc(trDetLang)+" · ":""}${words} palavras${trDur?` · ${trTime(trDur)}`:""}`;
   const body=$("#trText");if(!body)return;
   if(trShowTimes&&trSegs.length){
     body.innerHTML=trSegs.map(s=>`<div class="trseg"><span class="trseg__t">${trTime(s.start)}</span><span class="trseg__x">${esc(s.text)}</span></div>`).join("");
+  }else if(trWords.length){
+    body.innerHTML=trWords.map((w,i)=>`<button type="button" class="trword" data-trword="${i}" data-start="${w.start}" aria-label="Ir para ${trTime(w.start)}">${esc(w.word)}</button>`).join(" ");
   }else{
     body.textContent=trText||trSegs.map(s=>s.text).join(" ");
   }
+  trActive=-1;if(trAudio&&!trAudio.paused)trSyncWord(trAudio.currentTime||0);
   const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
+}
+function trWordAt(time){let lo=0,hi=trWords.length-1,ans=-1;while(lo<=hi){const m=(lo+hi)>>1;if(trWords[m].start<=time){ans=m;lo=m+1;}else hi=m-1;}return ans;}
+function trSyncWord(time){if(!trWords.length)return;const next=trWordAt(time);if(next===trActive)return;const body=$("#trText");if(!body)return;if(trActive>=0){const old=$(`[data-trword="${trActive}"]`,body);if(old)old.classList.remove("is-active");}if(next>trActive){for(let i=Math.max(0,trActive);i<next;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.add("is-past");}}else{for(let i=Math.max(0,next);i<=trActive;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.remove("is-past");}}trActive=next;if(next>=0){const cur=$(`[data-trword="${next}"]`,body);if(cur){cur.classList.add("is-active");if(!cur.matches(":hover")&&document.activeElement!==cur)cur.scrollIntoView({block:"nearest",inline:"nearest"});}}}
+function trFrame(){if(!trAudio)return;const duration=trAudio.duration||trDur||1,ratio=Math.min(1,trAudio.currentTime/duration),range=$("#trRange"),fill=$("#trFill"),time=$("#trPlayerTime");if(range)range.value=String(Math.round(ratio*1000));if(fill)fill.style.width=(ratio*100)+"%";if(time)time.textContent=`${trTime(trAudio.currentTime)} / ${trTime(duration)}`;trSyncWord(trAudio.currentTime);if(!trAudio.paused)trRaf=requestAnimationFrame(trFrame);}
+function trRenderPlayer(){const host=$("#trPlayer");if(!host||!trAudioUrl)return;cancelAnimationFrame(trRaf);host.innerHTML=`<div class="trplayer"><audio id="trAudio" src="${esc(trAudioUrl)}" preload="metadata"></audio><div class="trplayer__row"><button type="button" class="trplayer__play" id="trPlay" aria-label="Reproduzir">${ic("play")}</button><label class="trplayer__track" aria-label="Posição do áudio"><span class="trplayer__rail"><span class="trplayer__fill" id="trFill"></span></span><input class="trplayer__range" id="trRange" type="range" min="0" max="1000" value="0"></label><span class="trplayer__time" id="trPlayerTime">0:00 / ${trTime(trDur)}</span><select class="trplayer__speed" id="trSpeed" aria-label="Velocidade"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></div></div>`;
+  trAudio=$("#trAudio");const play=$("#trPlay");play.addEventListener("click",()=>trAudio.paused?trAudio.play():trAudio.pause());trAudio.addEventListener("play",()=>{play.textContent="❚❚";play.setAttribute("aria-label","Pausar");cancelAnimationFrame(trRaf);trRaf=requestAnimationFrame(trFrame);});trAudio.addEventListener("pause",()=>{play.innerHTML=ic("play");play.setAttribute("aria-label","Reproduzir");cancelAnimationFrame(trRaf);});trAudio.addEventListener("loadedmetadata",()=>{if(!trDur)trDur=trAudio.duration||0;trFrame();});$("#trRange").addEventListener("input",e=>{trAudio.currentTime=(trAudio.duration||trDur||0)*(+e.target.value/1000);trSyncWord(trAudio.currentTime);trFrame();});$("#trSpeed").addEventListener("change",e=>trAudio.playbackRate=+e.target.value||1);
 }
 // extrai o áudio no navegador → mono 16kHz (Float32). Sem Storage, sem limite de tamanho.
 async function trDecodeMono16k(file){
@@ -2496,7 +2534,8 @@ function trWav(samples,rate){
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trBusy=true; trFileName=file.name; trText=""; trSegs=[]; trShowTimes=false;
+  trBusy=true; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
   trSetStatus(`<span class="vidup__spin"></span>Extraindo o áudio…`);
@@ -2505,7 +2544,7 @@ async function trHandleFile(file){
   catch(e){trSetStatus(`<span class="trerr">⚠ ${esc((e&&e.message)||"falha ao ler o áudio")}. Tente outro formato ou um trecho menor.</span>`);trBusy=false;if(drop)drop.classList.remove("busy");return;}
   const rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen)),totalDur=mono.length/rate;
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  let fullText="",allSegs=[],detLang="";
+  let fullText="",allSegs=[],allWords=[],detLang="";
   for(let i=0;i<nChunks;i++){
     trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${nChunks>1?` parte ${i+1}/${nChunks}`:""}…`);
     const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*TR_CHUNK_SEC;
@@ -2515,13 +2554,14 @@ async function trHandleFile(file){
       if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
       if(j.text)fullText+=(fullText?" ":"")+j.text.trim();
       if(Array.isArray(j.segments))allSegs.push(...j.segments.map(s=>({start:s.start+offset,end:s.end+offset,text:s.text})));
+      if(Array.isArray(j.words))allWords.push(...j.words.map(w=>({word:w.word,start:(+w.start||0)+offset,end:(+w.end||0)+offset})));
       if(j.language&&!detLang)detLang=j.language;
-      trText=fullText;trSegs=allSegs;trDetLang=detLang;trDur=totalDur;renderTrOutput(); // parcial
+      trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput(); // parcial
     }catch(e){trSetStatus(`<span class="trerr">⚠ Falha na parte ${i+1}: ${esc((e&&e.message)||"erro")}</span>`);trBusy=false;if(drop)drop.classList.remove("busy");return;}
   }
-  trText=fullText;trSegs=allSegs;trDetLang=detLang;trDur=totalDur;
+  trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
-  else{trSetStatus("");renderTrOutput();toast("Transcrição pronta ✓");}
+  else{trSetStatus(`<span class="vidup__spin"></span>Salvando link permanente…`);renderTrOutput();await trPersist();trSetStatus("");toast("Transcrição pronta ✓");}
   trBusy=false;if(drop)drop.classList.remove("busy");
 }
 function renderTranscritor(){
@@ -2550,10 +2590,12 @@ function renderTranscritor(){
         <span class="cchief__status" id="trOutMeta"></span>
         <div class="tractions">
           <button class="btn btn--outline btn--sm" id="trTimes">Mostrar tempos</button>
+          <button class="btn btn--outline btn--sm" id="trCopyLink" hidden>${ic("link")}Copiar link</button>
           <button class="btn btn--outline btn--sm" id="trCopy">${ic("clipboard")}Copiar</button>
           <button class="btn btn--outline btn--sm" id="trDownload">${ic("download")}.txt</button>
         </div>
       </div>
+      <div id="trPlayer"></div>
       <div class="trtext" id="trText"></div>
     </div>
   </div>`;
@@ -2569,19 +2611,21 @@ function renderTranscritor(){
     drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>/^(video|audio)\//.test(f.type));if(f)trHandleFile(f);else toast("Arraste um arquivo de vídeo.",true);});
   }
   $("#trTimes").addEventListener("click",()=>{trShowTimes=!trShowTimes;renderTrOutput();});
+  $("#trCopyLink").addEventListener("click",()=>navigator.clipboard.writeText(location.href).then(()=>toast("Link copiado ✓")));
+  $("#trText").addEventListener("click",e=>{const w=e.target.closest("[data-trword]");if(!w||!trAudio)return;trAudio.currentTime=+w.dataset.start||0;trSyncWord(trAudio.currentTime);if(trAudio.paused)trAudio.play();});
   $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
   $("#trDownload").addEventListener("click",()=>{
     const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));
     const blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");
     a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,""):"transcricao")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   });
-  if(trText||trSegs.length)renderTrOutput();
+  if(trText||trSegs.length||trAudioUrl){renderTrOutput();trRenderPlayer();}
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
 function mediaThumb(img,alt,hasVideo,videoUrl){
   const play=hasVideo?`<span class="cmedia__play">${ic("play")}</span>`:"";
-  if(img)return `<div class="cmedia" data-lb="${esc(img)}"><img loading="lazy" decoding="async" src="${img}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span>${play}</div>`;
+  if(img)return `<a class="cmedia" href="${esc(img)}" data-lightbox="${esc(img)}"><img loading="lazy" decoding="async" src="${esc(img)}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span>${play}</a>`;
   /* sem print, mas com vídeo direto (mp4): mostra um quadro como capa e dá play no hover */
   const emb=videoUrl?videoEmbedUrl(videoUrl):null;
   if(emb&&emb.type==="video")
