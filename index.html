@@ -339,6 +339,14 @@
   .ta-info .ico,.fhint-info .ico{width:15px;height:15px;margin-top:1px;}
   .shot img{display:block;width:100%;height:auto;cursor:zoom-in;}
   .shot .none{padding:34px 12px;text-align:center;color:var(--faint);font-size:.85rem;font-style:italic;}
+  /* miniatura uniforme de print (Item 3.3): mesmo aspect-ratio + cover em todas */
+  .lbthumb{display:block;position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-3);cursor:zoom-in;outline:none;}
+  .lbthumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s var(--ease);}
+  .lbthumb:hover img{transform:scale(1.04);}
+  .lbthumb:focus-visible{box-shadow:var(--ring);}
+  .lbthumb__zoom{position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:rgba(0,0,0,.55);color:#fff;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .lbthumb:hover .lbthumb__zoom,.lbthumb:focus-visible .lbthumb__zoom{opacity:1;}
+  .lbthumb__zoom .ico{width:15px;height:15px;}
 
   .crv{background:var(--surface);border:1px solid var(--border-2);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
   .crv__name{font-size:1.02rem;font-weight:600;}
@@ -438,7 +446,21 @@
 
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:6000;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out;}
   .lightbox.open{display:flex;}
-  .lightbox img{max-width:96%;max-height:94vh;border-radius:8px;box-shadow:0 20px 80px -10px rgba(0,0,0,.9);}
+  .lb-stage{max-width:96%;max-height:94vh;display:flex;align-items:center;justify-content:center;overflow:auto;cursor:default;}
+  .lightbox img{max-width:96vw;max-height:94vh;border-radius:8px;box-shadow:0 20px 80px -10px rgba(0,0,0,.9);transition:transform .2s var(--ease);}
+  .lightbox.zoomed{cursor:default;}
+  .lightbox.zoomed .lb-stage{cursor:grab;}
+  .lightbox.zoomed img{max-width:none;max-height:none;cursor:zoom-out;border-radius:0;}
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:2rem;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:background .2s;z-index:2;}
+  .lb-nav:hover{background:rgba(255,255,255,.22);}
+  .lb-prev{left:20px;} .lb-next{right:20px;}
+  .lb-bar{position:absolute;top:18px;right:20px;left:20px;display:flex;align-items:center;justify-content:flex-end;gap:14px;z-index:2;}
+  .lb-count{margin-right:auto;color:rgba(255,255,255,.8);font-size:.86rem;font-weight:600;letter-spacing:.04em;}
+  .lb-open{color:#000;background:var(--accent);font-weight:700;font-size:.82rem;padding:9px 14px;border-radius:9px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+  .lb-open:hover{filter:brightness(1.05);}
+  .lb-close{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:1.15rem;cursor:pointer;}
+  .lb-close:hover{background:rgba(255,255,255,.22);}
+  @media(max-width:640px){.lb-nav{width:42px;height:42px;font-size:1.6rem;} .lb-open{font-size:.74rem;padding:8px 10px;}}
   /* popup da copy (aberto direto do card) */
   .copypop{max-width:640px;width:100%;margin:6vh auto;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;}
   .copypop__head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border);}
@@ -914,7 +936,16 @@ create policy "public_all" on offers
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Visualizar print em tamanho real">
+  <div class="lb-bar">
+    <span class="lb-count" id="lbCount"></span>
+    <a class="lb-open" id="lbOpen" target="_blank" rel="noopener noreferrer">Abrir original ↗</a>
+    <button class="lb-close" id="lbClose" type="button" aria-label="Fechar (Esc)">✕</button>
+  </div>
+  <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="Print anterior">‹</button>
+  <div class="lb-stage" id="lbStage"><img id="lightboxImg" src="" alt=""></div>
+  <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Próximo print">›</button>
+</div>
 <div class="overlay" id="copyPop">
   <div class="copypop">
     <div class="copypop__head">
@@ -951,7 +982,7 @@ function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 
 let sb=null, offers=[], searchTerm="", activeNiche="", editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fPrecos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fTipo="meta";
+let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrush="", fSemrush3m="", fTipo="meta";
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica";
@@ -1023,21 +1054,17 @@ function normalize(raw){
   }
   if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
   if(!Array.isArray(d.bibliotecas)){d.bibliotecas=[];if(d.linkBiblioteca)d.bibliotecas.push({nome:"",link:d.linkBiblioteca});}
-  if(!Array.isArray(d.precos)){
-    d.precos=[];
-    if(d.temUnico&&d.precoUnico)d.precos.push({descricao:"Compra única",valor:d.precoUnico,tipo:"Compra única"});
-    if(d.temAssinatura&&d.precoAssinatura)d.precos.push({descricao:"Assinatura",valor:d.precoAssinatura,tipo:"Assinatura"});
-  }
-  if(typeof d.angulosResumo!=="string"){
-    d.angulosResumo=Array.isArray(d.angulos)?d.angulos.map(a=>a&&a.descricao?"• "+a.descricao:"").filter(Boolean).join("\n"):"";
-  }
-  if(typeof d.angulosLink!=="string")d.angulosLink="";
+  /* DEPRECADO (Item 3.1) — os campos de preço (precos/precoUnico/precoAssinatura/
+     temUnico/temAssinatura) e de ângulos (angulos/angulosResumo/angulosLink) saíram
+     da UI. Não são mais lidos nem gravados; ficam órfãos no jsonb das ofertas antigas
+     (sem DROP — descarte de dado é decisão do usuário). Não reintroduzir. */
   if(d.tipoTrafego!=="native"&&d.tipoTrafego!=="meta")d.tipoTrafego="meta";
   d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";});
   if(!Array.isArray(d.taboolaAds))d.taboolaAds=[];
   if(typeof d.trafego28d!=="string")d.trafego28d="";
   if(typeof d.trafego3m!=="string")d.trafego3m="";
   if(typeof d.printSemrush!=="string")d.printSemrush="";
+  if(typeof d.printSemrush3m!=="string")d.printSemrush3m="";
   return d;
 }
 
@@ -1085,7 +1112,7 @@ function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList
 function initSupabase(u,k){try{sb=window.supabase.createClient(u,k);return true;}catch(e){console.error(e);return false;}}
 
 function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
-function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
+function writeCache(){try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrush3m=d.printSemrush3m?"·":"";if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}}
 
 async function boot(){
   if(!sb){showSetup();return;}
@@ -1493,9 +1520,17 @@ $("#sideNavBackdrop").addEventListener("click",closeSideNav);
 
 /* ===== VIEW ===== */
 function linkbtn(label,url,accent,icon){if(!url)return"";return `<a class="linkbtn${accent?' accent':''}" href="${esc(fixUrl(url))}" target="_blank" rel="noopener">${icon?ic(icon):""}<span class="lbtxt">${esc(label)}</span><span class="arr">${ic("external")}</span></a>`;}
+/* miniatura canônica de print: tamanho UNIFORME (aspect fixo + object-fit:cover),
+   a dimensão original da imagem não influencia o layout. É um <a href=original>:
+   Ctrl/⌘/meio-clique abre o original em nova aba (nativo); clique simples abre o
+   lightbox (via interceptor). Mesma filosofia do Item 5. */
+function lbThumb(src,alt){
+  const a=esc(alt||"print");
+  return `<a class="lb lbthumb" href="${esc(src)}" data-img="${esc(src)}" aria-label="Ampliar ${a}"><img loading="lazy" decoding="async" src="${esc(src)}" alt="${a}"><span class="lbthumb__zoom">${ic("maximize")}</span></a>`;
+}
 function shotView(label,img){
   if(!img)return`<div class="shot"><div class="shot__lbl">${label}</div><div class="none">Sem print</div></div>`;
-  return`<div class="shot"><div class="shot__lbl">${label}<span class="zoom lb" data-img="${img}">${ic("maximize")}ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${img}" src="${img}" alt="${label}"></div>`;
+  return`<div class="shot"><div class="shot__lbl">${label}</div>${lbThumb(img,label)}</div>`;
 }
 function openView(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
@@ -1521,7 +1556,7 @@ function openView(id){
   if(native){
     adsTitle="Anúncios encontrados (Taboola)";
     const tabsAll=d.taboolaAds.filter(x=>x.img||x.nome);
-    adsInner=tabsAll.length?`<div class="taboola-grid">${tabsAll.map((a,i)=>a.img?`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}<span class="zoom lb" data-img="${a.img}">${ic("maximize")}ampliar</span></div><img class="lb" loading="lazy" decoding="async" data-img="${a.img}" src="${a.img}" alt=""></div>`:`<div class="shot"><div class="shot__lbl">${esc(a.nome||"Anúncio "+(i+1))}</div><div class="none">Sem print</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum anúncio do Taboola cadastrado.</div>`;
+    adsInner=tabsAll.length?`<div class="taboola-grid">${tabsAll.map((a,i)=>shotView(a.nome||"Anúncio "+(i+1),a.img)).join("")}</div>`:`<div class="muted-empty">Nenhum anúncio do Taboola cadastrado.</div>`;
   }else{
     adsTitle="Criativos";
     const crvsAll=d.criativos.filter(x=>x.link||x.transcricao||x.nome);
@@ -1539,8 +1574,10 @@ function openView(id){
     <div class="ta-info">${ic("info")}<span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
     ${taShot}`;
 
-  const precos=d.precos.filter(p=>p.descricao||p.valor);
-  const precosHtml=precos.length?`<div class="price-grid">${precos.map(p=>`<div class="price ${/assin/i.test(p.tipo||"")?'assina':''}">${p.tipo?`<span class="ptag">${esc(p.tipo)}</span>`:""}<div class="pk">${esc(p.descricao||"Preço")}</div><div class="pv">${esc(p.valor||"?")}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum preço cadastrado.</div>`;
+  /* Preços e Resumo dos ângulos foram removidos da UI (Item 3.1). */
+  const semrush3mHtml=d.printSemrush3m
+    ?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("Volume de tráfego · 3 meses (SEMrush)",d.printSemrush3m)}</div>`
+    :`<div class="muted-empty">Sem print dos últimos 3 meses.</div>`;
 
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
@@ -1588,22 +1625,18 @@ function openView(id){
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${adsTitle}</span><span class="sec__line"></span></div>${adsInner}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Traffic Analytics</span><span class="sec__line"></span></div>${trafficInner}</section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo dos ângulos</span><span class="sec__line"></span></div>
-        ${d.angulosResumo?`<div class="resumo">${esc(d.angulosResumo)}</div>`:`<div class="muted-empty">Sem resumo.</div>`}
-        ${d.angulosLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir no Drive",d.angulosLink,true,"folder")}</div>`:""}
-      </section>
+      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">SEMrush — últimos 3 meses</span><span class="sec__line"></span></div>${semrush3mHtml}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
         ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir presell",d.advertorialLink,false,"newspaper")}</div>`:""}
       </section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Preços</span><span class="sec__line"></span></div>${precosHtml}</section>
     </div>
     <aside class="sidebar">
       <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div></div>
       ${drive.length?`<div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div>`:""}
     </aside>
   </div>`;
-  $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  {const _sc=$("#viewBody"),_srcs=lbSourcesIn(_sc);$$(".lb",_sc).forEach(el=>el.addEventListener("click",e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();openLightbox(el.dataset.img,_srcs,el);}));}
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeView());
@@ -1618,9 +1651,9 @@ function openForm(id){
   fProductImg=d.imagemProduto||"";
   fTipo=d.tipoTrafego==="native"?"native":"meta";
   fSemrush=d.printSemrush||"";
+  fSemrush3m=d.printSemrush3m||"";
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
-  fPrecos=d.precos.length?JSON.parse(JSON.stringify(d.precos)):[{descricao:"",valor:"",tipo:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
   fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
 
@@ -1680,38 +1713,25 @@ function openForm(id){
         <div class="field"><label class="lbl">Volume — últimos 28 dias</label><input type="text" id="f_trafego28d" placeholder="Ex: 320 mil visitas/mês" value="${esc(d.trafego28d)}"></div>
         <div class="field"><label class="lbl">Volume — últimos 3 meses</label><input type="text" id="f_trafego3m" placeholder="Ex: 1,2 mi visitas" value="${esc(d.trafego3m)}"></div>
       </div>
-      <div class="field"><label class="lbl">Print do volume de tráfego (SEMrush)</label><div class="dz" data-zone="semrush" tabindex="0"></div></div>
+      <div class="field"><label class="lbl">Print do volume de tráfego — últimos 28 dias (SEMrush)</label><div class="dz" data-zone="semrush" tabindex="0"></div></div>
+      <div class="field"><label class="lbl">Print do volume de tráfego — últimos 3 meses (SEMrush)</label><div class="dz" data-zone="semrush3m" tabindex="0"></div></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Resumo dos ângulos</div>
-      <div class="fsec__hint">Uma breve descrição dos principais ângulos e/ou um link de Drive.</div>
-      <div class="field"><label class="lbl">Resumo</label><textarea id="f_angulosResumo" placeholder="Ex:&#10;• Voz feminina sobre a dor de não performar&#10;• Prova social com depoimentos&#10;• Médico explicando o mecanismo">${esc(d.angulosResumo)}</textarea></div>
-      <div class="field"><label class="lbl">Link de Drive (opcional)</label><input type="url" id="f_angulosLink" placeholder="https://drive.google.com/..." value="${esc(d.angulosLink)}"></div>
-    </div>
-
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">06</span> Funil de vendas</div>
+      <div class="fsec__title"><span class="num">05</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
       <div class="field"><label class="lbl">Link da presell / advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://... — página de pré-venda exibida antes da PV" value="${esc(d.advertorialLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">07</span> Preços</div>
-      <div class="fsec__hint">O preço varia por kit. Adicione quantos quiser, com descrição e valor. Ex: "1 pote" → "$79", "3 potes" → "$49".</div>
-      <div id="priWrap"></div>
-      <button type="button" class="add-block" data-action="add-pri">+ Adicionar preço</button>
-    </div>
-
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">08</span> Materiais & Comentário</div>
+      <div class="fsec__title"><span class="num">06</span> Materiais & Comentário</div>
       <div class="field"><label class="lbl">Links de Drive / Docs (um por linha)</label><textarea id="f_driveLinks" placeholder="https://docs.google.com/...&#10;https://drive.google.com/...">${esc(d.driveLinks)}</textarea></div>
       <div class="field"><label class="lbl">★ Comentário / orientação sobre a oferta</label><textarea id="f_comentario" placeholder="Observações, insights, orientações...">${esc(d.comentario)}</textarea></div>
     </div>
   `;
   $("#formBody").dataset.tipo=fTipo;
   wireZones($("#formBody"));
-  renderDominios();renderCriativos();renderPrecos();renderBibliotecas();renderTaboola();
+  renderDominios();renderCriativos();renderBibliotecas();renderTaboola();
   openOverlay("#formOverlay");
   $("#f_nomeOferta").focus();
 }
@@ -1744,21 +1764,6 @@ function renderCriativos(){
       </div>
     </div>`).join("");
 }
-function renderPrecos(){
-  $("#priWrap").innerHTML=fPrecos.map((p,i)=>`
-    <div class="block-edit">
-      <div class="behead"><span class="t"><span class="badge">${i+1}</span> Preço ${i+1}</span>${fPrecos.length>1?`<button type="button" class="rm-block" data-action="rm-pri" data-i="${i}">✕ Remover</button>`:""}</div>
-      <div class="row3">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Descrição</label><input type="text" data-pri="${i}" data-k="descricao" placeholder="Ex: 3 potes / Kit 90 dias" value="${esc(p.descricao)}"></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Valor</label><input type="text" data-pri="${i}" data-k="valor" placeholder="Ex: $ 49 / un" value="${esc(p.valor)}"></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Tipo</label><select data-pri="${i}" data-k="tipo">
-          <option value="" ${!p.tipo?"selected":""}>—</option>
-          <option value="Compra única" ${p.tipo==="Compra única"?"selected":""}>Compra única</option>
-          <option value="Assinatura" ${p.tipo==="Assinatura"?"selected":""}>Assinatura</option>
-        </select></div>
-      </div>
-    </div>`).join("");
-}
 function renderBibliotecas(){
   $("#bibWrap").innerHTML=fBibliotecas.map((b,i)=>`
     <div class="block-edit">
@@ -1783,7 +1788,6 @@ function renderTaboola(){
 function onFieldChange(t){
   if(t.dataset.dom!=null){fDominios[+t.dataset.dom][t.dataset.k]=t.value;return true;}
   if(t.dataset.crv!=null){fCriativos[+t.dataset.crv][t.dataset.k]=t.value;return true;}
-  if(t.dataset.pri!=null){fPrecos[+t.dataset.pri][t.dataset.k]=t.value;return true;}
   if(t.dataset.bib!=null){fBibliotecas[+t.dataset.bib][t.dataset.k]=t.value;return true;}
   if(t.dataset.tab!=null){fTaboola[+t.dataset.tab][t.dataset.k]=t.value;return true;}
   return false;
@@ -1797,8 +1801,6 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
-  else if(a==="add-pri"){fPrecos.push({descricao:"",valor:"",tipo:""});renderPrecos();}
-  else if(a==="rm-pri"){fPrecos.splice(+b.dataset.i,1);renderPrecos();}
   else if(a==="add-bib"){fBibliotecas.push({nome:"",link:""});renderBibliotecas();}
   else if(a==="rm-bib"){fBibliotecas.splice(+b.dataset.i,1);renderBibliotecas();}
   else if(a==="add-tab"){fTaboola.push({nome:"",img:""});renderTaboola();}
@@ -1819,14 +1821,12 @@ function buildPayload(){
     dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
     taboolaAds:fTaboola.filter(x=>x.nome||x.img),
-    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),printSemrush:fSemrush||"",
-    angulosResumo:val("f_angulosResumo"),angulosLink:val("f_angulosLink"),
+    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),printSemrush:fSemrush||"",printSemrush3m:fSemrush3m||"",
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
-    precos:fPrecos.filter(p=>p.descricao||p.valor),
     driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
   };
 }
-function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.angulosResumo||p.angulosLink||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.precos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrush);}
+function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrush||p.printSemrush3m);}
 function markDirty(){formDirty=true;setSaveState("unsaved");}
 
 async function saveForm(){
@@ -1871,6 +1871,7 @@ $("#cfSave").addEventListener("click",async()=>{if(pendingCloseForm==="simple"){
 function getZone(key){
   if(key==="produto")return fProductImg;
   if(key==="semrush")return fSemrush;
+  if(key==="semrush3m")return fSemrush3m;
   if(key.slice(0,2)==="s|")return sItem[key.slice(2)]||"";
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
@@ -1880,6 +1881,7 @@ function getZone(key){
 function setZone(key,v){
   if(key==="produto"){fProductImg=v;return;}
   if(key==="semrush"){fSemrush=v;return;}
+  if(key==="semrush3m"){fSemrush3m=v;return;}
   if(key.slice(0,2)==="s|"){sItem[key.slice(2)]=v;return;}
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
@@ -1929,6 +1931,7 @@ async function maybeCompress(d){
 async function compressStateImages(){
   fProductImg=await maybeCompress(fProductImg);
   fSemrush=await maybeCompress(fSemrush);
+  fSemrush3m=await maybeCompress(fSemrush3m);
   for(const dm of fDominios){dm.printPV=await maybeCompress(dm.printPV);dm.printCheckout=await maybeCompress(dm.printCheckout);}
   for(const a of fTaboola){a.img=await maybeCompress(a.img);}
 }
@@ -1947,9 +1950,70 @@ document.addEventListener("paste",e=>{
   if(file&&dz){fileToImage(file,dz);toast("Print colado");}
 });
 
-/* ===== LIGHTBOX ===== */
-function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("open");}
-$("#lightbox").addEventListener("click",()=>$("#lightbox").classList.remove("open"));
+/* ===== LIGHTBOX / GALERIA DE PRINTS (Item 3.3) =====
+   Abre em tamanho real; navega entre os prints da view (setas + teclado),
+   Esc fecha e devolve o foco ao thumbnail, foco preso no modal, e "Abrir
+   original" aponta para a URL real (ou um blob navegável, se for data:URL). */
+let lbList=[], lbIdx=0, lbReturnFocus=null, lbBlobUrl="";
+/* coleta as fontes de todos os thumbnails .lb da view, na ordem do DOM */
+function lbSourcesIn(scope){return $$(".lb[data-img]",scope||document).map(el=>el.dataset.img).filter(Boolean);}
+function dataUrlToBlob(u){
+  const c=u.indexOf(","); const meta=u.slice(0,c), b64=u.slice(c+1);
+  const mime=(meta.match(/data:([^;]+)/)||[])[1]||"image/png";
+  const bin=atob(b64), arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+function lbShow(){
+  const src=lbList[lbIdx]||"";
+  const img=$("#lightboxImg"); img.src=src;
+  $("#lightbox").classList.remove("zoomed");
+  const multi=lbList.length>1;
+  $("#lbPrev").style.display=multi?"":"none";
+  $("#lbNext").style.display=multi?"":"none";
+  $("#lbCount").textContent=multi?`${lbIdx+1} / ${lbList.length}`:"";
+  if(lbBlobUrl){URL.revokeObjectURL(lbBlobUrl);lbBlobUrl="";}
+  const a=$("#lbOpen");
+  if(/^data:/.test(src)){ /* Chrome bloqueia navegação top-level p/ data:URL → usa blob */
+    try{lbBlobUrl=URL.createObjectURL(dataUrlToBlob(src));a.href=lbBlobUrl;}catch(e){a.href=src;}
+  }else a.href=src;
+}
+function openLightbox(src,list,returnEl){
+  lbList=(list&&list.length)?list.slice():[src];
+  lbIdx=Math.max(0,lbList.indexOf(src));
+  lbReturnFocus=returnEl||document.activeElement||null;
+  lbShow();
+  $("#lightbox").classList.add("open");
+  $("#lbClose").focus();
+}
+function lbStep(n){if(lbList.length<2)return;lbIdx=(lbIdx+n+lbList.length)%lbList.length;lbShow();}
+function closeLightbox(){
+  const lb=$("#lightbox"); if(!lb.classList.contains("open"))return;
+  lb.classList.remove("open","zoomed");
+  if(lbBlobUrl){URL.revokeObjectURL(lbBlobUrl);lbBlobUrl="";}
+  const rf=lbReturnFocus; lbReturnFocus=null;
+  if(rf&&rf.focus){try{rf.focus();}catch(e){}}
+}
+$("#lbClose").addEventListener("click",e=>{e.stopPropagation();closeLightbox();});
+$("#lbPrev").addEventListener("click",e=>{e.stopPropagation();lbStep(-1);});
+$("#lbNext").addEventListener("click",e=>{e.stopPropagation();lbStep(1);});
+$("#lbOpen").addEventListener("click",e=>e.stopPropagation());
+/* clicar na imagem alterna zoom (tamanho real); clicar no fundo fecha */
+$("#lightboxImg").addEventListener("click",e=>{e.stopPropagation();$("#lightbox").classList.toggle("zoomed");});
+$("#lbStage").addEventListener("click",e=>{if(e.target===e.currentTarget)closeLightbox();});
+$("#lightbox").addEventListener("click",e=>{if(e.target===e.currentTarget)closeLightbox();});
+/* teclado: setas navegam, Esc fecha, Tab fica preso no modal (foco preso) */
+$("#lightbox").addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"){e.preventDefault();lbStep(-1);}
+  else if(e.key==="ArrowRight"){e.preventDefault();lbStep(1);}
+  else if(e.key==="Tab"){
+    const f=$$('#lightbox button, #lightbox a[href]').filter(el=>el.offsetParent!==null||el===document.activeElement);
+    if(!f.length)return;
+    const first=f[0], last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+});
 
 /* ===== POPUP DA COPY (ver copy direto do card) ===== */
 function openCopyPop(id){
@@ -2002,7 +2066,7 @@ document.addEventListener("keydown",e=>{
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus({preventScroll:true});}
 },true);
 $$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}if(ov.id==="simpleFormOverlay"){attemptCloseSimpleForm();return;}closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}if($("#viewOverlay").classList.contains("open")){closeView();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){closeLightbox();return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}if($("#viewOverlay").classList.contains("open")){closeView();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
 
 /* ===== SEÇÕES (swipes) ===== */
 function switchSection(key){
@@ -3151,7 +3215,7 @@ function openSimpleView(o,skipOpen){
     ${sections}
   </div>
   ${asideHtml}</div>`;
-  $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
+  {const _sc=$("#viewBody"),_srcs=lbSourcesIn(_sc);$$(".lb",_sc).forEach(el=>el.addEventListener("click",e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();openLightbox(el.dataset.img,_srcs,el);}));}
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
