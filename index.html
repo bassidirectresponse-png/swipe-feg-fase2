@@ -189,6 +189,15 @@
 
   /* ===== card ===== */
   .card{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border-2);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:14px;cursor:pointer;overflow:hidden;transition:transform .22s var(--ease),border-color .22s,box-shadow .22s;will-change:transform;}
+  /* Item 5: link real "stretched" cobrindo o card; ações ficam acima do link */
+  .card__navlink{position:absolute;inset:0;z-index:2;border-radius:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent;}
+  .card__navlink:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;}
+  .card__actions,.card .qbtn,.card [data-lb]{position:relative;z-index:3;}
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:var(--faint);margin-bottom:9px;flex-wrap:wrap;}
+  .crumbs a{color:var(--muted-fg);text-decoration:none;transition:color .15s;}
+  .crumbs a:hover{color:var(--accent);}
+  .crumbs__sep{opacity:.5;}
+  .crumbs [aria-current]{color:var(--fg);}
   .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.07),transparent 42%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
   .card:hover{transform:translateY(-5px);border-color:var(--border-strong);box-shadow:var(--shadow-lg);}
   .card--hot{border-color:rgba(229,255,45,.5);box-shadow:0 0 0 1px rgba(229,255,45,.22),0 14px 50px -22px rgba(229,255,45,.3);}
@@ -1081,7 +1090,7 @@ async function boot(){
   if(!sb){showSetup();return;}
   showApp();
   const cached=readCache();
-  if(cached&&cached.length){offers=cached;renderGrid();setSync("load","Atualizando");}
+  if(cached&&cached.length){offers=cached;routeReady=true;applyRoute();setSync("load","Atualizando");}
   else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<div class="sk-card"></div>').join("")+'</div>';
   const ok=await loadOffers();
   if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
@@ -1099,7 +1108,7 @@ async function loadOffers(){
     if(!data||data.length<PAGE)break;
     from+=PAGE;
   }
-  offers=all;setSync("ok","Sincronizado");renderGrid();writeCache();return true;
+  offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();return true;
 }
 async function deleteOffer(id){
   if(!requireAdmin())return;
@@ -1134,6 +1143,106 @@ function filtered(){
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
 const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA"};
+
+/* ============================================================
+   ITEM 5 — ROTEAMENTO REAL (History API, path-based)
+   Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
+   Não reescreve o pipeline — deriva o estado global e chama renderGrid().
+   ============================================================ */
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",noticia:"noticias",tiktok:"radar-tiktok",copychief:"chat",furtado:"furtado",transcritor:"transcritor"};
+const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
+const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","noticia","tiktok"]);
+let routeReady=false;
+function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
+function catSlug(niche){return niche===NO_NICHE?"sem-nicho":(niche?routeSlug(niche):"todos");}
+function nicheFromSlug(section,slug){
+  if(!slug||slug==="todos")return "";
+  if(slug==="sem-nicho")return NO_NICHE;
+  const present=new Set(offers.filter(o=>sectionOf(o)===section).map(nicheOf).filter(Boolean));
+  const hit=[...present,...NICHOS].find(n=>routeSlug(n)===slug);
+  return hit||null;   // null => categoria inexistente (404)
+}
+function qsFromState(){
+  const p=new URLSearchParams();
+  if(searchTerm)p.set("q",searchTerm);
+  if(activeSection==="criativo"&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
+  if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
+  if(activeSection==="megabrain"&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
+  const s=p.toString();return s?"?"+s:"";
+}
+function listPath(section,niche){
+  const base="/"+(SEC2PATH[section]||"ofertas");
+  return NICHE_SECTIONS.has(section)?base+"/"+catSlug(niche):base;
+}
+function currentPath(){return listPath(activeSection,activeNiche)+qsFromState();}
+function offerPath(o){const sec=sectionOf(o);return "/"+(SEC2PATH[sec]||"ofertas")+"/"+catSlug(nicheOf(o))+"/"+o.id;}
+function setDocTitle(){
+  const cfg=sectionCfg(activeSection);
+  const parts=[SEC_SHORT[activeSection]||cfg.label];
+  if(activeNiche===NO_NICHE)parts.unshift("Sem nicho");
+  else if(activeNiche)parts.unshift(activeNiche);
+  document.title=parts.join(" · ")+" — Benchmarking FEG";
+}
+function parseLocation(){
+  const path=decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
+  const seg=path.split("/").filter(Boolean);
+  const q=new URLSearchParams(location.search);
+  if(!seg.length)return {section:"oferta",niche:"",id:null,notFound:false,q};
+  const section=PATH2SEC[seg[0]];
+  if(!section)return {notFound:true,q};
+  let niche="",id=null,notFound=false;
+  if(NICHE_SECTIONS.has(section)){
+    if(seg[1]!=null){niche=nicheFromSlug(section,seg[1]);if(niche===null){niche="";notFound=true;}}
+    if(seg[2]!=null)id=seg[2];
+  }else if(seg[1]!=null)id=seg[1];   // ex.: /transcritor/{id}
+  return {section,niche,id,notFound,q};
+}
+function renderNotFound(msg){
+  document.title="Não encontrado — Benchmarking FEG";
+  document.body.classList.remove("chatmode");
+  const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/ofertas/todos" style="margin-top:18px">Voltar para as ofertas</a></div>`;
+  const sub=$("#pageSub");if(sub)sub.textContent="";
+}
+function maybeOpenView(id){
+  const o=offers.find(x=>x.id===id);
+  if(!o){if(routeReady&&offers.length)renderNotFound("Item não encontrado.");return;}
+  openView(id);
+}
+function applyRoute(){
+  if(!routeReady)return;
+  const r=parseLocation();
+  if(r.notFound){renderNotFound();return;}
+  activeSection=r.section;
+  activeNiche=r.niche||"";
+  searchTerm=r.q.get("q")||"";
+  critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
+  if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
+  if(activeSection==="megabrain")brainSort=r.q.get("ordem")||"metrica";
+  // canoniza URL "nua" de seção com nicho -> /base/todos (ex.: /ofertas -> /ofertas/todos)
+  if(NICHE_SECTIONS.has(activeSection)&&!r.id){
+    const segN=decodeURIComponent(location.pathname).replace(/\/+$/,"").split("/").filter(Boolean).length;
+    if(segN<2){try{history.replaceState(null,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
+  }
+  const si=$("#searchInput");if(si&&si.value!==searchTerm)si.value=searchTerm;
+  setDocTitle();
+  renderGrid();
+  if(isMobileNav())closeSideNav();
+  if(r.id)maybeOpenView(r.id);
+  else if($("#viewOverlay")&&$("#viewOverlay").classList.contains("open"))closeOverlay("#viewOverlay");
+}
+function navigate(path,opts){opts=opts||{};try{history[opts.replace?"replaceState":"pushState"](null,"",path);}catch(e){}applyRoute();}
+function closeView(){navigate(listPath(activeSection,activeNiche)+qsFromState(),{replace:true});}
+/* interceptor: clique simples em link interno navega; Ctrl/⌘/Shift/meio-clique = comportamento nativo (nova aba) */
+document.addEventListener("click",e=>{
+  const a=e.target.closest("a[data-nav]");
+  if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  const href=a.getAttribute("href");
+  if(!href||href[0]!=="/")return;
+  e.preventDefault();
+  if(href===location.pathname+location.search)return;
+  navigate(href);
+});
+window.addEventListener("popstate",applyRoute);
 const AI_SECTIONS=new Set(["copychief","transcritor","furtado"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
@@ -1154,7 +1263,7 @@ function renderSideNav(){
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
     const ordered=[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
-    const nitem=(key,label,count,active)=>`<button class="snav__niche${active?" active":""}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></button>`;
+    const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{nicheHtml+=nitem(n,n,nc.get(n),activeNiche===n);});
     if(none)nicheHtml+=nitem(NO_NICHE,"Sem nicho",none,activeNiche===NO_NICHE);
@@ -1172,19 +1281,12 @@ function renderSideNav(){
     const active=activeSection===s.key;
     const chip=(s.key==="copychief"||s.key==="furtado")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
     const aiHi=(s.key==="copychief"||s.key==="furtado")?" snav__sec--ai":"";
-    html+=`<button class="snav__sec${active?" active":""}${aiHi}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</button>`;
+    html+=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</a>`;
     if(active&&nicheHtml)html+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
   });
   nav.innerHTML=html;
-  $$(".snav__sec",nav).forEach(b=>b.addEventListener("click",()=>switchSection(b.dataset.section)));
-  $$(".snav__niche",nav).forEach(b=>b.addEventListener("click",()=>{
-    if(activeNiche===b.dataset.niche&&b.dataset.niche!=="")return;
-    activeNiche=b.dataset.niche;
-    /* fluido: só move o destaque, sem reconstruir a barra nem replayar a animação */
-    $$(".snav__niche",nav).forEach(x=>x.classList.toggle("active",x.dataset.niche===activeNiche));
-    if(isMobileNav())closeSideNav();
-    renderGrid(true);
-  }));
+  /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
+     interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
   const xb=$("#sideNavClose");if(xb)xb.addEventListener("click",closeSideNav);
 }
 function qbtn(label,url,icon){if(!url)return"";return `<button class="qbtn" data-href="${esc(fixUrl(url))}" title="${esc(label)}">${ic(icon)}${esc(label)}</button>`;}
@@ -1331,7 +1433,7 @@ function renderGrid(skipNav){
   if(secCount===0){area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>${isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens."}</p></div>`;return;}
   if(list.length===0){
     area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhum item corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
-    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{activeNiche="";searchTerm="";critPlatform="all";const si=$("#searchInput");if(si)si.value="";renderGrid();});
+    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";searchTerm="";navigate(listPath(activeSection,""));});
     return;
   }
   if(activeSection==="tiktok"){
@@ -1358,11 +1460,17 @@ function renderGrid(skipNav){
     if(isAdmin)html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
     area.innerHTML=`<div class="grid">${html}</div>`;
   }
+  /* card = link real (stretched link): clique simples abre o detalhe (modal por URL),
+     Ctrl/⌘/meio-clique abre a página do item em nova aba nativamente. */
   $$(".card[data-id]",area).forEach(c=>{
-    c.tabIndex=0;c.setAttribute("role","button");
-    const open=()=>openView(c.dataset.id);
-    c.addEventListener("click",open);
-    c.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target===c){e.preventDefault();open();}});
+    c.removeAttribute("role");c.removeAttribute("tabindex");
+    const o=offers.find(x=>x.id===c.dataset.id);
+    if(o&&!c.querySelector(".card__navlink")){
+      const a=document.createElement("a");
+      a.className="card__navlink";a.setAttribute("data-nav","");a.href=offerPath(o);
+      a.setAttribute("aria-label","Abrir "+esc((o.data||{}).nomeOferta||(o.data||{}).nome||"item"));
+      c.appendChild(a);
+    }
   });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
   $$("[data-lb]",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openLightbox(b.dataset.lb);}));
@@ -1376,7 +1484,7 @@ function renderGrid(skipNav){
     }
   }
 }
-$("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;renderGrid();});
+$("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();});
 $("#newBtn").addEventListener("click",openNewForActiveSection);
 function openNewForActiveSection(){if(!requireAdmin())return;if(activeSection==="oferta")openForm(null);else openSimpleForm(activeSection,null);}
 $("#nicheToggle").addEventListener("click",()=>{const n=$("#sideNav");if(n&&n.classList.contains("open"))closeSideNav();else openSideNav();});
@@ -1497,7 +1605,7 @@ function openView(id){
   $$(".lb",$("#viewBody")).forEach(el=>el.addEventListener("click",()=>openLightbox(el.dataset.img)));
   openOverlay("#viewOverlay");
 }
-$("#viewClose").addEventListener("click",()=>closeOverlay("#viewOverlay"));
+$("#viewClose").addEventListener("click",()=>closeView());
 
 /* ===== FORM ===== */
 function openForm(id){
@@ -1893,7 +2001,7 @@ document.addEventListener("keydown",e=>{
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus({preventScroll:true});}
 },true);
 $$(".overlay").forEach(ov=>ov.addEventListener("mousedown",e=>{if(e.target!==ov)return;if(ov.id==="confirmOverlay"){closeOverlay("#confirmOverlay");return;}if(ov.id==="formOverlay"){attemptCloseForm();return;}if(ov.id==="simpleFormOverlay"){attemptCloseSimpleForm();return;}closeOverlay("#"+ov.id);}));
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#lightbox").classList.contains("open")){$("#lightbox").classList.remove("open");return;}if($("#confirmOverlay").classList.contains("open")){closeOverlay("#confirmOverlay");return;}if($("#formOverlay").classList.contains("open")){attemptCloseForm();return;}if($("#simpleFormOverlay").classList.contains("open")){attemptCloseSimpleForm();return;}if($("#viewOverlay").classList.contains("open")){closeView();return;}$$(".overlay.open").forEach(ov=>closeOverlay("#"+ov.id));});
 
 /* ===== SEÇÕES (swipes) ===== */
 function switchSection(key){
@@ -1907,7 +2015,16 @@ function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=isToolSection(activeSection);
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
-  const sub=$("#pageSub");if(sub)sub.innerHTML=cfg.subHtml;
+  const sub=$("#pageSub");
+  if(sub){
+    // breadcrumb derivado da rota (Item 5.4) para seções filtráveis por nicho
+    let crumb="";
+    if(NICHE_SECTIONS.has(activeSection)){
+      const cn=activeNiche===NO_NICHE?"Sem nicho":(activeNiche||"Todos");
+      crumb=`<nav class="crumbs" aria-label="Trilha"><a data-nav href="${esc(listPath(activeSection,""))}">${esc(SEC_SHORT[activeSection]||cfg.label)}</a><span class="crumbs__sep">›</span><span aria-current="page">${esc(cn)}</span></nav>`;
+    }
+    sub.innerHTML=crumb+cfg.subHtml;
+  }
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc?"none":"";
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
@@ -1924,7 +2041,7 @@ function renderSubFilter(){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
     el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div>`;
-    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;renderGrid();}));
+    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
     return;
   }
   if(activeSection==="megabrain"){
@@ -1933,7 +2050,7 @@ function renderSubFilter(){
     const need=isAdmin?offers.filter(brainNeedsImport).length:0;
     const importBtn=need?`<button type="button" class="btn btn--outline btn--sm" id="brainImportAll" title="Baixa os criativos do Drive e salva no Storage (permanente)">${ic("download")}Importar do Drive (${need})</button>`:"";
     el.innerHTML=`<div class="subfilter__row"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}</div>`;
-    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;renderGrid();}));
+    $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
     const ib=$("#brainImportAll");if(ib)ib.addEventListener("click",importAllBrainDrive);
     return;
   }
@@ -1941,7 +2058,7 @@ function renderSubFilter(){
   el.style.display="";
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
   el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>`;
-  $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;renderGrid();}));
+  $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
 }
 
 /* ===== FEGUINHO COPY CHIEF (Beta) ===== */
