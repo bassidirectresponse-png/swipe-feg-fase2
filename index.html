@@ -472,7 +472,8 @@
   .ktag .ico{width:13px;height:13px;color:var(--accent);}
   .tbadge--brain{color:#e7ffa0;background:var(--accent-dim);border-color:rgba(229,255,45,.42);}
   .tbadge--brain .tdot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
-  .kcard__title{font-size:1.2rem;font-weight:700;letter-spacing:-.02em;line-height:1.15;word-break:break-word;}
+  /* título canônico .card__title; seções ajustam só o tamanho pela variante */
+  .kcard .card__title{font-size:1.2rem;line-height:1.15;}
   .cmedia{position:relative;border-radius:13px;overflow:hidden;border:1px solid var(--border-2);background:var(--surface-3);aspect-ratio:16/10;cursor:zoom-in;}
   .cmedia img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s var(--ease);}
   .cmedia:hover img{transform:scale(1.05);}
@@ -524,7 +525,7 @@
 
   /* ===== cards de notícia + grupos por nicho ===== */
   .ncard{gap:11px;}
-  .ncard__title{font-size:1.06rem;font-weight:700;letter-spacing:-.01em;line-height:1.25;word-break:break-word;}
+  .ncard .card__title{font-size:1.06rem;letter-spacing:-.01em;line-height:1.25;}
   .ncard__snippet{font-size:.82rem;line-height:1.45;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .ncard__meta{display:flex;flex-wrap:wrap;gap:14px;font-size:.7rem;color:var(--faint);font-weight:600;}
   .ncard__meta .ico{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
@@ -1395,15 +1396,15 @@ function cardHtml(o){
     qbtn("Back redirect",brLink,"back")
   ]).filter(Boolean).join("");
 
-  return `<article class="card${high?' card--hot':''}" data-id="${o.id}">
-    <div class="card__head">${tbadge}${hot}</div>
-    <div class="card__body">${thumb}<div class="card__id"><div class="card__brand">${esc(d.nomeMarca||"Sem marca")}</div><div class="card__title">${esc(d.nomeOferta||"Oferta sem nome")}</div></div></div>
-    ${chips.length?`<div class="card__chips">${chips.join("")}</div>`:""}
-    ${stats}
-    ${adsExtra}
-    ${note}
-    <div class="card__actions">${quick||'<span class="muted-empty" style="font-size:.8rem">Sem links — abra para editar</span>'}</div>
-  </article>`;
+  return card({
+    id:o.id,
+    variant:high?"card--hot":"",
+    head:`${tbadge}${hot}`,
+    body:`<div class="card__body">${thumb}${cardIdentity(d.nomeMarca||"Sem marca",d.nomeOferta||"Oferta sem nome")}</div>`,
+    chips:chips.length?`<div class="card__chips">${chips.join("")}</div>`:"",
+    extra:`${stats}${adsExtra}${note}`,
+    actions:quick
+  });
 }
 function cardFor(o){
   switch(sectionOf(o)){
@@ -2548,19 +2549,46 @@ function commentPreview(c){if(!c)return"";return `<div class="kcomment">${ic("me
 function emptyActions(){return `<span class="muted-empty" style="font-size:.8rem">Sem link — abra para ver</span>`;}
 function nicheChip(d){return d.nicho?`<div class="card__chips"><span class="chip niche">${esc(d.nicho)}</span></div>`:"";}
 
+/* ===== COMPONENTE CANÔNICO DE CARD =====
+   Único ponto que monta o esqueleto de TODO card (ofertas, presell, criativo,
+   mega brain, tiktok, notícia). As seções só preenchem os slots; a estrutura,
+   o wrapper .card, o cabeçalho e o rodapé de ações são padronizados aqui.
+   Slots (HTML já pronto, exceto brand/title que são texto puro):
+     id, variant, head, media, body, chips, extra, actions
+   Regras de uniformidade:
+     • .card__head só aparece se houver conteúdo de cabeçalho;
+     • se body vier vazio mas houver brand/title, monta a identidade padrão;
+     • .card__actions SEMPRE aparece (fallback padrão) para manter a mesma
+       altura e o mesmo alinhamento em todos os cards. */
+function cardIdentity(brand,title){
+  return `<div class="card__id">${brand?`<div class="card__brand">${esc(brand)}</div>`:""}${title?`<div class="card__title">${esc(title)}</div>`:""}</div>`;
+}
+function card({id,variant="",head="",media="",body="",brand="",title="",chips="",extra="",actions=""}){
+  if(!body&&(brand||title))body=cardIdentity(brand,title);
+  return `<article class="card${variant?" "+variant:""}" data-id="${id}">`
+    +(head?`<div class="card__head">${head}</div>`:"")
+    +media
+    +body
+    +chips
+    +extra
+    +`<div class="card__actions">${actions||emptyActions()}</div>`
+    +`</article>`;
+}
+
 function presellCard(o){
   const d=o.data||{};
   const native=d.tipoTrafego==="native";
   const badge=native?`<span class="tbadge tbadge--native"><span class="tdot"></span>Native · Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const acts=qbtn("Abrir presell",d.link,"newspaper");
-  return `<article class="card kcard" data-id="${o.id}">
-    <div class="card__head">${badge}<span class="ktag">${ic("newspaper")}Presell</span></div>
-    ${mediaThumb(d.print,d.nome)}
-    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
-    ${nicheChip(d)}
-    ${commentPreview(d.comentario)}
-    <div class="card__actions">${acts||emptyActions()}</div>
-  </article>`;
+  return card({
+    id:o.id,variant:"kcard",
+    head:`${badge}<span class="ktag">${ic("newspaper")}Presell</span>`,
+    media:mediaThumb(d.print,d.nome),
+    brand:d.marca||"",title:d.nome||"Sem título",
+    chips:nicheChip(d),
+    extra:commentPreview(d.comentario),
+    actions:acts
+  });
 }
 function criativoCard(o){
   const d=o.data||{};
@@ -2573,13 +2601,14 @@ function criativoCard(o){
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
   const fbwork=st==="working"?`<div class="fbwork">${ic("download")}Baixando criativo do Facebook…</div>`:"";
-  return `<article class="card kcard" data-id="${o.id}">
-    <div class="card__head">${badge}<span class="ktag">${ic("play")}Criativo</span></div>
-    ${mediaThumb(d.print,d.nome,hasVid,hasVid?va:"")}
-    <div>${d.marca?`<div class="card__brand">${esc(d.marca)}</div>`:""}<div class="kcard__title">${esc(d.nome||"Sem título")}</div></div>
-    ${chips}${fbwork}
-    <div class="card__actions">${acts||emptyActions()}</div>
-  </article>`;
+  return card({
+    id:o.id,variant:"kcard",
+    head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
+    media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
+    brand:d.marca||"",title:d.nome||"Sem título",
+    chips:`${chips}${fbwork}`,
+    actions:acts
+  });
 }
 function megabrainCard(o){
   const d=o.data||{};
@@ -2597,15 +2626,14 @@ function megabrainCard(o){
     :ist==="error"?`<span class="chip brain-err">${ic("alert")}Falha no Drive</span>`:"";
   const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
   const chipsRow=(nicheSpan||ichip)?`<div class="card__chips">${nicheSpan}${ichip}</div>`:"";
-  return `<article class="card kcard kcard--brain" data-id="${o.id}">
-    <div class="card__head"><span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span></div>
-    ${brainThumb(d,video)}
-    ${author}
-    <div class="kcard__title">${esc(d.nome||"Sem título")}</div>
-    ${metric}
-    ${chipsRow}
-    ${acts?`<div class="card__actions">${acts}</div>`:""}
-  </article>`;
+  return card({
+    id:o.id,variant:"kcard kcard--brain",
+    head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span>`,
+    media:brainThumb(d,video),
+    body:`${author}${cardIdentity("",d.nome||"Sem título")}${metric}`,
+    chips:chipsRow,
+    actions:acts
+  });
 }
 
 /* ===== RADAR TIKTOK ===== */
@@ -2626,15 +2654,16 @@ function tiktokThumb(d){
 function tiktokCard(o){
   const d=o.data||{};
   const eng=d.engajamento?(d.engajamento*100).toFixed(1)+"%":"–";
-  return `<article class="card kcard ttcard" data-id="${o.id}">
-    <div class="card__head"><span class="tbadge tbadge--tt"><span class="tdot"></span>TikTok</span><span class="ktag tteng">${ic("flame")}${eng}</span></div>
-    ${tiktokThumb(d)}
-    <div class="ttstats">${ttStat("eye",d.views)}${ttStat("heart",d.likes)}${ttStat("message",d.comentarios)}${ttStat("share",d.shares)}</div>
-    <div class="ttcaption">${esc(d.caption||d.nome||"")}</div>
-    <div class="ttfoot"><span class="ttauthor">@${esc(d.autor||"")}</span><span class="ttdate">${ttDate(d.dataPub)}</span></div>
-    ${nicheChip(d)}
-    <div class="card__actions">${qbtn("Abrir no TikTok",d.url,"external")||""}</div>
-  </article>`;
+  return card({
+    id:o.id,variant:"kcard ttcard",
+    head:`<span class="tbadge tbadge--tt"><span class="tdot"></span>TikTok</span><span class="ktag tteng">${ic("flame")}${eng}</span>`,
+    media:tiktokThumb(d),
+    extra:`<div class="ttstats">${ttStat("eye",d.views)}${ttStat("heart",d.likes)}${ttStat("message",d.comentarios)}${ttStat("share",d.shares)}</div>`
+      +`<div class="ttcaption">${esc(d.caption||d.nome||"")}</div>`
+      +`<div class="ttfoot"><span class="ttauthor">@${esc(d.autor||"")}</span><span class="ttdate">${ttDate(d.dataPub)}</span></div>`
+      +nicheChip(d),
+    actions:qbtn("Abrir no TikTok",d.url,"external")
+  });
 }
 
 /* ===== CARD DE NOTÍCIA ===== */
@@ -2658,13 +2687,13 @@ function noticiaCard(o){
   const date=d.dataPub?`<span class="nmeta__date">${ic("clock")}${relDate(d.dataPub)}</span>`:"";
   const eng=d.engajamento?`<span class="nmeta__eng">${ic("trending")}${esc(d.engajamento)}</span>`:"";
   const meta=(date||eng)?`<div class="ncard__meta">${date}${eng}</div>`:"";
-  return `<article class="card ncard" data-id="${o.id}">
-    <div class="card__head">${sourceBadge(d.fonte)}${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}</div>
-    <div class="ncard__title">${esc(d.nome||"(sem título)")}</div>
-    ${d.resumo?`<div class="ncard__snippet">${esc(d.resumo)}</div>`:""}
-    ${meta}
-    <div class="card__actions">${d.link?qbtn("Abrir notícia",d.link,"external"):'<span class="muted-empty" style="font-size:.8rem">Sem link — abra para editar</span>'}</div>
-  </article>`;
+  return card({
+    id:o.id,variant:"ncard",
+    head:`${sourceBadge(d.fonte)}${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}`,
+    title:d.nome||"(sem título)",
+    extra:`${d.resumo?`<div class="ncard__snippet">${esc(d.resumo)}</div>`:""}${meta}`,
+    actions:d.link?qbtn("Abrir notícia",d.link,"external"):""
+  });
 }
 
 /* ===== VÍDEO: embutir player (YouTube, Drive, Vimeo, mp4) ===== */
