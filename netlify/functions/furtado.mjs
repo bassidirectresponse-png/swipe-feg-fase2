@@ -26,7 +26,7 @@ const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.FURTADO_MODEL || "claude-sonnet-5";  // suporta web_search_20260209
-const MAX_TOKENS = { biblia: 6000, voc: 6000, remessa: 5000, escrita: 5000 };
+const MAX_TOKENS = { biblia: 6000, voc: 6000, remessa: 5000, escrita: 12000 };
 const WEB_MAX_USES = 6;   // teto de buscas na Fase 2 (equilíbrio entre profundidade e tempo da função)
 // Busca básica (web_search_20250305): NÃO usa o "dynamic filtering" (code_execution) da
 // versão 2026 — que estava estourando o limite do ambiente de código e fazendo o modelo
@@ -222,11 +222,12 @@ ${clip(biblia, 9000) || "(sem Bíblia informada — peça para gerar a Fase 1 an
   return { system: PERSONA, user, max_tokens: MAX_TOKENS.remessa };
 }
 
-function escritaPrompt(nicho, biblia, voc, briefing, corpo, nHooks) {
-  const user = `TAREFA — ESCREVER a copy final do ANÚNCIO ${corpo} (corpo completo + ${nHooks} hooks), pronta para GRAVAÇÃO em vídeo, com lastro total no que foi validado no nicho e no briefing.
+function escritaPrompt(nicho, biblia, voc, briefing, nCorpos, nHooks) {
+  const user = `TAREFA — ESCREVER a REMESSA COMPLETA com ${nCorpos} anúncio(s), cada um com corpo completo + ${nHooks} hooks, pronta para GRAVAÇÃO em vídeo e com lastro total no que foi validado no nicho e no briefing.
 
-O anúncio precisa:
-- Abrir com ${nHooks} HOOKS fortes que conectem direto com dores/desejos/gatilhos do público (as ${nHooks} aberturas puxam para o MESMO corpo).
+Cada anúncio precisa:
+- Corresponder ao respectivo Corpo/Anúncio do briefing, sem misturar ângulos entre eles.
+- Abrir com ${nHooks} HOOKS fortes que conectem direto com dores/desejos/gatilhos do público (as ${nHooks} aberturas puxam para o MESMO corpo daquele anúncio).
 - Qualificar o público com identificação imediata logo no início.
 - Apresentar o nome chiclete do mecanismo e fazer a promessa principal do briefing.
 - Usar a LINGUAGEM NATIVA do prospect — puxe expressões reais do VOC, não linguagem de marca.
@@ -236,12 +237,12 @@ O anúncio precisa:
 - Manter congruência com a oferta (mecanismo do problema/solução, nome chiclete, expert) — sem contradizê-los.
 - FRASES CURTAS, ritmo de fala natural, respeitando o tempo médio padrão do nicho.
 
-Formato (Markdown): comece indicando a qual corpo do briefing corresponde; depois os ${nHooks} hooks (rotulados Hook A, B, C...); depois o CORPO completo do primeiro ao último bloco.
+Formato (Markdown): entregue EXATAMENTE ${nCorpos} seções, de "## Anúncio 1 — Corpo 1" até "## Anúncio ${nCorpos} — Corpo ${nCorpos}". Em cada seção, liste os ${nHooks} hooks (rotulados Hook A, B, C...) e depois o CORPO completo do primeiro ao último bloco.
 
-NICHO: ${nicho}  ·  ANÚNCIO: ${corpo}
+NICHO: ${nicho}  ·  REMESSA: ${nCorpos} corpo(s) · ${nHooks} hooks por corpo
 
 === BRIEFING DA REMESSA (o que foi definido para este anúncio) ===
-${clip(briefing, 6000) || "(sem briefing — gere a Fase 3 antes)"}
+${clip(briefing, 16000) || "(sem briefing — gere a Fase 3 antes)"}
 
 === BÍBLIA DO NICHO (padrões validados) ===
 ${clip(biblia, 7000) || "(sem Bíblia — gere a Fase 1 antes)"}
@@ -368,8 +369,7 @@ export default async (req) => {
     if (!oferta) return json(400, { ok: false, error: "informe os dados da oferta (expert, mecanismos, nome chiclete, promessa)" });
     built = { ...remessaPrompt(nicho, biblia, oferta, nCorpos, nHooks), model: MODEL };
   } else {
-    const corpo = clip(body.input || `Corpo ${clampInt(body.corpo, 1, 8, 1)}`, 40);
-    built = { ...escritaPrompt(nicho, biblia, voc, briefing, corpo, nHooks), model: MODEL };
+    built = { ...escritaPrompt(nicho, biblia, voc, briefing, nCorpos, nHooks), model: MODEL };
   }
 
   const enc = new TextEncoder();

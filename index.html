@@ -21,7 +21,7 @@
     --shadow-lg:0 24px 70px -24px rgba(0,0,0,.92);
     --ring:0 0 0 3px var(--accent-soft);
     --ease:cubic-bezier(.2,.7,.3,1);
-    --side-w:264px;--topbar-h:79px;--chat-content:56rem;
+    --side-w:264px;--topbar-h:79px;--chat-content:56rem;--chat-content-wide:72rem;--chat-reading-wide:64rem;--chat-composer-wide:68rem;
     --overlay:rgba(0,0,0,.93);--on-accent:#0a0a06;
     --z-sticky:50;--z-drawer:120;--z-modal-backdrop:1000;--z-modal:1100;--z-toast:5000;--z-lightbox:6000;
   }
@@ -641,6 +641,11 @@
   body.chatmode{height:100dvh;overflow:hidden;}
   body.chatmode .shell,body.chatmode .main{height:calc(100dvh - var(--topbar-h));min-height:0;}
   .chat{position:relative;display:flex;flex-direction:column;height:calc(100dvh - var(--topbar-h));min-height:0;max-width:var(--chat-content);margin:0 auto;padding:0 clamp(14px,3vw,32px);}
+  .chat--feguinho{max-width:var(--chat-content-wide);}
+  .chat--feguinho .chat__thread{padding-inline:clamp(12px,2.4vw,32px);}
+  .chat--feguinho .chat__welcome{max-width:var(--chat-reading-wide);margin:auto;}
+  .chat--feguinho .chat__composer{width:100%;max-width:var(--chat-composer-wide);margin-inline:auto;}
+  .chat--feguinho .chat__input{min-height:72px;}
   /* header fino (só Furtado usa) */
   .chat__top{flex:0 0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 4px;border-bottom:1px solid var(--border);}
   /* thread rolável */
@@ -709,7 +714,7 @@
   .chat__send:hover{transform:translateY(-1px);box-shadow:0 12px 28px -8px rgba(229,255,45,.75);}
   .chat__send:disabled,.chat__send.is-busy{opacity:.55;pointer-events:none;box-shadow:none;}
   .chat__send.is-busy .ico{animation:spin .8s linear infinite;}
-  @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));padding:0 12px;}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.42rem;}.chat__wsub{font-size:.95rem;}.chat__md{font-size:.98rem;}.chat__sel{max-width:46%;}}
+  @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));padding:0 12px;}.chat--feguinho .chat__thread{padding-inline:4px;}.chat--feguinho .chat__input{min-height:56px;}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.42rem;}.chat__wsub{font-size:.95rem;}.chat__md{font-size:.98rem;}.chat__sel{max-width:46%;}}
   .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
   .ccdot--on{background:var(--accent);animation:ccpulse 1s ease-in-out infinite;}
   .ccdot--done{background:var(--accent);}
@@ -2211,7 +2216,7 @@ function renderCopyChief(){
   const area=$("#gridArea");if(!area)return;
   if($("#cchief"))return; // já montado — não destrói a conversa em andamento
   const icard=k=>{const t=CC_TOOLS[k];return `<button type="button" class="chat__icard" data-setmode="${k}"><div class="chat__icard__t">${ic(t.icon)}${esc(t.label)}</div><p>${esc(t.desc)}</p><span class="chat__icard__go">${ic("wand")}Usar este modo</span></button>`;};
-  area.innerHTML=`<div class="chat" id="cchief">
+  area.innerHTML=`<div class="chat chat--feguinho" id="cchief">
     <div class="chat__top"><strong>Feguinho — Copy Chief IA</strong><span class="chat__beta">Beta</span></div>
     <div class="chat__thread" id="ccThread">
       <div class="chat__welcome">
@@ -2307,9 +2312,9 @@ const FUR_PHASES=[
     desc:"Informe a oferta e quantos corpos/hooks. A IA propõe o briefing de cada anúncio — promessa, ângulo, avatar, formato e hipótese de teste, para você aprovar antes de escrever.",
     hint:"Informe a oferta e quantos corpos/hooks — a IA propõe o briefing de cada anúncio.",
     ph:"Dados da oferta:\nExpert: …\nMecanismo do problema: …\nMecanismo da solução / nome chiclete: …\nPromessa principal: …"},
-  {key:"escrita",icon:"wand",label:"Escrita dos Anúncios",cta:"Escrever anúncio",
-    desc:"Escreve um anúncio por vez (corpo + hooks), pronto pra gravar, com lastro na Bíblia + VOC + briefing e frases curtas de vídeo.",
-    hint:"Escreve 1 anúncio por vez (corpo + hooks) com lastro na Bíblia, no VOC e no briefing.",ph:""},
+  {key:"escrita",icon:"wand",label:"Escrita dos Anúncios",cta:"Escrever remessa",
+    desc:"Escolha quantos corpos e hooks por corpo serão escritos na remessa, prontos pra gravar e com lastro na Bíblia + VOC + briefing.",
+    hint:"Escolha a quantidade de corpos e de hooks por corpo para escrever a remessa completa.",ph:""},
 ];
 // Estado da conversa (em memória, encadeado — NÃO salva projeto no banco).
 // É uma skill conversacional: cada envio segue a lógica da fase e alimenta a próxima.
@@ -2371,7 +2376,7 @@ function renderFurtado(){
 function furRenderDocs(){
   const el=$("#furDocs");if(!el)return;
   const chip=(ok,label)=>`<span class="fur__doc${ok?" ok":""}">${ic(ok?"info":"file")}${label}${ok?" ✓":""}</span>`;
-  const nAds=furState.anuncios.length;
+  const nAds=furState.anuncios.reduce((total,item)=>total+(Number(item.quantidade)||1),0);
   el.innerHTML=chip(furHasDoc("biblia"),"Bíblia")+chip(furHasDoc("voc"),"VOC")+chip(furHasDoc("briefing"),"Briefing")+`<span class="fur__doc${nAds?" ok":""}">${ic("wand")}${nAds} anúncio${nAds===1?"":"s"}</span>`;
 }
 function furApplyPhase(){
@@ -2395,14 +2400,16 @@ function furApplyPhase(){
     if(!furHasDoc("biblia")){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Sem a Bíblia o briefing fica genérico — gere a fase 1 antes.`;}
   }else{ // escrita
     ta.style.display="none";
-    const nc=furState.nCorpos||3;
-    const opts=Array.from({length:nc},(_,i)=>`<option value="${i+1}">Anúncio ${i+1} (Corpo ${i+1})</option>`).join("");
-    extra=`<select id="furCorpo" class="chat__sel" title="Qual anúncio escrever">${opts}</select>`;
+    const nc=furState.nCorpos||3,nh=furState.nHooks||3;
+    extra=`<label class="fur__num">Corpos <input type="number" id="furNCorpos" min="1" max="8" value="${nc}" aria-label="Quantidade de corpos"></label><label class="fur__num">Hooks/corpo <input type="number" id="furNHooks" min="1" max="6" value="${nh}" aria-label="Quantidade de hooks por corpo"></label>`;
     const faltam=[!furHasDoc("biblia")&&"Bíblia",!furHasDoc("voc")&&"VOC",!furHasDoc("briefing")&&"Briefing"].filter(Boolean);
     if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta gerar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
   }
   controls.innerHTML=nsel+extra;
   const nn=$("#furNicho");if(nn)nn.addEventListener("change",()=>{furState.nicho=nn.value;});
+  const ncInput=$("#furNCorpos"),nhInput=$("#furNHooks");
+  if(ncInput)ncInput.addEventListener("change",()=>{furState.nCorpos=Math.max(1,Math.min(8,parseInt(ncInput.value,10)||3));ncInput.value=furState.nCorpos;});
+  if(nhInput)nhInput.addEventListener("change",()=>{furState.nHooks=Math.max(1,Math.min(6,parseInt(nhInput.value,10)||3));nhInput.value=furState.nHooks;});
   chatAutosize(ta);
 }
 async function furRun(){
@@ -2412,7 +2419,7 @@ async function furRun(){
   const cfg=FUR_PHASES.find(x=>x.key===furPhase)||FUR_PHASES[0];
   const phaseAtRun=furPhase;
   const phaseNum={biblia:"1",voc:"2",remessa:"3",escrita:"4"}[furPhase]||"";
-  let input="",nCorpos=furState.nCorpos||3,nHooks=furState.nHooks||3,corpo="",userMsg="";
+  let input="",nCorpos=furState.nCorpos||3,nHooks=furState.nHooks||3,userMsg="";
   if(furPhase==="biblia"){input=($("#furInput").value||"").trim();if(!input){toast("Cole 2 a 4 anúncios validados",true);$("#furInput").focus();return;}userMsg=input;}
   else if(furPhase==="voc"){
     if(!furHasDoc("biblia")){toast("Gere a Bíblia (fase 1) antes do VOC",true);return;}
@@ -2423,7 +2430,8 @@ async function furRun(){
     userMsg=`${input}\n\n(${nCorpos} corpos · ${nHooks} hooks por corpo)`;}
   else{ // escrita
     if(!furHasDoc("briefing")){toast("Gere o Briefing (fase 3) antes de escrever",true);return;}
-    corpo=parseInt(($("#furCorpo")||{}).value,10)||1;input="Corpo "+corpo;userMsg=`Escrever o Anúncio ${corpo} (corpo ${corpo}).`;}
+    nCorpos=Math.max(1,Math.min(8,parseInt((($("#furNCorpos")||{}).value),10)||3));nHooks=Math.max(1,Math.min(6,parseInt((($("#furNHooks")||{}).value),10)||3));
+    furState.nCorpos=nCorpos;furState.nHooks=nHooks;input=`Corpos 1 a ${nCorpos}`;userMsg=`Escrever a remessa completa: ${nCorpos} corpo${nCorpos===1?"":"s"} · ${nHooks} hooks por corpo.`;}
 
   const thread=chatThreadEl("furThread");
   chatPushUser(thread,[esc(phaseNum+" · "+cfg.label),esc(nicho)],userMsg);
@@ -2436,7 +2444,7 @@ async function furRun(){
   let acc="",gotAny=false,errMsg="";const stream=chatBufferedMarkdown(md,furMarkdown,thread,()=>acc);
   try{
     const res=await fetch(FURTADO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-      body:JSON.stringify({phase:furPhase,nicho,input,biblia:furState.biblia||"",voc:furState.voc||"",briefing:furState.briefing||"",nCorpos,nHooks,corpo})});
+      body:JSON.stringify({phase:furPhase,nicho,input,biblia:furState.biblia||"",voc:furState.voc||"",briefing:furState.briefing||"",nCorpos,nHooks})});
     if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
     const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
     for(;;){const {done,value}=await reader.read();if(done)break;
@@ -2458,10 +2466,10 @@ async function furRun(){
     if(phaseAtRun==="biblia")furState.biblia=acc;
     else if(phaseAtRun==="voc")furState.voc=acc;
     else if(phaseAtRun==="remessa")furState.briefing=acc;
-    else{const c=corpo||1;const idx=furState.anuncios.findIndex(a=>a.corpo===c);const item={corpo:c,texto:acc};if(idx>=0)furState.anuncios[idx]=item;else furState.anuncios.push(item);}
+    else furState.anuncios=[{corpo:`1–${nCorpos}`,quantidade:nCorpos,texto:acc}];
     furRenderDocs();
     const nextName={biblia:"a Voz do Prospect (fase 2)",voc:"a Arquitetura da Remessa (fase 3)",remessa:"a Escrita dos Anúncios (fase 4)"}[phaseAtRun];
-    status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${nextName?` · pode seguir para <b>${nextName}</b>`:" · anúncio pronto"}${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+    status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${nextName?` · pode seguir para <b>${nextName}</b>`:` · ${nCorpos} anúncio${nCorpos===1?"":"s"} pronto${nCorpos===1?"":"s"}`}${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
     ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--outline btn--sm" data-furcopy>${ic("clipboard")}Copiar</button>`;
     const cp=ai.bar.querySelector("[data-furcopy]");if(cp)cp.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
     // avança a fase ativa automaticamente (o usuário pode voltar clicando no chip)

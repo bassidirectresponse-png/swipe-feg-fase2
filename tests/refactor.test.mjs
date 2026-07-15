@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
+const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
@@ -13,6 +14,20 @@ test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /Novas mensagens ↓/);
   assert.match(html, /setTimeout\(flush,80\)/);
   assert.match(html, /e\.key==="Enter"&&!e\.shiftKey/);
+});
+
+test("Feguinho usa a moldura ampla de conversa de IA", () => {
+  assert.match(html, /--chat-content-wide:72rem/);
+  assert.match(html, /class="chat chat--feguinho" id="cchief"/);
+  assert.match(html, /\.chat--feguinho \.chat__input\{min-height:72px/);
+});
+
+test("fase 4 do Furtado escolhe corpos e hooks e gera a remessa completa", () => {
+  assert.match(html, /id="furNCorpos" min="1" max="8"/);
+  assert.match(html, /id="furNHooks" min="1" max="6"/);
+  assert.match(html, /Escrever a remessa completa:/);
+  assert.match(furtadoFn, /function escritaPrompt\(nicho, biblia, voc, briefing, nCorpos, nHooks\)/);
+  assert.match(furtadoFn, /entregue EXATAMENTE \$\{nCorpos\} seções/);
 });
 
 test("cards usam a estrutura canônica e mídia uniforme", () => {
