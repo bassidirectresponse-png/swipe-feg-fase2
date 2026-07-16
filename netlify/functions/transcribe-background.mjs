@@ -29,11 +29,18 @@ async function groqTranscribe(buf) {
     form.append("file", new Blob([buf], { type: "video/mp4" }), "audio.mp4");
     form.append("model", GROQ_MODEL);
     form.append("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "word");
+    form.append("timestamp_granularities[]", "segment");
     const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
     });
     const txt = await g.text();
-    if (g.ok) { const j = JSON.parse(txt); return { text: String(j.text || "").trim(), lang: String(j.language || "") }; }
+    if (g.ok) {
+      const j = JSON.parse(txt);
+      const words = Array.isArray(j.words) ? j.words.map((w) => ({ word: String(w.word || "").trim(), start: +w.start || 0, end: +w.end || 0 })).filter((w) => w.word) : [];
+      const segments = Array.isArray(j.segments) ? j.segments.map((s) => ({ text: String(s.text || "").trim(), start: +s.start || 0, end: +s.end || 0 })).filter((s) => s.text) : [];
+      return { text: String(j.text || "").trim(), lang: String(j.language || ""), words, segments };
+    }
     last = `Groq HTTP ${g.status}: ${txt.slice(0, 120)}`;
     if (g.status !== 429 && g.status < 500) throw new Error(last);   // erro definitivo
   }
@@ -62,14 +69,14 @@ export const handler = async (event) => {
     if (buf.length > MAX_BYTES) throw new Error("vídeo grande demais");
 
     // transcreve
-    const { text, lang } = await groqTranscribe(buf);
+    const { text, lang, words, segments } = await groqTranscribe(buf);
 
     // grava de volta (token do admin; RLS confirma)
     const r = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`,
       { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
     const rows = r.ok ? await r.json() : [];
     const data = (rows[0] && rows[0].data) || {};
-    data.transcricao = text; data.transcricaoStatus = "done"; data.transcricaoLang = lang;
+    data.transcricao = text; data.transcricaoStatus = "done"; data.transcricaoLang = lang; data.transcricaoWords = words; data.transcricaoSegments = segments;
     await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },

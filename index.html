@@ -478,6 +478,12 @@
   .subfilter__row .seg{flex:0 1 auto;}
   #brainImportAll{margin-left:auto;}
   @media(max-width:600px){#brainImportAll{margin-left:0;}}
+  .brainfilters{display:flex;align-items:end;gap:10px;flex-wrap:wrap;min-width:0;}
+  .brainfilter{display:flex;flex-direction:column;gap:5px;min-width:190px;}
+  .brainfilter span{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;}
+  .brainfilter select{height:38px;min-width:0;color:var(--fg);background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:0 34px 0 12px;font-size:.82rem;font-weight:600;outline:none;}
+  .brainfilter select:focus{border-color:var(--accent);box-shadow:var(--ring);}
+  @media(max-width:760px){.brainfilters{width:100%;}.brainfilter{flex:1 1 160px;}}
   .chip.brain-ing{display:inline-flex;align-items:center;gap:5px;}
   .chip.brain-ing .ico{width:12px;height:12px;animation:pulse 1s infinite;}
   .chip.brain-err{display:inline-flex;align-items:center;gap:5px;color:#ff9a9a;background:var(--red-soft);border-color:rgba(255,93,93,.32);}
@@ -527,11 +533,19 @@
   .brainstage__media .vplayer{border-radius:16px;background:#000;border:1px solid var(--border-2);display:block;box-shadow:var(--shadow);}
   .brainstage__media iframe.vplayer{height:min(78vh,760px);width:auto;aspect-ratio:9/16;margin:0;}
   .brainstage__media video.vplayer{height:min(78vh,760px);width:auto;max-width:100%;object-fit:contain;margin:0;}
-  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;max-height:min(78vh,760px);overflow:auto;}
+  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;max-height:min(78vh,760px);overflow:auto;scroll-behavior:smooth;}
   .brainstage__copy .vk{display:flex;align-items:center;gap:7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
   .brainstage__copy .vk .ico{width:14px;height:14px;color:var(--accent);}
+  .brainstage__tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .brain-follow{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:9px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--muted-fg);font-size:.78rem;font-weight:700;}
+  .brain-follow .ico{width:14px;height:14px;}
+  .brain-follow.active{color:var(--on-accent);background:var(--accent);border-color:var(--accent);}
   .brain-copy{white-space:pre-wrap;line-height:1.6;font-size:.96rem;color:var(--fg);}
   .brain-copy.empty{color:var(--faint);font-style:italic;}
+  .brainword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:color .1s,background .1s;}
+  .brainword:hover,.brainword:focus-visible{color:var(--fg);background:var(--surface-3);}
+  .brainword.is-past{color:var(--fg);}
+  .brainword.is-active{color:var(--on-accent);background:var(--accent);}
   @media(max-width:820px){.brainstage{grid-template-columns:1fr;}.brainstage__media .vplayer{width:100%;height:auto;margin:0 auto;}.brainstage__media video.vplayer{max-height:70vh;}.brainstage__copy{max-height:none;}}
 
   /* view: asset do megabrain */
@@ -1015,7 +1029,7 @@ let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeN
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false;
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="";
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -1189,6 +1203,7 @@ function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
 function filtered(){
   let list=offers.filter(o=>sectionOf(o)===activeSection);
   if(activeSection==="criativo"&&critPlatform!=="all")list=list.filter(o=>((o.data||{}).plataforma||"meta")===critPlatform);
+  if(activeSection==="megabrain"&&brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:n===activeNiche;});}
   if(searchTerm){
     const t=searchTerm.toLowerCase();
@@ -1223,6 +1238,7 @@ function qsFromState(){
   if(activeSection==="criativo"&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if(activeSection==="megabrain"&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
+  if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
@@ -1278,7 +1294,7 @@ function applyRoute(){
   searchTerm=r.q.get("q")||"";
   critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
-  if(activeSection==="megabrain")brainSort=r.q.get("ordem")||"metrica";
+  if(activeSection==="megabrain"){brainSort=r.q.get("ordem")||"metrica";brainAuthor=r.q.get("autor")||"";}else brainAuthor="";
   // canoniza URL "nua" de seção com nicho -> /base/todos (ex.: /ofertas -> /ofertas/todos)
   if(NICHE_SECTIONS.has(activeSection)&&!r.id&&location.pathname!=="/"){
     const segN=decodeURIComponent(location.pathname).replace(/\/+$/,"").split("/").filter(Boolean).length;
@@ -1490,14 +1506,14 @@ function renderGrid(skipNav){
   const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
   $("#statTotal").textContent=secCount;
-  const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all"));
+  const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
   if(secCount===0){area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>${isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens."}</p></div>`;return;}
   if(list.length===0){
     area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhum item corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
-    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";searchTerm="";navigate(listPath(activeSection,""));});
+    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";brainAuthor="";searchTerm="";navigate(listPath(activeSection,""));});
     return;
   }
   if(activeSection==="tiktok"){
@@ -2020,18 +2036,19 @@ $("#lightboxImg").addEventListener("pointerup",()=>{lbDrag=null;$("#lightboxStag
 function openCopyPop(id){
   const o=offers.find(x=>x.id===id);if(!o)return;
   const d=o.data||{};
-  const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
+  const copy=brainCopyText(d);
+  const copyIsTranscript=brainCopyIsTranscript(d);
   const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
   const video=videoOfBrain(d);
-  $("#copyPopTitle").textContent=d.nome||"Copy do criativo";
+  $("#copyPopTitle").textContent=(d.nome||"Copy do criativo")+(copyIsTranscript?" · transcrita":"");
   const sub=[d.autor?"por "+d.autor:"",d.nicho||""].filter(Boolean).join(" · ");
   $("#copyPopSub").textContent=sub;
   const body=$("#copyPopText");
-  body.textContent=copy||"Sem copy escrita cadastrada.";
+  body.textContent=copy||"Sem copy disponível neste card.";
   body.classList.toggle("empty",!copy);
   const btns=[];
   if(copy)btns.push(`<button class="btn btn--outline btn--sm" id="copyPopCopy">${ic("type")}Copiar texto</button>`);
-  if(video)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(video))}" target="_blank" rel="noopener">${ic("play")}Abrir criativo</a>`);
+  if(video)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(video))}" target="_blank" rel="noopener">${ic("play")}Ver vídeo</a>`);
   if(copyLink)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(copyLink))}" target="_blank" rel="noopener">${ic("file")}Abrir doc</a>`);
   $("#copyPopFoot").innerHTML=btns.join("");
   const cc=$("#copyPopCopy");if(cc)cc.addEventListener("click",()=>{navigator.clipboard.writeText(copy).then(()=>toast("Copy copiada ✓")).catch(()=>toast("Não deu para copiar",true));});
@@ -2121,11 +2138,19 @@ function renderSubFilter(){
   if(activeSection==="megabrain"){
     el.style.display="";
     const opts=[["metrica","Mais vendas / faturamento"],["recente","Recentes"],["az","A–Z"]];
+    const authors=[...new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>String((o.data||{}).autor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    const niches=[...new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(nicheOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
     const need=isAdmin?offers.filter(brainNeedsImport).length:0;
     const importBtn=need?`<button type="button" class="btn btn--outline btn--sm" id="brainImportAll" title="Baixa os criativos do Drive e salva no Storage (permanente)">${ic("download")}Importar do Drive (${need})</button>`:"";
-    el.innerHTML=`<div class="subfilter__row"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}</div>`;
+    const batchBtn=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="brainBatchImport" title="Importa uma pasta com megabrain-import.json e os vídeos correspondentes">${ic("upload")}Importar lote</button>`:"";
+    const authorOptions=`<option value="">Todos os copywriters</option>${authors.map(a=>`<option value="${esc(a)}"${brainAuthor===a?" selected":""}>${esc(a)}</option>`).join("")}`;
+    const nicheOptions=`<option value="">Todos os nichos</option>${niches.map(n=>`<option value="${esc(n)}"${activeNiche===n?" selected":""}>${esc(n)}</option>`).join("")}`;
+    el.innerHTML=`<div class="subfilter__row"><div class="brainfilters"><label class="brainfilter"><span>Copywriter</span><select id="brainAuthorFilter" aria-label="Filtrar por copywriter">${authorOptions}</select></label><label class="brainfilter"><span>Nicho</span><select id="brainNicheFilter" aria-label="Filtrar por nicho">${nicheOptions}</select></label></div><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}${batchBtn}</div>`;
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
+    const af=$("#brainAuthorFilter");if(af)af.addEventListener("change",()=>{brainAuthor=af.value;navigate(currentPath());});
+    const nf=$("#brainNicheFilter");if(nf)nf.addEventListener("change",()=>{activeNiche=nf.value;navigate(currentPath());});
     const ib=$("#brainImportAll");if(ib)ib.addEventListener("click",importAllBrainDrive);
+    const bb=$("#brainBatchImport");if(bb)bb.addEventListener("click",pickBrainBatchImport);
     return;
   }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
@@ -2721,6 +2746,32 @@ function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.i
 function brainSalesPending(d){return d&&((d.metricaPendente===true)||(d.autor==="Elaine Montone"&&!brainHasMetric(d)));}
 function brainCopyText(d){return String((d&&(d.copy||d.copyVsl||d.copyCriativo||d.transcricao))||"").trim();}
 function brainCopyIsTranscript(d){return !!(d&&d.transcricao&&!String(d.copy||d.copyVsl||d.copyCriativo||"").trim());}
+function brainCopyMarkup(d){
+  const copy=brainCopyText(d);if(!copy)return"";
+  if(!String((d&&d.transcricao)||"").trim())return esc(copy);
+  const tokens=copy.split(/(\s+)/),words=tokens.filter(t=>t&&!/^\s+$/.test(t)),timings=Array.isArray(d.transcricaoWords)?d.transcricaoWords.filter(w=>w&&isFinite(+w.start)):[];
+  let wi=0;
+  return tokens.map(token=>{
+    if(!token||/^\s+$/.test(token))return esc(token);
+    const ratio=words.length>1?wi/(words.length-1):0;
+    const ti=timings.length?Math.min(timings.length-1,Math.round(ratio*(timings.length-1))):-1;
+    const start=ti>=0?Math.max(0,+timings[ti].start||0):"";
+    const attrs=ti>=0?` data-start="${start}"`:` data-ratio="${ratio.toFixed(6)}"`;
+    wi++;return `<button type="button" class="brainword" data-brainword${attrs}>${esc(token)}</button>`;
+  }).join("");
+}
+function wireBrainTranscript(root){
+  const stage=$(".brainstage",root||document),video=stage&&$("video.vplayer",stage),pane=stage&&$(".brainstage__copy",stage),words=stage?$$('[data-brainword]',stage):[];
+  if(!video||!words.length||!pane)return;
+  const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1;
+  const setFollow=value=>{follow=value;if(followBtn){followBtn.classList.toggle("active",follow);followBtn.innerHTML=ic("play")+(follow?"Seguindo áudio":"Seguir áudio");followBtn.setAttribute("aria-pressed",String(follow));}};
+  const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow)current.scrollIntoView({block:"nearest",inline:"nearest",behavior:"smooth"});};
+  const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
+  video.addEventListener("timeupdate",()=>activate(atTime(video.currentTime||0)));
+  video.addEventListener("seeked",()=>activate(atTime(video.currentTime||0)));
+  words.forEach((word,index)=>word.addEventListener("click",()=>{const start=word.dataset.start!==undefined?(+word.dataset.start||0):((+word.dataset.ratio||0)*(video.duration||0));video.currentTime=start;activate(index);if(video.paused)video.play().catch(()=>{});}));
+  if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);
+}
 function megabrainCard(o){
   const d=o.data||{};
   const copy=brainCopyText(d);
@@ -2973,7 +3024,7 @@ async function pollTranscription(offerId,tries,intervalMs){
       const d=data&&data.data;
       if(!error&&d&&(d.transcricao||"").trim()){
         const o=offers.find(x=>x.id===offerId);
-        if(o){o.data.transcricao=d.transcricao;o.data.transcricaoStatus="done";o.data.transcricaoLang=d.transcricaoLang||"";}
+        if(o){o.data.transcricao=d.transcricao;o.data.transcricaoStatus="done";o.data.transcricaoLang=d.transcricaoLang||"";o.data.transcricaoWords=Array.isArray(d.transcricaoWords)?d.transcricaoWords:[];o.data.transcricaoSegments=Array.isArray(d.transcricaoSegments)?d.transcricaoSegments:[];}
         return true;
       }
     }catch(e){}
@@ -2989,7 +3040,7 @@ async function transcribeBrainInChunks(offerId,videoUrl){
   const res=await fetch(videoUrl);if(!res.ok)throw new Error("não consegui baixar o vídeo");
   const blob=await res.blob(),file=new File([blob],(o.data&&o.data.nome||"criativo")+".mp4",{type:blob.type||"video/mp4"});
   const mono=await trDecodeMono16k(file),rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));
-  const token=await trToken();let fullText="",detLang="";
+  const token=await trToken();let fullText="",detLang="",allWords=[],allSegments=[];
   for(let i=0;i<nChunks;i++){
     const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen));
     const r=await fetch(TR_FN+"?lang=auto",{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate)});
@@ -2997,12 +3048,15 @@ async function transcribeBrainInChunks(offerId,videoUrl){
     if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
     if(j.text)fullText+=(fullText?" ":"")+j.text.trim();
     if(j.language&&!detLang)detLang=j.language;
+    const offset=i*TR_CHUNK_SEC;
+    if(Array.isArray(j.words))allWords.push(...j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word));
+    if(Array.isArray(j.segments))allSegments.push(...j.segments.map(s=>({text:String(s.text||"").trim(),start:(+s.start||0)+offset,end:(+s.end||0)+offset})).filter(s=>s.text));
   }
   if(!fullText.trim())throw new Error("nenhuma fala detectada");
   const {data:row,error:readError}=await sb.from("offers").select("data").eq("id",offerId).single();
   if(readError)throw readError;
   const data=(row&&row.data)||o.data||{};
-  data.transcricao=fullText.trim();data.transcricaoStatus="done";data.transcricaoLang=detLang;
+  data.transcricao=fullText.trim();data.transcricaoStatus="done";data.transcricaoLang=detLang;data.transcricaoWords=allWords;data.transcricaoSegments=allSegments;
   const {error:saveError}=await sb.from("offers").update({data}).eq("id",offerId);if(saveError)throw saveError;
   o.data=data;return true;
 }
@@ -3096,6 +3150,71 @@ function fbIngestControl(o){
   const note=st==="partial"?`<div class="fbnote">${ic("alert")}Dados do anúncio salvos, mas o vídeo não pôde ser baixado${d.fbIngestError?` (${esc(d.fbIngestError)})`:""}.</div>`
     :st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
   return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
+}
+
+/* ===== MEGA BRAIN: importação em lote de pasta local ===== */
+const BRAIN_BATCH_MANIFEST="megabrain-import.json";
+let brainBatchWorking=false;
+function setBrainBatchState(done,total,label){
+  const b=$("#brainBatchImport");if(!b)return;
+  b.disabled=brainBatchWorking;
+  b.innerHTML=ic("upload")+(label||(brainBatchWorking?`Importando ${done}/${total}…`:"Importar lote"));
+}
+function pickBrainBatchImport(){
+  if(!requireAdmin()||brainBatchWorking)return;
+  const input=document.createElement("input");
+  input.type="file";input.multiple=true;input.webkitdirectory=true;
+  input.setAttribute("directory","");
+  input.onchange=()=>{const files=[...(input.files||[])];if(files.length)importBrainBatch(files);};
+  input.click();
+}
+async function importBrainBatch(files){
+  if(!requireAdmin()||brainBatchWorking)return;
+  const manifest=files.find(f=>f.name.toLowerCase()===BRAIN_BATCH_MANIFEST);
+  if(!manifest){toast(`Inclua ${BRAIN_BATCH_MANIFEST} na pasta selecionada.`,true);return;}
+  let parsed;
+  try{parsed=JSON.parse(await manifest.text());}catch(e){toast("Manifesto do lote inválido.",true);return;}
+  const records=Array.isArray(parsed)?parsed:(Array.isArray(parsed.records)?parsed.records:[]);
+  if(!records.length){toast("O manifesto não contém criativos.",true);return;}
+  const byName=new Map(files.filter(f=>/^video\//.test(f.type||"")||/\.(mp4|mov|webm)$/i.test(f.name)).map(f=>[f.name.toLowerCase(),f]));
+  const existing=new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>String((o.data||{}).nome||"").trim().toLowerCase()).filter(Boolean));
+  const queue=records.filter(r=>r&&String(r.nome||"").trim()&&!existing.has(String(r.nome).trim().toLowerCase()));
+  const skipped=records.length-queue.length;
+  if(!queue.length){toast(skipped?"Todos os criativos desse lote já estão no Mega Brain.":"Nenhum criativo válido no manifesto.",!!skipped);return;}
+  brainBatchWorking=true;setBrainBatchState(0,queue.length);
+  const failures=[];let done=0;
+  for(const record of queue){
+    const nome=String(record.nome||"").trim();
+    const fileName=String(record.videoFile||record.video_name||(nome+".mp4")).split(/[\\/]/).pop();
+    const file=byName.get(fileName.toLowerCase());
+    if(!file){failures.push(`${nome}: vídeo não encontrado na pasta`);done++;setBrainBatchState(done,queue.length);continue;}
+    if(file.size>VIDEO_MAX){failures.push(`${nome}: vídeo acima de 50 MB`);done++;setBrainBatchState(done,queue.length);continue;}
+    const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
+    const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
+    const storagePath=`megabrain/${uid}.${ext}`;
+    let up;try{up=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:file.type||"video/mp4",upsert:false});}catch(e){up={error:e};}
+    if(up.error){failures.push(`${nome}: falha no vídeo — ${up.error.message||up.error}`);done++;setBrainBatchState(done,queue.length);continue;}
+    const video=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    const data={
+      kind:"megabrain",nome,nicho:String(record.nicho||""),autor:String(record.autor||""),
+      metricaTipo:String(record.metricaTipo||"vendas"),metricaValor:String(record.metricaValor??record.vendas??""),metricaPendente:false,
+      linkDrive:String(record.linkDrive||record.video_url||""),video,copy:String(record.copy||""),copyLink:String(record.copyLink||""),
+      transcricao:String(record.transcricao||""),transcricaoWords:Array.isArray(record.transcricaoWords)?record.transcricaoWords:[],
+      transcricaoSegments:Array.isArray(record.transcricaoSegments)?record.transcricaoSegments:[],transcricaoStatus:record.transcricao?"done":"pending",
+      marca:"",link:"",print:"",comentario:String(record.comentario||"")
+    };
+    let res;try{res=await sb.from("offers").insert({data}).select();}catch(e){res={error:e};}
+    if(res.error){
+      failures.push(`${nome}: falha ao salvar — ${res.error.message||res.error}`);
+      try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(e){}
+    }else if(res.data&&res.data[0]){offers.push(res.data[0]);existing.add(nome.toLowerCase());}
+    done++;setBrainBatchState(done,queue.length);
+  }
+  brainBatchWorking=false;setBrainBatchState(done,queue.length,failures.length?"Importar lote":"Lote concluído");
+  renderGrid();writeCache();
+  const imported=queue.length-failures.length;
+  toast(`${imported} criativo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existente${skipped===1?"":"s"}`:""}${failures.length?` · ${failures.length} falha${failures.length===1?"":"s"}`:""}`,!!failures.length);
+  if(failures.length)console.warn("Falhas no lote do Mega Brain:\n"+failures.join("\n"));
 }
 
 /* ===== MEGA BRAIN: import permanente do Drive → Storage ===== */
@@ -3262,12 +3381,13 @@ function openSimpleView(o,skipOpen){
     const embed=videoEmbedHtml(va);
     const mediaPane=embed?`<div class="brainstage__media">${embed}</div>`
       :(va?`<div class="brainstage__media"><div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div></div>`:"");
-    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}${copyTitle}</div>${copyLink?`<div class="linkbtns" style="margin-bottom:12px">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}<div class="brain-copy ${copy?"":"empty"}">${copy?esc(copy):"Sem copy cadastrada — clique em Editar para adicionar."}</div></div>`;
+    const canFollow=!!(embed&&embed.includes("<video")&&String(d.transcricao||"").trim()&&copy);
+    const copyTools=[copyLink?linkbtn("Abrir copy (doc)",copyLink,true,"file"):"",canFollow?`<button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button>`:""].filter(Boolean).join("");
+    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}${copyTitle}</div>${copyTools?`<div class="brainstage__tools">${copyTools}</div>`:""}<div class="brain-copy ${copy?"":"empty"}" data-brain-copy>${copy?brainCopyMarkup(d):"Sem copy disponível neste card."}</div></div>`;
     if(mediaPane||copy||copyLink){
-      const tb=transBox(d.transcricao,false,d.transcricaoStatus);
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo &amp; Copy</span><span class="sec__line"></span></div>
         <div class="brainstage${mediaPane?"":" brainstage--full"}">${mediaPane}${copyPane}</div>
-        ${transcribeBtn(o,va,d)}${tb?`<div style="margin-top:14px">${tb}</div>`:""}</section>`;
+        ${transcribeBtn(o,va,d)}</section>`;
     }
     if(!mediaPane&&!copy&&!copyLink){
       sections+=`<div class="muted-empty">Nenhum material cadastrado ainda. Clique em Editar para adicionar copy ou criativo.</div>`;
@@ -3306,6 +3426,7 @@ function openSimpleView(o,skipOpen){
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
+  if(kind==="megabrain")wireBrainTranscript($("#viewBody"));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
 }

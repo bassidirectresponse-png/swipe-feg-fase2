@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
+const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
 const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
@@ -53,6 +54,41 @@ test("Mega Brain destaca somente os criativos marcados como vendas pendentes", (
   assert.match(html, /isHostedVideo\(d\.video\)\?"done"/);
   assert.match(html, /function brainCopyText\(d\)/);
   assert.match(html, /Copy do criativo \(transcrita\)/);
+});
+
+test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
+  assert.match(html, /let activeSection=.*brainAuthor=""/);
+  assert.match(html, /id="brainAuthorFilter"/);
+  assert.match(html, /id="brainNicheFilter"/);
+  assert.match(html, /p\.set\("autor",brainAuthor\)/);
+  assert.match(html, /r\.q\.get\("autor"\)/);
+});
+
+test("copy rápida usa fallback transcrito e detalhe não duplica transcrição", () => {
+  assert.match(html, /function openCopyPop\(id\)[\s\S]*?const copy=brainCopyText\(d\)/);
+  assert.match(html, /Sem copy disponível neste card/);
+  assert.match(html, /const copyPane=.*brainCopyMarkup\(d\)/);
+  assert.doesNotMatch(html, /\$\{transcribeBtn\(o,va,d\)\}\$\{tb\?/);
+});
+
+test("Mega Brain acompanha o vídeo grifando a copy", () => {
+  assert.match(html, /function brainCopyMarkup\(d\)/);
+  assert.match(html, /data-brainword/);
+  assert.match(html, /function wireBrainTranscript\(root\)/);
+  assert.match(html, /video\.addEventListener\("timeupdate"/);
+  assert.match(html, /transcricaoWords=allWords/);
+  assert.match(backgroundFn, /timestamp_granularities\[\]", "word"/);
+  assert.match(backgroundFn, /data\.transcricaoWords = words/);
+});
+
+test("Mega Brain importa uma pasta local por manifesto sem duplicar cards", () => {
+  assert.match(html, /id="brainBatchImport"/);
+  assert.match(html, /const BRAIN_BATCH_MANIFEST="megabrain-import\.json"/);
+  assert.match(html, /input\.webkitdirectory=true/);
+  assert.match(html, /existing=new Set\(offers\.filter/);
+  assert.match(html, /file\.size>VIDEO_MAX/);
+  assert.match(html, /sb\.storage\.from\(VIDEO_BUCKET\)\.upload/);
+  assert.match(html, /sb\.from\("offers"\)\.insert\(\{data\}\)/);
 });
 
 test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
