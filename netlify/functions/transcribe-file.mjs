@@ -17,9 +17,17 @@ const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
 const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
 const MAX_BYTES = 12 * 1024 * 1024; // cada pedaço é pequeno; guarda de segurança
+const GROQ_BUDGET_MS = 7000; // responde antes do limite síncrono da Netlify; o cliente subdivide se necessário
+const GROQ_ATTEMPT_MS = 5500;
 const LANGS_OK = new Set(["pt", "en", "es", "fr", "de", "it", "nl", "ja", "zh", "ru", "ar", "hi", "ko", "pl", "tr", "id", "uk", "sv", "cs", "ro"]);
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+async function timedFetch(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(250, timeoutMs));
+  try { return await fetch(url, { ...options, signal: controller.signal }); }
+  finally { clearTimeout(timer); }
+}
 
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
@@ -43,9 +51,11 @@ export default async (req) => {
   if (buf.length > MAX_BYTES) return json(413, { ok: false, error: "pedaço de áudio grande demais" });
 
   try {
-    let lastStatus = 502, lastText = "";
+    let lastStatus = 502, lastText = "", startedAt = Date.now();
     const models = [...new Set([GROQ_MODEL, GROQ_FALLBACK_MODEL].filter(Boolean))];
     for (const model of models) {
+      const remaining = GROQ_BUDGET_MS - (Date.now() - startedAt);
+      if (remaining < 500) { lastStatus = 504; lastText = "tempo limite interno atingido"; break; }
       const form = new FormData();
       form.append("file", new Blob([buf], { type: "audio/wav" }), "audio.wav");
       form.append("model", model);
@@ -53,9 +63,15 @@ export default async (req) => {
       form.append("timestamp_granularities[]", "word");
       form.append("timestamp_granularities[]", "segment");
       if (language && language !== "auto" && LANGS_OK.has(language)) form.append("language", language);
-      const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-        method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
-      });
+      let g;
+      try {
+        g = await timedFetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
+        }, Math.min(GROQ_ATTEMPT_MS, remaining));
+      } catch (e) {
+        if (e && e.name === "AbortError") { lastStatus = 504; lastText = `o modelo ${model} excedeu o tempo seguro`; continue; }
+        throw e;
+      }
       const gt = await g.text();
       if (g.ok) {
         const gj = JSON.parse(gt);
@@ -70,6 +86,7 @@ export default async (req) => {
       lastStatus = g.status; lastText = gt;
       if (g.status !== 429 && g.status < 500) break;
     }
-    return json(502, { ok: false, error: `Groq HTTP ${lastStatus}: ${lastText.slice(0, 160)}` });
+    const status = lastStatus === 429 ? 429 : lastStatus === 504 ? 504 : 502;
+    return json(status, { ok: false, retryable: status === 429 || status >= 500, error: `Groq HTTP ${lastStatus}: ${lastText.slice(0, 160)}` });
   } catch (e) { return json(502, { ok: false, error: "falha ao chamar o Groq: " + String(e && e.message ? e.message : e).slice(0, 120) }); }
 };

@@ -24,6 +24,14 @@ test("Feguinho usa a moldura ampla de conversa de IA", () => {
   assert.match(html, /\.chat--feguinho \.chat__input\{min-height:72px/);
 });
 
+test("áreas autenticadas não repetem o hero da marca", () => {
+  assert.doesNotMatch(html, /<h1 class="impact"/);
+  assert.doesNotMatch(html, /id="pageSub"/);
+  assert.match(html, /class="login-brand"/);
+  assert.match(html, /\.page\{padding:18px/);
+  assert.match(html, /body\.toolmode \.page\{display:none/);
+});
+
 test("fase 4 do Furtado escolhe corpos e hooks e gera a remessa completa", () => {
   assert.match(html, /id="furNCorpos" min="1" max="8"/);
   assert.match(html, /id="furNHooks" min="1" max="6"/);
@@ -145,6 +153,17 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /vslRenderTimer=setTimeout/);
   assert.match(html, /\.vslactions \[hidden\]\{display:none!important/);
   assert.match(html, /\.vslactions \.btn:disabled\{opacity:/);
+});
+
+test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
+  assert.match(html, /VSL_CHUNK_SEC=45/);
+  assert.match(html, /async function vslTranscribeSlice/);
+  assert.match(html, /status===502\|\|status===503\|\|status===504/);
+  assert.match(html, /vslChunkCache=new Map/);
+  assert.match(html, /Retomando parte/);
+  assert.match(fn, /GROQ_BUDGET_MS = 7000/);
+  assert.match(fn, /timedFetch/);
+  assert.match(fn, /lastStatus === 504 \? 504/);
 });
 
 test("backend do Dissecador preserva a copy e analisa por blocos", () => {

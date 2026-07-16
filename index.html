@@ -92,19 +92,12 @@
   @media(max-width:980px){#nicheToggle{display:flex;}}
   @media(max-width:600px){.topbar{gap:9px;}#newBtn{padding:0 13px;gap:0;}.newBtn-txt{display:none;}#syncTxt{display:none;}}
 
-  /* page header */
-  .page{padding:clamp(22px,4vw,44px) clamp(16px,4vw,48px) 0;}
-  .page .sub{margin-top:12px;color:var(--muted-fg);font-size:clamp(.95rem,1.6vw,1.15rem);max-width:560px;}
-  .page .meta-row{margin-top:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  /* indicadores compactos das áreas autenticadas */
+  .page{padding:18px clamp(16px,4vw,48px) 0;}
+  .page .meta-row{margin-top:0;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
   .stat{display:flex;align-items:baseline;gap:8px;}
   .stat .n{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;}
   .stat .l{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);}
-  .impact{display:inline-flex;align-items:center;gap:11px;font-size:clamp(1.5rem,3.2vw,2.3rem);font-weight:700;letter-spacing:-.025em;line-height:1.1;}
-  .impact .lime{color:var(--accent);}
-  .lupa{width:1.05em;height:1.05em;color:var(--accent);flex-shrink:0;filter:drop-shadow(0 0 14px rgba(229,255,45,.45));}
-  .lupa svg{width:100%;height:100%;display:block;}
-  .page .lab{margin-top:9px;color:var(--muted-fg);font-size:clamp(.86rem,1.25vw,1rem);max-width:640px;line-height:1.5;}
-  .page .lab b{color:var(--fg);font-weight:600;}
 
   /* login */
   #loginScreen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;
@@ -650,6 +643,7 @@
 
   /* ===== Chat (Feguinho + Furtado) — layout de conversa ===== */
   body.chatmode .page{display:none;}
+  body.toolmode .page{display:none;}
   body.chatmode .grid-wrap{padding:0;}
   body.chatmode #subFilter{display:none;}
   body.chatmode{height:100dvh;overflow:hidden;}
@@ -977,8 +971,6 @@ create policy "public_all" on offers
     <div class="sidenav-backdrop" id="sideNavBackdrop"></div>
     <main class="main">
       <div class="page">
-        <h1 class="impact"><span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>Benchmarking <span class="lime">Grupo FEG</span></h1>
-        <p class="lab" id="pageSub">Além de um swipe de ofertas, um <b>laboratório de análise de dados</b> exclusivo.</p>
         <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
       </div>
       <div class="grid-wrap"><div class="subfilter" id="subFilter"></div><div id="gridArea"></div></div>
@@ -1345,9 +1337,8 @@ function parseLocation(){
 function renderNotFound(msg){
   document.body.classList.remove("route-detail-full");
   document.title="Não encontrado — Benchmarking FEG";
-  document.body.classList.remove("chatmode");
+  document.body.classList.remove("chatmode","toolmode");
   const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/ofertas/todos" style="margin-top:18px">Voltar para as ofertas</a></div>`;
-  const sub=$("#pageSub");if(sub)sub.textContent="";
 }
 function maybeOpenView(id){
   const o=offers.find(x=>x.id===id);
@@ -2177,16 +2168,7 @@ function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=isToolSection(activeSection);
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
-  const sub=$("#pageSub");
-  if(sub){
-    // breadcrumb derivado da rota (Item 5.4) para seções filtráveis por nicho
-    let crumb="";
-    if(NICHE_SECTIONS.has(activeSection)){
-      const cn=activeNiche===NO_NICHE?"Sem nicho":(activeNiche||"Todos");
-      crumb=`<nav class="crumbs" aria-label="Trilha"><a data-nav href="${esc(listPath(activeSection,""))}">${esc(SEC_SHORT[activeSection]||cfg.label)}</a><span class="crumbs__sep">›</span><span aria-current="page">${esc(cn)}</span></nav>`;
-    }
-    sub.innerHTML=crumb+cfg.subHtml;
-  }
+  document.body.classList.toggle("toolmode",cc);
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc?"none":"";
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
@@ -2737,9 +2719,10 @@ function renderTranscritor(){
 
 /* ===== DISSECADOR DE VSL ===== */
 const VSL_DISSECT_FN="/.netlify/functions/vsl-dissector";
+const VSL_CHUNK_SEC=45,VSL_MIN_CHUNK_SEC=10,VSL_TRANSIENT_RETRIES=3;
 let vslFile=null,vslObjectUrl="",vslBusy=false,vslAbort=null,vslName="",vslNiche="",vslLang="auto",vslCanonical="";
 let vslRaw="",vslSegments=[],vslWords=[],vslDetectedLang="",vslDuration=0,vslSheets=[],vslTranscriptDoc="",vslAnalysisDoc="",vslActiveTab="transcript";
-let vslRenderTimer=0;
+let vslRenderTimer=0,vslChunkCache=new Map(),vslCacheKey="";
 function vslBytes(n){n=+n||0;if(n<1024)return n+" B";if(n<1024*1024)return(n/1024).toFixed(1)+" KB";return(n/1024/1024).toFixed(1)+" MB";}
 function vslBaseName(name){return String(name||"VSL").replace(/\.[^.]+$/," ").trim()||"VSL";}
 function vslSlug(name){return String(name||"vsl").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"vsl";}
@@ -2810,21 +2793,48 @@ function vslHandleStreamEvent(event){
   else if(event.t==="status")vslSetStatus(3,event.v||"Analisando a VSL…",event.phase==="analysis"?84:70);
   else if(event.t==="phase_done"&&event.phase==="transcript")vslSetStatus(3,"Transcrição organizada. Dissecando a estratégia…",82);
 }
+function vslFileCacheKey(file,lang){return [file&&file.name,file&&file.size,file&&file.lastModified,lang||"auto"].join(":");}
+function vslAbortError(){try{return new DOMException("Processamento cancelado","AbortError");}catch(_){const e=new Error("Processamento cancelado");e.name="AbortError";return e;}}
+function vslDelay(ms,signal){return new Promise((resolve,reject)=>{if(signal&&signal.aborted)return reject(vslAbortError());const timer=setTimeout(done,ms);function done(){if(signal)signal.removeEventListener("abort",stop);resolve();}function stop(){clearTimeout(timer);reject(vslAbortError());}if(signal)signal.addEventListener("abort",stop,{once:true});});}
+function vslMergeParts(a,b){return{text:[a.text,b.text].filter(Boolean).join(" ").trim(),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
+async function vslPostAudio(samples,rate,token,lang,offset,signal){
+  const r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate),signal});
+  let j={};try{j=await r.json();}catch(_){}
+  if(!r.ok||!j.ok){const e=new Error(j.error||("Falha na transcrição: HTTP "+r.status));e.status=r.status;throw e;}
+  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:String(s.text||"").trim()})).filter(s=>s.text):[],words:Array.isArray(j.words)?j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word):[]};
+}
+async function vslTranscribeSlice(samples,rate,token,lang,offset,signal,onAdapt,depth=0){
+  let lastError=null;const seconds=samples.length/rate;
+  for(let attempt=0;attempt<VSL_TRANSIENT_RETRIES;attempt++){
+    try{return await vslPostAudio(samples,rate,token,lang,offset,signal);}catch(e){
+      if(e&&e.name==="AbortError")throw e;lastError=e;const status=+e.status||0,authFailure=/Groq HTTP (400|401|403)/i.test(e.message||""),canSplit=seconds>VSL_MIN_CHUNK_SEC*2.1;
+      if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
+        if(onAdapt)onAdapt(`Uma parte demorou além do limite; dividindo ${Math.round(seconds)}s em trechos menores…`);
+        const middle=Math.floor(samples.length/2),left=await vslTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,signal,onAdapt,depth+1),right=await vslTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+middle/rate,signal,onAdapt,depth+1);
+        return vslMergeParts(left,right);
+      }
+      const transient=status===0||status===429||status===502||status===503||status===504;
+      if(!transient||attempt===VSL_TRANSIENT_RETRIES-1)throw e;
+      if(onAdapt)onAdapt(`Serviço ocupado; tentando novamente (${attempt+2}/${VSL_TRANSIENT_RETRIES})…`);
+      await vslDelay(1200*(attempt+1),signal);
+    }
+  }
+  throw lastError||new Error("Falha ao transcrever esta parte");
+}
+function vslAppendPart(part){if(part.text)vslRaw+=(vslRaw?" ":"")+part.text;if(part.language&&!vslDetectedLang)vslDetectedLang=part.language;vslSegments.push(...(part.segments||[]));vslWords.push(...(part.words||[]));}
 async function vslRun(){
   if(vslBusy||!vslFile)return;vslName=($("#vslName").value||vslBaseName(vslFile.name)).trim();vslNiche=$("#vslNiche").value;vslLang=$("#vslLang").value;vslCanonical=$("#vslCanonical").value.trim();
   if(!vslName){toast("Dê um nome para a VSL.",true);$("#vslName").focus();return;}
   vslBusy=true;vslAbort=new AbortController();vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslRenderFile();vslRenderSheets();vslRenderDocs();
   const run=$("#vslRun"),cancel=$("#vslCancel");if(run)run.disabled=true;if(cancel)cancel.hidden=false;
   try{
-    vslSetStatus(1,"Extraindo o áudio em 16 kHz…",4);const mono=await trDecodeMono16k(vslFile),rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));vslDuration=mono.length/rate;
+    vslSetStatus(1,"Extraindo o áudio em 16 kHz…",4);const mono=await trDecodeMono16k(vslFile),rate=16000,chunkLen=VSL_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));vslDuration=mono.length/rate;
     const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
+    const cacheKey=vslFileCacheKey(vslFile,vslLang);if(vslCacheKey!==cacheKey){vslChunkCache.clear();vslCacheKey=cacheKey;}
     for(let i=0;i<nChunks;i++){
-      vslSetStatus(1,`Transcrevendo parte ${i+1} de ${nChunks}…`,8+Math.round((i/nChunks)*48));
-      const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*TR_CHUNK_SEC,r=await fetch(TR_FN+"?lang="+encodeURIComponent(vslLang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate),signal:vslAbort.signal});
-      let j={};try{j=await r.json();}catch(_){}if(!r.ok||!j.ok)throw new Error(j.error||("Falha na transcrição: HTTP "+r.status));
-      if(j.text)vslRaw+=(vslRaw?" ":"")+String(j.text).trim();if(j.language&&!vslDetectedLang)vslDetectedLang=j.language;
-      if(Array.isArray(j.segments))vslSegments.push(...j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:String(s.text||"").trim()})).filter(s=>s.text));
-      if(Array.isArray(j.words))vslWords.push(...j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word));
+      const pct=8+Math.round((i/nChunks)*48),cached=vslChunkCache.get(i);vslSetStatus(1,cached?`Retomando parte ${i+1} de ${nChunks} já concluída…`:`Transcrevendo parte ${i+1} de ${nChunks}…`,pct);
+      const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*VSL_CHUNK_SEC,part=cached||await vslTranscribeSlice(slice,rate,token,vslLang,offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${i+1} de ${nChunks}: ${msg}`,pct));
+      if(!cached)vslChunkCache.set(i,part);vslAppendPart(part);
     }
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
     vslSetStatus(2,vslFile.type.startsWith("video/")?"Lendo a linha do tempo visual…":"Arquivo de áudio: seguindo sem leitura visual.",58);
@@ -2840,7 +2850,7 @@ async function vslRun(){
   }finally{vslBusy=false;vslAbort=null;if(vslRenderTimer){clearTimeout(vslRenderTimer);vslRenderTimer=0;}vslRenderFile();vslRenderDocs();if(cancel)cancel.hidden=true;if(run)run.disabled=!vslFile;}
 }
 function vslReset(){
-  if(vslBusy)return;vslFile=null;if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl="";vslName="";vslNiche="";vslLang="auto";vslCanonical="";vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslDuration=0;vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";renderVslDissector(true);
+  if(vslBusy)return;vslFile=null;if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl="";vslName="";vslNiche="";vslLang="auto";vslCanonical="";vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslDuration=0;vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslChunkCache.clear();vslCacheKey="";renderVslDissector(true);
 }
 function renderVslDissector(force){
   const area=$("#gridArea");if(!area)return;if($("#vslDissector")&&!force)return;
