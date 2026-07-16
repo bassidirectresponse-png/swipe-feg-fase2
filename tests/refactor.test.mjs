@@ -7,6 +7,7 @@ const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", im
 const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
 const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
+const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissector.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
@@ -129,6 +130,31 @@ test("Mega Brain transcreve vídeos grandes em partes e grava a copy", () => {
   assert.match(html, /queueBrainChunkedTranscription/);
   assert.match(html, /chunked=.*content-length/);
   assert.match(html, /data\.transcricao=fullText\.trim\(\)/);
+});
+
+test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () => {
+  assert.match(html, /key:"vsldissector",label:"Dissecador de VSL"/);
+  assert.match(html, /vsldissector:"dissecador-vsl"/);
+  assert.match(html, /function renderVslDissector\(force\)/);
+  assert.match(html, /id="vslFile" accept="video\/\*,audio\/\*"/);
+  assert.match(html, /async function vslBuildContactSheets\(file,duration,onProgress\)/);
+  assert.match(html, /Fechamento e CTA/);
+  assert.match(html, /Transcrição organizada/);
+  assert.match(html, /Dissecação estratégica/);
+  assert.match(html, /canonicalScript:vslCanonical/);
+  assert.match(html, /vslRenderTimer=setTimeout/);
+});
+
+test("backend do Dissecador preserva a copy e analisa por blocos", () => {
+  assert.match(vslDissectorFn, /A transcrição organizada é completa, não um resumo/);
+  assert.match(vslDissectorFn, /# Lead - 00:00-05:00/);
+  assert.match(vslDissectorFn, /Mapa de Extração para Obsidian/);
+  assert.match(vslDissectorFn, /Belief Ladder em ordem/);
+  assert.match(vslDissectorFn, /Inventário de provas usando/);
+  assert.match(vslDissectorFn, /channel: "transcript"/);
+  assert.match(vslDissectorFn, /channel: "analysis"/);
+  assert.match(vslDissectorFn, /imageContent\(images\)/);
+  assert.match(vslDissectorFn, /não crie seções de compliance/);
 });
 
 test("rotas profundas recebem o fallback da SPA", () => {

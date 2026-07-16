@@ -840,6 +840,73 @@
   .trword.is-active{color:var(--on-accent);background:var(--accent);}
   @media(max-width:640px){.trplayer__row{grid-template-columns:auto minmax(0,1fr) auto}.trplayer__speed{grid-column:2/4;justify-self:end}}
 
+  /* ===== Dissecador de VSL ===== */
+  .vsltool{max-width:1240px;margin:0 auto;padding:2px 0 72px;}
+  .vsltool .cchief__heroTx p{max-width:760px;}
+  .vslstage{background:var(--surface);border:1px solid var(--border-2);border-radius:16px;overflow:hidden;}
+  .vslmeta{display:grid;grid-template-columns:minmax(260px,1.4fr) minmax(210px,.8fr) minmax(190px,.7fr);gap:14px;padding:18px;border-bottom:1px solid var(--border);}
+  .vslfield{display:flex;flex-direction:column;gap:7px;min-width:0;}
+  .vslfield>span{font-size:.72rem;color:var(--muted-fg);font-weight:700;}
+  .vslfield input,.vslfield select,.vslfield textarea{width:100%;background:var(--surface-2);border:1px solid var(--border-2);color:var(--fg);border-radius:10px;padding:10px 12px;font:inherit;font-size:.9rem;transition:border-color .16s,box-shadow .16s;}
+  .vslfield textarea{min-height:150px;resize:vertical;line-height:1.55;}
+  .vslfield input::placeholder,.vslfield textarea::placeholder{color:var(--muted-fg);opacity:1;}
+  .vslfield input:hover,.vslfield select:hover,.vslfield textarea:hover{border-color:var(--border-strong);}
+  .vslfield input:focus,.vslfield select:focus,.vslfield textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring);}
+  .vsldrop{margin:18px;border:1.5px dashed var(--border-strong);border-radius:14px;background:var(--surface-2);min-height:158px;display:grid;place-items:center;padding:24px;text-align:center;cursor:pointer;transition:border-color .18s,background .18s;}
+  .vsldrop:hover,.vsldrop:focus-visible,.vsldrop.active{border-color:var(--accent);background:var(--accent-soft);outline:none;}
+  .vsldrop.ready{border-style:solid;background:var(--surface-2);}
+  .vsldrop.busy{pointer-events:none;opacity:.65;}
+  .vsldrop__inner{display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--muted-fg);font-size:.92rem;line-height:1.45;}
+  .vsldrop__inner .ico{width:34px;height:34px;color:var(--accent);margin-bottom:2px;}
+  .vsldrop__inner strong{color:var(--fg);font-size:1rem;}
+  .vsldrop__inner small{color:var(--muted-fg);font-size:.79rem;max-width:620px;}
+  .vslfilemeta{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-size:.78rem;color:var(--muted-fg);}
+  .vslfilemeta span{background:var(--surface-3);border-radius:999px;padding:4px 9px;}
+  .vslextra{margin:0 18px 18px;border-top:1px solid var(--border);padding-top:14px;}
+  .vslextra summary{cursor:pointer;color:var(--muted-fg);font-size:.82rem;font-weight:700;list-style:none;display:inline-flex;align-items:center;gap:7px;}
+  .vslextra summary::-webkit-details-marker{display:none;}
+  .vslextra summary::before{content:"+";display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--surface-3);color:var(--accent);}
+  .vslextra[open] summary::before{content:"−";}
+  .vslextra .vslfield{margin-top:12px;}
+  .vslactions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
+  .vslactions__hint{margin-left:auto;font-size:.78rem;color:var(--muted-fg);display:flex;align-items:center;gap:6px;}
+  .vslactions__hint .ico{width:14px;height:14px;color:var(--accent);}
+  .vslprogress{margin-top:18px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);padding:16px 18px;}
+  .vslprogress[hidden]{display:none;}
+  .vslsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .vslstep{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:9px 10px;border-radius:10px;color:var(--muted-fg);background:var(--surface-2);}
+  .vslstep__n{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:50%;background:var(--surface-3);font-size:.75rem;font-weight:800;color:var(--muted-fg);}
+  .vslstep__tx{min-width:0;}.vslstep__tx b{display:block;font-size:.82rem;color:inherit;}.vslstep__tx span{display:block;font-size:.7rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vslstep.active{color:var(--fg);background:var(--accent-soft);}
+  .vslstep.active .vslstep__n{background:var(--accent);color:var(--on-accent);}
+  .vslstep.done{color:var(--fg);}.vslstep.done .vslstep__n{background:var(--accent);color:var(--on-accent);}
+  .vslprogress__bar{height:5px;margin-top:13px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+  .vslprogress__fill{display:block;width:0;height:100%;background:var(--accent);transition:width .2s var(--ease);}
+  .vslprogress__status{margin-top:10px;display:flex;align-items:center;gap:8px;color:var(--muted-fg);font-size:.82rem;min-height:20px;}
+  .vslsheets{display:flex;gap:8px;overflow-x:auto;margin-top:12px;padding-bottom:3px;}
+  .vslsheets:empty{display:none;}
+  .vslsheets img{width:150px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:1px solid var(--border-2);background:#000;}
+  .vsloutputs{margin-top:22px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);overflow:hidden;}
+  .vsloutputs[hidden]{display:none;}
+  .vsloutbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .vsltabs{display:flex;gap:5px;flex-wrap:wrap;}
+  .vsltab{border:1px solid transparent;background:transparent;color:var(--muted-fg);border-radius:9px;padding:8px 12px;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;}
+  .vsltab:hover{color:var(--fg);background:var(--surface-3);}
+  .vsltab:focus-visible{outline:none;box-shadow:var(--ring);}
+  .vsltab.active{border-color:var(--border-strong);background:var(--surface-3);color:var(--accent);}
+  .vsltab__state{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:6px;border-radius:999px;background:var(--surface);font-size:.66rem;color:var(--muted-fg);}
+  .vsltab__state.done{background:var(--accent);color:var(--on-accent);}
+  .vslouttools{display:flex;gap:8px;margin-left:auto;}
+  .vsldoc{padding:24px clamp(16px,3vw,34px) 42px;max-height:72vh;overflow:auto;scrollbar-width:thin;}
+  .vsldoc[hidden]{display:none;}
+  .vslmd{max-width:92ch;margin:0 auto;font-size:.96rem;line-height:1.72;}
+  .vslmd h3{scroll-margin-top:16px;}
+  .vslblank{display:flex;align-items:center;gap:9px;color:var(--muted-fg);padding:20px 0;font-size:.9rem;}
+  .vslblank .ico{width:18px;height:18px;color:var(--accent);}
+  @media(max-width:860px){.vslmeta{grid-template-columns:1fr 1fr}.vslmeta .vslfield:first-child{grid-column:1/-1}.vslsteps{grid-template-columns:1fr}.vslstep__tx span{white-space:normal}.vslactions__hint{width:100%;margin-left:0}.vsldoc{max-height:none}}
+  @media(max-width:560px){.vslmeta{grid-template-columns:1fr}.vslmeta .vslfield:first-child{grid-column:auto}.vsldrop{margin:14px;padding:20px 14px}.vslextra{margin-inline:14px}.vslactions{padding-inline:14px}.vslouttools{width:100%;margin-left:0}.vslouttools .btn{flex:1}.vslmd{font-size:.92rem}.vsltool .cchief__hero{align-items:flex-start}}
+  @media(prefers-reduced-motion:reduce){.vslprogress__fill,.vsldrop{transition:none}}
+
   body.route-detail-full .shell{display:none;}
   body.route-detail-full{overflow:auto!important;}
   body.route-detail-full #viewOverlay{position:static;display:block;background:transparent;backdrop-filter:none;padding:0;overflow:visible;}
@@ -1018,9 +1085,10 @@ const SECTIONS=[
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
+  {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
 ];
-function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado";}
+function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado"||k==="vsldissector";}
 function isChatSection(k){return k==="copychief"||k==="furtado";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const k=(o&&o.data&&o.data.kind)||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
@@ -1212,14 +1280,14 @@ function filtered(){
   return list;
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA"};
+const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",noticia:"noticias",tiktok:"radar-tiktok",copychief:"chat",furtado:"furtado",transcritor:"transcritor"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",noticia:"noticias",tiktok:"radar-tiktok",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","noticia","tiktok"]);
 let routeReady=false;
@@ -1323,7 +1391,7 @@ document.addEventListener("click",e=>{
   navigate(href,{state:isDetail?{modal:true}:null});
 });
 window.addEventListener("popstate",applyRoute);
-const AI_SECTIONS=new Set(["copychief","transcritor","furtado"]);
+const AI_SECTIONS=new Set(["copychief","transcritor","furtado","vsldissector"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
 function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
@@ -1359,8 +1427,8 @@ function renderSideNav(){
   SECTIONS.forEach(s=>{
     if(AI_SECTIONS.has(s.key)&&!aiDone){html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;aiDone=true;}
     const active=activeSection===s.key;
-    const chip=(s.key==="copychief"||s.key==="furtado")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
-    const aiHi=(s.key==="copychief"||s.key==="furtado")?" snav__sec--ai":"";
+    const chip=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
+    const aiHi=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?" snav__sec--ai":"";
     html+=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</a>`;
     if(active&&nicheHtml)html+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
   });
@@ -1502,6 +1570,7 @@ function renderGrid(skipNav){
   if(activeSection==="copychief"){renderCopyChief();return;}
   if(activeSection==="transcritor"){renderTranscritor();return;}
   if(activeSection==="furtado"){renderFurtado();return;}
+  if(activeSection==="vsldissector"){renderVslDissector();return;}
   const cfg=sectionCfg(activeSection);
   const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
@@ -2662,6 +2731,147 @@ function renderTranscritor(){
     a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,""):"transcricao")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   });
   if(trText||trSegs.length||trAudioUrl){renderTrOutput();trRenderPlayer();}
+}
+
+/* ===== DISSECADOR DE VSL ===== */
+const VSL_DISSECT_FN="/.netlify/functions/vsl-dissector";
+let vslFile=null,vslObjectUrl="",vslBusy=false,vslAbort=null,vslName="",vslNiche="",vslLang="auto",vslCanonical="";
+let vslRaw="",vslSegments=[],vslWords=[],vslDetectedLang="",vslDuration=0,vslSheets=[],vslTranscriptDoc="",vslAnalysisDoc="",vslActiveTab="transcript";
+let vslRenderTimer=0;
+function vslBytes(n){n=+n||0;if(n<1024)return n+" B";if(n<1024*1024)return(n/1024).toFixed(1)+" KB";return(n/1024/1024).toFixed(1)+" MB";}
+function vslBaseName(name){return String(name||"VSL").replace(/\.[^.]+$/," ").trim()||"VSL";}
+function vslSlug(name){return String(name||"vsl").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"vsl";}
+function vslSetStatus(step,text,pct){
+  const p=$("#vslProgress");if(p)p.hidden=false;
+  $$(".vslstep",p||document).forEach(el=>{const n=+el.dataset.vslstep;el.classList.toggle("done",n<step||pct>=100);el.classList.toggle("active",n===step&&pct<100);});
+  const fill=$("#vslProgressFill");if(fill)fill.style.width=Math.max(0,Math.min(100,+pct||0))+"%";
+  const status=$("#vslProgressStatus");if(status)status.innerHTML=`<span class="${pct>=100?"ccdot ccdot--done":"vidup__spin"}"></span><span>${esc(text||"")}</span>`;
+}
+function vslRenderFile(){
+  const drop=$("#vslDrop");if(!drop)return;
+  drop.classList.toggle("ready",!!vslFile);drop.classList.toggle("busy",vslBusy);
+  drop.innerHTML=vslFile?`<div class="vsldrop__inner">${ic(vslFile.type.startsWith("video/")?"film":"mic")}<strong>${esc(vslFile.name)}</strong><div class="vslfilemeta"><span>${esc(vslFile.type||"arquivo de mídia")}</span><span>${vslBytes(vslFile.size)}</span>${vslDuration?`<span>${trTime(vslDuration)}</span>`:""}</div><small>Clique para trocar o arquivo. O vídeo fica no navegador; somente áudio em partes e contact sheets são enviados para análise.</small></div>`:`<div class="vsldrop__inner">${ic("upload")}<strong>Clique ou arraste a VSL aqui</strong><small>MP4, MOV, WEBM, MP3 ou WAV. O áudio será transcrito em partes e o vídeo será lido por contact sheets da linha do tempo.</small></div>`;
+  const run=$("#vslRun");if(run)run.disabled=!vslFile||vslBusy;
+}
+function vslRenderSheets(){const host=$("#vslSheets");if(host)host.innerHTML=vslSheets.map((s,i)=>`<img src="data:${s.mediaType};base64,${s.data}" alt="Contact sheet ${i+1}: ${esc(s.label)}">`).join("");}
+function vslRenderDocs(){
+  const out=$("#vslOutputs");if(out)out.hidden=!(vslBusy||vslTranscriptDoc||vslAnalysisDoc);
+  const tr=$("#vslTranscriptMd"),an=$("#vslAnalysisMd"),trDoc=$("#vslTranscriptDoc"),anDoc=$("#vslAnalysisDoc"),trTop=trDoc?trDoc.scrollTop:0,anTop=anDoc?anDoc.scrollTop:0;
+  if(tr)tr.innerHTML=vslTranscriptDoc?ccMarkdown(vslTranscriptDoc):`<div class="vslblank">${ic("file")}A transcrição organizada aparecerá aqui.</div>`;
+  if(an)an.innerHTML=vslAnalysisDoc?ccMarkdown(vslAnalysisDoc):`<div class="vslblank">${ic("brain")}A dissecação começa depois que a transcrição organizada fica pronta.</div>`;
+  if(trDoc){trDoc.hidden=vslActiveTab!=="transcript";trDoc.scrollTop=trTop;}if(anDoc){anDoc.hidden=vslActiveTab!=="analysis";anDoc.scrollTop=anTop;}
+  $$("[data-vsltab]").forEach(b=>b.classList.toggle("active",b.dataset.vsltab===vslActiveTab));
+  const ts=$("#vslTranscriptState"),as=$("#vslAnalysisState");if(ts){ts.textContent=vslTranscriptDoc?"✓":"—";ts.classList.toggle("done",!!vslTranscriptDoc&&!vslBusy);}if(as){as.textContent=vslAnalysisDoc?"✓":"—";as.classList.toggle("done",!!vslAnalysisDoc&&!vslBusy);}
+}
+function vslQueueRender(){if(!vslRenderTimer)vslRenderTimer=setTimeout(()=>{vslRenderTimer=0;vslRenderDocs();},90);}
+function vslDownload(kind){
+  const text=kind==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}
+  const suffix=kind==="analysis"?"dissecacao-estrategica":"transcricao-organizada",blob=new Blob([text],{type:"text/markdown;charset=utf-8"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=`${vslSlug(vslName)}__${suffix}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function vslWait(el,event,timeout=12000){return new Promise((resolve,reject)=>{let timer;const ok=()=>{clearTimeout(timer);el.removeEventListener("error",bad);resolve();},bad=()=>{clearTimeout(timer);el.removeEventListener(event,ok);reject(new Error("não consegui ler o vídeo"));};el.addEventListener(event,ok,{once:true});el.addEventListener("error",bad,{once:true});timer=setTimeout(bad,timeout);});}
+async function vslReadDuration(file){
+  if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl=URL.createObjectURL(file);
+  const media=document.createElement(file.type.startsWith("video/")?"video":"audio");media.preload="metadata";media.src=vslObjectUrl;
+  try{await vslWait(media,"loadedmetadata",8000);return isFinite(media.duration)?media.duration:0;}catch(_){return 0;}
+}
+async function vslChooseFile(file){
+  if(!file||!/^((video|audio)\/)/.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
+  if(vslBusy)return;vslFile=file;vslDuration=0;vslSheets=[];vslRenderFile();vslRenderSheets();
+  if(!vslName){vslName=vslBaseName(file.name);const n=$("#vslName");if(n)n.value=vslName;}
+  vslDuration=await vslReadDuration(file);vslRenderFile();
+}
+async function vslSeek(video,value){
+  const target=Math.max(0,Math.min(Math.max(0,(video.duration||0)-.12),value));
+  if(Math.abs((video.currentTime||0)-target)<.04&&video.readyState>=2)return;
+  const waiting=vslWait(video,"seeked",9000);video.currentTime=target;await waiting;
+}
+function vslDrawCover(ctx,video,x,y,w,h){const vw=video.videoWidth||w,vh=video.videoHeight||h,scale=Math.max(w/vw,h/vh),sw=w/scale,sh=h/scale,sx=(vw-sw)/2,sy=(vh-sh)/2;ctx.drawImage(video,sx,sy,sw,sh,x,y,w,h);}
+async function vslBuildContactSheets(file,duration,onProgress){
+  if(!file.type.startsWith("video/")||!duration)return[];
+  const video=document.createElement("video");video.preload="auto";video.muted=true;video.playsInline=true;video.src=vslObjectUrl||URL.createObjectURL(file);await vslWait(video,"loadedmetadata",12000);
+  const frameCount=duration>1800?36:duration>600?24:12,full=Array.from({length:frameCount},(_,i)=>Math.max(.1,(duration-.2)*(i/Math.max(1,frameCount-1)))),sets=[];
+  for(let i=0;i<full.length;i+=12)sets.push({times:full.slice(i,i+12),label:`Linha do tempo ${trTime(full[i])}–${trTime(full[Math.min(full.length-1,i+11)])}`});
+  if(duration>300){const start=duration*.82;sets.push({times:Array.from({length:12},(_,i)=>start+(duration-start-.2)*(i/11)),label:`Fechamento e CTA ${trTime(start)}–${trTime(duration)}`});}
+  const result=[];let captured=0,total=sets.reduce((n,s)=>n+s.times.length,0);
+  try{
+    for(const set of sets){
+      const cols=4,fw=240,fh=135,labelH=23,rows=Math.ceil(set.times.length/cols),canvas=document.createElement("canvas");canvas.width=cols*fw;canvas.height=rows*(fh+labelH);const ctx=canvas.getContext("2d");ctx.fillStyle="#080808";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font="600 12px system-ui";ctx.textBaseline="middle";
+      for(let i=0;i<set.times.length;i++){await vslSeek(video,set.times[i]);const x=(i%cols)*fw,y=Math.floor(i/cols)*(fh+labelH);vslDrawCover(ctx,video,x,y,fw,fh);ctx.fillStyle="#111";ctx.fillRect(x,y+fh,fw,labelH);ctx.fillStyle="#e5ff2d";ctx.fillText(trTime(set.times[i]),x+8,y+fh+labelH/2);captured++;if(onProgress)onProgress(captured,total);}
+      const url=canvas.toDataURL("image/jpeg",.72);result.push({mediaType:"image/jpeg",data:url.split(",")[1],label:set.label});
+    }
+  }finally{video.removeAttribute("src");try{video.load();}catch(_){}}
+  return result;
+}
+function vslHandleStreamEvent(event){
+  if(!event)return;if(event.t==="text"){if(event.channel==="analysis")vslAnalysisDoc+=event.v||"";else vslTranscriptDoc+=event.v||"";vslQueueRender();}
+  else if(event.t==="status")vslSetStatus(3,event.v||"Analisando a VSL…",event.phase==="analysis"?84:70);
+  else if(event.t==="phase_done"&&event.phase==="transcript")vslSetStatus(3,"Transcrição organizada. Dissecando a estratégia…",82);
+}
+async function vslRun(){
+  if(vslBusy||!vslFile)return;vslName=($("#vslName").value||vslBaseName(vslFile.name)).trim();vslNiche=$("#vslNiche").value;vslLang=$("#vslLang").value;vslCanonical=$("#vslCanonical").value.trim();
+  if(!vslName){toast("Dê um nome para a VSL.",true);$("#vslName").focus();return;}
+  vslBusy=true;vslAbort=new AbortController();vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslRenderFile();vslRenderSheets();vslRenderDocs();
+  const run=$("#vslRun"),cancel=$("#vslCancel");if(run)run.disabled=true;if(cancel)cancel.hidden=false;
+  try{
+    vslSetStatus(1,"Extraindo o áudio em 16 kHz…",4);const mono=await trDecodeMono16k(vslFile),rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));vslDuration=mono.length/rate;
+    const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
+    for(let i=0;i<nChunks;i++){
+      vslSetStatus(1,`Transcrevendo parte ${i+1} de ${nChunks}…`,8+Math.round((i/nChunks)*48));
+      const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*TR_CHUNK_SEC,r=await fetch(TR_FN+"?lang="+encodeURIComponent(vslLang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate),signal:vslAbort.signal});
+      let j={};try{j=await r.json();}catch(_){}if(!r.ok||!j.ok)throw new Error(j.error||("Falha na transcrição: HTTP "+r.status));
+      if(j.text)vslRaw+=(vslRaw?" ":"")+String(j.text).trim();if(j.language&&!vslDetectedLang)vslDetectedLang=j.language;
+      if(Array.isArray(j.segments))vslSegments.push(...j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:String(s.text||"").trim()})).filter(s=>s.text));
+      if(Array.isArray(j.words))vslWords.push(...j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word));
+    }
+    if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
+    vslSetStatus(2,vslFile.type.startsWith("video/")?"Lendo a linha do tempo visual…":"Arquivo de áudio: seguindo sem leitura visual.",58);
+    try{vslSheets=await vslBuildContactSheets(vslFile,vslDuration,(done,total)=>vslSetStatus(2,`Capturando quadro ${done} de ${total}…`,58+Math.round((done/total)*9)));}catch(e){console.warn("contact sheets falharam",e);vslSheets=[];}
+    vslRenderSheets();vslSetStatus(3,"Organizando a transcrição por blocos e speakers…",69);
+    const response=await fetch(VSL_DISSECT_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({name:vslName,niche:vslNiche,language:vslDetectedLang||vslLang,duration:vslDuration,transcript:vslRaw,segments:vslSegments,canonicalScript:vslCanonical,contactSheets:vslSheets}),signal:vslAbort.signal});
+    if(!response.ok||!response.body){let j={};try{j=await response.json();}catch(_){}throw new Error(j.error||("Falha na análise: HTTP "+response.status));}
+    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="",serverError="";
+    for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let nl;while((nl=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,nl);buffer=buffer.slice(nl+1);if(!line.trim())continue;let event;try{event=JSON.parse(line);}catch(_){continue;}if(event.t==="error")serverError=event.v||"falha na análise";vslHandleStreamEvent(event);}}
+    if(serverError)throw new Error(serverError);vslSetStatus(3,"Transcrição e dissecação concluídas.",100);toast("VSL dissecada ✓");
+  }catch(e){
+    if(e&&e.name==="AbortError")vslSetStatus(1,"Processamento cancelado. Os resultados parciais foram preservados.",0);else{vslSetStatus(1,(e&&e.message)||"Falha ao processar a VSL",0);toast((e&&e.message)||"Falha ao processar a VSL",true);}
+  }finally{vslBusy=false;vslAbort=null;if(vslRenderTimer){clearTimeout(vslRenderTimer);vslRenderTimer=0;}vslRenderFile();vslRenderDocs();if(cancel)cancel.hidden=true;if(run)run.disabled=!vslFile;}
+}
+function vslReset(){
+  if(vslBusy)return;vslFile=null;if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl="";vslName="";vslNiche="";vslLang="auto";vslCanonical="";vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslDuration=0;vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";renderVslDissector(true);
+}
+function renderVslDissector(force){
+  const area=$("#gridArea");if(!area)return;if($("#vslDissector")&&!force)return;
+  area.innerHTML=`<div class="vsltool" id="vslDissector">
+    <div class="cchief__hero"><div class="cchief__mark">${ic("scissors")}</div><div class="cchief__heroTx"><div class="cchief__heroTitle">Dissecador de VSL <span class="chat__beta">Beta</span></div><p>Transforma uma VSL em dois ativos: <b>transcrição completa organizada</b> e <b>dissecação estratégica por blocos</b>. O fluxo combina Whisper, timestamps e leitura visual da linha do tempo.</p></div></div>
+    <section class="vslstage" aria-label="Configurar dissecação da VSL">
+      <div class="vslmeta">
+        <label class="vslfield"><span>Nome da VSL</span><input id="vslName" type="text" value="${esc(vslName)}" placeholder="Ex.: Gelatin Burn — VSL principal" autocomplete="off"></label>
+        <label class="vslfield"><span>Nicho</span><select id="vslNiche"><option value="">Detectar automaticamente</option>${NICHOS.map(n=>`<option value="${esc(n)}"${vslNiche===n?" selected":""}>${esc(n)}</option>`).join("")}</select></label>
+        <label class="vslfield"><span>Idioma do áudio</span><select id="vslLang">${TR_LANGS.map(([v,l])=>`<option value="${v}"${vslLang===v?" selected":""}>${esc(l)}</option>`).join("")}</select></label>
+      </div>
+      <div class="vsldrop" id="vslDrop" tabindex="0" role="button" aria-label="Selecionar arquivo da VSL"></div>
+      <input type="file" id="vslFile" accept="video/*,audio/*" hidden>
+      <details class="vslextra"><summary>Adicionar roteiro original do copywriter (opcional)</summary><label class="vslfield"><span>Roteiro canônico</span><textarea id="vslCanonical" placeholder="Cole aqui a copy original aprovada. Ela será usada como fonte principal; o vídeo valida execução, ordem e diferenças.">${esc(vslCanonical)}</textarea></label></details>
+      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}Vídeos longos podem levar alguns minutos; o progresso fica visível.</span></div>
+    </section>
+    <section class="vslprogress" id="vslProgress" hidden aria-live="polite">
+      <div class="vslsteps"><div class="vslstep" data-vslstep="1"><span class="vslstep__n">1</span><div class="vslstep__tx"><b>Transcrição</b><span>Áudio completo + timestamps</span></div></div><div class="vslstep" data-vslstep="2"><span class="vslstep__n">2</span><div class="vslstep__tx"><b>Leitura visual</b><span>Speakers, provas, produto e CTA</span></div></div><div class="vslstep" data-vslstep="3"><span class="vslstep__n">3</span><div class="vslstep__tx"><b>Dissecação</b><span>Blocos, crenças, mecanismo e oferta</span></div></div></div>
+      <div class="vslprogress__bar"><span class="vslprogress__fill" id="vslProgressFill"></span></div><div class="vslprogress__status" id="vslProgressStatus"></div><div class="vslsheets" id="vslSheets"></div>
+    </section>
+    <section class="vsloutputs" id="vslOutputs" hidden>
+      <div class="vsloutbar"><div class="vsltabs" role="tablist"><button class="vsltab active" role="tab" data-vsltab="transcript">Transcrição organizada <span class="vsltab__state" id="vslTranscriptState">—</span></button><button class="vsltab" role="tab" data-vsltab="analysis">Dissecação estratégica <span class="vsltab__state" id="vslAnalysisState">—</span></button></div><div class="vslouttools"><button class="btn btn--outline btn--sm" id="vslCopy">${ic("clipboard")}Copiar</button><button class="btn btn--outline btn--sm" id="vslDownload">${ic("download")}Markdown</button></div></div>
+      <div class="vsldoc" id="vslTranscriptDoc" role="tabpanel"><div class="chat__md vslmd" id="vslTranscriptMd"></div></div><div class="vsldoc" id="vslAnalysisDoc" role="tabpanel" hidden><div class="chat__md vslmd" id="vslAnalysisMd"></div></div>
+    </section>
+  </div>`;
+  const input=$("#vslFile"),drop=$("#vslDrop"),pick=()=>{if(!vslBusy)input.click();};
+  input.addEventListener("change",()=>{if(input.files[0])vslChooseFile(input.files[0]);input.value="";});drop.addEventListener("click",pick);drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("active");});drop.addEventListener("dragleave",()=>drop.classList.remove("active"));drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(x=>/^(video|audio)\//.test(x.type));if(f)vslChooseFile(f);else toast("Arraste um vídeo ou áudio.",true);});
+  $("#vslName").addEventListener("input",e=>vslName=e.target.value);$("#vslNiche").addEventListener("change",e=>vslNiche=e.target.value);$("#vslLang").addEventListener("change",e=>vslLang=e.target.value);$("#vslCanonical").addEventListener("input",e=>vslCanonical=e.target.value);
+  $("#vslRun").addEventListener("click",vslRun);$("#vslCancel").addEventListener("click",()=>{if(vslAbort)vslAbort.abort();});$("#vslReset").addEventListener("click",vslReset);
+  $$("[data-vsltab]").forEach(b=>b.addEventListener("click",()=>{vslActiveTab=b.dataset.vsltab;vslRenderDocs();}));
+  $("#vslCopy").addEventListener("click",()=>{const text=vslActiveTab==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}navigator.clipboard.writeText(text).then(()=>toast("Copiado ✓"));});
+  $("#vslDownload").addEventListener("click",()=>vslDownload(vslActiveTab));vslRenderFile();vslRenderSheets();vslRenderDocs();
+  if(vslBusy)vslSetStatus(vslTranscriptDoc?3:1,"Processamento em andamento…",vslTranscriptDoc?78:20);
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
