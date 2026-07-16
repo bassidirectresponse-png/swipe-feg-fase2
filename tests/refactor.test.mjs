@@ -81,11 +81,14 @@ test("Mega Brain acompanha o vídeo grifando a copy", () => {
   assert.match(backgroundFn, /data\.transcricaoWords = words/);
 });
 
-test("Mega Brain importa uma pasta local por manifesto sem duplicar cards", () => {
+test("Mega Brain importa novos cards e atualiza existentes por manifesto", () => {
   assert.match(html, /id="brainBatchImport"/);
   assert.match(html, /const BRAIN_BATCH_MANIFEST="megabrain-import\.json"/);
   assert.match(html, /input\.webkitdirectory=true/);
-  assert.match(html, /existing=new Set\(offers\.filter/);
+  assert.match(html, /updateExisting=.*parsed\.updateExisting===true/);
+  assert.match(html, /existing=new Map\(offers\.filter/);
+  assert.match(html, /sb\.from\("offers"\)\.update\(\{data\}\)\.eq\("id",current\.id\)/);
+  assert.match(html, /transcribeNew=.*parsed\.transcribeNew===true/);
   assert.match(html, /file\.size>VIDEO_MAX/);
   assert.match(html, /sb\.storage\.from\(VIDEO_BUCKET\)\.upload/);
   assert.match(html, /sb\.from\("offers"\)\.insert\(\{data\}\)/);

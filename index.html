@@ -3175,16 +3175,35 @@ async function importBrainBatch(files){
   let parsed;
   try{parsed=JSON.parse(await manifest.text());}catch(e){toast("Manifesto do lote inválido.",true);return;}
   const records=Array.isArray(parsed)?parsed:(Array.isArray(parsed.records)?parsed.records:[]);
+  const updateExisting=!Array.isArray(parsed)&&parsed.updateExisting===true;
+  const transcribeNew=!Array.isArray(parsed)&&parsed.transcribeNew===true;
   if(!records.length){toast("O manifesto não contém criativos.",true);return;}
   const byName=new Map(files.filter(f=>/^video\//.test(f.type||"")||/\.(mp4|mov|webm)$/i.test(f.name)).map(f=>[f.name.toLowerCase(),f]));
-  const existing=new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>String((o.data||{}).nome||"").trim().toLowerCase()).filter(Boolean));
-  const queue=records.filter(r=>r&&String(r.nome||"").trim()&&!existing.has(String(r.nome).trim().toLowerCase()));
-  const skipped=records.length-queue.length;
+  const existing=new Map(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>[String((o.data||{}).nome||"").trim().toLowerCase(),o]).filter(([name])=>name));
+  const valid=records.filter(r=>r&&String(r.nome||"").trim());
+  const queue=valid.filter(r=>updateExisting||!existing.has(String(r.nome).trim().toLowerCase()));
+  let skipped=records.length-queue.length;
   if(!queue.length){toast(skipped?"Todos os criativos desse lote já estão no Mega Brain.":"Nenhum criativo válido no manifesto.",!!skipped);return;}
   brainBatchWorking=true;setBrainBatchState(0,queue.length);
-  const failures=[];let done=0;
+  const failures=[];let done=0,imported=0,updated=0,transcriptions=0;
+  let authToken="";
+  if(transcribeNew){try{const s=await sb.auth.getSession();authToken=(s.data&&s.data.session&&s.data.session.access_token)||"";}catch(e){}}
   for(const record of queue){
     const nome=String(record.nome||"").trim();
+    const key=nome.toLowerCase(),current=existing.get(key);
+    if(current){
+      const data={...(current.data||{})};
+      for(const field of ["autor","nicho","metricaTipo","linkDrive","copy","copyLink","comentario"]){
+        if(Object.prototype.hasOwnProperty.call(record,field))data[field]=String(record[field]??"");
+      }
+      if(Object.prototype.hasOwnProperty.call(record,"metricaValor")||Object.prototype.hasOwnProperty.call(record,"vendas")){
+        data.metricaValor=String(record.metricaValor??record.vendas??"");data.metricaPendente=false;
+      }
+      let res;try{res=await sb.from("offers").update({data}).eq("id",current.id).select();}catch(e){res={error:e};}
+      if(res.error)failures.push(`${nome}: falha ao atualizar — ${res.error.message||res.error}`);
+      else{current.data=data;if(res.data&&res.data[0])Object.assign(current,res.data[0]);updated++;}
+      done++;setBrainBatchState(done,queue.length);continue;
+    }
     const fileName=String(record.videoFile||record.video_name||(nome+".mp4")).split(/[\\/]/).pop();
     const file=byName.get(fileName.toLowerCase());
     if(!file){failures.push(`${nome}: vídeo não encontrado na pasta`);done++;setBrainBatchState(done,queue.length);continue;}
@@ -3207,13 +3226,17 @@ async function importBrainBatch(files){
     if(res.error){
       failures.push(`${nome}: falha ao salvar — ${res.error.message||res.error}`);
       try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(e){}
-    }else if(res.data&&res.data[0]){offers.push(res.data[0]);existing.add(nome.toLowerCase());}
+    }else if(res.data&&res.data[0]){
+      const saved=res.data[0];offers.push(saved);existing.set(key,saved);imported++;
+      if(transcribeNew&&authToken){
+        try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({id:saved.id,videoUrl:video})});transcriptions++;}catch(e){console.warn("Falha ao iniciar transcrição de "+nome,e);}
+      }
+    }
     done++;setBrainBatchState(done,queue.length);
   }
   brainBatchWorking=false;setBrainBatchState(done,queue.length,failures.length?"Importar lote":"Lote concluído");
   renderGrid();writeCache();
-  const imported=queue.length-failures.length;
-  toast(`${imported} criativo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existente${skipped===1?"":"s"}`:""}${failures.length?` · ${failures.length} falha${failures.length===1?"":"s"}`:""}`,!!failures.length);
+  toast(`${imported} novo${imported===1?"":"s"} · ${updated} atualizado${updated===1?"":"s"}${transcriptions?` · ${transcriptions} transcriç${transcriptions===1?"ão iniciada":"ões iniciadas"}`:""}${skipped?` · ${skipped} ignorado${skipped===1?"":"s"}`:""}${failures.length?` · ${failures.length} falha${failures.length===1?"":"s"}`:""}`,!!failures.length);
   if(failures.length)console.warn("Falhas no lote do Mega Brain:\n"+failures.join("\n"));
 }
 
