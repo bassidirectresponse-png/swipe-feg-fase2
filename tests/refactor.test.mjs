@@ -92,6 +92,11 @@ test("Mega Brain importa novos cards e atualiza existentes por manifesto", () =>
   assert.match(html, /file\.size>VIDEO_MAX/);
   assert.match(html, /sb\.storage\.from\(VIDEO_BUCKET\)\.upload/);
   assert.match(html, /sb\.from\("offers"\)\.insert\(\{data\}\)/);
+  assert.match(html, /missingMedia=record\.videoMissing===true\|\|record\.mediaMissing===true/);
+  assert.match(html, /metricaPendente:record\.metricaPendente===true\|\|!metricValue\.trim\(\)/);
+  assert.match(html, /isImage=\/\^image\\\//);
+  assert.match(html, /d\.videoMissing===true\?"Falta adicionar o vídeo"/);
+  assert.match(html, /if\(d\.videoMissing===true\)kvs\.push/);
 });
 
 test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {

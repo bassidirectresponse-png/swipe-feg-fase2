@@ -2776,24 +2776,24 @@ function megabrainCard(o){
   const d=o.data||{};
   const copy=brainCopyText(d);
   const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
-  const video=videoOfBrain(d);
+  const video=videoOfBrain(d),image=String(d.print||"").trim();
   const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
   const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricValue(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
   const acts=[
-    video?qbtn("Abrir criativo",video,"play"):"",
+    video?qbtn("Abrir criativo",video,"play"):(image?qbtn("Abrir criativo",image,"image"):""),
     (copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
   ].filter(Boolean).join("");
   const ist=brainStatusOf(o);
   const testChip=brainIsValidationTest(o)?`<span class="chip brain-err">${ic("alert")}CRIATIVO TESTE</span>`:"";
   const salesPendingChip=brainSalesPending(d)?`<span class="chip brain-err">${ic("alert")}CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</span>`:"";
   const ichip=ist==="working"?`<span class="chip accent brain-ing">${ic("download")}Baixando do Drive…</span>`
-    :ist==="error"?`<span class="chip brain-err">${ic("film")}${brainIsValidationTest(o)?"Vídeo não encontrado":"Falha no Drive"}</span>`:"";
+    :(d.videoMissing===true||ist==="error")?`<span class="chip brain-err">${ic("film")}${d.videoMissing===true?"Falta adicionar o vídeo":(brainIsValidationTest(o)?"Vídeo não encontrado":"Falha no Drive")}</span>`:"";
   const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
   const chipsRow=(testChip||salesPendingChip||nicheSpan||ichip)?`<div class="card__chips">${testChip}${salesPendingChip}${nicheSpan}${ichip}</div>`:"";
   return card({
     id:o.id,variant:"kcard kcard--brain",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span>`,
-    media:brainThumb(d,video),
+    media:image?mediaThumb(image,d.nome||"Criativo",""):brainThumb(d,video),
     body:`${author}${cardIdentity("",d.nome||"Sem título")}${metric}`,
     chips:chipsRow,
     actions:acts
@@ -3178,7 +3178,7 @@ async function importBrainBatch(files){
   const updateExisting=!Array.isArray(parsed)&&parsed.updateExisting===true;
   const transcribeNew=!Array.isArray(parsed)&&parsed.transcribeNew===true;
   if(!records.length){toast("O manifesto não contém criativos.",true);return;}
-  const byName=new Map(files.filter(f=>/^video\//.test(f.type||"")||/\.(mp4|mov|webm)$/i.test(f.name)).map(f=>[f.name.toLowerCase(),f]));
+  const byName=new Map(files.filter(f=>/^(video|image)\//.test(f.type||"")||/\.(mp4|mov|webm|m4v|jpg|jpeg|png|webp)$/i.test(f.name)).map(f=>[f.name.toLowerCase(),f]));
   const existing=new Map(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>[String((o.data||{}).nome||"").trim().toLowerCase(),o]).filter(([name])=>name));
   const valid=records.filter(r=>r&&String(r.nome||"").trim());
   const queue=valid.filter(r=>updateExisting||!existing.has(String(r.nome).trim().toLowerCase()));
@@ -3196,31 +3196,40 @@ async function importBrainBatch(files){
       for(const field of ["autor","nicho","metricaTipo","linkDrive","copy","copyLink","comentario"]){
         if(Object.prototype.hasOwnProperty.call(record,field))data[field]=String(record[field]??"");
       }
+      if(Object.prototype.hasOwnProperty.call(record,"videoMissing"))data.videoMissing=record.videoMissing===true;
       if(Object.prototype.hasOwnProperty.call(record,"metricaValor")||Object.prototype.hasOwnProperty.call(record,"vendas")){
         data.metricaValor=String(record.metricaValor??record.vendas??"");data.metricaPendente=false;
       }
+      if(record.metricaPendente===true)data.metricaPendente=true;
       let res;try{res=await sb.from("offers").update({data}).eq("id",current.id).select();}catch(e){res={error:e};}
       if(res.error)failures.push(`${nome}: falha ao atualizar — ${res.error.message||res.error}`);
       else{current.data=data;if(res.data&&res.data[0])Object.assign(current,res.data[0]);updated++;}
       done++;setBrainBatchState(done,queue.length);continue;
     }
-    const fileName=String(record.videoFile||record.video_name||(nome+".mp4")).split(/[\\/]/).pop();
+    const missingMedia=record.videoMissing===true||record.mediaMissing===true;
+    const fileName=String(record.mediaFile||record.videoFile||record.video_name||(nome+".mp4")).split(/[\\/]/).pop();
     const file=byName.get(fileName.toLowerCase());
-    if(!file){failures.push(`${nome}: vídeo não encontrado na pasta`);done++;setBrainBatchState(done,queue.length);continue;}
-    if(file.size>VIDEO_MAX){failures.push(`${nome}: vídeo acima de 50 MB`);done++;setBrainBatchState(done,queue.length);continue;}
-    const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
-    const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
-    const storagePath=`megabrain/${uid}.${ext}`;
-    let up;try{up=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:file.type||"video/mp4",upsert:false});}catch(e){up={error:e};}
-    if(up.error){failures.push(`${nome}: falha no vídeo — ${up.error.message||up.error}`);done++;setBrainBatchState(done,queue.length);continue;}
-    const video=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    if(!file&&!missingMedia){failures.push(`${nome}: mídia não encontrada na pasta`);done++;setBrainBatchState(done,queue.length);continue;}
+    if(file&&file.size>VIDEO_MAX){failures.push(`${nome}: mídia acima de 50 MB`);done++;setBrainBatchState(done,queue.length);continue;}
+    let storagePath="",publicMedia="",isImage=false;
+    if(file){
+      const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
+      isImage=/^image\//.test(file.type||"")||/\.(jpg|jpeg|png|webp)$/i.test(file.name);
+      const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
+      storagePath=`megabrain/${uid}.${ext}`;
+      let up;try{up=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:file.type||(isImage?"image/jpeg":"video/mp4"),upsert:false});}catch(e){up={error:e};}
+      if(up.error){failures.push(`${nome}: falha na mídia — ${up.error.message||up.error}`);done++;setBrainBatchState(done,queue.length);continue;}
+      publicMedia=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    }
+    const metricValue=String(record.metricaValor??record.vendas??"");
     const data={
       kind:"megabrain",nome,nicho:String(record.nicho||""),autor:String(record.autor||""),
-      metricaTipo:String(record.metricaTipo||"vendas"),metricaValor:String(record.metricaValor??record.vendas??""),metricaPendente:false,
-      linkDrive:String(record.linkDrive||record.video_url||""),video,copy:String(record.copy||""),copyLink:String(record.copyLink||""),
+      metricaTipo:String(record.metricaTipo||"vendas"),metricaValor:metricValue,metricaPendente:record.metricaPendente===true||!metricValue.trim(),
+      linkDrive:String(record.linkDrive||record.video_url||""),video:isImage?"":publicMedia,print:isImage?publicMedia:"",videoMissing:missingMedia,
+      copy:String(record.copy||""),copyLink:String(record.copyLink||""),
       transcricao:String(record.transcricao||""),transcricaoWords:Array.isArray(record.transcricaoWords)?record.transcricaoWords:[],
       transcricaoSegments:Array.isArray(record.transcricaoSegments)?record.transcricaoSegments:[],transcricaoStatus:record.transcricao?"done":"pending",
-      marca:"",link:"",print:"",comentario:String(record.comentario||"")
+      marca:"",link:"",comentario:String(record.comentario||"")
     };
     let res;try{res=await sb.from("offers").insert({data}).select();}catch(e){res={error:e};}
     if(res.error){
@@ -3228,8 +3237,8 @@ async function importBrainBatch(files){
       try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(e){}
     }else if(res.data&&res.data[0]){
       const saved=res.data[0];offers.push(saved);existing.set(key,saved);imported++;
-      if(transcribeNew&&authToken){
-        try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({id:saved.id,videoUrl:video})});transcriptions++;}catch(e){console.warn("Falha ao iniciar transcrição de "+nome,e);}
+      if(transcribeNew&&authToken&&publicMedia&&!isImage){
+        try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({id:saved.id,videoUrl:publicMedia})});transcriptions++;}catch(e){console.warn("Falha ao iniciar transcrição de "+nome,e);}
       }
     }
     done++;setBrainBatchState(done,queue.length);
@@ -3352,6 +3361,7 @@ function openSimpleView(o,skipOpen){
     if(d.autor)kvs.push(`<div class="kv"><div class="k">Autor do criativo</div><div class="v brain-hl-author">${esc(d.autor)}</div></div>`);
     if(brainHasMetric(d))kvs.push(`<div class="kv"><div class="k">${brainIsFat(d)?"Faturamento":"Vendas"}</div><div class="v brain-hl-metric">${esc(brainMetricFull(d))}</div></div>`);
     if(brainSalesPending(d))kvs.push(`<div class="kv"><div class="k">Vendas</div><div class="v" style="color:var(--red)">CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</div></div>`);
+    if(d.videoMissing===true)kvs.push(`<div class="kv"><div class="k">Vídeo</div><div class="v" style="color:var(--red)">Falta adicionar o vídeo — vídeo não encontrado.</div></div>`);
   }
 
   let mainLink="";
@@ -3365,8 +3375,8 @@ function openSimpleView(o,skipOpen){
   if(kind==="noticia"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir notícia",d.link,true,"external")}</div>`;
   if(kind==="tiktok"&&d.url)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir no TikTok",d.url,true,"external")}</div>`;
   if(kind==="megabrain"){
-    const va=(d.video||d.videoVsl||d.videoCriativo||"").trim();
-    const btns=[d.linkDrive?linkbtn("Abrir no Drive",d.linkDrive,true,"folder"):"",va?linkbtn("Abrir vídeo",va,false,"play"):""].filter(Boolean).join("");
+    const va=(d.video||d.videoVsl||d.videoCriativo||"").trim(),image=String(d.print||"").trim();
+    const btns=[d.linkDrive?linkbtn("Abrir no Drive",d.linkDrive,true,"folder"):"",va?linkbtn("Abrir vídeo",va,false,"play"):"",image?linkbtn("Abrir imagem",image,false,"image"):""].filter(Boolean).join("");
     if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
     mainLink+=brainIngestControl(o);
   }
@@ -3400,9 +3410,10 @@ function openSimpleView(o,skipOpen){
     const copy=brainCopyText(d);
     const copyTitle=brainCopyIsTranscript(d)?"Copy do criativo (transcrita)":"Copy do criativo";
     const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
-    const va=videoOfBrain(d);
+    const va=videoOfBrain(d),image=String(d.print||"").trim();
     const embed=videoEmbedHtml(va);
-    const mediaPane=embed?`<div class="brainstage__media">${embed}</div>`
+    const mediaPane=image?`<div class="brainstage__media"><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",image)}</div></div>`
+      :embed?`<div class="brainstage__media">${embed}</div>`
       :(va?`<div class="brainstage__media"><div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div></div>`:"");
     const canFollow=!!(embed&&embed.includes("<video")&&String(d.transcricao||"").trim()&&copy);
     const copyTools=[copyLink?linkbtn("Abrir copy (doc)",copyLink,true,"file"):"",canFollow?`<button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button>`:""].filter(Boolean).join("");
