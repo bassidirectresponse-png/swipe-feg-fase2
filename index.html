@@ -869,6 +869,8 @@
   .vslextra[open] summary::before{content:"−";}
   .vslextra .vslfield{margin-top:12px;}
   .vslactions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
+  .vslactions [hidden]{display:none!important;}
+  .vslactions .btn:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45);}
   .vslactions__hint{margin-left:auto;font-size:.78rem;color:var(--muted-fg);display:flex;align-items:center;gap:6px;}
   .vslactions__hint .ico{width:14px;height:14px;color:var(--accent);}
   .vslprogress{margin-top:18px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);padding:16px 18px;}

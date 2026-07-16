@@ -143,6 +143,8 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /Dissecação estratégica/);
   assert.match(html, /canonicalScript:vslCanonical/);
   assert.match(html, /vslRenderTimer=setTimeout/);
+  assert.match(html, /\.vslactions \[hidden\]\{display:none!important/);
+  assert.match(html, /\.vslactions \.btn:disabled\{opacity:/);
 });
 
 test("backend do Dissecador preserva a copy e analisa por blocos", () => {
