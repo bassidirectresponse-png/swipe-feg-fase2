@@ -45,6 +45,11 @@ test("criativo de validação é marcado sem aceitar vídeo de outra variação"
   assert.match(html, /Falta adicionar o vídeo — vídeo não encontrado\./);
 });
 
+test("Mega Brain destaca somente os criativos marcados como vendas pendentes", () => {
+  assert.match(html, /d\.metricaPendente===true/);
+  assert.match(html, /CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS/);
+});
+
 test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
   assert.doesNotMatch(html, /angulosResumo|angulosLink|fPrecos|renderPrecos|data-pri/);
   assert.match(html, /storageUploadWithProgress/);

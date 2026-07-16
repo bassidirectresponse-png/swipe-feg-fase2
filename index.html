@@ -2731,10 +2731,11 @@ function megabrainCard(o){
   ].filter(Boolean).join("");
   const ist=brainStatusOf(o);
   const testChip=brainIsValidationTest(o)?`<span class="chip brain-err">${ic("alert")}CRIATIVO TESTE</span>`:"";
+  const salesPendingChip=d.metricaPendente===true?`<span class="chip brain-err">${ic("alert")}CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</span>`:"";
   const ichip=ist==="working"?`<span class="chip accent brain-ing">${ic("download")}Baixando do Drive…</span>`
     :ist==="error"?`<span class="chip brain-err">${ic("film")}${brainIsValidationTest(o)?"Vídeo não encontrado":"Falha no Drive"}</span>`:"";
   const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
-  const chipsRow=(testChip||nicheSpan||ichip)?`<div class="card__chips">${testChip}${nicheSpan}${ichip}</div>`:"";
+  const chipsRow=(testChip||salesPendingChip||nicheSpan||ichip)?`<div class="card__chips">${testChip}${salesPendingChip}${nicheSpan}${ichip}</div>`:"";
   return card({
     id:o.id,variant:"kcard kcard--brain",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Validado</span><span class="ktag">${ic("brain")}Mega Brain</span>`,
@@ -3169,6 +3170,7 @@ function openSimpleView(o,skipOpen){
   if(kind==="megabrain"){
     if(d.autor)kvs.push(`<div class="kv"><div class="k">Autor do criativo</div><div class="v brain-hl-author">${esc(d.autor)}</div></div>`);
     if(brainHasMetric(d))kvs.push(`<div class="kv"><div class="k">${brainIsFat(d)?"Faturamento":"Vendas"}</div><div class="v brain-hl-metric">${esc(brainMetricFull(d))}</div></div>`);
+    if(d.metricaPendente===true)kvs.push(`<div class="kv"><div class="k">Vendas</div><div class="v" style="color:var(--red)">CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</div></div>`);
   }
 
   let mainLink="";
