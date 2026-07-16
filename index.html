@@ -2718,6 +2718,7 @@ function criativoCard(o){
 /* Selo temporario para validar o fluxo manual do Mega Brain sem alterar o nome do criativo. */
 const BRAIN_VALIDATION_TEST_IDS=new Set(["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"]);
 function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.id));}
+function brainSalesPending(d){return d&&((d.metricaPendente===true)||(d.autor==="Elaine Montone"&&!brainHasMetric(d)));}
 function megabrainCard(o){
   const d=o.data||{};
   const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
@@ -2731,7 +2732,7 @@ function megabrainCard(o){
   ].filter(Boolean).join("");
   const ist=brainStatusOf(o);
   const testChip=brainIsValidationTest(o)?`<span class="chip brain-err">${ic("alert")}CRIATIVO TESTE</span>`:"";
-  const salesPendingChip=d.metricaPendente===true?`<span class="chip brain-err">${ic("alert")}CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</span>`:"";
+  const salesPendingChip=brainSalesPending(d)?`<span class="chip brain-err">${ic("alert")}CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</span>`:"";
   const ichip=ist==="working"?`<span class="chip accent brain-ing">${ic("download")}Baixando do Drive…</span>`
     :ist==="error"?`<span class="chip brain-err">${ic("film")}${brainIsValidationTest(o)?"Vídeo não encontrado":"Falha no Drive"}</span>`:"";
   const nicheSpan=d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"";
@@ -3170,7 +3171,7 @@ function openSimpleView(o,skipOpen){
   if(kind==="megabrain"){
     if(d.autor)kvs.push(`<div class="kv"><div class="k">Autor do criativo</div><div class="v brain-hl-author">${esc(d.autor)}</div></div>`);
     if(brainHasMetric(d))kvs.push(`<div class="kv"><div class="k">${brainIsFat(d)?"Faturamento":"Vendas"}</div><div class="v brain-hl-metric">${esc(brainMetricFull(d))}</div></div>`);
-    if(d.metricaPendente===true)kvs.push(`<div class="kv"><div class="k">Vendas</div><div class="v" style="color:var(--red)">CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</div></div>`);
+    if(brainSalesPending(d))kvs.push(`<div class="kv"><div class="k">Vendas</div><div class="v" style="color:var(--red)">CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS</div></div>`);
   }
 
   let mainLink="";
