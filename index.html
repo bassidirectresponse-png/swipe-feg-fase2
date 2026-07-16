@@ -2719,9 +2719,11 @@ function criativoCard(o){
 const BRAIN_VALIDATION_TEST_IDS=new Set(["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"]);
 function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.id));}
 function brainSalesPending(d){return d&&((d.metricaPendente===true)||(d.autor==="Elaine Montone"&&!brainHasMetric(d)));}
+function brainCopyText(d){return String((d&&(d.copy||d.copyVsl||d.copyCriativo||d.transcricao))||"").trim();}
+function brainCopyIsTranscript(d){return !!(d&&d.transcricao&&!String(d.copy||d.copyVsl||d.copyCriativo||"").trim());}
 function megabrainCard(o){
   const d=o.data||{};
-  const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
+  const copy=brainCopyText(d);
   const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
   const video=videoOfBrain(d);
   const author=d.autor?`<div class="brain-author">${ic("user")}<span>${esc(d.autor)}</span></div>`:"";
@@ -3217,13 +3219,14 @@ function openSimpleView(o,skipOpen){
 
   /* mega brain: vídeo do criativo + copy escrita LADO A LADO + imagem */
   if(kind==="megabrain"){
-    const copy=(d.copy||d.copyVsl||d.copyCriativo||"").trim();
+    const copy=brainCopyText(d);
+    const copyTitle=brainCopyIsTranscript(d)?"Copy do criativo (transcrita)":"Copy do criativo";
     const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
     const va=videoOfBrain(d);
     const embed=videoEmbedHtml(va);
     const mediaPane=embed?`<div class="brainstage__media">${embed}</div>`
       :(va?`<div class="brainstage__media"><div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div></div>`:"");
-    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}Copy do criativo</div>${copyLink?`<div class="linkbtns" style="margin-bottom:12px">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}<div class="brain-copy ${copy?"":"empty"}">${copy?esc(copy):"Sem copy cadastrada — clique em Editar para adicionar."}</div></div>`;
+    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}${copyTitle}</div>${copyLink?`<div class="linkbtns" style="margin-bottom:12px">${linkbtn("Abrir copy (doc)",copyLink,true,"file")}</div>`:""}<div class="brain-copy ${copy?"":"empty"}">${copy?esc(copy):"Sem copy cadastrada — clique em Editar para adicionar."}</div></div>`;
     if(mediaPane||copy||copyLink){
       const tb=transBox(d.transcricao,false,d.transcricaoStatus);
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo &amp; Copy</span><span class="sec__line"></span></div>

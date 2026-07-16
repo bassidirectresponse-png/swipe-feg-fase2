@@ -51,6 +51,8 @@ test("Mega Brain destaca somente os criativos marcados como vendas pendentes", (
   assert.match(html, /if\(sKind==="megabrain"&&\(!sEditingId\|\|p\.metricaPendente===true\)\)p\.metricaPendente=!brainHasMetric\(p\)/);
   assert.match(html, /CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS/);
   assert.match(html, /isHostedVideo\(d\.video\)\?"done"/);
+  assert.match(html, /function brainCopyText\(d\)/);
+  assert.match(html, /Copy do criativo \(transcrita\)/);
 });
 
 test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
