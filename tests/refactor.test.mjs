@@ -47,6 +47,7 @@ test("criativo de validação é marcado sem aceitar vídeo de outra variação"
 
 test("Mega Brain destaca somente os criativos marcados como vendas pendentes", () => {
   assert.match(html, /d\.metricaPendente===true/);
+  assert.match(html, /if\(sKind==="megabrain"&&\(!sEditingId\|\|p\.metricaPendente===true\)\)p\.metricaPendente=!brainHasMetric\(p\)/);
   assert.match(html, /CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS/);
 });
 

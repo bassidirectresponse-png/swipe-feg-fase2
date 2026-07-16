@@ -3484,6 +3484,9 @@ async function saveSimpleForm(){
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
   const p=Object.assign({},sItem);p.kind=sKind;
+  /* Só os novos registros (ou os que já carregam a marca) recebem o aviso.
+     Assim, cards antigos sem métrica não são alterados retroativamente. */
+  if(sKind==="megabrain"&&(!sEditingId||p.metricaPendente===true))p.metricaPendente=!brainHasMetric(p);
   if(!hasSimpleContent(p)){sSaving=false;setSimpleSaveState(sFormDirty?"unsaved":"new");toast("Preencha algo antes de salvar",true);return false;}
   const size=JSON.stringify(p).length;
   if(size>6000000){sSaving=false;setSimpleSaveState("error");toast("Imagem muito grande ("+Math.round(size/1048576)+"MB). Reduza o print.",true);return false;}
