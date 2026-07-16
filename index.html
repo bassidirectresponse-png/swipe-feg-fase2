@@ -3067,7 +3067,7 @@ function isDriveFileLink(u){u=String(u||"");if(/drive\.google\.com\/drive\/folde
 function isHostedVideo(u){return /\/storage\/v1\/object\/public\//i.test(String(u||""));}
 function driveSrcOf(d){for(const f of [d&&d.video,d&&d.linkDrive,d&&d.videoVsl,d&&d.videoCriativo]){if(isDriveFileLink(f))return String(f).trim();}return"";}
 function brainNeedsImport(o){const d=(o&&o.data)||{};if(d.kind!=="megabrain")return false;if(isHostedVideo(d.video))return false;if(d.driveIngestStatus==="done")return false;return !!driveSrcOf(d);}
-function brainStatusOf(o){const d=(o&&o.data)||{};return brainIngesting.has(o.id)?"working":(d.driveIngestStatus||"");}
+function brainStatusOf(o){const d=(o&&o.data)||{};return brainIngesting.has(o.id)?"working":(isHostedVideo(d.video)?"done":(d.driveIngestStatus||""));}
 async function pollBrainIngest(offerId,tries,intervalMs){
   for(let i=0;i<tries;i++){
     await new Promise(r=>setTimeout(r,intervalMs));
