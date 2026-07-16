@@ -15,34 +15,39 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "adminswipefeg@swipefeg.app")
   .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
+const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
 const STORAGE_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/criativos/`;
 const MAX_BYTES = 40 * 1024 * 1024;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function groqTranscribe(buf) {
-  // retry em rate limit (429) e erros transitórios (5xx) — lote grande/instabilidade
+  // Alterna o modelo em rate limit antes de repetir. Os limites de áudio da
+  // Groq são por modelo, então isso evita travar lotes grandes no Turbo.
   let last = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await sleep(3000 * attempt);
-    const form = new FormData();
-    form.append("file", new Blob([buf], { type: "video/mp4" }), "audio.mp4");
-    form.append("model", GROQ_MODEL);
-    form.append("response_format", "verbose_json");
-    form.append("timestamp_granularities[]", "word");
-    form.append("timestamp_granularities[]", "segment");
-    const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-      method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
-    });
-    const txt = await g.text();
-    if (g.ok) {
-      const j = JSON.parse(txt);
-      const words = Array.isArray(j.words) ? j.words.map((w) => ({ word: String(w.word || "").trim(), start: +w.start || 0, end: +w.end || 0 })).filter((w) => w.word) : [];
-      const segments = Array.isArray(j.segments) ? j.segments.map((s) => ({ text: String(s.text || "").trim(), start: +s.start || 0, end: +s.end || 0 })).filter((s) => s.text) : [];
-      return { text: String(j.text || "").trim(), lang: String(j.language || ""), words, segments };
+  const models = [...new Set([GROQ_MODEL, GROQ_FALLBACK_MODEL].filter(Boolean))];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt) await sleep(3000);
+    for (const model of models) {
+      const form = new FormData();
+      form.append("file", new Blob([buf], { type: "video/mp4" }), "audio.mp4");
+      form.append("model", model);
+      form.append("response_format", "verbose_json");
+      form.append("timestamp_granularities[]", "word");
+      form.append("timestamp_granularities[]", "segment");
+      const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
+      });
+      const txt = await g.text();
+      if (g.ok) {
+        const j = JSON.parse(txt);
+        const words = Array.isArray(j.words) ? j.words.map((w) => ({ word: String(w.word || "").trim(), start: +w.start || 0, end: +w.end || 0 })).filter((w) => w.word) : [];
+        const segments = Array.isArray(j.segments) ? j.segments.map((s) => ({ text: String(s.text || "").trim(), start: +s.start || 0, end: +s.end || 0 })).filter((s) => s.text) : [];
+        return { text: String(j.text || "").trim(), lang: String(j.language || ""), words, segments };
+      }
+      last = `Groq HTTP ${g.status}: ${txt.slice(0, 240)}`;
+      if (g.status !== 429 && g.status < 500) throw new Error(last);
     }
-    last = `Groq HTTP ${g.status}: ${txt.slice(0, 120)}`;
-    if (g.status !== 429 && g.status < 500) throw new Error(last);   // erro definitivo
   }
   throw new Error(last || "Groq falhou após retries");
 }

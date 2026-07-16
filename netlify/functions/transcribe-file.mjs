@@ -15,17 +15,11 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.
 const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
+const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
 const MAX_BYTES = 12 * 1024 * 1024; // cada pedaço é pequeno; guarda de segurança
 const LANGS_OK = new Set(["pt", "en", "es", "fr", "de", "it", "nl", "ja", "zh", "ru", "ar", "hi", "ko", "pl", "tr", "id", "uk", "sv", "cs", "ro"]);
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function retryDelay(response, attempt) {
-  const raw = Number(response.headers.get("retry-after"));
-  if (Number.isFinite(raw) && raw > 0) return Math.min(20_000, Math.ceil(raw * 1000) + 500);
-  return Math.min(15_000, 3_000 + attempt * 3_000);
-}
 
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
@@ -50,10 +44,11 @@ export default async (req) => {
 
   try {
     let lastStatus = 502, lastText = "";
-    for (let attempt = 0; attempt < 5; attempt++) {
+    const models = [...new Set([GROQ_MODEL, GROQ_FALLBACK_MODEL].filter(Boolean))];
+    for (const model of models) {
       const form = new FormData();
       form.append("file", new Blob([buf], { type: "audio/wav" }), "audio.wav");
-      form.append("model", GROQ_MODEL);
+      form.append("model", model);
       form.append("response_format", "verbose_json");
       form.append("timestamp_granularities[]", "word");
       form.append("timestamp_granularities[]", "segment");
@@ -74,7 +69,6 @@ export default async (req) => {
       }
       lastStatus = g.status; lastText = gt;
       if (g.status !== 429 && g.status < 500) break;
-      if (attempt < 4) await sleep(retryDelay(g, attempt));
     }
     return json(502, { ok: false, error: `Groq HTTP ${lastStatus}: ${lastText.slice(0, 160)}` });
   } catch (e) { return json(502, { ok: false, error: "falha ao chamar o Groq: " + String(e && e.message ? e.message : e).slice(0, 120) }); }
