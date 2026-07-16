@@ -19,6 +19,13 @@ const MAX_BYTES = 12 * 1024 * 1024; // cada pedaço é pequeno; guarda de segura
 const LANGS_OK = new Set(["pt", "en", "es", "fr", "de", "it", "nl", "ja", "zh", "ru", "ar", "hi", "ko", "pl", "tr", "id", "uk", "sv", "cs", "ro"]);
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function retryDelay(response, attempt) {
+  const raw = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(raw) && raw > 0) return Math.min(20_000, Math.ceil(raw * 1000) + 500);
+  return Math.min(15_000, 3_000 + attempt * 3_000);
+}
 
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
@@ -42,25 +49,33 @@ export default async (req) => {
   if (buf.length > MAX_BYTES) return json(413, { ok: false, error: "pedaço de áudio grande demais" });
 
   try {
-    const form = new FormData();
-    form.append("file", new Blob([buf], { type: "audio/wav" }), "audio.wav");
-    form.append("model", GROQ_MODEL);
-    form.append("response_format", "verbose_json");
-    form.append("timestamp_granularities[]", "word");
-    form.append("timestamp_granularities[]", "segment");
-    if (language && language !== "auto" && LANGS_OK.has(language)) form.append("language", language);
-    const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-      method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
-    });
-    const gt = await g.text();
-    if (!g.ok) return json(502, { ok: false, error: `Groq HTTP ${g.status}: ${gt.slice(0, 160)}` });
-    const gj = JSON.parse(gt);
-    const segments = Array.isArray(gj.segments)
-      ? gj.segments.map(s => ({ start: +s.start || 0, end: +s.end || 0, text: String(s.text || "").trim() })).filter(s => s.text)
-      : [];
-    const words = Array.isArray(gj.words)
-      ? gj.words.map(w => ({ word: String(w.word || "").trim(), start: +w.start || 0, end: +w.end || 0 })).filter(w => w.word)
-      : [];
-    return json(200, { ok: true, text: String(gj.text || "").trim(), language: String(gj.language || ""), duration: +gj.duration || 0, segments, words });
+    let lastStatus = 502, lastText = "";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const form = new FormData();
+      form.append("file", new Blob([buf], { type: "audio/wav" }), "audio.wav");
+      form.append("model", GROQ_MODEL);
+      form.append("response_format", "verbose_json");
+      form.append("timestamp_granularities[]", "word");
+      form.append("timestamp_granularities[]", "segment");
+      if (language && language !== "auto" && LANGS_OK.has(language)) form.append("language", language);
+      const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: form,
+      });
+      const gt = await g.text();
+      if (g.ok) {
+        const gj = JSON.parse(gt);
+        const segments = Array.isArray(gj.segments)
+          ? gj.segments.map(s => ({ start: +s.start || 0, end: +s.end || 0, text: String(s.text || "").trim() })).filter(s => s.text)
+          : [];
+        const words = Array.isArray(gj.words)
+          ? gj.words.map(w => ({ word: String(w.word || "").trim(), start: +w.start || 0, end: +w.end || 0 })).filter(w => w.word)
+          : [];
+        return json(200, { ok: true, text: String(gj.text || "").trim(), language: String(gj.language || ""), duration: +gj.duration || 0, segments, words });
+      }
+      lastStatus = g.status; lastText = gt;
+      if (g.status !== 429 && g.status < 500) break;
+      if (attempt < 4) await sleep(retryDelay(g, attempt));
+    }
+    return json(502, { ok: false, error: `Groq HTTP ${lastStatus}: ${lastText.slice(0, 160)}` });
   } catch (e) { return json(502, { ok: false, error: "falha ao chamar o Groq: " + String(e && e.message ? e.message : e).slice(0, 120) }); }
 };
