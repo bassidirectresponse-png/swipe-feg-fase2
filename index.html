@@ -2953,6 +2953,7 @@ function wireCardPreviews(root){
 /* ===== TRANSCRIÇÃO AUTOMÁTICA (Groq via background function) ===== */
 const TRANSCRIBE_FN="/.netlify/functions/transcribe-background";
 const transcribing=new Set();
+let brainTranscriptionQueue=Promise.resolve();
 let currentSimpleId=null;
 function videoForOffer(o){const d=(o&&o.data)||{};return d.kind==="megabrain"?videoOfBrain(d):videoOfCrv(d);}
 function transcribeBtn(o,va,d){
@@ -2979,6 +2980,36 @@ async function pollTranscription(offerId,tries,intervalMs){
   }
   return false;
 }
+/* Vídeos maiores que o limite da API não podem ser enviados como MP4 inteiro.
+   Reaproveita o Transcritor: extrai áudio mono 16 kHz no navegador, divide em
+   partes pequenas e grava o texto final no card. A fila impede que vários
+   vídeos pesados sejam baixados e decodificados ao mesmo tempo. */
+async function transcribeBrainInChunks(offerId,videoUrl){
+  const o=offers.find(x=>x.id===offerId);if(!o)throw new Error("card não encontrado");
+  const res=await fetch(videoUrl);if(!res.ok)throw new Error("não consegui baixar o vídeo");
+  const blob=await res.blob(),file=new File([blob],(o.data&&o.data.nome||"criativo")+".mp4",{type:blob.type||"video/mp4"});
+  const mono=await trDecodeMono16k(file),rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));
+  const token=await trToken();let fullText="",detLang="";
+  for(let i=0;i<nChunks;i++){
+    const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen));
+    const r=await fetch(TR_FN+"?lang=auto",{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate)});
+    let j={};try{j=await r.json();}catch(e){}
+    if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
+    if(j.text)fullText+=(fullText?" ":"")+j.text.trim();
+    if(j.language&&!detLang)detLang=j.language;
+  }
+  if(!fullText.trim())throw new Error("nenhuma fala detectada");
+  const {data:row,error:readError}=await sb.from("offers").select("data").eq("id",offerId).single();
+  if(readError)throw readError;
+  const data=(row&&row.data)||o.data||{};
+  data.transcricao=fullText.trim();data.transcricaoStatus="done";data.transcricaoLang=detLang;
+  const {error:saveError}=await sb.from("offers").update({data}).eq("id",offerId);if(saveError)throw saveError;
+  o.data=data;return true;
+}
+function queueBrainChunkedTranscription(offerId,videoUrl){
+  const job=brainTranscriptionQueue.catch(()=>{}).then(()=>transcribeBrainInChunks(offerId,videoUrl));
+  brainTranscriptionQueue=job.catch(()=>{});return job;
+}
 async function requestInstantTranscription(offerId,videoUrl){
   const o=offers.find(x=>x.id===offerId); if(!o)return;
   videoUrl=videoUrl||videoForOffer(o);
@@ -2991,10 +3022,15 @@ async function requestInstantTranscription(offerId,videoUrl){
   if(viewOpen())openSimpleView(o,true);
   let token="";
   try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  // dispara a background function (responde 202 na hora; roda até 15min, sem o limite de 10s)
-  try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,videoUrl})});}catch(e){}
-  // acompanha o resultado gravado no Supabase
-  const done=await pollTranscription(offerId,40,4000);   // até ~2,5min
+  // MP4 acima de ~24 MB costuma exceder o limite do Whisper. Nesse caso já usa
+  // o fluxo fracionado; nos menores preserva a função rápida em segundo plano.
+  let chunked=false;try{const h=await fetch(videoUrl,{method:"HEAD"});chunked=+(h.headers.get("content-length")||0)>24*1024*1024;}catch(e){}
+  let done=false;
+  if(!chunked){
+    try{await fetch(TRANSCRIBE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,videoUrl})});}catch(e){}
+    done=await pollTranscription(offerId,12,4000);       // até ~48 s
+  }
+  if(!done){try{done=await queueBrainChunkedTranscription(offerId,videoUrl);}catch(e){console.error("transcrição fracionada falhou",e);}}
   transcribing.delete(offerId);
   const cur=offers.find(x=>x.id===offerId)||o;
   if(!done)cur.data.transcricaoStatus="pending";          // rede de segurança: workflow horário pega depois

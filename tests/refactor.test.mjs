@@ -80,6 +80,13 @@ test("transcritor pede timestamps reais e sincroniza por busca binária", () => 
   assert.match(html, /data-trword/);
 });
 
+test("Mega Brain transcreve vídeos grandes em partes e grava a copy", () => {
+  assert.match(html, /async function transcribeBrainInChunks\(offerId,videoUrl\)/);
+  assert.match(html, /queueBrainChunkedTranscription/);
+  assert.match(html, /chunked=.*content-length/);
+  assert.match(html, /data\.transcricao=fullText\.trim\(\)/);
+});
+
 test("rotas profundas recebem o fallback da SPA", () => {
   assert.match(netlify, /from = "\/\*"[\s\S]*to = "\/index\.html"[\s\S]*status = 200/);
   assert.match(html, /function parseLocation\(\)/);
