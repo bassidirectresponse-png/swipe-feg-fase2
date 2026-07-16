@@ -893,13 +893,13 @@
   .vsltab__state{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:6px;border-radius:999px;background:var(--surface);font-size:.66rem;color:var(--muted-fg);}
   .vsltab__state.done{background:var(--accent);color:var(--on-accent);}
   .vslouttools{display:flex;gap:8px;margin-left:auto;}
-  .vsldoc{padding:24px clamp(16px,3vw,34px) 42px;max-height:72vh;overflow:auto;scrollbar-width:thin;}
+  .vsldoc{padding:24px clamp(16px,3vw,34px) 42px;max-height:none;overflow:visible;}
   .vsldoc[hidden]{display:none;}
   .vslmd{max-width:92ch;margin:0 auto;font-size:.96rem;line-height:1.72;}
   .vslmd h3{scroll-margin-top:16px;}
   .vslblank{display:flex;align-items:center;gap:9px;color:var(--muted-fg);padding:20px 0;font-size:.9rem;}
   .vslblank .ico{width:18px;height:18px;color:var(--accent);}
-  @media(max-width:860px){.vslmeta{grid-template-columns:1fr 1fr}.vslmeta .vslfield:first-child{grid-column:1/-1}.vslsteps{grid-template-columns:1fr}.vslstep__tx span{white-space:normal}.vslactions__hint{width:100%;margin-left:0}.vsldoc{max-height:none}}
+  @media(max-width:860px){.vslmeta{grid-template-columns:1fr 1fr}.vslmeta .vslfield:first-child{grid-column:1/-1}.vslsteps{grid-template-columns:1fr}.vslstep__tx span{white-space:normal}.vslactions__hint{width:100%;margin-left:0}}
   @media(max-width:560px){.vslmeta{grid-template-columns:1fr}.vslmeta .vslfield:first-child{grid-column:auto}.vsldrop{margin:14px;padding:20px 14px}.vslextra{margin-inline:14px}.vslactions{padding-inline:14px}.vslouttools{width:100%;margin-left:0}.vslouttools .btn{flex:1}.vslmd{font-size:.92rem}.vsltool .cchief__hero{align-items:flex-start}}
   @media(prefers-reduced-motion:reduce){.vslprogress__fill,.vsldrop{transition:none}}
 
@@ -1063,6 +1063,7 @@ create policy "public_all" on offers
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script>
 /* ===== CONFIG ===== */
 const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
@@ -2111,7 +2112,7 @@ function openCopyPop(id){
   const btns=[];
   if(copy)btns.push(`<button class="btn btn--outline btn--sm" id="copyPopCopy">${ic("type")}Copiar texto</button>`);
   if(video)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(video))}" target="_blank" rel="noopener">${ic("play")}Ver vídeo</a>`);
-  if(copyLink)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(copyLink))}" target="_blank" rel="noopener">${ic("file")}Abrir doc</a>`);
+  if(copyLink)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(copyLink))}" target="_blank" rel="noopener">${ic("file")}Abrir copy em português</a>`);
   $("#copyPopFoot").innerHTML=btns.join("");
   const cc=$("#copyPopCopy");if(cc)cc.addEventListener("click",()=>{navigator.clipboard.writeText(copy).then(()=>toast("Copy copiada ✓")).catch(()=>toast("Não deu para copiar",true));});
   openOverlay("#copyPop");
@@ -2749,10 +2750,22 @@ function vslRenderDocs(){
   const ts=$("#vslTranscriptState"),as=$("#vslAnalysisState");if(ts){ts.textContent=vslTranscriptDoc?"✓":"—";ts.classList.toggle("done",!!vslTranscriptDoc&&!vslBusy);}if(as){as.textContent=vslAnalysisDoc?"✓":"—";as.classList.toggle("done",!!vslAnalysisDoc&&!vslBusy);}
 }
 function vslQueueRender(){if(!vslRenderTimer)vslRenderTimer=setTimeout(()=>{vslRenderTimer=0;vslRenderDocs();},90);}
-function vslDownload(kind){
+function vslSaveBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2500);}
+function vslDownload(kind,format="md"){
   const text=kind==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}
-  const suffix=kind==="analysis"?"dissecacao-estrategica":"transcricao-organizada",blob=new Blob([text],{type:"text/markdown;charset=utf-8"}),a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);a.download=`${vslSlug(vslName)}__${suffix}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  const suffix=kind==="analysis"?"dissecacao-estrategica":"transcricao-completa",base=`${vslSlug(vslName)}__${suffix}`;
+  if(format==="pdf"){
+    const api=window.jspdf&&window.jspdf.jsPDF;if(!api){toast("O gerador de PDF não carregou. Atualize a página e tente novamente.",true);return;}
+    const pdf=new api({unit:"mm",format:"a4"}),margin=15,pageWidth=180,pageHeight=277;pdf.setFont("helvetica","normal");pdf.setFontSize(10);
+    const lines=pdf.splitTextToSize(text.replace(/\t/g,"  "),pageWidth);let y=17;
+    for(const line of lines){if(y>pageHeight){pdf.addPage();y=17;}pdf.text(line,margin,y);y+=5;}
+    pdf.save(base+".pdf");return;
+  }
+  if(format==="doc"){
+    const title=kind==="analysis"?"Dissecação estratégica":"Transcrição completa",html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font-family:Arial,sans-serif;color:#171717;line-height:1.55;margin:36pt}h1{font-size:22pt}h2{font-size:16pt}h3{font-size:13pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6pt;text-align:left}p,li{font-size:10.5pt}</style></head><body>${ccMarkdown(text)}</body></html>`;
+    vslSaveBlob(new Blob(["\ufeff",html],{type:"application/msword;charset=utf-8"}),base+".doc");return;
+  }
+  vslSaveBlob(new Blob([text],{type:"text/markdown;charset=utf-8"}),base+".md");
 }
 function vslWait(el,event,timeout=12000){return new Promise((resolve,reject)=>{let timer;const ok=()=>{clearTimeout(timer);el.removeEventListener("error",bad);resolve();},bad=()=>{clearTimeout(timer);el.removeEventListener(event,ok);reject(new Error("não consegui ler o vídeo"));};el.addEventListener(event,ok,{once:true});el.addEventListener("error",bad,{once:true});timer=setTimeout(bad,timeout);});}
 async function vslReadDuration(file){
@@ -2790,8 +2803,28 @@ async function vslBuildContactSheets(file,duration,onProgress){
 }
 function vslHandleStreamEvent(event){
   if(!event)return;if(event.t==="text"){if(event.channel==="analysis")vslAnalysisDoc+=event.v||"";else vslTranscriptDoc+=event.v||"";vslQueueRender();}
-  else if(event.t==="status")vslSetStatus(3,event.v||"Analisando a VSL…",event.phase==="analysis"?84:70);
-  else if(event.t==="phase_done"&&event.phase==="transcript")vslSetStatus(3,"Transcrição organizada. Dissecando a estratégia…",82);
+  else if(event.t==="status")vslSetStatus(3,event.v||"Analisando a VSL…",event.phase==="analysis-assets"?91:78);
+}
+const VSL_DOC_BLOCK_SEC=300;
+function vslTranscriptParagraphs(segments){const out=[];let line=[];for(const s of segments){const t=String(s.text||"").trim();if(!t)continue;line.push(t);if(line.length>=3||line.join(" ").length>=520){out.push(line.join(" "));line=[];}}if(line.length)out.push(line.join(" "));return out;}
+function vslBuildCompleteTranscript(){
+  const language=vslDetectedLang||vslLang||"não detectado",segments=vslSegments.filter(s=>s&&String(s.text||"").trim()).sort((a,b)=>(+a.start||0)-(+b.start||0));
+  let doc=`# ${vslName} — Transcrição Completa Original\n\n## Metadados\n\n- **Idioma do áudio:** ${language}\n- **Duração:** ${trTime(vslDuration)}\n- **Fonte:** transcrição integral do áudio com timestamps reais\n\n> A copy abaixo preserva o idioma original e a ordem completa da VSL. A classificação estratégica dos blocos está no documento de dissecação.\n`;
+  if(segments.length){
+    const groups=new Map();for(const s of segments){const key=Math.floor(Math.max(0,+s.start||0)/VSL_DOC_BLOCK_SEC);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s);}
+    for(const key of [...groups.keys()].sort((a,b)=>a-b)){const start=key*VSL_DOC_BLOCK_SEC,end=Math.min(vslDuration||((key+1)*VSL_DOC_BLOCK_SEC),(key+1)*VSL_DOC_BLOCK_SEC),label=String(key+1).padStart(2,"0");doc+=`\n# Bloco ${label} — ${trTime(start)}–${trTime(end)}\n\n## Speaker / narrador do trecho\n\n${vslTranscriptParagraphs(groups.get(key)).join("\n\n")}\n`;}
+  }else doc+=`\n# Transcrição original\n\n${vslRaw.trim()}\n`;
+  if(vslCanonical)doc+=`\n# Apêndice — Roteiro canônico fornecido\n\n${vslCanonical}\n`;
+  return doc+`\n# Fim da transcrição — ${trTime(vslDuration)}\n`;
+}
+async function vslStreamPhase(token,phase,payload){
+  const response=await fetch(VSL_DISSECT_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({...payload,phase}),signal:vslAbort.signal});
+  if(!response.ok||!response.body){let j={};try{j=await response.json();}catch(_){}throw new Error(j.error||("Falha na análise: HTTP "+response.status));}
+  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="",serverError="",phaseDone=false;
+  const consume=line=>{if(!line.trim())return;let event;try{event=JSON.parse(line);}catch(_){return;}if(event.t==="error")serverError=event.v||"falha na análise";if(event.t==="phase_done"&&event.phase===phase)phaseDone=true;vslHandleStreamEvent(event);};
+  for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let nl;while((nl=buffer.indexOf("\n"))>=0){consume(buffer.slice(0,nl));buffer=buffer.slice(nl+1);}}
+  buffer+=decoder.decode();if(buffer.trim())consume(buffer);
+  if(serverError)throw new Error(serverError);if(!phaseDone)throw new Error("A análise foi interrompida antes de terminar. Tente novamente; a transcrição já concluída será preservada.");
 }
 function vslFileCacheKey(file,lang){return [file&&file.name,file&&file.size,file&&file.lastModified,lang||"auto"].join(":");}
 function vslAbortError(){try{return new DOMException("Processamento cancelado","AbortError");}catch(_){const e=new Error("Processamento cancelado");e.name="AbortError";return e;}}
@@ -2837,14 +2870,15 @@ async function vslRun(){
       if(!cached)vslChunkCache.set(i,part);vslAppendPart(part);
     }
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
+    vslTranscriptDoc=vslBuildCompleteTranscript();vslRenderDocs();
     vslSetStatus(2,vslFile.type.startsWith("video/")?"Lendo a linha do tempo visual…":"Arquivo de áudio: seguindo sem leitura visual.",58);
     try{vslSheets=await vslBuildContactSheets(vslFile,vslDuration,(done,total)=>vslSetStatus(2,`Capturando quadro ${done} de ${total}…`,58+Math.round((done/total)*9)));}catch(e){console.warn("contact sheets falharam",e);vslSheets=[];}
-    vslRenderSheets();vslSetStatus(3,"Organizando a transcrição por blocos e speakers…",69);
-    const response=await fetch(VSL_DISSECT_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({name:vslName,niche:vslNiche,language:vslDetectedLang||vslLang,duration:vslDuration,transcript:vslRaw,segments:vslSegments,canonicalScript:vslCanonical,contactSheets:vslSheets}),signal:vslAbort.signal});
-    if(!response.ok||!response.body){let j={};try{j=await response.json();}catch(_){}throw new Error(j.error||("Falha na análise: HTTP "+response.status));}
-    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="",serverError="";
-    for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let nl;while((nl=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,nl);buffer=buffer.slice(nl+1);if(!line.trim())continue;let event;try{event=JSON.parse(line);}catch(_){continue;}if(event.t==="error")serverError=event.v||"falha na análise";vslHandleStreamEvent(event);}}
-    if(serverError)throw new Error(serverError);vslSetStatus(3,"Transcrição e dissecação concluídas.",100);toast("VSL dissecada ✓");
+    vslRenderSheets();vslSetStatus(3,"Dissecando blocos, crenças, mecanismo e oferta…",72);
+    const payload={name:vslName,niche:vslNiche,language:vslDetectedLang||vslLang,duration:vslDuration,transcript:vslRaw,organizedTranscript:vslTranscriptDoc,segments:vslSegments,canonicalScript:vslCanonical,contactSheets:vslSheets};
+    await vslStreamPhase(token,"analysis-core",payload);if(!vslAnalysisDoc.trim())throw new Error("A dissecação estratégica não retornou conteúdo.");
+    vslAnalysisDoc+="\n\n---\n\n";vslRenderDocs();vslSetStatus(3,"Montando inventário de provas e ativos reutilizáveis…",90);
+    const coreLength=vslAnalysisDoc.length;await vslStreamPhase(token,"analysis-assets",payload);if(vslAnalysisDoc.length<=coreLength+20)throw new Error("O inventário estratégico não retornou conteúdo.");
+    vslSetStatus(3,"Transcrição completa e dissecação concluídas.",100);toast("VSL dissecada ✓");
   }catch(e){
     if(e&&e.name==="AbortError")vslSetStatus(1,"Processamento cancelado. Os resultados parciais foram preservados.",0);else{vslSetStatus(1,(e&&e.message)||"Falha ao processar a VSL",0);toast((e&&e.message)||"Falha ao processar a VSL",true);}
   }finally{vslBusy=false;vslAbort=null;if(vslRenderTimer){clearTimeout(vslRenderTimer);vslRenderTimer=0;}vslRenderFile();vslRenderDocs();if(cancel)cancel.hidden=true;if(run)run.disabled=!vslFile;}
@@ -2872,7 +2906,7 @@ function renderVslDissector(force){
       <div class="vslprogress__bar"><span class="vslprogress__fill" id="vslProgressFill"></span></div><div class="vslprogress__status" id="vslProgressStatus"></div><div class="vslsheets" id="vslSheets"></div>
     </section>
     <section class="vsloutputs" id="vslOutputs" hidden>
-      <div class="vsloutbar"><div class="vsltabs" role="tablist"><button class="vsltab active" role="tab" data-vsltab="transcript">Transcrição organizada <span class="vsltab__state" id="vslTranscriptState">—</span></button><button class="vsltab" role="tab" data-vsltab="analysis">Dissecação estratégica <span class="vsltab__state" id="vslAnalysisState">—</span></button></div><div class="vslouttools"><button class="btn btn--outline btn--sm" id="vslCopy">${ic("clipboard")}Copiar</button><button class="btn btn--outline btn--sm" id="vslDownload">${ic("download")}Markdown</button></div></div>
+      <div class="vsloutbar"><div class="vsltabs" role="tablist"><button class="vsltab active" role="tab" data-vsltab="transcript">Transcrição completa <span class="vsltab__state" id="vslTranscriptState">—</span></button><button class="vsltab" role="tab" data-vsltab="analysis">Dissecação estratégica <span class="vsltab__state" id="vslAnalysisState">—</span></button></div><div class="vslouttools"><button class="btn btn--outline btn--sm" id="vslCopy">${ic("clipboard")}Copiar</button><button class="btn btn--outline btn--sm" data-vsldownload="md">${ic("download")}Markdown</button><button class="btn btn--outline btn--sm" data-vsldownload="pdf">${ic("file")}PDF</button><button class="btn btn--outline btn--sm" data-vsldownload="doc">${ic("file")}Word</button></div></div>
       <div class="vsldoc" id="vslTranscriptDoc" role="tabpanel"><div class="chat__md vslmd" id="vslTranscriptMd"></div></div><div class="vsldoc" id="vslAnalysisDoc" role="tabpanel" hidden><div class="chat__md vslmd" id="vslAnalysisMd"></div></div>
     </section>
   </div>`;
@@ -2882,7 +2916,7 @@ function renderVslDissector(force){
   $("#vslRun").addEventListener("click",vslRun);$("#vslCancel").addEventListener("click",()=>{if(vslAbort)vslAbort.abort();});$("#vslReset").addEventListener("click",vslReset);
   $$("[data-vsltab]").forEach(b=>b.addEventListener("click",()=>{vslActiveTab=b.dataset.vsltab;vslRenderDocs();}));
   $("#vslCopy").addEventListener("click",()=>{const text=vslActiveTab==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}navigator.clipboard.writeText(text).then(()=>toast("Copiado ✓"));});
-  $("#vslDownload").addEventListener("click",()=>vslDownload(vslActiveTab));vslRenderFile();vslRenderSheets();vslRenderDocs();
+  $$('[data-vsldownload]').forEach(b=>b.addEventListener("click",()=>vslDownload(vslActiveTab,b.dataset.vsldownload)));vslRenderFile();vslRenderSheets();vslRenderDocs();
   if(vslBusy)vslSetStatus(vslTranscriptDoc?3:1,"Processamento em andamento…",vslTranscriptDoc?78:20);
 }
 
@@ -2966,34 +3000,34 @@ function criativoCard(o){
 const BRAIN_VALIDATION_TEST_IDS=new Set(["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"]);
 function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.id));}
 function brainSalesPending(d){return d&&((d.metricaPendente===true)||(d.autor==="Elaine Montone"&&!brainHasMetric(d)));}
-function brainCopyText(d){return String((d&&(d.copy||d.copyVsl||d.copyCriativo||d.transcricao))||"").trim();}
-function brainCopyIsTranscript(d){return !!(d&&d.transcricao&&!String(d.copy||d.copyVsl||d.copyCriativo||"").trim());}
+function brainCopyText(d){return String((d&&(d.transcricao||d.copy||d.copyVsl||d.copyCriativo))||"").trim();}
+function brainCopyIsTranscript(d){return !!String((d&&d.transcricao)||"").trim();}
 function brainCopyMarkup(d){
   const copy=brainCopyText(d);if(!copy)return"";
+  const timings=Array.isArray(d.transcricaoWords)?d.transcricaoWords.filter(w=>w&&String(w.word||"").trim()&&isFinite(+w.start)):[];
+  if(timings.length)return timings.map(w=>`<button type="button" class="brainword" data-brainword data-start="${Math.max(0,+w.start||0)}">${esc(String(w.word||"").trim())}</button>`).join(" ");
   if(!String((d&&d.transcricao)||"").trim())return esc(copy);
-  const tokens=copy.split(/(\s+)/),words=tokens.filter(t=>t&&!/^\s+$/.test(t)),timings=Array.isArray(d.transcricaoWords)?d.transcricaoWords.filter(w=>w&&isFinite(+w.start)):[];
+  const tokens=copy.split(/(\s+)/),words=tokens.filter(t=>t&&!/^\s+$/.test(t));
   let wi=0;
   return tokens.map(token=>{
     if(!token||/^\s+$/.test(token))return esc(token);
     const ratio=words.length>1?wi/(words.length-1):0;
-    const ti=timings.length?Math.min(timings.length-1,Math.round(ratio*(timings.length-1))):-1;
-    const start=ti>=0?Math.max(0,+timings[ti].start||0):"";
-    const attrs=ti>=0?` data-start="${start}"`:` data-ratio="${ratio.toFixed(6)}"`;
-    wi++;return `<button type="button" class="brainword" data-brainword${attrs}>${esc(token)}</button>`;
+    wi++;return `<button type="button" class="brainword" data-brainword data-ratio="${ratio.toFixed(6)}">${esc(token)}</button>`;
   }).join("");
 }
-function wireBrainTranscript(root){
-  const stage=$(".brainstage",root||document),video=stage&&$("video.vplayer",stage),pane=stage&&$(".brainstage__copy",stage),words=stage?$$('[data-brainword]',stage):[];
-  if(!video||!words.length||!pane)return;
-  const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1;
-  const setFollow=value=>{follow=value;if(followBtn){followBtn.classList.toggle("active",follow);followBtn.innerHTML=ic("play")+(follow?"Seguindo áudio":"Seguir áudio");followBtn.setAttribute("aria-pressed",String(follow));}};
-  const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow)current.scrollIntoView({block:"nearest",inline:"nearest",behavior:"smooth"});};
-  const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
-  video.addEventListener("timeupdate",()=>activate(atTime(video.currentTime||0)));
-  video.addEventListener("seeked",()=>activate(atTime(video.currentTime||0)));
-  words.forEach((word,index)=>word.addEventListener("click",()=>{const start=word.dataset.start!==undefined?(+word.dataset.start||0):((+word.dataset.ratio||0)*(video.duration||0));video.currentTime=start;activate(index);if(video.paused)video.play().catch(()=>{});}));
-  if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);
+function wireVideoTranscripts(root){
+  $$('[data-video-sync]',root||document).forEach(stage=>{
+    const video=$("video.vplayer",stage),pane=$("[data-transcript-pane]",stage),words=$$('[data-brainword]',stage);if(!video||!words.length||!pane)return;
+    const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1;
+    const setFollow=value=>{follow=value;if(followBtn){followBtn.classList.toggle("active",follow);followBtn.innerHTML=ic("play")+(follow?"Seguindo áudio":"Seguir áudio");followBtn.setAttribute("aria-pressed",String(follow));}};
+    const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow){const target=Math.max(0,current.offsetTop-pane.clientHeight*.42);if(Math.abs(pane.scrollTop-target)>pane.clientHeight*.3)pane.scrollTo({top:target,behavior:"smooth"});}};
+    const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
+    video.addEventListener("timeupdate",()=>activate(atTime(video.currentTime||0)));video.addEventListener("seeked",()=>activate(atTime(video.currentTime||0)));
+    words.forEach((word,index)=>word.addEventListener("click",()=>{const start=word.dataset.start!==undefined?(+word.dataset.start||0):((+word.dataset.ratio||0)*(video.duration||0));video.currentTime=start;activate(index);if(video.paused)video.play().catch(()=>{});}));
+    if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);
+  });
 }
+function wireBrainTranscript(root){wireVideoTranscripts(root);}
 function megabrainCard(o){
   const d=o.data||{};
   const copy=brainCopyText(d);
@@ -3130,27 +3164,30 @@ function videoEmbedHtml(url){
   if(e.type==="video")return `<video class="vplayer" controls playsinline preload="metadata" src="${esc(e.src)}#t=0.1"></video>`;
   return `<iframe class="vplayer" src="${esc(e.src)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
 }
-function transBox(txt,alwaysShow,status){
+function transBox(d,alwaysShow,status,syncable){
+  const txt=String((d&&d.transcricao)||"").trim();
   const working=status==="working", pending=status==="pending"||working;
   if(!txt&&!alwaysShow&&!pending)return"";
-  const body=txt?esc(txt):(working
+  const body=txt?brainCopyMarkup(d):(working
     ?`<span class="vpending">${ic("clock")}Transcrevendo agora… deve levar só alguns segundos.</span>`
     :pending
       ?`<span class="vpending">${ic("clock")}Transcrição sendo gerada automaticamente… aparece aqui em instantes.</span>`
       :"Sem transcrição cadastrada.");
-  return `<div class="vtrans"><div class="vk">${ic("file")}Transcrição do vídeo</div><div class="vbody ${txt?"":"empty"}">${body}</div></div>`;
+  const title=/^en\b/i.test(String(d&&d.transcricaoLang||""))?"Copy original em inglês":"Copy original do áudio";
+  const follow=txt&&syncable?`<div class="brainstage__tools"><button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button></div>`:"";
+  return `<div class="vtrans" data-transcript-pane><div class="vk">${ic("file")}${title}</div>${follow}<div class="vbody ${txt?"":"empty"}">${body}</div></div>`;
 }
 /* bloco de vídeo: embutido + transcrição ao lado + abrir em nova aba */
-function videoBlock(va,transcricao,forceTrans,status){
+function videoBlock(va,data,forceTrans,status){
   const embed=videoEmbedHtml(va);
   const openBtn=va?`<div class="linkbtns" style="margin-top:12px">${linkbtn("Abrir vídeo em nova aba",va,false,"external")}</div>`:"";
   if(embed){
-    const tb=transBox(transcricao,forceTrans,status);
-    if(tb)return `<div class="vcol"><div>${embed}${openBtn}</div>${tb}</div>`;
+    const syncable=embed.includes("<video"),tb=transBox(data,forceTrans,status,syncable);
+    if(tb)return `<div class="vcol" data-video-sync><div>${embed}${openBtn}</div>${tb}</div>`;
     return `<div>${embed}${openBtn}</div>`;
   }
   if(va){
-    const tb=transBox(transcricao,forceTrans,status);
+    const tb=transBox(data,forceTrans,status,false);
     return `<div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div>${tb?`<div style="margin-top:14px">${tb}</div>`:""}`;
   }
   return "";
@@ -3616,7 +3653,7 @@ function openSimpleView(o,skipOpen){
     const va=videoOfCrv(d);
     const showVideo=!!va&&d.plataforma!=="taboola";
     if(showVideo){
-      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d.transcricao,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
+      sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
     }
     if(d.print){
       const lbl=d.plataforma==="taboola"?"Anúncio (Taboola)":"Imagem";
@@ -3630,7 +3667,7 @@ function openSimpleView(o,skipOpen){
   /* mega brain: vídeo do criativo + copy escrita LADO A LADO + imagem */
   if(kind==="megabrain"){
     const copy=brainCopyText(d);
-    const copyTitle=brainCopyIsTranscript(d)?"Copy do criativo (transcrita)":"Copy do criativo";
+    const copyTitle=brainCopyIsTranscript(d)?(/^en\b/i.test(String(d.transcricaoLang||""))?"Copy original em inglês":"Copy original do áudio"):"Copy cadastrada";
     const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
     const va=videoOfBrain(d),image=String(d.print||"").trim();
     const embed=videoEmbedHtml(va);
@@ -3638,11 +3675,11 @@ function openSimpleView(o,skipOpen){
       :embed?`<div class="brainstage__media">${embed}</div>`
       :(va?`<div class="brainstage__media"><div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div></div>`:"");
     const canFollow=!!(embed&&embed.includes("<video")&&String(d.transcricao||"").trim()&&copy);
-    const copyTools=[copyLink?linkbtn("Abrir copy (doc)",copyLink,true,"file"):"",canFollow?`<button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button>`:""].filter(Boolean).join("");
-    const copyPane=`<div class="brainstage__copy"><div class="vk">${ic("type")}${copyTitle}</div>${copyTools?`<div class="brainstage__tools">${copyTools}</div>`:""}<div class="brain-copy ${copy?"":"empty"}" data-brain-copy>${copy?brainCopyMarkup(d):"Sem copy disponível neste card."}</div></div>`;
+    const copyTools=[copyLink?linkbtn("Abrir copy em português (doc)",copyLink,true,"file"):"",canFollow?`<button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button>`:""].filter(Boolean).join("");
+    const copyPane=`<div class="brainstage__copy" data-transcript-pane><div class="vk">${ic("type")}${copyTitle}</div>${copyTools?`<div class="brainstage__tools">${copyTools}</div>`:""}<div class="brain-copy ${copy?"":"empty"}" data-brain-copy>${copy?brainCopyMarkup(d):"Sem transcrição original disponível neste card."}</div></div>`;
     if(mediaPane||copy||copyLink){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo &amp; Copy</span><span class="sec__line"></span></div>
-        <div class="brainstage${mediaPane?"":" brainstage--full"}">${mediaPane}${copyPane}</div>
+        <div class="brainstage${mediaPane?"":" brainstage--full"}" data-video-sync>${mediaPane}${copyPane}</div>
         ${transcribeBtn(o,va,d)}</section>`;
     }
     if(!mediaPane&&!copy&&!copyLink){
@@ -3682,7 +3719,7 @@ function openSimpleView(o,skipOpen){
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
-  if(kind==="megabrain")wireBrainTranscript($("#viewBody"));
+  wireVideoTranscripts($("#viewBody"));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
 }
@@ -3815,7 +3852,7 @@ function renderSimpleForm(){
       <div class="fsec__hint">Envie o <b>arquivo MP4</b> (recomendado — toca embutido) ou cole um link (Drive/YouTube/Vimeo). O Drive só toca se o arquivo estiver público; o MP4 enviado sempre toca.</div>
       <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
       ${videoUpField}
-      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição do vídeo</label><textarea data-sk="transcricao" placeholder="Cole aqui a transcrição do vídeo — aparece ao lado do player.">${esc(it.transcricao||"")}</textarea></div>
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição original do áudio</label><textarea data-sk="transcricao" placeholder="Texto no idioma original do vídeo — aparece ao lado e acompanha o player.">${esc(it.transcricao||"")}</textarea></div>
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
@@ -3868,13 +3905,13 @@ function renderSimpleForm(){
       <div class="field"><label class="lbl">${ic("folder")} Link do Drive</label><input type="url" data-sk="linkDrive" placeholder="https://drive.google.com/..." value="${esc(it.linkDrive||"")}"></div>
       <div class="field"><label class="lbl">${ic("film")} Link do vídeo (MP4 / YouTube / Vimeo)</label><input type="url" data-sk="video" placeholder="https://... .mp4 — ou envie abaixo" value="${esc(it.video||"")}"></div>
       ${videoUpField}
-      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição do vídeo — opcional</label><textarea data-sk="transcricao" placeholder="Transcrição do vídeo (opcional).">${esc(it.transcricao||"")}</textarea></div>
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição original do áudio — opcional</label><textarea data-sk="transcricao" placeholder="Texto no idioma original do vídeo — usado no acompanhamento palavra por palavra.">${esc(it.transcricao||"")}</textarea></div>
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">04</span> Copy validada</div>
-      <div class="fsec__hint">A copy escrita do criativo — aparece <b>ao lado do vídeo</b> quando o card é aberto.</div>
-      <div class="field"><label class="lbl">${ic("type")} Copy do criativo</label><textarea data-sk="copy" placeholder="Cole aqui a copy validada (VSL, anúncio, headline...)" style="min-height:170px">${esc(it.copy||"")}</textarea></div>
-      <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy (doc) — opcional</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/..." value="${esc(it.copyLink||"")}"></div>
+      <div class="fsec__hint">A transcrição original aparece ao lado do vídeo. A versão em português fica disponível pelo documento.</div>
+      <div class="field"><label class="lbl">${ic("type")} Copy em português / referência</label><textarea data-sk="copy" placeholder="Copy traduzida ou referência interna — não substitui a transcrição original ao lado do vídeo." style="min-height:170px">${esc(it.copy||"")}</textarea></div>
+      <div class="field" style="margin-bottom:0"><label class="lbl">Link da copy em português (doc) — opcional</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>`;
   }
   const body=$("#simpleFormBody");

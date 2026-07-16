@@ -108,6 +108,48 @@ TRANSCRIÇÃO ORGANIZADA:
 ${clip(organized, 190_000)}`;
 }
 
+function analysisCorePrompt(meta) {
+  return `CRIE A PRIMEIRA PARTE DA DISSECAÇÃO ESTRATÉGICA DA VSL "${meta.name}".
+
+Escreva em PT-BR e comece exatamente com "# ${meta.name} — Dissecação Estratégica".
+
+CONTRATO DE SAÍDA:
+1. Faça uma dissecação cronológica COMPLETA, cobrindo do início até ${time(meta.duration)} sem parar antes do fim.
+2. Use os mesmos intervalos de cinco minutos da transcrição como referência, mas renomeie cada trecho pela função real: Micro-Lead, Lead, Background Story, Emotional Story, Discovery Story, Marketing Thesis, Product Build Up, Big Offer, Close ou nome conservador equivalente.
+3. Para cada bloco explique: o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova usada, emoção, transição e como modelar.
+4. Depois inclua: Veredito estratégico, Big Idea, Pergunta paradoxal, Gimmick, Avatar completo, Belief Ladder em ordem, MUP, MSOL, mecanismo, provas, objeções e oferta completa.
+5. Não resuma a VSL inteira em poucos parágrafos. Não encerre sem cobrir o fechamento, preço/âncoras, garantia, urgência e CTA quando existirem.
+6. Use tabelas somente quando melhorarem a comparação. Não crie compliance nem invente fatos.
+
+NICHO: ${meta.niche || "inferir"}
+IDIOMA ORIGINAL: ${meta.language || "não detectado"}
+DURAÇÃO: ${time(meta.duration)}
+
+TRANSCRIÇÃO COMPLETA ORIGINAL:
+${clip(meta.organized || meta.transcript, 190_000)}`;
+}
+
+function analysisAssetsPrompt(meta) {
+  return `CRIE A SEGUNDA PARTE DA DISSECAÇÃO ESTRATÉGICA DA VSL "${meta.name}".
+
+Escreva em PT-BR e comece com "# Inventário Estratégico e Banco de Ativos". Não repita a dissecação cronológica.
+
+Inclua obrigatoriamente, com exemplos e localização temporal quando identificável:
+- Inventário de provas: Demonstração, Motivo Lógico, Seja Específico, Explique o Mecanismo, Reafirme Crenças do Leitor, Reconheça a Descrença, Autoridade, Depoimentos, Humildade, Copy Lógica e Personalidade. Para cada item: como aparece, onde, função e como modelar.
+- Banco de ativos reutilizáveis: frases fortes, analogias, nomes chiclete, curiosidades, bullets/fascinations, histórias, claims, comparações, demonstrações, mecanismos, inimigos, CTAs, garantias, reason why now e padrões de fechamento.
+- Blueprint de modelagem por etapas.
+- Mapa de extração para Obsidian.
+- Perguntas em aberto e ambiguidades reais.
+
+Não invente elementos ausentes, não crie compliance e não encerre no meio de uma seção.
+
+NICHO: ${meta.niche || "inferir"}
+DURAÇÃO: ${time(meta.duration)}
+
+TRANSCRIÇÃO COMPLETA ORIGINAL:
+${clip(meta.organized || meta.transcript, 190_000)}`;
+}
+
 async function streamAnthropic({ system, user, images, maxTokens, channel }, send) {
   const content = [{ type: "text", text: clean(user) }, ...imageContent(images)];
   const upstream = await fetch(ANTHROPIC_URL, {
@@ -156,9 +198,11 @@ export default async (req) => {
   const meta = {
     name: clip(body.name || "VSL sem título", 140), niche: clip(body.niche || "", 100), language: clip(body.language || "", 16),
     duration: Number(body.duration) || 0, transcript: clean(body.transcript || "").trim(), canonical: clean(body.canonicalScript || "").trim(),
-    segmentText: segmentText(body.segments), images: body.contactSheets,
+    organized: clean(body.organizedTranscript || "").trim(), segmentText: segmentText(body.segments), images: body.contactSheets,
   };
   if (!meta.transcript && !meta.canonical) return json(400, { ok: false, error: "transcrição vazia" });
+  const phase = String(body.phase || "legacy");
+  if (!["legacy", "analysis-core", "analysis-assets"].includes(phase)) return json(400, { ok: false, error: "etapa inválida" });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -167,6 +211,18 @@ export default async (req) => {
       const send = (value) => { if (!closed) try { controller.enqueue(encoder.encode(JSON.stringify(value) + "\n")); } catch {} };
       try {
         send({ t: "meta", model: MODEL, name: meta.name });
+        if (phase === "analysis-core") {
+          send({ t: "status", phase, v: "Dissecando blocos, crenças, mecanismo e oferta…" });
+          await streamAnthropic({ system: SYSTEM, user: analysisCorePrompt(meta), images: meta.images, maxTokens: 12000, channel: "analysis" }, send);
+          send({ t: "phase_done", phase });
+          return;
+        }
+        if (phase === "analysis-assets") {
+          send({ t: "status", phase, v: "Montando inventário de provas e ativos reutilizáveis…" });
+          await streamAnthropic({ system: SYSTEM, user: analysisAssetsPrompt(meta), images: meta.images, maxTokens: 10000, channel: "analysis" }, send);
+          send({ t: "phase_done", phase });
+          return;
+        }
         send({ t: "status", phase: "transcript", v: "Organizando a transcrição e identificando os blocos…" });
         const organized = await streamAnthropic({ system: SYSTEM, user: transcriptPrompt(meta), images: meta.images, maxTokens: 24000, channel: "transcript" }, send);
         send({ t: "phase_done", phase: "transcript" });

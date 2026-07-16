@@ -62,7 +62,7 @@ test("Mega Brain destaca somente os criativos marcados como vendas pendentes", (
   assert.match(html, /CRIATIVO SEM ATUALIZAÇAO DE NUMERO DE VENDAS/);
   assert.match(html, /isHostedVideo\(d\.video\)\?"done"/);
   assert.match(html, /function brainCopyText\(d\)/);
-  assert.match(html, /Copy do criativo \(transcrita\)/);
+  assert.match(html, /Copy original em inglês/);
 });
 
 test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
@@ -147,12 +147,34 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /id="vslFile" accept="video\/\*,audio\/\*"/);
   assert.match(html, /async function vslBuildContactSheets\(file,duration,onProgress\)/);
   assert.match(html, /Fechamento e CTA/);
-  assert.match(html, /Transcrição organizada/);
+  assert.match(html, /Transcrição completa/);
   assert.match(html, /Dissecação estratégica/);
   assert.match(html, /canonicalScript:vslCanonical/);
   assert.match(html, /vslRenderTimer=setTimeout/);
   assert.match(html, /\.vslactions \[hidden\]\{display:none!important/);
   assert.match(html, /\.vslactions \.btn:disabled\{opacity:/);
+  assert.match(html, /function vslBuildCompleteTranscript\(\)/);
+  assert.match(html, /data-vsldownload="pdf"/);
+  assert.match(html, /data-vsldownload="doc"/);
+  assert.match(html, /max-height:none;overflow:visible/);
+});
+
+test("Dissecador valida cada etapa estratégica antes de anunciar conclusão", () => {
+  assert.match(html, /vslStreamPhase\(token,"analysis-core",payload\)/);
+  assert.match(html, /vslStreamPhase\(token,"analysis-assets",payload\)/);
+  assert.match(html, /if\(!phaseDone\)throw new Error/);
+  assert.match(vslDissectorFn, /phase === "analysis-core"/);
+  assert.match(vslDissectorFn, /phase === "analysis-assets"/);
+  assert.match(vslDissectorFn, /send\(\{ t: "phase_done", phase \}\)/);
+});
+
+test("seções com vídeo usam o áudio original e sincronizam palavra por palavra", () => {
+  assert.match(html, /d\.transcricao\|\|d\.copy\|\|d\.copyVsl\|\|d\.copyCriativo/);
+  assert.match(html, /function wireVideoTranscripts\(root\)/);
+  assert.match(html, /data-video-sync/);
+  assert.match(html, /data-transcript-pane/);
+  assert.match(html, /Abrir copy em português \(doc\)/);
+  assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
