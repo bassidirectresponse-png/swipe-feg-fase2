@@ -1226,6 +1226,7 @@ function normalize(raw){
   if(!Array.isArray(d.bmReports))d.bmReports=[];
   if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
   if(typeof d.brandSemrush3m!=="string")d.brandSemrush3m="";
+  if(typeof d.adsLibraryCheckedAt!=="string")d.adsLibraryCheckedAt="";
   return d;
 }
 
@@ -1664,7 +1665,8 @@ function brandReportsHtml(d){
 function brandCard(o){
   const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const ads=getAds(d);
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent" title="Total conferido na Meta Ads Library com o filtro Ativos">${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=(topAds.find(x=>x.link)||{}).link||"";
   return card({
     id:o.id,variant:"brand-card",
@@ -1847,7 +1849,7 @@ function openView(id){
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
   if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta Insider":"Em monitoramento"}</div></div>`;
   if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
-  else kvs+=`<div class="kv"><div class="k">Ads ativos</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>`;
+  else kvs+=`<div class="kv"><div class="k">${isBrand?"Ads ativos na biblioteca":"Ads ativos"}</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>${isBrand?`<div class="kv"><div class="k">Biblioteca conferida em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div>`:""}`;
 
   let headLinks="";
   if(!native){
@@ -1862,11 +1864,16 @@ function openView(id){
 
   let adsSection="";
   if(!native){
-    const ah=adsHistOf(d);
-    const upd=d.adsUpdatedAt
-      ?`<div class="adsmeta" style="margin-top:12px"><span class="adsauto">${ic("zap")}atualização automática</span><span class="adsupd">${ic("clock")}última leitura: ${esc(relTime(d.adsUpdatedAt))}</span></div>`
-      :`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">Ainda não atualizado pelo robô — será preenchido na próxima rodada automática.</div>`;
-    adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Anúncios ativos · histórico</span><span class="sec__line"></span></div>${adsChartSvg(ah)}${upd}</section>`;
+    if(isBrand){
+      const library=(d.bibliotecas.find(x=>x.link)||{}).link||"";
+      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div class="ta-info">${ic("info")}<span>Este total vem da Meta Ads Library com o filtro <b>Ativos</b>, não do número de linhas do Gerenciador de Anúncios.</span></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+    }else{
+      const ah=adsHistOf(d);
+      const upd=d.adsUpdatedAt
+        ?`<div class="adsmeta" style="margin-top:12px"><span class="adsauto">${ic("zap")}atualização automática</span><span class="adsupd">${ic("clock")}última leitura: ${esc(relTime(d.adsUpdatedAt))}</span></div>`
+        :`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">Ainda não atualizado pelo robô — será preenchido na próxima rodada automática.</div>`;
+      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Anúncios ativos · histórico</span><span class="sec__line"></span></div>${adsChartSvg(ah)}${upd}</section>`;
+    }
   }
   let bmSection="";
   if(isBrand){
@@ -1989,9 +1996,10 @@ function openForm(id){
         <div class="field"><label class="lbl">Nome da marca</label><input type="text" id="f_nomeMarca" placeholder="Marca" value="${esc(d.nomeMarca)}"></div>
         <div class="field"><label class="lbl">Nicho</label><input list="nichos" id="f_nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(d.nicho)}"><datalist id="nichos">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
       </div>
-      <div class="row">
+      <div class="${isBrand?"row3":"row"}">
         <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
-        <div class="field only-meta"><label class="lbl">Nº de ads ativos</label><input type="number" id="f_numAdsAtivos" placeholder="0" value="${esc(d.numAdsAtivos)}"></div>
+        <div class="field only-meta"><label class="lbl">${isBrand?"Ads ativos na biblioteca":"Nº de ads ativos"}</label><input type="number" id="f_numAdsAtivos" placeholder="Ex: 160" value="${esc(d.numAdsAtivos)}">${isBrand?`<div class="fsec__hint">Use o total exibido na biblioteca com o filtro Ativos.</div>`:""}</div>
+        ${isBrand?`<div class="field only-meta"><label class="lbl">Biblioteca conferida em</label><input type="text" id="f_adsLibraryCheckedAt" placeholder="Ex: 17/07/2026" value="${esc(d.adsLibraryCheckedAt)}"></div>`:""}
       </div>
       <div class="only-meta">
         <label class="lbl">Bibliotecas de anúncios (Meta Ads Library)</label>
@@ -2163,6 +2171,7 @@ function buildPayload(){
   });
   if(BRAND_SECTIONS.has(fBrandStage))Object.assign(payload,{
     kind:fBrandStage,
+    adsLibraryCheckedAt:val("f_adsLibraryCheckedAt"),
     bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
     bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
   });

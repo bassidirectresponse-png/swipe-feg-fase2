@@ -252,6 +252,11 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /Link do Facebook/);
   assert.doesNotMatch(html, /triggerBrandFbIngest/);
   assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
+  assert.match(html, /Ads ativos na biblioteca/);
+  assert.match(html, /Biblioteca conferida em/);
+  assert.match(html, /Total conferido na Meta Ads Library com o filtro Ativos/);
+  assert.match(html, /não do número de linhas do Gerenciador de Anúncios/);
+  assert.match(html, /Conferir na biblioteca/);
 });
 
 test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {
@@ -271,6 +276,9 @@ test("Joymode não exibe o contexto técnico nem o comentário de referência", 
   assert.match(joymodeIngest, /comentario: ""/);
   assert.doesNotMatch(joymodeIngest, /Conta em USD\. Médias do card/);
   assert.doesNotMatch(joymodeIngest, /Primeira oferta Insider cadastrada/);
+  assert.equal(joymodeSeed.numAdsAtivos, "160");
+  assert.equal(joymodeSeed.adsLibraryCheckedAt, "17\/07\/2026");
+  assert.match(joymodeIngest, /numAdsAtivos: "160"/);
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
