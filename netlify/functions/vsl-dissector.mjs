@@ -152,7 +152,24 @@ ${clip(meta.organized || meta.transcript, 190_000)}`;
 
 // Prompts usados pelo pipeline persistente. A análise cronológica é dividida
 // em blocos independentes para que nenhuma VSL seja cortada por tamanho.
-export function analysisChunkPrompt(meta, chunk, index, total) {
+export function translationChunkPrompt(meta, chunk, index, total) {
+  return `TRADUZA INTEGRALMENTE A PARTE ${index + 1} DE ${total} DA TRANSCRIÇÃO ORGANIZADA DA VSL "${meta.name}" PARA PT-BR.
+
+CONTRATO OBRIGATÓRIO:
+1. Preserve todos os headings Markdown, blocos, leitores/speakers, ordem, números, nomes, claims e marcadores de incerteza.
+2. Traduza apenas o texto; não resuma, explique, suavize, adapte ou acrescente análise.
+3. Preserve parágrafos curtos e não coloque timestamps dentro dos parágrafos.
+4. Não repita o título principal do documento; ele será inserido automaticamente. Preserve todos os demais headings.
+5. Entregue somente o Markdown traduzido desta parte, do primeiro ao último caractere relevante.
+
+PARTE: ${index + 1}/${total}
+IDIOMA ORIGINAL: ${meta.language || "não detectado"}
+
+CONTEÚDO ORIGINAL:
+${clean(chunk)}`;
+}
+
+export function analysisChunkPrompt(meta, chunk, index, total, translation = "") {
   return `DISSEQUE A PARTE ${index + 1} DE ${total} DA VSL "${meta.name}".
 
 Esta é uma parte cronológica; analise TODO o trecho recebido sem antecipar ou inventar partes ausentes.
@@ -170,8 +187,10 @@ IDIOMA ORIGINAL: ${meta.language || "não detectado"}
 DURAÇÃO TOTAL: ${time(meta.duration)}
 PARTE: ${index + 1}/${total}
 
-TRECHO COMPLETO DESTA PARTE:
-${clean(chunk)}`;
+TRECHO COMPLETO ORIGINAL DESTA PARTE:
+${clean(chunk)}
+
+${translation ? `TRADUÇÃO PT-BR ORGANIZADA DA MESMA PARTE — use junto com o original, sem analisar duas vezes:\n${clean(translation)}` : ""}`;
 }
 
 export function analysisSynthesisPrompt(meta, source) {
@@ -198,6 +217,22 @@ DURAÇÃO: ${time(meta.duration)}
 
 ANÁLISES E SÍNTESES DE TODAS AS PARTES:
 ${clean(source)}`;
+}
+
+export function analysisRepairPrompt(meta, analysis, missing) {
+  return `COMPLETE O DOCUMENTO DE DISSECAÇÃO ESTRATÉGICA DA VSL "${meta.name}".
+
+O documento abaixo já contém a análise cronológica. Escreva somente um complemento em PT-BR com as seções ausentes ou insuficientes: ${missing.join(", ")}.
+
+CONTRATO OBRIGATÓRIO DA SKILL:
+- Um único documento de análise, limpo e operacional.
+- Veredito estratégico, Big Idea, pergunta paradoxal, gimmick, avatar completo, Belief Ladder, MUP, MSOL, mecanismo, provas, objeções, oferta e fechamento.
+- Inventário de provas com Demonstração, Motivo Lógico, Especificidade, Mecanismo, Crenças do Leitor, Reconhecimento da Descrença, Autoridade, Depoimentos, Humildade, Copy Lógica e Personalidade.
+- Banco de ativos reutilizáveis e Blueprint de modelagem.
+- Não invente, não crie compliance e não repita partes já completas.
+
+DOCUMENTO ATUAL:
+${clean(analysis).slice(0, 170_000)}`;
 }
 
 async function streamAnthropic({ system, user, images, maxTokens, channel }, send) {

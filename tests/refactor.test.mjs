@@ -157,7 +157,9 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /\.vslactions \.btn:disabled\{opacity:/);
   assert.match(html, /function vslBuildCompleteTranscript\(\)/);
   assert.match(html, /data-vsldownload="pdf"/);
-  assert.match(html, /data-vsldownload="doc"/);
+  assert.match(html, /id="vslGoogleDocs"/);
+  assert.match(html, /window\.open\("https:\/\/docs\.new"/);
+  assert.doesNotMatch(html, /O fluxo combina Whisper, timestamps/);
   assert.match(html, /max-height:none;overflow:visible/);
 });
 
@@ -169,11 +171,14 @@ test("Dissecador persiste, acompanha e retoma a análise em segundo plano", () =
   assert.match(html, /A dissecação continua em segundo plano/);
   assert.match(vslJobFn, /getStore\(\{ name: "vsl-jobs", consistency: "strong" \}\)/);
   assert.match(vslJobFn, /vsl-dissector-background/);
-  assert.match(vslBackgroundFn, /Cada chamada[\s\S]*salva o checkpoint/);
+  assert.match(vslBackgroundFn, /export default async \(req\)/);
+  assert.match(vslBackgroundFn, /config = \{ background: true \}/);
   assert.match(vslBackgroundFn, /job\.coreParts\[index\] = part/);
   assert.match(vslBackgroundFn, /request\.phase !== job\.phase/);
   assert.match(vslBackgroundFn, /if \(job\.status !== "complete"\) await requeue/);
   assert.match(vslBackgroundFn, /job\.status = "complete"/);
+  assert.match(vslJobFn, /needsRecovery/);
+  assert.match(vslJobFn, /body\.action === "retry"/);
 });
 
 test("seções com vídeo usam o áudio original e sincronizam palavra por palavra", () => {
@@ -182,6 +187,8 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /data-video-sync/);
   assert.match(html, /data-transcript-pane/);
   assert.match(html, /Abrir copy em português \(doc\)/);
+  assert.match(html, /\["wheel","touchstart","pointerdown"\]/);
+  assert.match(html, /if\(follow\)setFollow\(false\)/);
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
@@ -206,6 +213,9 @@ test("backend do Dissecador preserva a copy e analisa por blocos", () => {
   assert.match(vslDissectorFn, /channel: "analysis"/);
   assert.match(vslDissectorFn, /imageContent\(images\)/);
   assert.match(vslDissectorFn, /não crie seções de compliance/);
+  assert.match(vslDissectorFn, /translationChunkPrompt/);
+  assert.match(vslDissectorFn, /analysisRepairPrompt/);
+  assert.match(vslBackgroundFn, /analysisGaps\(job\)/);
 });
 
 test("rotas profundas recebem o fallback da SPA", () => {

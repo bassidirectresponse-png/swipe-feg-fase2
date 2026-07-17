@@ -526,7 +526,7 @@
   .brainstage__media .vplayer{border-radius:16px;background:#000;border:1px solid var(--border-2);display:block;box-shadow:var(--shadow);}
   .brainstage__media iframe.vplayer{height:min(78vh,760px);width:auto;aspect-ratio:9/16;margin:0;}
   .brainstage__media video.vplayer{height:min(78vh,760px);width:auto;max-width:100%;object-fit:contain;margin:0;}
-  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;max-height:min(78vh,760px);overflow:auto;scroll-behavior:smooth;}
+  .brainstage__copy{min-width:0;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;max-height:min(78vh,760px);overflow:auto;overscroll-behavior:contain;}
   .brainstage__copy .vk{display:flex;align-items:center;gap:7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;margin-bottom:12px;}
   .brainstage__copy .vk .ico{width:14px;height:14px;color:var(--accent);}
   .brainstage__tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
@@ -1081,7 +1081,7 @@ const SECTIONS=[
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
-  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba a transcrição via Whisper, escolhendo o idioma.'}
+  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'}
 ];
 function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado"||k==="vsldissector";}
 function isChatSection(k){return k==="copychief"||k==="furtado";}
@@ -2562,12 +2562,12 @@ async function furRun(){
 const TR_FN="/.netlify/functions/transcribe-file";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
-let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1;
+let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true;
 const TR_STORE="feg_transcricoes_v1";
 const TR_SAVE_FN="/.netlify/functions/transcript";
 function trStoreRead(){try{return JSON.parse(localStorage.getItem(TR_STORE)||"{}");}catch(_){return{};}}
 function trCache(entry){const all=trStoreRead();all[entry.id]=entry;const ordered=Object.values(all).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,20),next={};ordered.forEach(x=>next[x.id]=x);try{localStorage.setItem(TR_STORE,JSON.stringify(next));}catch(_){} }
-function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
+function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;trFollow=true;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
 async function trToken(){try{const r=await sb.auth.getSession();return(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(_){return"";}}
 async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,duration:trDur,fileName:trFileName,createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
 async function loadTrRoute(id){let x=trStoreRead()[id];if(!x){trSetStatus(`<span class="vidup__spin"></span>Carregando transcrição…`);try{const response=await fetch(TR_SAVE_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+await trToken()}}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"não encontrada");x=result.transcript;trCache(x);}catch(_){if(parseLocation().id!==id)return;trSetStatus("");renderNotFound("Transcrição não encontrada.");return;}}if(parseLocation().id!==id)return;trSetStatus("");trLoadEntry(x);}
@@ -2587,11 +2587,12 @@ function renderTrOutput(){
   }else{
     body.textContent=trText||trSegs.map(s=>s.text).join(" ");
   }
+  body.onwheel=()=>{trFollow=false;};body.ontouchstart=()=>{trFollow=false;};body.onpointerdown=()=>{trFollow=false;};
   trActive=-1;if(trAudio&&!trAudio.paused)trSyncWord(trAudio.currentTime||0);
   const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
 }
 function trWordAt(time){let lo=0,hi=trWords.length-1,ans=-1;while(lo<=hi){const m=(lo+hi)>>1;if(trWords[m].start<=time){ans=m;lo=m+1;}else hi=m-1;}return ans;}
-function trSyncWord(time){if(!trWords.length)return;const next=trWordAt(time);if(next===trActive)return;const body=$("#trText");if(!body)return;if(trActive>=0){const old=$(`[data-trword="${trActive}"]`,body);if(old)old.classList.remove("is-active");}if(next>trActive){for(let i=Math.max(0,trActive);i<next;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.add("is-past");}}else{for(let i=Math.max(0,next);i<=trActive;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.remove("is-past");}}trActive=next;if(next>=0){const cur=$(`[data-trword="${next}"]`,body);if(cur){cur.classList.add("is-active");if(!cur.matches(":hover")&&document.activeElement!==cur)cur.scrollIntoView({block:"nearest",inline:"nearest"});}}}
+function trSyncWord(time){if(!trWords.length)return;const next=trWordAt(time);if(next===trActive)return;const body=$("#trText");if(!body)return;if(trActive>=0){const old=$(`[data-trword="${trActive}"]`,body);if(old)old.classList.remove("is-active");}if(next>trActive){for(let i=Math.max(0,trActive);i<next;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.add("is-past");}}else{for(let i=Math.max(0,next);i<=trActive;i++){const w=$(`[data-trword="${i}"]`,body);if(w)w.classList.remove("is-past");}}trActive=next;if(next>=0){const cur=$(`[data-trword="${next}"]`,body);if(cur){cur.classList.add("is-active");if(trFollow&&!cur.matches(":hover")&&document.activeElement!==cur){const target=Math.max(0,cur.offsetTop-body.clientHeight*.42);body.scrollTo({top:target,behavior:"auto"});}}}}
 function trFrame(){if(!trAudio)return;const duration=trAudio.duration||trDur||1,ratio=Math.min(1,trAudio.currentTime/duration),range=$("#trRange"),fill=$("#trFill"),time=$("#trPlayerTime");if(range)range.value=String(Math.round(ratio*1000));if(fill)fill.style.width=(ratio*100)+"%";if(time)time.textContent=`${trTime(trAudio.currentTime)} / ${trTime(duration)}`;trSyncWord(trAudio.currentTime);if(!trAudio.paused)trRaf=requestAnimationFrame(trFrame);}
 function trRenderPlayer(){const host=$("#trPlayer");if(!host||!trAudioUrl)return;cancelAnimationFrame(trRaf);host.innerHTML=`<div class="trplayer"><audio id="trAudio" src="${esc(trAudioUrl)}" preload="metadata"></audio><div class="trplayer__row"><button type="button" class="trplayer__play" id="trPlay" aria-label="Reproduzir">${ic("play")}</button><label class="trplayer__track" aria-label="Posição do áudio"><span class="trplayer__rail"><span class="trplayer__fill" id="trFill"></span></span><input class="trplayer__range" id="trRange" type="range" min="0" max="1000" value="0"></label><span class="trplayer__time" id="trPlayerTime">0:00 / ${trTime(trDur)}</span><select class="trplayer__speed" id="trSpeed" aria-label="Velocidade"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></div></div>`;
   trAudio=$("#trAudio");const play=$("#trPlay");play.addEventListener("click",()=>trAudio.paused?trAudio.play():trAudio.pause());trAudio.addEventListener("play",()=>{play.textContent="❚❚";play.setAttribute("aria-label","Pausar");cancelAnimationFrame(trRaf);trRaf=requestAnimationFrame(trFrame);});trAudio.addEventListener("pause",()=>{play.innerHTML=ic("play");play.setAttribute("aria-label","Reproduzir");cancelAnimationFrame(trRaf);});trAudio.addEventListener("loadedmetadata",()=>{if(!trDur)trDur=trAudio.duration||0;trFrame();});$("#trRange").addEventListener("input",e=>{trAudio.currentTime=(trAudio.duration||trDur||0)*(+e.target.value/1000);trSyncWord(trAudio.currentTime);trFrame();});$("#trSpeed").addEventListener("change",e=>trAudio.playbackRate=+e.target.value||1);
@@ -2630,7 +2631,7 @@ function trWav(samples,rate){
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trBusy=true; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  trBusy=true; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
@@ -2668,7 +2669,7 @@ function renderTranscritor(){
       <div class="cchief__mark">${ic("mic")}</div>
       <div class="cchief__heroTx">
         <div class="cchief__heroTitle">Transcritor</div>
-        <p>Envie um vídeo e receba a transcrição via <b>Whisper</b>. Escolha o idioma ou deixe no automático.</p>
+        <p>Envie um vídeo e receba a transcrição completa. Escolha o idioma ou deixe no automático.</p>
       </div>
     </div>
     <div class="cchief__composer">
@@ -2736,7 +2737,7 @@ function vslSetStatus(step,text,pct){
 function vslRenderFile(){
   const drop=$("#vslDrop");if(!drop)return;
   drop.classList.toggle("ready",!!vslFile);drop.classList.toggle("busy",vslBusy);
-  drop.innerHTML=vslFile?`<div class="vsldrop__inner">${ic(vslFile.type.startsWith("video/")?"film":"mic")}<strong>${esc(vslFile.name)}</strong><div class="vslfilemeta"><span>${esc(vslFile.type||"arquivo de mídia")}</span><span>${vslBytes(vslFile.size)}</span>${vslDuration?`<span>${trTime(vslDuration)}</span>`:""}</div><small>Clique para trocar o arquivo. O vídeo fica no navegador; somente áudio em partes e contact sheets são enviados para análise.</small></div>`:`<div class="vsldrop__inner">${ic("upload")}<strong>Clique ou arraste a VSL aqui</strong><small>MP4, MOV, WEBM, MP3 ou WAV. O áudio será transcrito em partes e o vídeo será lido por contact sheets da linha do tempo.</small></div>`;
+  drop.innerHTML=vslFile?`<div class="vsldrop__inner">${ic(vslFile.type.startsWith("video/")?"film":"mic")}<strong>${esc(vslFile.name)}</strong><div class="vslfilemeta"><span>${vslFile.type.startsWith("video/")?"Vídeo":"Áudio"}</span><span>${vslBytes(vslFile.size)}</span>${vslDuration?`<span>${trTime(vslDuration)}</span>`:""}</div><small>Clique para trocar o arquivo. Ele permanece neste navegador durante a preparação.</small></div>`:`<div class="vsldrop__inner">${ic("upload")}<strong>Clique ou arraste a VSL aqui</strong><small>Envie o vídeo ou áudio completo. A análise considera o conteúdo do início ao fechamento.</small></div>`;
   const run=$("#vslRun");if(run)run.disabled=!vslFile||vslBusy;
 }
 function vslRenderSheets(){const host=$("#vslSheets");if(host)host.innerHTML=vslSheets.map((s,i)=>`<img src="data:${s.mediaType};base64,${s.data}" alt="Contact sheet ${i+1}: ${esc(s.label)}">`).join("");}
@@ -2761,11 +2762,17 @@ function vslDownload(kind,format="md"){
     for(const line of lines){if(y>pageHeight){pdf.addPage();y=17;}pdf.text(line,margin,y);y+=5;}
     pdf.save(base+".pdf");return;
   }
-  if(format==="doc"){
-    const title=kind==="analysis"?"Dissecação estratégica":"Transcrição completa",html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font-family:Arial,sans-serif;color:#171717;line-height:1.55;margin:36pt}h1{font-size:22pt}h2{font-size:16pt}h3{font-size:13pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6pt;text-align:left}p,li{font-size:10.5pt}</style></head><body>${ccMarkdown(text)}</body></html>`;
-    vslSaveBlob(new Blob(["\ufeff",html],{type:"application/msword;charset=utf-8"}),base+".doc");return;
-  }
   vslSaveBlob(new Blob([text],{type:"text/markdown;charset=utf-8"}),base+".md");
+}
+async function vslOpenGoogleDocs(kind){
+  const text=kind==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}
+  window.open("https://docs.new","_blank","noopener");
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.55">${ccMarkdown(text)}</div>`;
+  try{
+    if(window.ClipboardItem&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([text],{type:"text/plain"}),"text/html":new Blob([html],{type:"text/html"})})]);
+    else await navigator.clipboard.writeText(text);
+    toast("Google Docs aberto. O conteúdo está copiado — cole no novo documento.");
+  }catch(_){toast("Google Docs aberto. Use Copiar aqui e cole no novo documento.",true);}
 }
 function vslWait(el,event,timeout=12000){return new Promise((resolve,reject)=>{let timer;const ok=()=>{clearTimeout(timer);el.removeEventListener("error",bad);resolve();},bad=()=>{clearTimeout(timer);el.removeEventListener(event,ok);reject(new Error("não consegui ler o vídeo"));};el.addEventListener(event,ok,{once:true});el.addEventListener("error",bad,{once:true});timer=setTimeout(bad,timeout);});}
 async function vslReadDuration(file){
@@ -2805,7 +2812,7 @@ const VSL_DOC_BLOCK_SEC=300;
 function vslTranscriptParagraphs(segments){const out=[];let line=[];for(const s of segments){const t=String(s.text||"").trim();if(!t)continue;line.push(t);if(line.length>=3||line.join(" ").length>=520){out.push(line.join(" "));line=[];}}if(line.length)out.push(line.join(" "));return out;}
 function vslBuildCompleteTranscript(){
   const language=vslDetectedLang||vslLang||"não detectado",segments=vslSegments.filter(s=>s&&String(s.text||"").trim()).sort((a,b)=>(+a.start||0)-(+b.start||0));
-  let doc=`# ${vslName} — Transcrição Completa Original\n\n## Metadados\n\n- **Idioma do áudio:** ${language}\n- **Duração:** ${trTime(vslDuration)}\n- **Fonte:** transcrição integral do áudio com timestamps reais\n\n> A copy abaixo preserva o idioma original e a ordem completa da VSL. A classificação estratégica dos blocos está no documento de dissecação.\n`;
+  let doc=`# ${vslName} — Transcrição Completa Original\n\n## Metadados\n\n- **Idioma do áudio:** ${language}\n- **Duração:** ${trTime(vslDuration)}\n- **Fonte:** texto integral do áudio na ordem original\n\n> A copy abaixo preserva o idioma original e a ordem completa da VSL. A classificação estratégica dos blocos está no documento de dissecação.\n`;
   if(segments.length){
     const groups=new Map();for(const s of segments){const key=Math.floor(Math.max(0,+s.start||0)/VSL_DOC_BLOCK_SEC);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s);}
     for(const key of [...groups.keys()].sort((a,b)=>a-b)){const start=key*VSL_DOC_BLOCK_SEC,end=Math.min(vslDuration||((key+1)*VSL_DOC_BLOCK_SEC),(key+1)*VSL_DOC_BLOCK_SEC),label=String(key+1).padStart(2,"0");doc+=`\n# Bloco ${label} — ${trTime(start)}–${trTime(end)}\n\n## Speaker / narrador do trecho\n\n${vslTranscriptParagraphs(groups.get(key)).join("\n\n")}\n`;}
@@ -2818,7 +2825,8 @@ function vslApplyJob(job){
   if(!job)return;vslJobId=job.id||vslJobId;vslName=job.name||vslName;vslNiche=job.niche||vslNiche;vslDetectedLang=job.language||vslDetectedLang;vslDuration=+job.duration||vslDuration;
   if(job.transcriptDoc)vslTranscriptDoc=job.transcriptDoc;if(typeof job.analysisDoc==="string")vslAnalysisDoc=job.analysisDoc;
   const n=$("#vslName"),ni=$("#vslNiche");if(n)n.value=vslName;if(ni&&vslNiche)ni.value=vslNiche;
-  vslRenderDocs();vslSetStatus(3,job.message||(job.status==="complete"?"Dissecação concluída.":"Processando em segundo plano…"),+job.progress||70);
+  const retry=$("#vslRetry");if(retry)retry.hidden=job.status!=="error";
+  vslRenderDocs();vslSetStatus(3,job.message||(job.status==="complete"?"Dissecação concluída.":"Processando a análise…"),+job.progress||70);
 }
 async function vslFetchJob(token,id,signal){
   const response=await fetch(VSL_JOB_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+token},cache:"no-store",signal});
@@ -2839,6 +2847,15 @@ async function vslCreateJob(token,payload,signal){
   let data={};try{data=await response.json();}catch(_){}
   if(!response.ok||!data.ok||!data.id)throw new Error(data.error||("Não foi possível iniciar a análise: HTTP "+response.status));
   vslRememberJob(data.id);return data.id;
+}
+async function vslRetryLastJob(){
+  if(vslBusy||!vslJobId)return;vslBusy=true;vslAbort=new AbortController();const retry=$("#vslRetry"),cancel=$("#vslCancel");if(retry)retry.hidden=true;if(cancel){cancel.hidden=false;cancel.textContent="Fechar acompanhamento";}
+  try{
+    const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
+    const response=await fetch(VSL_JOB_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({action:"retry",id:vslJobId}),signal:vslAbort.signal});let data={};try{data=await response.json();}catch(_){}if(!response.ok||!data.ok)throw new Error(data.error||"Não foi possível retomar a análise.");
+    vslSetStatus(3,"Retomando do último ponto salvo…",Math.max(70,+($("#vslProgressFill")&&parseFloat($("#vslProgressFill").style.width))||70));await vslPollJob(token,vslJobId,vslAbort.signal);toast("VSL dissecada ✓");
+  }catch(e){if(e&&e.name==="AbortError")vslSetStatus(3,"Acompanhamento fechado. A análise continua e reaparecerá quando você voltar.",70);else{vslSetStatus(3,(e&&e.message)||"Não foi possível retomar a análise.",0);if(retry)retry.hidden=false;toast((e&&e.message)||"Não foi possível retomar a análise.",true);}}
+  finally{vslBusy=false;vslAbort=null;if(cancel){cancel.hidden=true;cancel.textContent="Cancelar";}vslRenderFile();vslRenderDocs();}
 }
 async function vslResumeLastJob(){
   if(vslBusy||vslRestoring)return;let id="";try{id=localStorage.getItem(VSL_LAST_JOB_KEY)||"";}catch(_){}if(!id)return;
@@ -2901,12 +2918,12 @@ async function vslRun(){
     }
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
     vslTranscriptDoc=vslBuildCompleteTranscript();vslRenderDocs();
-    vslSetStatus(2,vslFile.type.startsWith("video/")?"Lendo a linha do tempo visual…":"Arquivo de áudio: seguindo sem leitura visual.",58);
+    vslSetStatus(2,vslFile.type.startsWith("video/")?"Analisando as imagens do vídeo…":"Arquivo de áudio: seguindo apenas com o conteúdo falado.",58);
     try{vslSheets=await vslBuildContactSheets(vslFile,vslDuration,(done,total)=>vslSetStatus(2,`Capturando quadro ${done} de ${total}…`,58+Math.round((done/total)*9)));}catch(e){console.warn("contact sheets falharam",e);vslSheets=[];}
-    vslRenderSheets();vslSetStatus(3,"Salvando a análise e iniciando o processamento em segundo plano…",68);
+    vslRenderSheets();vslSetStatus(3,"Salvando o material e iniciando a dissecação…",68);
     const payload={name:vslName,niche:vslNiche,language:vslDetectedLang||vslLang,duration:vslDuration,organizedTranscript:vslTranscriptDoc,contactSheets:vslSheets};
     const id=await vslCreateJob(token,payload,vslAbort.signal);if(cancel)cancel.textContent="Fechar acompanhamento";
-    vslSetStatus(3,"Job salvo. A dissecação agora continua em segundo plano…",70);await vslPollJob(token,id,vslAbort.signal);
+    vslSetStatus(3,"Material salvo. A dissecação continua mesmo se você fechar esta página…",70);await vslPollJob(token,id,vslAbort.signal);
     if(!vslAnalysisDoc.trim())throw new Error("A dissecação estratégica não retornou conteúdo.");
     vslSetStatus(3,"Transcrição completa e dissecação concluídas.",100);toast("VSL dissecada ✓");
   }catch(e){
@@ -2919,7 +2936,7 @@ function vslReset(){
 function renderVslDissector(force){
   const area=$("#gridArea");if(!area)return;if($("#vslDissector")&&!force)return;
   area.innerHTML=`<div class="vsltool" id="vslDissector">
-    <div class="cchief__hero"><div class="cchief__mark">${ic("scissors")}</div><div class="cchief__heroTx"><div class="cchief__heroTitle">Dissecador de VSL <span class="chat__beta">Beta</span></div><p>Transforma uma VSL em dois ativos: <b>transcrição completa organizada</b> e <b>dissecação estratégica por blocos</b>. O fluxo combina Whisper, timestamps e leitura visual da linha do tempo.</p></div></div>
+    <div class="cchief__hero"><div class="cchief__mark">${ic("scissors")}</div><div class="cchief__heroTx"><div class="cchief__heroTitle">Dissecador de VSL <span class="chat__beta">Beta</span></div><p>Transforma uma VSL em dois ativos: <b>transcrição completa organizada</b> e <b>dissecação estratégica por blocos</b>. A análise considera a fala, as pessoas, as provas, a oferta e o fechamento.</p></div></div>
     <section class="vslstage" aria-label="Configurar dissecação da VSL">
       <div class="vslmeta">
         <label class="vslfield"><span>Nome da VSL</span><input id="vslName" type="text" value="${esc(vslName)}" placeholder="Ex.: Gelatin Burn — VSL principal" autocomplete="off"></label>
@@ -2929,24 +2946,24 @@ function renderVslDissector(force){
       <div class="vsldrop" id="vslDrop" tabindex="0" role="button" aria-label="Selecionar arquivo da VSL"></div>
       <input type="file" id="vslFile" accept="video/*,audio/*" hidden>
       <details class="vslextra"><summary>Adicionar roteiro original do copywriter (opcional)</summary><label class="vslfield"><span>Roteiro canônico</span><textarea id="vslCanonical" placeholder="Cole aqui a copy original aprovada. Ela será usada como fonte principal; o vídeo valida execução, ordem e diferenças.">${esc(vslCanonical)}</textarea></label></details>
-      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}A dissecação é salva por partes e continua mesmo se você fechar esta página.</span></div>
+      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslRetry" hidden>Tentar novamente</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}A análise é salva por partes e continua mesmo se você fechar esta página.</span></div>
     </section>
     <section class="vslprogress" id="vslProgress" hidden aria-live="polite">
-      <div class="vslsteps"><div class="vslstep" data-vslstep="1"><span class="vslstep__n">1</span><div class="vslstep__tx"><b>Transcrição</b><span>Áudio completo + timestamps</span></div></div><div class="vslstep" data-vslstep="2"><span class="vslstep__n">2</span><div class="vslstep__tx"><b>Leitura visual</b><span>Speakers, provas, produto e CTA</span></div></div><div class="vslstep" data-vslstep="3"><span class="vslstep__n">3</span><div class="vslstep__tx"><b>Dissecação</b><span>Blocos, crenças, mecanismo e oferta</span></div></div></div>
+      <div class="vslsteps"><div class="vslstep" data-vslstep="1"><span class="vslstep__n">1</span><div class="vslstep__tx"><b>Transcrição</b><span>Texto completo no idioma original</span></div></div><div class="vslstep" data-vslstep="2"><span class="vslstep__n">2</span><div class="vslstep__tx"><b>Leitura do vídeo</b><span>Pessoas, provas, produto e oferta</span></div></div><div class="vslstep" data-vslstep="3"><span class="vslstep__n">3</span><div class="vslstep__tx"><b>Dissecação</b><span>Blocos, crenças, mecanismo e fechamento</span></div></div></div>
       <div class="vslprogress__bar"><span class="vslprogress__fill" id="vslProgressFill"></span></div><div class="vslprogress__status" id="vslProgressStatus"></div><div class="vslsheets" id="vslSheets"></div>
     </section>
     <section class="vsloutputs" id="vslOutputs" hidden>
-      <div class="vsloutbar"><div class="vsltabs" role="tablist"><button class="vsltab active" role="tab" data-vsltab="transcript">Transcrição completa <span class="vsltab__state" id="vslTranscriptState">—</span></button><button class="vsltab" role="tab" data-vsltab="analysis">Dissecação estratégica <span class="vsltab__state" id="vslAnalysisState">—</span></button></div><div class="vslouttools"><button class="btn btn--outline btn--sm" id="vslCopy">${ic("clipboard")}Copiar</button><button class="btn btn--outline btn--sm" data-vsldownload="md">${ic("download")}Markdown</button><button class="btn btn--outline btn--sm" data-vsldownload="pdf">${ic("file")}PDF</button><button class="btn btn--outline btn--sm" data-vsldownload="doc">${ic("file")}Word</button></div></div>
+      <div class="vsloutbar"><div class="vsltabs" role="tablist"><button class="vsltab active" role="tab" data-vsltab="transcript">Transcrição completa <span class="vsltab__state" id="vslTranscriptState">—</span></button><button class="vsltab" role="tab" data-vsltab="analysis">Dissecação estratégica <span class="vsltab__state" id="vslAnalysisState">—</span></button></div><div class="vslouttools"><button class="btn btn--outline btn--sm" id="vslCopy">${ic("clipboard")}Copiar</button><button class="btn btn--outline btn--sm" data-vsldownload="md">${ic("download")}Markdown</button><button class="btn btn--outline btn--sm" data-vsldownload="pdf">${ic("file")}PDF</button><button class="btn btn--outline btn--sm" id="vslGoogleDocs">${ic("file")}Google Docs</button></div></div>
       <div class="vsldoc" id="vslTranscriptDoc" role="tabpanel"><div class="chat__md vslmd" id="vslTranscriptMd"></div></div><div class="vsldoc" id="vslAnalysisDoc" role="tabpanel" hidden><div class="chat__md vslmd" id="vslAnalysisMd"></div></div>
     </section>
   </div>`;
   const input=$("#vslFile"),drop=$("#vslDrop"),pick=()=>{if(!vslBusy)input.click();};
   input.addEventListener("change",()=>{if(input.files[0])vslChooseFile(input.files[0]);input.value="";});drop.addEventListener("click",pick);drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("active");});drop.addEventListener("dragleave",()=>drop.classList.remove("active"));drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(x=>/^(video|audio)\//.test(x.type));if(f)vslChooseFile(f);else toast("Arraste um vídeo ou áudio.",true);});
   $("#vslName").addEventListener("input",e=>vslName=e.target.value);$("#vslNiche").addEventListener("change",e=>vslNiche=e.target.value);$("#vslLang").addEventListener("change",e=>vslLang=e.target.value);$("#vslCanonical").addEventListener("input",e=>vslCanonical=e.target.value);
-  $("#vslRun").addEventListener("click",vslRun);$("#vslCancel").addEventListener("click",()=>{if(vslAbort)vslAbort.abort();});$("#vslReset").addEventListener("click",vslReset);
+  $("#vslRun").addEventListener("click",vslRun);$("#vslCancel").addEventListener("click",()=>{if(vslAbort)vslAbort.abort();});$("#vslRetry").addEventListener("click",vslRetryLastJob);$("#vslReset").addEventListener("click",vslReset);
   $$("[data-vsltab]").forEach(b=>b.addEventListener("click",()=>{vslActiveTab=b.dataset.vsltab;vslRenderDocs();}));
   $("#vslCopy").addEventListener("click",()=>{const text=vslActiveTab==="analysis"?vslAnalysisDoc:vslTranscriptDoc;if(!text){toast("Esse documento ainda não está pronto.",true);return;}navigator.clipboard.writeText(text).then(()=>toast("Copiado ✓"));});
-  $$('[data-vsldownload]').forEach(b=>b.addEventListener("click",()=>vslDownload(vslActiveTab,b.dataset.vsldownload)));vslRenderFile();vslRenderSheets();vslRenderDocs();
+  $$('[data-vsldownload]').forEach(b=>b.addEventListener("click",()=>vslDownload(vslActiveTab,b.dataset.vsldownload)));$("#vslGoogleDocs").addEventListener("click",()=>vslOpenGoogleDocs(vslActiveTab));vslRenderFile();vslRenderSheets();vslRenderDocs();
   if(vslBusy)vslSetStatus(vslTranscriptDoc?3:1,"Processamento em andamento…",vslTranscriptDoc?78:20);
   else setTimeout(vslResumeLastJob,0);
 }
@@ -3051,10 +3068,11 @@ function wireVideoTranscripts(root){
     const video=$("video.vplayer",stage),pane=$("[data-transcript-pane]",stage),words=$$('[data-brainword]',stage);if(!video||!words.length||!pane)return;
     const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1;
     const setFollow=value=>{follow=value;if(followBtn){followBtn.classList.toggle("active",follow);followBtn.innerHTML=ic("play")+(follow?"Seguindo áudio":"Seguir áudio");followBtn.setAttribute("aria-pressed",String(follow));}};
-    const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow){const target=Math.max(0,current.offsetTop-pane.clientHeight*.42);if(Math.abs(pane.scrollTop-target)>pane.clientHeight*.3)pane.scrollTo({top:target,behavior:"smooth"});}};
+    const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow){const target=Math.max(0,current.offsetTop-pane.clientHeight*.42);if(Math.abs(pane.scrollTop-target)>pane.clientHeight*.3)pane.scrollTo({top:target,behavior:"auto"});}};
     const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
     video.addEventListener("timeupdate",()=>activate(atTime(video.currentTime||0)));video.addEventListener("seeked",()=>activate(atTime(video.currentTime||0)));
     words.forEach((word,index)=>word.addEventListener("click",()=>{const start=word.dataset.start!==undefined?(+word.dataset.start||0):((+word.dataset.ratio||0)*(video.duration||0));video.currentTime=start;activate(index);if(video.paused)video.play().catch(()=>{});}));
+    ["wheel","touchstart","pointerdown"].forEach(type=>pane.addEventListener(type,()=>{if(follow)setFollow(false);},{passive:true}));
     if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);
   });
 }

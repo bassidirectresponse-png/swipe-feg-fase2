@@ -1,6 +1,5 @@
-// Pipeline persistente do Dissecador de VSL.
-// O sufixo -background faz a Netlify executar por até 15 minutos. Cada chamada
-// processa apenas uma etapa, salva o checkpoint e agenda a próxima chamada.
+// Processamento persistente do Dissecador de VSL.
+// Cada chamada conclui uma parte, salva o resultado e agenda a continuação.
 import { getStore } from "@netlify/blobs";
 import {
   ANTHROPIC_URL,
@@ -8,13 +7,16 @@ import {
   SYSTEM,
   analysisAssetsFromPartsPrompt,
   analysisChunkPrompt,
+  analysisRepairPrompt,
   analysisSynthesisPrompt,
   clean,
   imageContent,
+  translationChunkPrompt,
 } from "./vsl-dissector.mjs";
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
-const CHUNK_CHARS = Math.max(25_000, Number(process.env.VSL_ANALYSIS_CHUNK_CHARS) || 45_000);
+const CHUNK_CHARS = Math.max(22_000, Number(process.env.VSL_ANALYSIS_CHUNK_CHARS) || 32_000);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function splitCompleteText(value, maxChars = CHUNK_CHARS) {
   const text = clean(value).trim();
@@ -44,7 +46,46 @@ function synthesisSource(parts) {
   return all.map((part, index) => `## Parte ${index + 1}\n${clean(part).slice(0, perPart)}`).join("\n\n");
 }
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function isPortuguese(language) {
+  return /^(pt|portugu)/i.test(String(language || "").trim());
+}
+
+function stripTranslationTitle(value) {
+  return clean(value).trim().replace(/^#\s+[^\n]*Transcri[cç][aã]o[^\n]*\n+/i, "").trim();
+}
+
+function composeTranscript(job) {
+  const original = clean(job.input && job.input.organizedTranscript || job.transcriptDoc || "").trim();
+  const translated = (job.translationParts || []).map(stripTranslationTitle).filter(Boolean).join("\n\n");
+  if (!translated) return original;
+  return `${original}\n\n---\n\n# ${job.input.name} — Transcrição Organizada PT-BR\n\n${translated}`;
+}
+
+function composeAnalysis(job) {
+  return [...(job.coreParts || []), job.synthesisDoc, job.assetsDoc, job.repairDoc].filter(Boolean).join("\n\n---\n\n");
+}
+
+function analysisGaps(job) {
+  const analysis = composeAnalysis(job);
+  const checks = [
+    ["Veredito estratégico", /veredito estrat[eé]gico/i],
+    ["Big Idea", /big idea/i],
+    ["Pergunta paradoxal", /pergunta paradoxal/i],
+    ["Gimmick", /gimmick/i],
+    ["Avatar", /\bavatar\b/i],
+    ["Belief Ladder", /belief ladder/i],
+    ["MUP", /\bMUP\b/i],
+    ["MSOL", /\bMSOL\b/i],
+    ["Provas e evidências", /provas? (?:e |&)evid[eê]ncias|invent[aá]rio de provas/i],
+    ["Objeções", /obje[cç][oõ]es/i],
+    ["Oferta e fechamento", /oferta completa|big offer|fechamento/i],
+    ["Ativos reutilizáveis", /ativos reutiliz[aá]veis|banco de ativos/i],
+    ["Blueprint de modelagem", /blueprint de modelagem/i],
+  ];
+  const missing = checks.filter(([, pattern]) => !pattern.test(analysis)).map(([label]) => label);
+  if ((job.coreParts || []).length < (job.totalChunks || 1) || analysis.length < 6_000) missing.unshift("Dissecação cronológica completa");
+  return [...new Set(missing)];
+}
 
 async function collectAnthropicOnce(user, images, maxTokens) {
   const upstream = await fetch(ANTHROPIC_URL, {
@@ -71,7 +112,7 @@ async function collectAnthropicOnce(user, images, maxTokens) {
     try { event = JSON.parse(raw); } catch { return; }
     if (event.type === "content_block_delta" && event.delta && event.delta.type === "text_delta") output += event.delta.text || "";
     if (event.type === "message_delta" && event.delta && event.delta.stop_reason) stopReason = event.delta.stop_reason;
-    if (event.type === "error") throw new Error((event.error && event.error.message) || "erro do Claude");
+    if (event.type === "error") throw new Error((event.error && event.error.message) || "erro do serviço de análise");
   };
   for (;;) {
     const { done, value } = await reader.read();
@@ -85,8 +126,8 @@ async function collectAnthropicOnce(user, images, maxTokens) {
   }
   buffer += decoder.decode();
   if (buffer.trim()) consume(buffer);
-  if (!output.trim()) throw new Error("o modelo não retornou texto");
-  if (stopReason === "max_tokens") throw new Error("a resposta atingiu o limite antes de concluir esta parte");
+  if (!output.trim()) throw new Error("o serviço de análise não retornou conteúdo");
+  if (stopReason === "max_tokens") throw new Error("esta parte terminou antes de ficar completa");
   return output.trim();
 }
 
@@ -103,81 +144,136 @@ async function collectAnthropic(user, images, maxTokens) {
   throw lastError;
 }
 
-async function requeue(event, job) {
-  const url = `${event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`}/.netlify/functions/vsl-dissector-background`;
+function checkpointIndex(job) {
+  return job.phase === "translation" ? Number(job.translationIndex || 0) : Number(job.chunkIndex || 0);
+}
+
+async function requeue(req, job) {
+  const url = new URL("/.netlify/functions/vsl-dissector-background", req.url);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id: job.id, key: job.jobKey, phase: job.phase, index: job.chunkIndex }),
+    body: JSON.stringify({ id: job.id, key: job.jobKey, phase: job.phase, index: checkpointIndex(job) }),
   });
-  if (!response.ok) throw new Error(`não foi possível agendar a continuação (HTTP ${response.status})`);
+  if (!response.ok) throw new Error("não foi possível continuar a análise automaticamente");
 }
 
-function composeAnalysis(job) {
-  return [...(job.coreParts || []), job.synthesisDoc, job.assetsDoc].filter(Boolean).join("\n\n---\n\n");
+function friendlyError(error) {
+  const raw = String(error && error.message || error);
+  if (/Claude HTTP 401|Claude HTTP 403/i.test(raw)) return "O acesso ao serviço de análise precisa ser renovado.";
+  if (/Claude HTTP 429/i.test(raw)) return "O serviço de análise está ocupado. Use Tentar novamente em alguns instantes.";
+  if (/Claude HTTP 5\d\d|fetch|network|socket|timeout|terminated/i.test(raw)) return "A conexão com o serviço de análise foi interrompida. A parte já concluída foi preservada.";
+  return raw.replace(/^Claude HTTP \d+:\s*/i, "").slice(0, 600);
 }
 
-export const handler = async (event) => {
-  if (event.httpMethod !== "POST") return { statusCode: 202, body: "" };
+export default async (req) => {
+  if (req.method !== "POST") return;
   const store = getStore({ name: "vsl-jobs", consistency: "strong" });
   let job;
   try {
-    if (!ANTHROPIC_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
-    const request = JSON.parse(event.body || "{}");
+    if (!ANTHROPIC_KEY) throw new Error("O serviço de análise ainda não foi configurado.");
+    const request = await req.json();
     if (!request.id || !request.key) throw new Error("job inválido");
     job = await store.get(request.id, { type: "json" });
     if (!job || job.jobKey !== request.key) throw new Error("job não encontrado");
-    if (job.status === "complete") return { statusCode: 202, body: "" };
-    // Background Functions podem ser repetidas pela plataforma. Um evento de
-    // checkpoint antigo não pode executar de novo depois que o job avançou.
-    if (request.phase && (request.phase !== job.phase || Number(request.index || 0) !== Number(job.chunkIndex || 0))) {
-      return { statusCode: 202, body: "" };
-    }
+    if (job.status === "complete") return;
 
     const input = job.input || {};
     const sourceText = input.organizedTranscript || input.transcript || input.canonicalScript || "";
     const chunks = splitCompleteText(sourceText);
-    if (!chunks.length) throw new Error("transcrição vazia");
+    if (!chunks.length) throw new Error("A transcrição está vazia.");
+    job.totalChunks = chunks.length;
+
+    // Migra também o job criado pela versão anterior, que começava direto na análise.
+    let migrated = false;
+    if (!isPortuguese(input.language) && !job.translationInitialized) {
+      job.translationInitialized = true;
+      job.translationParts = [];
+      job.translationIndex = 0;
+      job.phase = "translation";
+      job.chunkIndex = 0;
+      migrated = true;
+    } else if (isPortuguese(input.language) && !job.translationInitialized) {
+      job.translationInitialized = true;
+    }
+
+    if (!migrated && request.phase && (request.phase !== job.phase || Number(request.index || 0) !== checkpointIndex(job))) return;
     job.status = "working";
     job.error = "";
 
-    if (job.phase === "core") {
-      const index = Math.max(0, Number(job.chunkIndex) || 0);
-      if (index >= chunks.length) {
-        job.phase = "synthesis";
-      } else {
-        job.message = `Dissecando parte ${index + 1} de ${chunks.length}…`;
-        job.progress = 70 + Math.round((index / chunks.length) * 18);
-        job.updatedAt = new Date().toISOString();
-        await store.setJSON(job.id, job);
-        const part = await collectAnthropic(analysisChunkPrompt(input, chunks[index], index, chunks.length), input.contactSheets, 10_000);
-        job.coreParts = Array.isArray(job.coreParts) ? job.coreParts : [];
-        job.coreParts[index] = part;
-        job.chunkIndex = index + 1;
-        job.analysisDoc = composeAnalysis(job);
-        job.progress = 70 + Math.round(((index + 1) / chunks.length) * 18);
-        job.message = `Parte ${index + 1} de ${chunks.length} concluída e salva.`;
-        if (job.chunkIndex >= chunks.length) job.phase = "synthesis";
+    if (job.phase === "translation") {
+      const index = Math.max(0, Number(job.translationIndex) || 0);
+      job.message = `Organizando a versão em português: parte ${index + 1} de ${chunks.length}…`;
+      job.progress = 70 + Math.round((index / chunks.length) * 7);
+      job.updatedAt = new Date().toISOString();
+      await store.setJSON(job.id, job);
+      const translated = await collectAnthropic(translationChunkPrompt(input, chunks[index], index, chunks.length), [], 16_000);
+      job.translationParts = Array.isArray(job.translationParts) ? job.translationParts : [];
+      job.translationParts[index] = translated;
+      job.translationIndex = index + 1;
+      job.transcriptDoc = composeTranscript(job);
+      job.message = `Versão em português: parte ${index + 1} de ${chunks.length} concluída.`;
+      if (job.translationIndex >= chunks.length) {
+        job.phase = "core";
+        job.chunkIndex = 0;
       }
+    } else if (job.phase === "core") {
+      const index = Math.max(0, Number(job.chunkIndex) || 0);
+      job.message = `Dissecando parte ${index + 1} de ${chunks.length}…`;
+      job.progress = 77 + Math.round((index / chunks.length) * 12);
+      job.updatedAt = new Date().toISOString();
+      await store.setJSON(job.id, job);
+      const translation = Array.isArray(job.translationParts) ? job.translationParts[index] || "" : "";
+      const part = await collectAnthropic(analysisChunkPrompt(input, chunks[index], index, chunks.length, translation), input.contactSheets, 11_000);
+      job.coreParts = Array.isArray(job.coreParts) ? job.coreParts : [];
+      job.coreParts[index] = part;
+      job.chunkIndex = index + 1;
+      job.analysisDoc = composeAnalysis(job);
+      job.message = `Dissecação: parte ${index + 1} de ${chunks.length} concluída e salva.`;
+      if (job.chunkIndex >= chunks.length) job.phase = "synthesis";
     } else if (job.phase === "synthesis") {
       job.message = "Consolidando Big Idea, avatar, crenças, mecanismo e oferta…";
       job.progress = 91;
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
-      job.synthesisDoc = await collectAnthropic(analysisSynthesisPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 10_000);
+      job.synthesisDoc = await collectAnthropic(analysisSynthesisPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 11_000);
       job.phase = "assets";
       job.analysisDoc = composeAnalysis(job);
-      job.progress = 95;
       job.message = "Estratégia global concluída e salva.";
     } else if (job.phase === "assets") {
-      job.message = "Montando inventário de provas e ativos reutilizáveis…";
+      job.message = "Organizando provas, peças reutilizáveis e blueprint…";
       job.progress = 96;
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
-      job.assetsDoc = await collectAnthropic(analysisAssetsFromPartsPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 10_000);
+      job.assetsDoc = await collectAnthropic(analysisAssetsFromPartsPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 11_000);
+      job.phase = "validate";
+      job.analysisDoc = composeAnalysis(job);
+      job.message = "Conferindo se a dissecação está completa…";
+    } else if (job.phase === "validate") {
+      const missing = analysisGaps(job);
+      if (!missing.length) {
+        job.phase = "done";
+        job.status = "complete";
+        job.progress = 100;
+        job.message = "Transcrição completa e dissecação concluídas.";
+      } else {
+        job.missingSections = missing;
+        job.phase = "repair";
+        job.message = `Completando ${missing.length} seção${missing.length === 1 ? "" : "ões"} da dissecação…`;
+        job.progress = 98;
+      }
+    } else if (job.phase === "repair") {
+      const missing = Array.isArray(job.missingSections) ? job.missingSections : analysisGaps(job);
+      job.message = "Completando as seções finais da dissecação…";
+      job.progress = 98;
+      job.updatedAt = new Date().toISOString();
+      await store.setJSON(job.id, job);
+      job.repairDoc = await collectAnthropic(analysisRepairPrompt(input, composeAnalysis(job), missing), input.contactSheets, 10_000);
+      job.analysisDoc = composeAnalysis(job);
+      const remaining = analysisGaps(job);
+      if (remaining.length) throw new Error(`A análise ainda ficou incompleta: ${remaining.join(", ")}.`);
       job.phase = "done";
       job.status = "complete";
-      job.analysisDoc = composeAnalysis(job);
       job.progress = 100;
       job.message = "Transcrição completa e dissecação concluídas.";
     } else if (job.phase === "done") {
@@ -187,19 +283,20 @@ export const handler = async (event) => {
 
     job.updatedAt = new Date().toISOString();
     await store.setJSON(job.id, job);
-    if (job.status !== "complete") await requeue(event, job);
+    if (job.status !== "complete") await requeue(req, job);
   } catch (error) {
     console.error("vsl-dissector-background falhou:", String(error && error.message || error).slice(0, 400));
     if (job) {
       job.status = "error";
-      job.error = String(error && error.message || error).slice(0, 600);
-      job.message = `Falha na etapa atual: ${job.error}`;
+      job.error = friendlyError(error);
+      job.message = job.error;
+      job.transcriptDoc = composeTranscript(job);
       job.analysisDoc = composeAnalysis(job);
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job).catch(() => {});
     }
   }
-  return { statusCode: 202, body: "" };
 };
 
-export { splitCompleteText, synthesisSource };
+export const config = { background: true };
+export { analysisGaps, splitCompleteText, synthesisSource };

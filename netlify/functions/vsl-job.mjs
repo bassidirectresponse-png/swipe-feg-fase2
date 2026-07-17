@@ -39,6 +39,18 @@ function publicJob(job) {
   };
 }
 
+const isPortuguese = (language) => /^(pt|portugu)/i.test(String(language || "").trim());
+const checkpointIndex = (job) => job.phase === "translation" ? Number(job.translationIndex || 0) : Number(job.chunkIndex || 0);
+
+async function dispatchBackground(req, job) {
+  const backgroundUrl = new URL("/.netlify/functions/vsl-dissector-background", req.url);
+  return fetch(backgroundUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: job.id, key: job.jobKey, phase: job.phase, index: checkpointIndex(job) }),
+  }).catch(() => null);
+}
+
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
   const url = new URL(req.url);
@@ -55,6 +67,16 @@ export default async (req) => {
     if (!/^[a-f0-9-]{20,80}$/i.test(id)) return json(400, { ok: false, error: "id inválido" });
     const job = await store.get(id, { type: "json" });
     if (!job || job.owner !== String(user.id || "")) return json(404, { ok: false, error: "análise não encontrada" });
+    const idleMs = Date.now() - (Date.parse(job.updatedAt || job.createdAt || "") || 0);
+    const needsRecovery = (job.status === "queued" && idleMs > 15_000) || (job.status === "working" && idleMs > 12 * 60_000);
+    if (needsRecovery) {
+      job.status = "queued";
+      job.message = "Retomando a análise do último ponto salvo…";
+      job.updatedAt = new Date().toISOString();
+      job.dispatchCount = Number(job.dispatchCount || 0) + 1;
+      await store.setJSON(job.id, job);
+      await dispatchBackground(req, job);
+    }
     return json(200, { ok: true, job: publicJob(job) });
   }
   if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
@@ -62,6 +84,22 @@ export default async (req) => {
 
   let body;
   try { body = await req.json(); } catch { return json(400, { ok: false, error: "JSON inválido" }); }
+  if (body.action === "retry") {
+    const retryId = String(body.id || "");
+    if (!/^[a-f0-9-]{20,80}$/i.test(retryId)) return json(400, { ok: false, error: "id inválido" });
+    const previous = await store.get(retryId, { type: "json" });
+    if (!previous || previous.owner !== String(user.id || "")) return json(404, { ok: false, error: "análise não encontrada" });
+    if (previous.status === "complete") return json(200, { ok: true, id: previous.id, status: previous.status });
+    previous.status = "queued";
+    previous.error = "";
+    previous.message = "Retomando a análise do último ponto salvo…";
+    previous.updatedAt = new Date().toISOString();
+    previous.dispatchCount = Number(previous.dispatchCount || 0) + 1;
+    await store.setJSON(previous.id, previous);
+    const restarted = await dispatchBackground(req, previous);
+    if (!restarted || !restarted.ok) return json(502, { ok: false, error: "Não foi possível retomar agora. Tente novamente em instantes." });
+    return json(202, { ok: true, id: previous.id, status: "queued" });
+  }
   const transcript = clean(body.transcript || "").trim();
   const organized = clean(body.organizedTranscript || "").trim();
   const canonical = clean(body.canonicalScript || "").trim();
@@ -70,13 +108,18 @@ export default async (req) => {
   const id = crypto.randomUUID();
   const jobKey = `${crypto.randomUUID()}-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
+  const language = clean(body.language || "").slice(0, 30);
+  const phase = isPortuguese(language) ? "core" : "translation";
   const job = {
     id,
     jobKey,
     owner: String(user.id || ""),
     status: "queued",
-    phase: "core",
+    phase,
     chunkIndex: 0,
+    translationInitialized: true,
+    translationIndex: 0,
+    translationParts: [],
     coreParts: [],
     synthesisDoc: "",
     assetsDoc: "",
@@ -88,7 +131,7 @@ export default async (req) => {
     input: {
       name: clean(body.name || "VSL sem título").slice(0, 240),
       niche: clean(body.niche || "").slice(0, 140),
-      language: clean(body.language || "").slice(0, 30),
+      language,
       duration: Math.max(0, Number(body.duration) || 0),
       transcript,
       organizedTranscript: organized,
@@ -97,15 +140,10 @@ export default async (req) => {
     },
     createdAt: now,
     updatedAt: now,
+    dispatchCount: 1,
   };
   await store.setJSON(id, job);
-
-  const backgroundUrl = new URL("/.netlify/functions/vsl-dissector-background", req.url);
-  const started = await fetch(backgroundUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, key: jobKey, phase: "core", index: 0 }),
-  }).catch(() => null);
+  const started = await dispatchBackground(req, job);
   if (!started || !started.ok) {
     job.status = "error";
     job.error = "Não foi possível iniciar o processamento em segundo plano.";
