@@ -24,8 +24,21 @@ t0 = performance.now();
 for (const time of times) { let lo = 0, hi = words.length - 1, answer = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (words[mid].start <= time) { answer = mid; lo = mid + 1; } else hi = mid - 1; } sink += answer; }
 const binaryMs = performance.now() - t0;
 
+function gridWork(count) {
+  const t0 = performance.now();
+  let output = "";
+  for (let i = 0; i < count; i++) output += `<article class="card"><img src="thumb-${i}.jpg"><p>${"copy ".repeat(30)}</p></article>`;
+  return { cards: count, ms: +(performance.now() - t0).toFixed(2), bytes: output.length };
+}
+const radarBefore = gridWork(1032), radarAfter = gridWork(48);
+const brainBefore = gridWork(213), brainAfter = gridWork(36);
+
 console.log(JSON.stringify({
   streaming: { before: run(1), after80msAt20msChunks: run(4) },
   karaoke: { words: words.length, frames: times.length, linearMs: +linearMs.toFixed(2), binaryMs: +binaryMs.toFixed(2), speedup: +(linearMs / binaryMs).toFixed(1) },
+  boundedGrid: {
+    radar: { before: radarBefore, after: radarAfter, domReduction: +(radarBefore.cards / radarAfter.cards).toFixed(1) },
+    megaBrain: { before: brainBefore, after: brainAfter, domReduction: +(brainBefore.cards / brainAfter.cards).toFixed(1) }
+  },
   sink
 }, null, 2));

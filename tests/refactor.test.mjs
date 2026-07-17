@@ -75,6 +75,17 @@ test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
   assert.match(html, /r\.q\.get\("autor"\)/);
 });
 
+test("Mega Brain e Radar limitam o DOM e evitam trabalho pesado durante interação", () => {
+  assert.match(html, /GRID_PAGE_SIZES=\{tiktok:48,megabrain:36\}/);
+  assert.match(html, /function pagedItems\(items\)/);
+  assert.match(html, /function gridPager\(page\)/);
+  assert.match(html, /gridSearchTimer=setTimeout\(\(\)=>renderGrid\(true\),140\)/);
+  assert.match(html, /requestIdleCallback\(run,\{timeout:1800\}\)/);
+  assert.match(html, /d\.transcricao="";d\.copy=""/);
+  assert.match(html, /\.grid>\.card\{content-visibility:auto;contain-intrinsic-size:460px;\}/);
+  assert.doesNotMatch(html, /\.card\{[^\n]+will-change:transform/);
+});
+
 test("copy rápida usa fallback transcrito e detalhe não duplica transcrição", () => {
   assert.match(html, /function openCopyPop\(id\)[\s\S]*?const copy=brainCopyText\(d\)/);
   assert.match(html, /Sem copy disponível neste card/);
@@ -183,6 +194,8 @@ test("Dissecador persiste, acompanha e retoma a análise em segundo plano", () =
   assert.match(vslJobFn, /body\.action === "retry"/);
   assert.match(html, /vslJobStatus=job\.status/);
   assert.match(html, /retry\.hidden=vslJobStatus!=="error"/);
+  assert.match(html, /vslRenderedTranscript!==vslTranscriptDoc/);
+  assert.match(html, /vslRenderedAnalysis!==vslAnalysisDoc/);
 });
 
 test("seções com vídeo usam o áudio original e sincronizam palavra por palavra", () => {
