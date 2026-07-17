@@ -15,7 +15,7 @@ permissions:
 jobs:
   seed:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,4 +25,5 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: node scripts/ingest_joymode.mjs

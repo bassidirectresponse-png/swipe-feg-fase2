@@ -45,6 +45,29 @@ const bmPrints = await Promise.all(printFiles.map(async ([nome, file], i) => {
 }));
 
 const money = value => value ? `US$ ${value}` : "";
+function deepFind(o,predicate){let hit="";(function walk(x){if(hit)return;if(Array.isArray(x)){for(const v of x){walk(v);if(hit)return;}return;}if(x&&typeof x==="object")for(const [k,v] of Object.entries(x)){if(hit)return;if(typeof v==="string"&&/^https?:\/\//.test(v)&&predicate(k,v)){hit=v;return;}walk(v);}})(o);return hit;}
+function deepValue(o,predicate){let hit=null;(function walk(x){if(hit!=null)return;if(Array.isArray(x)){for(const v of x){walk(v);if(hit!=null)return;}return;}if(x&&typeof x==="object")for(const [k,v] of Object.entries(x)){if(hit!=null)return;if((typeof v==="string"||typeof v==="number")&&v!==""&&predicate(k,v)){hit=v;return;}walk(v);}})(o);return hit;}
+function mediaOf(ad){const video=deepFind(ad,k=>/video_hd_url/i.test(k))||deepFind(ad,k=>/video_sd_url/i.test(k))||deepFind(ad,(k,v)=>/video/i.test(k)&&/\.(mp4|mov|m4v)(\?|$)/i.test(v));const image=deepFind(ad,k=>/(image_snapshot_url|original_image_url|image_url|thumbnail_url)/i.test(k))||deepFind(ad,(k,v)=>/image|thumb|cover|poster/i.test(k)&&/\.(jpe?g|png|webp)(\?|$)/i.test(v));return{video,image,url:video||image};}
+function unixOf(v){if(v==null||v==="")return null;if(typeof v==="number")return v>1e12?Math.floor(v/1000):Math.floor(v);const s=String(v).trim();if(/^\d+$/.test(s)){const n=+s;return n>1e12?Math.floor(n/1000):n;}const t=Date.parse(s);return Number.isNaN(t)?null:Math.floor(t/1000);}
+async function abortStuckFacebookRuns(token,actor){
+  for(const status of ["READY","RUNNING"]){const res=await fetch(`https://api.apify.com/v2/acts/${actor}/runs?token=${token}&status=${status}&limit=50&desc=1`);if(!res.ok)continue;const items=(await res.json())?.data?.items||[];for(const run of items)await fetch(`https://api.apify.com/v2/actor-runs/${run.id}/abort?token=${token}`,{method:"POST"});}
+}
+async function captureTopAdsBatch({token,actor,libraryUrl,offerId,currentData,headers}){
+  await abortStuckFacebookRuns(token,actor);
+  const input={urls:[{url:libraryUrl}],scrapeAdDetails:true,count:12,limitPerSource:12,activeStatus:"active"};
+  const scrape=await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}&timeout=300`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
+  const raw=await scrape.text();if(!scrape.ok)throw new Error(`Apify ${scrape.status}: ${raw.slice(0,180)}`);const items=JSON.parse(raw);if(!Array.isArray(items)||!items.length)throw new Error("A biblioteca não retornou anúncios");
+  const ads=items.filter(ad=>mediaOf(ad).url).slice(0,currentData.brandTopAds.length);const now=Math.floor(Date.now()/1000);
+  for(let i=0;i<currentData.brandTopAds.length;i++){
+    const target=currentData.brandTopAds[i],ad=ads[i];if(!ad){target.ingestStatus="error";target.ingestError="Anúncio correspondente não retornado pela biblioteca";continue;}
+    const media=mediaOf(ad),start=unixOf(deepValue(ad,k=>/(ad_delivery_start_time|start_?date|start_?time)/i.test(k))),end=unixOf(deepValue(ad,k=>/(ad_delivery_stop_time|end_?date|stop_?time)/i.test(k))),active=!end||end>now;
+    target.startDateUnix=start;target.endDateUnix=end;target.startDate=start?new Date(start*1000).toLocaleDateString("pt-BR",{timeZone:"UTC"}):"";target.active=active;target.daysActive=start?Math.max(0,Math.floor(((active?now:end)-start)/86400)):null;target.pageName=String(deepValue(ad,k=>/page_?name/i.test(k))||"Joymode");
+    try{const download=await fetch(media.url);if(!download.ok)throw new Error(`download ${download.status}`);const buf=Buffer.from(await download.arrayBuffer());if(!buf.length||buf.length>60*1024*1024)throw new Error("mídia fora do limite de 60 MB");const isVideo=!!media.video,contentType=isVideo?"video/mp4":((download.headers.get("content-type")||"image/jpeg").split(";")[0]),ext=isVideo?"mp4":contentType.includes("png")?"png":contentType.includes("webp")?"webp":"jpg",storagePath=`brands/${offerId}/joymode-top-${i+1}-${Date.now()}.${ext}`;const upload=await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${storagePath}`,{method:"POST",headers:{apikey:ANON,Authorization:`Bearer ${AUTH_TOKEN}`,"Content-Type":contentType,"x-upsert":"true"},body:buf});if(!upload.ok)throw new Error(`storage ${upload.status}`);const publicUrl=`${SUPABASE_URL}/storage/v1/object/public/criativos/${storagePath}`;if(isVideo)target.video=publicUrl;else target.img=publicUrl;target.ingestStatus="done";target.ingestError="";}catch(e){target.ingestStatus="partial";target.ingestError=String(e.message||e);}
+    target.ingestedAt=new Date().toISOString();
+  }
+  const save=await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(offerId)}`,{method:"PATCH",headers:{...headers,Prefer:"return=minimal"},body:JSON.stringify({data:currentData})});if(!save.ok)throw new Error(`Falha ao salvar top ads: ${save.status}`);
+  return currentData.brandTopAds.map(ad=>ad.ingestStatus||"pending");
+}
 const reports = [
   {
     key: "7d", label: "Últimos 7 dias", range: "09/07/2026 a 15/07/2026", level: "Campanhas",
@@ -179,7 +202,10 @@ const rows = await response.json();
 const savedId=rows[0]?.id||existing?.id;
 console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", id: savedId, prints: bmPrints.length, reports: reports.length, campaigns: reports.reduce((n, r) => n + r.campaigns.length, 0), topAds: brandTopAds.length }));
 
-if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
+if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY&&process.env.APIFY_TOKEN){
+  const statuses=await captureTopAdsBatch({token:process.env.APIFY_TOKEN,actor:process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper",libraryUrl:data.bibliotecas[0].link,offerId:savedId,currentData:data,headers});
+  console.log(JSON.stringify({mediaStatuses:statuses}));
+}else if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
   const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
   const finalStates=new Set(["done","partial","error"]);
   const pendingIndexes=brandTopAds.map((ad,i)=>finalStates.has(ad.ingestStatus)?-1:i).filter(i=>i>=0);
