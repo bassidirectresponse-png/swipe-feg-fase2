@@ -1214,7 +1214,7 @@ function normalize(raw){
   if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
   if(!Array.isArray(d.bibliotecas)){d.bibliotecas=[];if(d.linkBiblioteca)d.bibliotecas.push({nome:"",link:d.linkBiblioteca});}
   if(d.tipoTrafego!=="native"&&d.tipoTrafego!=="meta")d.tipoTrafego="meta";
-  d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";});
+  d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";if(typeof x.views!=="string")x.views="";if(typeof x.viewsPeriod!=="string")x.viewsPeriod="";});
   if(!Array.isArray(d.taboolaAds))d.taboolaAds=[];
   if(typeof d.trafego28d!=="string")d.trafego28d="";
   if(typeof d.trafego3m!=="string")d.trafego3m="";
@@ -1665,8 +1665,8 @@ function brandReportsHtml(d){
 function brandCard(o){
   const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
-  const ads=getAds(d);
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent" title="Total conferido na Meta Ads Library com o filtro Ativos">${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent" title="Total conferido na Meta Ads Library com o filtro Ativos">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=(topAds.find(x=>x.link)||{}).link||"";
   return card({
     id:o.id,variant:"brand-card",
@@ -1810,10 +1810,10 @@ function openView(id){
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
-  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout||x.nome);
+  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout||x.nome||x.views);
   const domsHtml=domsAll.length?domsAll.map((dm,i)=>`
     <div class="dom">
-      <div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(dm.nome||"Domínio "+(i+1))}</span></div>
+      <div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(dm.nome||"Domínio "+(i+1))}</span>${dm.views?`<span class="chip accent">${esc(dm.views)} views${dm.viewsPeriod?` · ${esc(dm.viewsPeriod)}`:""}</span>`:""}</div>
       <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true,"globe")}${linkbtn("Abrir checkout",dm.linkCheckout,false,"cart")}${linkbtn("Back redirect",dm.backRedirect,false,"back")}</div>
       <div class="dom__shots">${shotView("Página de vendas",dm.printPV)}${shotView("Checkout",dm.printCheckout)}</div>
     </div>`).join(""):`<div class="muted-empty">Nenhum domínio cadastrado.</div>`;
@@ -1849,7 +1849,7 @@ function openView(id){
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
   if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta Insider":"Em monitoramento"}</div></div>`;
   if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
-  else kvs+=`<div class="kv"><div class="k">${isBrand?"Ads ativos na biblioteca":"Ads ativos"}</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>${isBrand?`<div class="kv"><div class="k">Biblioteca conferida em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div>`:""}`;
+  else kvs+=`<div class="kv"><div class="k">${isBrand?"Ads ativos na biblioteca":"Ads ativos"}</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div>${isBrand?`<div class="kv"><div class="k">Biblioteca conferida em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div>`:""}`;
 
   let headLinks="";
   if(!native){
@@ -1866,7 +1866,7 @@ function openView(id){
   if(!native){
     if(isBrand){
       const library=(d.bibliotecas.find(x=>x.link)||{}).link||"";
-      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div class="ta-info">${ic("info")}<span>Este total vem da Meta Ads Library com o filtro <b>Ativos</b>, não do número de linhas do Gerenciador de Anúncios.</span></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div class="ta-info">${ic("info")}<span>Este total vem da Meta Ads Library com o filtro <b>Ativos</b>, não do número de linhas do Gerenciador de Anúncios.</span></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
     }else{
       const ah=adsHistOf(d);
       const upd=d.adsUpdatedAt
@@ -1879,7 +1879,7 @@ function openView(id){
   if(isBrand){
     const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia anexada":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${brandMetricGrid(d,true)}
       ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
@@ -1936,7 +1936,7 @@ function openForm(id){
   fTipo=d.tipoTrafego==="native"?"native":"meta";
   fSemrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
   fSemrushThumb=d.printSemrushThumb||fSemrushOriginal;
-  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""}];
+  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",printPV:"",printCheckout:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
   fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
@@ -2070,6 +2070,10 @@ function renderDominios(){
         <div class="field" style="margin-bottom:0"><label class="lbl">Link do domínio / oferta</label><input type="url" data-dom="${i}" data-k="linkDominio" placeholder="https://..." value="${esc(dm.linkDominio)}"></div>
         <div class="field" style="margin-bottom:0"><label class="lbl">Link do checkout (vinculado)</label><input type="url" data-dom="${i}" data-k="linkCheckout" placeholder="https://..." value="${esc(dm.linkCheckout)}"></div>
       </div>
+      <div class="row" style="margin-top:18px">
+        <div class="field" style="margin-bottom:0"><label class="lbl">Views do domínio</label><input type="text" data-dom="${i}" data-k="views" placeholder="Ex: 31.5K" value="${esc(dm.views||"")}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Período das views</label><input type="text" data-dom="${i}" data-k="viewsPeriod" placeholder="Ex: 3 meses" value="${esc(dm.viewsPeriod||"")}"></div>
+      </div>
       <div class="field" style="margin-top:18px;margin-bottom:0"><label class="lbl">Link de back redirect (se houver)</label><input type="url" data-dom="${i}" data-k="backRedirect" placeholder="https://... — página exibida ao tentar sair" value="${esc(dm.backRedirect)}"></div>
       <div class="row" style="margin-top:18px">
         <div class="field" style="margin-bottom:0"><label class="lbl">Print — Página de vendas</label><div class="dz" data-zone="dom|${i}|pv" tabindex="0"></div></div>
@@ -2134,7 +2138,7 @@ $("#formBody").addEventListener("change",e=>{onFieldChange(e.target);markDirty()
 $("#formBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action;
-  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""});renderDominios();}
+  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",printPV:"",printCheckout:""});renderDominios();}
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
@@ -2161,7 +2165,7 @@ function buildPayload(){
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
     bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
-    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout),
+    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.views||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
     taboolaAds:fTaboola.filter(x=>x.nome||x.img),
     trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),

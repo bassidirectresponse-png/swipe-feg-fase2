@@ -108,11 +108,18 @@ for (const report of reports) for (const row of report.campaigns) {
 }
 
 const links = [
-  "https://fb.me/adspreview/facebook/29gpH1kvIKRRwW5",
-  "https://fb.me/adspreview/facebook/2eqsoZjvdw2DjV1",
-  "https://fb.me/adspreview/facebook/22BlAfASZJ8Ozq6",
-  "https://fb.me/adspreview/facebook/204983VHDMlbEQO",
-  "https://fb.me/adspreview/facebook/22Q6eQIvX61EVvo",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBALfi0FPyyf3vTTDDD-5m10DIy34BWT1p57A8wXZUiAIkq4Tjaz74bvOWg68nm7um8Yz6eTZ5PeTqg",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAIuRPAbs7N-nPvcn9AemvofmLnO1s5iB_6wZCYHagj4dEZXhaAqAufKni4s8F_9FxuHl92m4qJpFg",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBALWml8aeK349vWSo7T1-VsaY4OZsdLRkqv-MH9fT_9jdl_uClE5ssi5mMc5oEaFVWNgDt1efzay8Q",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAK10fsJhbpn9itzra5XayV0Npo52hY4dQHwph8gizU6RbML18uC4NgKf3AGRkZ7SOUhjfzckGIWwg",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAJn2Orze__ixRgCyKY7zaEX6-gIIkJxQdSes94LRfU6c2gNTXN2tq9sP9BicCB1oZXWVb30Gd9iUQ",
+];
+const exactMedia = [
+  "/assets/joymode/top-ad-01.mp4",
+  "/assets/joymode/top-ad-02.mp4",
+  "/assets/joymode/top-ad-03.mp4",
+  "/assets/joymode/top-ad-04.mp4",
+  "/assets/joymode/top-ad-05.mp4",
 ];
 
 const headers = { apikey: API_KEY, Authorization: `Bearer ${AUTH_TOKEN}`, "Content-Type": "application/json" };
@@ -135,12 +142,18 @@ if (process.argv.includes("--audit-media")) {
 }
 const brandTopAds = links.map((link, i) => {
   const previous = previousAds.find(ad => ad.link === link) || {};
+  const storedVideo = String(previous.video || "").includes("/storage/v1/object/public/") ? previous.video : exactMedia[i];
+  const storedImage = String(previous.img || "").includes("/storage/v1/object/public/") ? previous.img : "";
   return {
+    ...previous,
     nome: `Joymode · Top Ad ${String(i + 1).padStart(2, "0")}`,
     link,
-    ...previous,
-    ingestStatus: previous.video || previous.img ? "done" : "link_only",
+    video: storedVideo,
+    img: storedImage,
+    ingestStatus: "done",
     ingestError: "",
+    ingestSource: "Link exato enviado",
+    downloadedAt: previous.downloadedAt || "17/07/2026",
     active: null,
     daysActive: null,
     startDate: "",
@@ -161,7 +174,12 @@ const data = {
   adsLibraryCheckedAt: "17/07/2026",
   imagemProduto: "https://assets.replocdn.com/projects/0e54a4ce-4105-4700-aab7-d46d0874071b/ec1bac99-e229-4b05-a664-e1d2f1c82259",
   bibliotecas: [{ nome: "Joymode · Meta Ads Library", link: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&source=page-transparency-widget&view_all_page_id=108435064861552" }],
-  dominios: [{ nome: "Hard+ · Sexual Performance Booster", linkDominio: "https://www.tryjoymode.com/products/sexual-performance-booster", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" }],
+  dominios: [
+    { nome: "Hard+ · Sexual Performance Booster", linkDominio: "https://www.tryjoymode.com/products/sexual-performance-booster", views: "31.5K", viewsPeriod: "3 meses", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },
+    { nome: "PV1 · Home", linkDominio: "https://www.tryjoymode.com/", views: "38.2K", viewsPeriod: "3 meses", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },
+    { nome: "PV2 · Testosterone Support Complex", linkDominio: "https://www.tryjoymode.com/products/testosterone-support-complex", views: "23.1K", viewsPeriod: "3 meses", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },
+    { nome: "PV3 · Sexual Performance Booster V1", linkDominio: "https://www.tryjoymode.com/pages/sexual-performance-booster-v1", views: "27.7K", viewsPeriod: "", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },
+  ],
   brandTopAds,
   bmSpend7d: money("25.418,14"),
   bmSpend14d: money("53.368,29"),
@@ -188,6 +206,22 @@ if (process.argv.includes("--emit-seed")) {
   console.log(JSON.stringify(data));
   process.exit(0);
 }
+
+async function persistExactMedia() {
+  for (let i = 0; i < data.brandTopAds.length; i++) {
+    const ad = data.brandTopAds[i], source = ad.video || ad.img || "";
+    if (!source.startsWith("/assets/joymode/")) continue;
+    const ext = source.split(".").pop().toLowerCase(), isVideo = ext === "mp4";
+    const contentType = isVideo ? "video/mp4" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const objectPath = `brands/joymode/top-ad-${String(i + 1).padStart(2, "0")}.${ext}`;
+    const body = await fs.readFile(new URL(`.${source}`, ROOT));
+    const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${objectPath}`, { method: "POST", headers: { apikey: API_KEY, Authorization: `Bearer ${AUTH_TOKEN}`, "Content-Type": contentType, "x-upsert": "true" }, body });
+    if (!upload.ok) throw new Error(`Storage Joymode ${i + 1}: ${upload.status} ${(await upload.text()).slice(0, 200)}`);
+    const stored = `${SUPABASE_URL}/storage/v1/object/public/criativos/${objectPath}`;
+    if (isVideo) { ad.video = stored; ad.img = ""; } else { ad.img = stored; ad.video = ""; }
+  }
+}
+await persistExactMedia();
 
 const endpoint = existing ? `${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(existing.id)}` : `${SUPABASE_URL}/rest/v1/offers`;
 const response = await fetch(endpoint, {

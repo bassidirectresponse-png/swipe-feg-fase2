@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
@@ -13,6 +13,8 @@ const vslBackgroundFn = await readFile(new URL("../netlify/functions/vsl-dissect
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 const joymodeIngest = await readFile(new URL("../scripts/ingest_joymode.mjs", import.meta.url), "utf8");
 const joymodeSeed = JSON.parse(await readFile(new URL("../assets/joymode/seed.json", import.meta.url), "utf8"));
+const primalVikingIngest = await readFile(new URL("../scripts/ingest_primal_viking.mjs", import.meta.url), "utf8");
+const primalVikingSeed = JSON.parse(await readFile(new URL("../assets/primal-viking/seed.json", import.meta.url), "utf8"));
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /height:calc\(100dvh - var\(--topbar-h\)\)/);
@@ -257,6 +259,10 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /Total conferido na Meta Ads Library com o filtro Ativos/);
   assert.match(html, /não do número de linhas do Gerenciador de Anúncios/);
   assert.match(html, /Conferir na biblioteca/);
+  assert.match(html, /Abrir mídia salva/);
+  assert.match(html, /Mídia salva no Swipe/);
+  assert.match(html, /Views do domínio/);
+  assert.match(html, /Período das views/);
 });
 
 test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {
@@ -279,6 +285,30 @@ test("Joymode não exibe o contexto técnico nem o comentário de referência", 
   assert.equal(joymodeSeed.numAdsAtivos, "160");
   assert.equal(joymodeSeed.adsLibraryCheckedAt, "17\/07\/2026");
   assert.match(joymodeIngest, /numAdsAtivos: "160"/);
+});
+
+test("Joymode e Primal Viking usam somente os dez links exatos enviados", async () => {
+  assert.equal(joymodeSeed.dominios.length, 4);
+  assert.deepEqual(joymodeSeed.dominios.map(x => x.views), ["31.5K", "38.2K", "23.1K", "27.7K"]);
+  assert.equal(joymodeSeed.brandTopAds.length, 5);
+  assert.equal(primalVikingSeed.brandTopAds.length, 5);
+  for (const ad of [...joymodeSeed.brandTopAds, ...primalVikingSeed.brandTopAds]) {
+    assert.match(ad.link, /^https:\/\/business\.facebook\.com\/ads\/experience\/confirmation\/\?is_responsive=0&encrypted_experience_id=Q8DfBA/);
+    assert.equal(ad.ingestStatus, "done");
+    const media = ad.video || ad.img;
+    assert.match(media, /^\/assets\/(joymode|primal-viking)\/top-ad-0[1-5]\.(mp4|jpg)$/);
+    assert.ok((await stat(new URL(`..${media}`, import.meta.url))).size > 1_000);
+  }
+  assert.doesNotMatch(primalVikingIngest, /fb\.me\/adspreview/);
+  assert.doesNotMatch(joymodeIngest, /fb\.me\/adspreview/);
+  assert.equal(primalVikingSeed.numAdsAtivos, "2400");
+  assert.equal(primalVikingSeed.adsLibraryApprox, true);
+  assert.equal(primalVikingSeed.bmPrints.length, 10);
+  assert.equal(primalVikingSeed.bmReports.length, 4);
+  assert.match(primalVikingIngest, /storage\/v1\/object\/criativos\/\$\{objectPath\}/);
+  assert.match(primalVikingIngest, /storage\/v1\/object\/public\/criativos\/\$\{objectPath\}/);
+  assert.match(joymodeIngest, /storage\/v1\/object\/criativos\/\$\{objectPath\}/);
+  assert.match(joymodeIngest, /await persistExactMedia\(\)/);
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {

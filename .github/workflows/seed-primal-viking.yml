@@ -1,0 +1,28 @@
+name: Seed Primal Viking Insider
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ingest_primal_viking.mjs"
+      - "assets/primal-viking/**"
+      - ".github/workflows/seed-primal-viking.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cadastrar ou atualizar Primal Viking
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: node scripts/ingest_primal_viking.mjs
