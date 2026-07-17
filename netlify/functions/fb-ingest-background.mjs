@@ -70,6 +70,10 @@ function pickVideoUrl(item) {
       || deepFind(item, (k, v) => /video/i.test(k) && !/thumb|image|cover|preview|poster/i.test(k) && /\.(mp4|mov|m4v)(\?|$)/i.test(v))
       || deepFind(item, (k, v) => /\.(mp4|mov|m4v)(\?|$)/i.test(v));
 }
+function pickImageUrl(item) {
+  return deepFind(item, k => /(image_snapshot_url|original_image_url|image_url|thumbnail_url)/i.test(k))
+      || deepFind(item, (k, v) => /image|thumb|cover|poster|preview/i.test(k) && /\.(jpe?g|png|webp)(\?|$)/i.test(v));
+}
 function toUnix(v) {
   if (v == null || v === "") return null;
   if (typeof v === "number") return v > 1e12 ? Math.floor(v / 1000) : Math.floor(v);
@@ -112,14 +116,15 @@ async function patchOffer(id, token, mutate) {
 
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 202, body: "" };
-  let id = null, token = "";
+  let id = null, token = "", targetIndex = null;
   try {
     if (!APIFY_TOKEN) throw new Error("APIFY_TOKEN não configurada no Netlify");
     token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "").trim();
     const body = JSON.parse(event.body || "{}");
     id = body.id; const adUrl = body.adUrl;
+    targetIndex = Number.isInteger(body.targetIndex) && body.targetIndex >= 0 ? body.targetIndex : null;
     if (!token || !id || !adUrl) throw new Error("faltou token/id/adUrl");
-    if (!/facebook\.com|fb\.com|fb\.watch/i.test(String(adUrl))) throw new Error("não parece um link do Facebook");
+    if (!/facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(adUrl))) throw new Error("não parece um link do Facebook");
 
     // admin?
     const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
@@ -130,6 +135,7 @@ export const handler = async (event) => {
     // 1) raspa o anúncio
     const ad = await scrapeAd(adUrl);
     const videoUrl = pickVideoUrl(ad);
+    const imageUrl = pickImageUrl(ad);
 
     // 2) datas → dias ativo
     const startU = toUnix(deepVal(ad, k => /(ad_delivery_start_time|start_?date|start_?time)/i.test(k)));
@@ -146,16 +152,21 @@ export const handler = async (event) => {
     }
 
     // 3) baixa o MP4 e sobe no Storage (permanente)
-    let storedUrl = "";
-    if (videoUrl) {
-      const v = await fetch(videoUrl);
+    let storedUrl = "", storedType = "", previewUrl = imageUrl || "";
+    const mediaUrl = videoUrl || imageUrl;
+    if (mediaUrl) {
+      const v = await fetch(mediaUrl);
       if (v.ok) {
         const buf = Buffer.from(await v.arrayBuffer());
         if (buf.length && buf.length <= MAX_BYTES) {
-          const path = `criativo/fb-${id}-${Date.now()}.mp4`;
+          storedType = videoUrl ? "video" : "image";
+          const contentType = videoUrl ? "video/mp4" : (v.headers.get("content-type") || "image/jpeg").split(";")[0];
+          const ext = videoUrl ? "mp4" : (contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg");
+          const prefix = targetIndex == null ? "criativo" : `brands/${id}`;
+          const path = `${prefix}/fb-${targetIndex == null ? id : targetIndex}-${Date.now()}.${ext}`;
           const up = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`, {
             method: "POST",
-            headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Content-Type": "video/mp4", "x-upsert": "true" },
+            headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Content-Type": contentType, "x-upsert": "true" },
             body: buf,
           });
           if (up.ok) storedUrl = `${SUPABASE_URL}/storage/v1/object/public/criativos/${path}`;
@@ -166,6 +177,25 @@ export const handler = async (event) => {
 
     // 4) grava de volta
     await patchOffer(id, token, (data) => {
+      if (targetIndex != null) {
+        if (!Array.isArray(data.brandTopAds)) data.brandTopAds = [];
+        const item = data.brandTopAds[targetIndex] || {};
+        if (storedUrl && storedType === "video") item.video = storedUrl;
+        if (storedUrl && storedType === "image") item.img = storedUrl;
+        else if (previewUrl && !item.img) item.img = previewUrl;
+        item.startDateUnix = startU || null;
+        item.endDateUnix = stopU || null;
+        item.startDate = startU ? new Date(startU * 1000).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "";
+        item.active = active;
+        item.daysActive = daysActive;
+        if (pageName) item.pageName = pageName;
+        if (Object.keys(metrics).length) item.metrics = metrics;
+        item.ingestStatus = storedUrl ? "done" : "partial";
+        item.ingestError = storedUrl ? "" : (mediaUrl ? "não deu para baixar/salvar a mídia" : "anúncio sem mídia pública acessível");
+        item.ingestedAt = new Date().toISOString();
+        data.brandTopAds[targetIndex] = item;
+        return;
+      }
       if (storedUrl) { data.video = storedUrl; if (!((data.transcricao || "").trim())) data.transcricaoStatus = "pending"; }
       data.fbStartDate = startU || null;
       data.fbEndDate = stopU || null;
@@ -173,15 +203,18 @@ export const handler = async (event) => {
       data.fbDaysActive = daysActive;
       if (pageName) data.fbPageName = pageName;
       if (Object.keys(metrics).length) data.fbMetrics = metrics;
-      data.fbIngestStatus = storedUrl ? "done" : "partial"; // partial = pegou dados mas não o vídeo
-      data.fbIngestError = storedUrl ? "" : (videoUrl ? "não deu para baixar/salvar o vídeo" : "anúncio sem vídeo (imagem/carrossel?)");
+      data.fbIngestStatus = storedUrl ? "done" : "partial"; // partial = pegou dados mas não a mídia
+      data.fbIngestError = storedUrl ? "" : (mediaUrl ? "não deu para baixar/salvar a mídia" : "anúncio sem mídia pública acessível");
       data.fbIngestAt = new Date().toISOString();
     });
-    console.log(`fb-ingest ${id}: video=${!!storedUrl} diasAtivo=${daysActive} ativo=${active}`);
+    console.log(`fb-ingest ${id}${targetIndex == null ? "" : `/top-ad-${targetIndex}`}: media=${!!storedUrl} diasAtivo=${daysActive} ativo=${active}`);
   } catch (e) {
     const msg = String(e && e.message ? e.message : e).slice(0, 200);
     console.error("fb-ingest-background falhou:", msg);
-    if (id && token) { try { await patchOffer(id, token, (data) => { data.fbIngestStatus = "error"; data.fbIngestError = msg; data.fbIngestAt = new Date().toISOString(); }); } catch {} }
+    if (id && token) { try { await patchOffer(id, token, (data) => {
+      if (targetIndex != null) { if (!Array.isArray(data.brandTopAds)) data.brandTopAds=[]; const item=data.brandTopAds[targetIndex]||{}; item.ingestStatus="error";item.ingestError=msg;item.ingestedAt=new Date().toISOString();data.brandTopAds[targetIndex]=item; }
+      else { data.fbIngestStatus = "error"; data.fbIngestError = msg; data.fbIngestAt = new Date().toISOString(); }
+    }); } catch {} }
   }
   return { statusCode: 202, body: "" };
 };

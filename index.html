@@ -252,6 +252,28 @@
   .brand-bm-state{display:flex;align-items:center;gap:7px;color:var(--muted-fg);font-size:.72rem;font-weight:600;}
   .brand-bm-state .ico{width:14px;height:14px;}
   .brand-bm-state.is-ready{color:#8fd8ff;}
+  .bm-reports{display:grid;gap:16px;margin-top:18px;}
+  .bm-report{border:1px solid var(--border-2);border-radius:14px;background:var(--surface);overflow:hidden;}
+  .bm-report__head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .bm-report__title{font-size:1rem;font-weight:750;}
+  .bm-report__range{font-size:.72rem;color:var(--muted-fg);margin-top:4px;}
+  .bm-report__level{flex:none;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(229,255,45,.35);background:var(--accent-dim);border-radius:999px;padding:5px 9px;font-weight:700;}
+  .bm-report__summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border);}
+  .bm-report__metric{background:var(--surface);padding:12px 14px;min-width:0;}
+  .bm-report__metric span{display:block;font-size:.57rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:4px;}
+  .bm-report__metric strong{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+  .bm-table-wrap{overflow:auto;max-width:100%;}
+  .bm-table{width:100%;min-width:1180px;border-collapse:collapse;font-size:.76rem;font-variant-numeric:tabular-nums;}
+  .bm-table th{position:sticky;top:0;background:var(--surface-2);color:var(--muted-fg);font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;text-align:right;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .bm-table th:first-child,.bm-table td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:310px;}
+  .bm-table th:first-child{background:var(--surface-2);z-index:2;}
+  .bm-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .bm-table tr:last-child td{border-bottom:0;}
+  .bm-table tbody tr:hover td{background:var(--surface-3);}
+  .brand-ad-media{aspect-ratio:16/10;border:1px solid var(--border-2);border-radius:12px;overflow:hidden;background:#000;margin-top:12px;}
+  .brand-ad-media video{width:100%;height:100%;object-fit:contain;display:block;}
+  .brand-ad-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .brand-ad-meta .chip{font-size:.6rem;}
 
   .cnote{display:flex;align-items:center;gap:8px;font-size:.72rem;font-weight:600;line-height:1.3;padding:8px 11px;border-radius:10px;}
   .cnote .ico{width:14px;height:14px;flex:none;}
@@ -1102,7 +1124,7 @@ const SECTIONS=[
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
-  {key:"brandsvalidated",label:"Ofertas Validadas",icon:"trending",newLabel:"Nova oferta validada",statLabel:"Ofertas validadas",emptyTitle:"Nenhuma oferta validada",searchPlaceholder:"Buscar produto validado, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Validadas</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
+  {key:"brandsvalidated",label:"Ofertas Insider",icon:"trending",newLabel:"Nova oferta Insider",statLabel:"Ofertas Insider",emptyTitle:"Nenhuma oferta Insider",searchPlaceholder:"Buscar produto Insider, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Insider</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
@@ -1116,7 +1138,7 @@ const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false;
-let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[];
+let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="";
@@ -1198,6 +1220,9 @@ function normalize(raw){
   if(typeof d.printSemrushThumb!=="string")d.printSemrushThumb=d.printSemrush||"";
   if(!Array.isArray(d.bmPrints))d.bmPrints=d.bmPrint?[{nome:"Business Manager",img:d.bmPrint}]:[];
   if(!Array.isArray(d.brandTopAds))d.brandTopAds=[];
+  if(!Array.isArray(d.bmReports))d.bmReports=[];
+  if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
+  if(typeof d.brandSemrush3m!=="string")d.brandSemrush3m="";
   return d;
 }
 
@@ -1248,7 +1273,7 @@ function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.pa
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
-  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";d.transcricao="";d.copy="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(Array.isArray(d.bmPrints))d.bmPrints=d.bmPrints.map(x=>Object.assign({},x,{img:""}));if(Array.isArray(d.brandTopAds))d.brandTopAds=d.brandTopAds.map(x=>Object.assign({},x,{img:""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
+  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";d.brandSemrush1m=d.brandSemrush1m?"·":"";d.brandSemrush3m=d.brandSemrush3m?"·":"";d.transcricao="";d.copy="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(Array.isArray(d.bmPrints))d.bmPrints=d.bmPrints.map(x=>Object.assign({},x,{img:""}));if(Array.isArray(d.brandTopAds))d.brandTopAds=d.brandTopAds.map(x=>Object.assign({},x,{img:""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
 }
 function writeCache(){
   const version=++cacheWriteVersion,run=()=>persistLiteCache(version);
@@ -1262,6 +1287,7 @@ async function boot(){
   if(cached&&cached.length){offers=cached;routeReady=true;applyRoute();setSync("load","Atualizando");}
   else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
   const ok=await loadOffers();
+  if(ok!==false&&isAdmin)ensureJoymodeInsider();
   if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
 }
 async function loadOffers(){
@@ -1278,6 +1304,27 @@ async function loadOffers(){
     from+=PAGE;
   }
   offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();return true;
+}
+let joymodeSeedWorking=false;
+async function ensureJoymodeInsider(){
+  if(!isAdmin||joymodeSeedWorking)return;
+  const current=offers.find(o=>sectionOf(o)==="brandsvalidated"&&String((o.data||{}).nomeOferta||"").trim().toLowerCase()==="joymode");
+  if(current){
+    try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}
+    (current.data.brandTopAds||[]).forEach((ad,i)=>{if(ad&&ad.link&&(!ad.video&&!ad.img||ad.ingestStatus==="pending"))setTimeout(()=>triggerBrandFbIngest(current.id,i,true),i*1400);});
+    return;
+  }
+  let lock="";try{lock=localStorage.getItem("feg_joymode_seed_v1")||"";}catch(e){}
+  if(lock==="working")return;
+  joymodeSeedWorking=true;try{localStorage.setItem("feg_joymode_seed_v1","working");}catch(e){}
+  try{
+    const seedRes=await fetch("/assets/joymode/seed.json",{cache:"no-store"});if(!seedRes.ok)throw new Error("seed indisponível");
+    const data=await seedRes.json();
+    data.bmPrints=await Promise.all((data.bmPrints||[]).map(async p=>{const b64=await fetch(p.asset,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error("print indisponível");return r.text();});return{nome:p.nome,img:"data:image/jpeg;base64,"+b64.trim()};}));
+    const {data:rows,error}=await sb.from("offers").insert({data}).select();if(error)throw error;
+    const row=rows&&rows[0];if(row){offers.push(row);renderGrid();renderSubfilter();writeCache();try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}toast("Joymode adicionada em Ofertas Insider ✓");(row.data.brandTopAds||[]).forEach((ad,i)=>{if(ad&&ad.link)setTimeout(()=>triggerBrandFbIngest(row.id,i,true),i*1400);});}
+  }catch(e){console.error("seed Joymode falhou",e);try{localStorage.removeItem("feg_joymode_seed_v1");}catch(_){}toast("Não foi possível adicionar a Joymode automaticamente.",true);}
+  finally{joymodeSeedWorking=false;}
 }
 async function deleteOffer(id){
   if(!requireAdmin())return;
@@ -1312,15 +1359,16 @@ function filtered(){
   return list;
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Validadas",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-validadas",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
+PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","noticia","tiktok","brandsgeneral","brandsvalidated"]);
 let routeReady=false;
 function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
@@ -1592,11 +1640,23 @@ function cardHtml(o){
   });
 }
 const BRAND_BM_METRICS=[
-  ["Gasto · 7 dias","bmSpend7d"],["Gasto · 14 dias","bmSpend14d"],["CPC","bmCpc"],["CPM","bmCpm"],
-  ["CTR","bmCtr"],["Custo por IC","bmCostIc"],["ROAS","bmRoas"],["Atualização","bmUpdatedAt"]
+  ["Gasto · 7 dias","bmSpend7d"],["Gasto · 14 dias","bmSpend14d"],["Valor médio conversão","bmAvgConversion"],["CTR","bmCtr"],
+  ["CPC · todos","bmCpc"],["CPC · link","bmCpcLink"],["CPM","bmCpm"],["Clique único","bmCostUnique"],
+  ["Custo por IC","bmCostIc"],["ROAS","bmRoas"],["Atualização","bmUpdatedAt"]
 ];
 function brandBmHasData(d){return BRAND_BM_METRICS.some(([,key])=>String((d&&d[key])||"").trim())||(d&&d.bmPrints||[]).some(x=>x&&x.img)||(d&&d.brandTopAds||[]).some(x=>x&&(x.img||x.link));}
 function brandMetricGrid(d,detail){return `<div class="brand-metrics${detail?" brand-metrics--detail":""}">${BRAND_BM_METRICS.map(([label,key])=>{const value=String((d&&d[key])||"").trim();return `<div class="brand-metric"><span class="brand-metric__label">${esc(label)}</span><span class="brand-metric__value${value?"":" is-empty"}">${esc(value||"—")}</span></div>`;}).join("")}</div>`;}
+const BM_REPORT_METRICS=[["Gasto","spend"],["ROAS","roas"],["Valor médio","avgConversion"],["Custo por resultado","costResult"],["Resultados","results"],["CTR","ctr"],["CPC","cpc"],["CPM","cpm"],["CPC link","cpcLink"],["Clique único","costUnique"]];
+function brandReportsHtml(d){
+  const reports=Array.isArray(d&&d.bmReports)?d.bmReports:[];
+  if(!reports.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
+  return `<div class="bm-reports">${reports.map(r=>{
+    const rows=Array.isArray(r.campaigns)?r.campaigns:[],totals=r.totals||{};
+    const summary=BM_REPORT_METRICS.map(([label,key])=>`<div class="bm-report__metric"><span>${esc(label)}</span><strong>${esc(totals[key]||"—")}</strong></div>`).join("");
+    const table=rows.length?`<div class="bm-table-wrap"><table class="bm-table"><thead><tr><th>Campanha</th>${BM_REPORT_METRICS.map(([label])=>`<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.name||"Campanha")}</td>${BM_REPORT_METRICS.map(([,key])=>`<td>${esc(row[key]||"—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="muted-empty" style="padding:16px 18px">Sem linhas por campanha neste período.</div>`;
+    return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(r.label||"Período")}</div><div class="bm-report__range">${esc(r.range||"")}</div></div><span class="bm-report__level">${esc(r.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}</article>`;
+  }).join("")}</div>`;
+}
 function brandCard(o){
   const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
@@ -1604,7 +1664,7 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=(topAds.find(x=>x.link)||{}).link||"";
   return card({
     id:o.id,variant:"brand-card",
-    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Validada":"Spy"}</span>`,
+    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Insider":"Spy"}</span>`,
     media:mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
@@ -1736,7 +1796,7 @@ function openView(id){
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
-  $("#viewTag").textContent=isBrand?`FEG Brands · ${section==="brandsvalidated"?"Validada":"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta"));
+  $("#viewTag").textContent=isBrand?`FEG Brands · ${section==="brandsvalidated"?"Insider":"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta"));
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
@@ -1763,7 +1823,9 @@ function openView(id){
 
   const semrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
   const semrushThumb=d.printSemrushThumb||semrushOriginal;
-  const taShot=semrushOriginal?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("SEMrush — últimos 3 meses",semrushOriginal,semrushThumb)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`;
+  const taShot=isBrand
+    ?((d.brandSemrush1m||d.brandSemrush3m)?`<div class="dom__shots" style="margin-top:0">${shotView("SEMrush — último mês",d.brandSemrush1m)}${shotView("SEMrush — últimos 3 meses",d.brandSemrush3m)}</div>`:`<div class="muted-empty">Sem prints do SEMrush. Os painéis de 1 e 3 meses estão prontos para anexos.</div>`)
+    :(semrushOriginal?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("SEMrush — últimos 3 meses",semrushOriginal,semrushThumb)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`);
   const trafficInner=`
     <div class="ta-grid">
       <div class="ta-metric"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>
@@ -1775,7 +1837,7 @@ function openView(id){
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
-  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta validada":"Em monitoramento"}</div></div>`;
+  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta Insider":"Em monitoramento"}</div></div>`;
   if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
   else kvs+=`<div class="kv"><div class="k">Ads ativos</div><div class="v">${ads!=null?ads.toLocaleString("pt-BR"):"—"}</div></div>`;
 
@@ -1802,10 +1864,11 @@ function openView(id){
   if(isBrand){
     const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):""}${x.link?`<div class="linkbtns" style="margin-top:12px">${linkbtn("Abrir anúncio",x.link,true,"play")}</div>`:""}</div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta">${x.daysActive!=null?`<span class="chip accent">${x.active===false?"Veiculou":"Ativo há"} ${esc(x.daysActive)} dia${+x.daysActive===1?"":"s"}</span>`:""}${x.startDate?`<span class="chip">Desde ${esc(x.startDate)}</span>`:""}${x.ingestStatus==="pending"?`<span class="chip">Mídia pendente</span>`:""}${x.ingestStatus==="error"?`<span class="chip">Falha ao baixar</span>`:""}</div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${isAdmin&&x.link?`<button class="btn btn--outline btn--sm" data-brand-fbingest="${o.id}" data-brand-ad-index="${i}">${ic("download")}${x.video?"Atualizar mídia":"Baixar e medir"}</button>`:""}</div>${x.ingestError?`<div class="fbnote fbnote--err">${ic("alert")}${esc(x.ingestError)}</div>`:""}</div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${brandMetricGrid(d,true)}
       ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
+      <div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${brandReportsHtml(d)}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Top ads</span><span class="sec__line"></span></div>${topAdsHtml}
     </section>`;
@@ -1843,6 +1906,7 @@ function openView(id){
     </aside>
   </div>`;
   wireLightboxLinks($("#viewBody"));
+  $$('[data-brand-fbingest]',$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrandFbIngest(b.dataset.brandFbingest,+b.dataset.brandAdIndex)));
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeView());
@@ -1867,6 +1931,8 @@ function openForm(id){
   fBrandStage=isBrand?sourceSection:"oferta";
   fBmPrints=d.bmPrints.length?JSON.parse(JSON.stringify(d.bmPrints)):[{nome:"Business Manager",img:""}];
   fBrandTopAds=d.brandTopAds.length?JSON.parse(JSON.stringify(d.brandTopAds)):[{nome:"",link:"",img:""}];
+  fBrandSemrush1m=d.brandSemrush1m||"";
+  fBrandSemrush3m=d.brandSemrush3m||"";
 
   const brandForm=isBrand?`
     <div class="fsec">
@@ -1874,7 +1940,7 @@ function openForm(id){
       <div class="fsec__hint">Os campos abaixo aparecem no card mesmo enquanto a BM ainda não estiver acessível. Preencha quando os dados estiverem disponíveis.</div>
       <div class="field"><label class="lbl">Lista da oferta</label><div class="seg" id="brandStageSeg">
         <button type="button" class="seg-btn${fBrandStage==="brandsgeneral"?" active":""}" data-action="set-brand-stage" data-stage="brandsgeneral">Ofertas no Geral</button>
-        <button type="button" class="seg-btn${fBrandStage==="brandsvalidated"?" active":""}" data-action="set-brand-stage" data-stage="brandsvalidated">Ofertas Validadas</button>
+        <button type="button" class="seg-btn${fBrandStage==="brandsvalidated"?" active":""}" data-action="set-brand-stage" data-stage="brandsvalidated">Ofertas Insider</button>
       </div></div>
       <div class="row">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
@@ -1884,6 +1950,11 @@ function openForm(id){
         <div class="field"><label class="lbl">CPC</label><input type="text" id="f_bmCpc" placeholder="Ex: R$ 1,42" value="${esc(d.bmCpc||"")}"></div>
         <div class="field"><label class="lbl">CPM</label><input type="text" id="f_bmCpm" placeholder="Ex: R$ 37,80" value="${esc(d.bmCpm||"")}"></div>
         <div class="field"><label class="lbl">CTR</label><input type="text" id="f_bmCtr" placeholder="Ex: 2,66%" value="${esc(d.bmCtr||"")}"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label class="lbl">Valor médio de conversão</label><input type="text" id="f_bmAvgConversion" placeholder="Ex: US$ 79,12" value="${esc(d.bmAvgConversion||"")}"></div>
+        <div class="field"><label class="lbl">CPC de link</label><input type="text" id="f_bmCpcLink" placeholder="Ex: US$ 1,74" value="${esc(d.bmCpcLink||"")}"></div>
+        <div class="field"><label class="lbl">Custo por clique único</label><input type="text" id="f_bmCostUnique" placeholder="Ex: US$ 1,43" value="${esc(d.bmCostUnique||"")}"></div>
       </div>
       <div class="row3">
         <div class="field"><label class="lbl">Custo por IC</label><input type="text" id="f_bmCostIc" placeholder="Ex: R$ 18,40" value="${esc(d.bmCostIc||"")}"></div>
@@ -1947,13 +2018,13 @@ function openForm(id){
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> SEMrush — últimos 3 meses</div>
-      <div class="fsec__hint">Guarde o print original em resolução integral. O dashboard cria uma derivada otimizada apenas para exibição.</div>
+      <div class="fsec__title"><span class="num">04</span> SEMrush${isBrand?" — último mês e últimos 3 meses":" — últimos 3 meses"}</div>
+      <div class="fsec__hint">Guarde os prints em resolução integral para acompanhar a evolução da demanda e do tráfego.</div>
       <div class="row">
         <div class="field"><label class="lbl">Volume — últimos 28 dias</label><input type="text" id="f_trafego28d" placeholder="Ex: 320 mil visitas/mês" value="${esc(d.trafego28d)}"></div>
         <div class="field"><label class="lbl">Volume — últimos 3 meses</label><input type="text" id="f_trafego3m" placeholder="Ex: 1,2 mi visitas" value="${esc(d.trafego3m)}"></div>
       </div>
-      <div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz dz--storage" data-zone="semrush" tabindex="0"></div></div>
+      ${isBrand?`<div class="row"><div class="field"><label class="lbl">Print SEMrush — último mês</label><div class="dz" data-zone="brandsemrush1m" tabindex="0"></div></div><div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz" data-zone="brandsemrush3m" tabindex="0"></div></div></div>`:`<div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz dz--storage" data-zone="semrush" tabindex="0"></div></div>`}
     </div>
 
     <div class="fsec">
@@ -2085,8 +2156,8 @@ function buildPayload(){
   });
   if(BRAND_SECTIONS.has(fBrandStage))Object.assign(payload,{
     kind:fBrandStage,
-    bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmCpc:val("f_bmCpc"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
-    bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img)
+    bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
+    bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
   });
   else if(payload.kind==="oferta")delete payload.kind;
   return payload;
@@ -2137,6 +2208,8 @@ $("#cfSave").addEventListener("click",async()=>{if(pendingCloseForm==="simple"){
 function getZone(key){
   if(key==="produto")return fProductImg;
   if(key==="semrush")return fSemrushThumb||fSemrushOriginal;
+  if(key==="brandsemrush1m")return fBrandSemrush1m;
+  if(key==="brandsemrush3m")return fBrandSemrush3m;
   if(key.slice(0,2)==="s|")return sItem[key.slice(2)]||"";
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
@@ -2148,6 +2221,8 @@ function getZone(key){
 function setZone(key,v){
   if(key==="produto"){fProductImg=v;return;}
   if(key==="semrush"){fSemrushOriginal=v;fSemrushThumb=v;return;}
+  if(key==="brandsemrush1m"){fBrandSemrush1m=v;return;}
+  if(key==="brandsemrush3m"){fBrandSemrush3m=v;return;}
   if(key.slice(0,2)==="s|"){sItem[key.slice(2)]=v;return;}
   const p=key.split("|");
   if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
@@ -2202,6 +2277,8 @@ async function compressStateImages(){
   for(const a of fTaboola){a.img=await maybeCompress(a.img);}
   for(const p of fBmPrints){p.img=await maybeCompress(p.img);}
   for(const a of fBrandTopAds){a.img=await maybeCompress(a.img);}
+  fBrandSemrush1m=await maybeCompress(fBrandSemrush1m);
+  fBrandSemrush3m=await maybeCompress(fBrandSemrush3m);
 }
 function fileToImage(file,dz){
   const r=new FileReader();
@@ -2378,7 +2455,7 @@ function renderSubFilter(){
   if(BRAND_SECTIONS.has(activeSection)){
     el.style.display="";
     const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;
-    el.innerHTML=`<div class="subfilter__row"><div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Validadas · ${validated}</a></div><span class="brand-bm-state">${ic("info")}Em validação somente no painel admin</span></div>`;
+    el.innerHTML=`<div class="subfilter__row"><div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div><span class="brand-bm-state">${ic("info")}Em validação somente no painel admin</span></div>`;
     return;
   }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
@@ -3585,7 +3662,8 @@ async function requestInstantTranscription(offerId,videoUrl){
 /* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (Apify → Storage) ===== */
 const FB_INGEST_FN="/.netlify/functions/fb-ingest-background";
 const fbIngesting=new Set();
-function isFbUrl(u){return /facebook\.com|fb\.com|fb\.watch/i.test(String(u||""));}
+const brandFbIngesting=new Set();
+function isFbUrl(u){return /facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(u||""));}
 function fbStatusOf(o){const d=(o&&o.data)||{};return fbIngesting.has(o.id)?"working":(d.fbIngestStatus||"");}
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 /* lê a linha no Supabase até a ingestão do FB terminar (a background function grava lá) */
@@ -3630,6 +3708,34 @@ async function triggerFbIngest(offerId,adUrl){
   }else if(status==="partial")toast("Peguei os dados do anúncio, mas não o vídeo — veja a observação no card.",true);
   else if(status==="error")toast("Falha no Facebook: "+((cur.data||{}).fbIngestError||"tente de novo"),true);
   else toast("Processando em segundo plano — aparece aqui em instantes.");
+}
+async function pollBrandFbIngest(offerId,index,tries=60,intervalMs=4000){
+  for(let i=0;i<tries;i++){
+    await new Promise(r=>setTimeout(r,intervalMs));
+    try{
+      const {data,error}=await sb.from("offers").select("data").eq("id",offerId).single();
+      const item=data&&data.data&&Array.isArray(data.data.brandTopAds)?data.data.brandTopAds[index]:null;
+      if(!error&&item&&item.ingestStatus&&item.ingestStatus!=="working"){
+        const o=offers.find(x=>x.id===offerId);if(o){o.data=o.data||{};o.data.brandTopAds=Array.isArray(o.data.brandTopAds)?o.data.brandTopAds:[];o.data.brandTopAds[index]=item;}
+        return item.ingestStatus;
+      }
+    }catch(e){}
+  }
+  return "";
+}
+async function triggerBrandFbIngest(offerId,index,silent=false){
+  const o=offers.find(x=>x.id===offerId),item=o&&o.data&&Array.isArray(o.data.brandTopAds)?o.data.brandTopAds[index]:null;
+  if(!o||!item||!isFbUrl(item.link)){toast("O link desse top ad não é reconhecido como Facebook.",true);return;}
+  const key=`${offerId}:${index}`;if(brandFbIngesting.has(key))return;
+  brandFbIngesting.add(key);item.ingestStatus="working";item.ingestError="";if(!silent){openView(offerId);toast(`Baixando top ad ${index+1} e calculando dias ativos…`);}
+  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+  try{await fetch(FB_INGEST_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,adUrl:item.link,targetIndex:index})});}catch(e){}
+  const status=await pollBrandFbIngest(offerId,index);
+  brandFbIngesting.delete(key);renderGrid();writeCache();if($("#viewOverlay").classList.contains("open"))openView(offerId);
+  if(!silent){if(status==="done")toast(`Top ad ${index+1} salvo ✓`);
+  else if(status==="partial")toast(`Top ad ${index+1}: dados encontrados, mas a mídia não pôde ser salva.`,true);
+  else if(status==="error")toast(`Top ad ${index+1}: falha na captura.`,true);
+  else toast(`Top ad ${index+1} continua em segundo plano.`);}
 }
 function fbIngestControl(o){
   const d=o.data||{};
