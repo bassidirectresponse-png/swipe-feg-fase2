@@ -25,5 +25,4 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
-          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: node scripts/ingest_joymode.mjs

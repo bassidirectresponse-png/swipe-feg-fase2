@@ -87,8 +87,8 @@ function toUnix(v) {
 }
 
 // ---------- Apify ----------
-async function scrapeAd(adUrl) {
-  const input = { urls: [{ url: adUrl }], scrapeAdDetails: true, count: 3, limitPerSource: 3, activeStatus: "all" };
+async function scrapeAds(adUrl, count = 3) {
+  const input = { urls: [{ url: adUrl }], scrapeAdDetails: true, count, limitPerSource: count, activeStatus: "all" };
   const url = `https://api.apify.com/v2/acts/${FB_ADS_ACTOR}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=240`;
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
   const txt = await r.text();
@@ -98,10 +98,21 @@ async function scrapeAd(adUrl) {
     const msg = (items && items.error && items.error.message) || "";
     throw new Error(msg ? `Apify: ${msg}` : "Apify não retornou anúncios");
   }
+  return items;
+}
+async function scrapeAd(adUrl) {
+  const items = await scrapeAds(adUrl, 3);
   // escolhe o 1º item que tenha vídeo (alguns podem ser imagem/carrossel)
   const withVideo = items.find(it => pickVideoUrl(it)) || items[0];
   if (!withVideo) throw new Error("nenhum anúncio encontrado nesse link");
   return withVideo;
+}
+async function abortStuckRuns(){
+  for(const status of ["READY","RUNNING"]){const r=await fetch(`https://api.apify.com/v2/acts/${FB_ADS_ACTOR}/runs?token=${APIFY_TOKEN}&status=${status}&limit=50&desc=1`);if(!r.ok)continue;const items=((await r.json())?.data?.items)||[];for(const run of items)await fetch(`https://api.apify.com/v2/actor-runs/${run.id}/abort?token=${APIFY_TOKEN}`,{method:"POST"});}
+}
+async function storeBatchMedia(ad,id,index,token){
+  const videoUrl=pickVideoUrl(ad),imageUrl=pickImageUrl(ad),mediaUrl=videoUrl||imageUrl;if(!mediaUrl)return{status:"error",error:"anúncio sem mídia pública acessível"};
+  try{const r=await fetch(mediaUrl);if(!r.ok)throw new Error(`download HTTP ${r.status}`);const buf=Buffer.from(await r.arrayBuffer());if(!buf.length||buf.length>MAX_BYTES)throw new Error("mídia fora do limite de 60 MB");const isVideo=!!videoUrl,contentType=isVideo?"video/mp4":((r.headers.get("content-type")||"image/jpeg").split(";")[0]),ext=isVideo?"mp4":contentType.includes("png")?"png":contentType.includes("webp")?"webp":"jpg",path=`brands/${id}/joymode-top-${index+1}-${Date.now()}.${ext}`;const up=await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`,{method:"POST",headers:{apikey:ANON,Authorization:`Bearer ${token}`,"Content-Type":contentType,"x-upsert":"true"},body:buf});if(!up.ok)throw new Error(`storage HTTP ${up.status}`);return{status:"done",type:isVideo?"video":"image",url:`${SUPABASE_URL}/storage/v1/object/public/criativos/${path}`};}catch(e){return{status:"partial",error:String(e.message||e)};}
 }
 
 async function patchOffer(id, token, mutate) {
@@ -124,16 +135,24 @@ export const handler = async (event) => {
     if (!APIFY_TOKEN) throw new Error("APIFY_TOKEN não configurada no Netlify");
     token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "").trim();
     const body = JSON.parse(event.body || "{}");
-    id = body.id; const adUrl = body.adUrl;
+    id = body.id; const adUrl = body.adUrl, batch = body.batch === true, libraryUrl = body.libraryUrl;
     targetIndex = Number.isInteger(body.targetIndex) && body.targetIndex >= 0 ? body.targetIndex : null;
-    if (!token || !id || !adUrl) throw new Error("faltou token/id/adUrl");
-    if (!/facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(adUrl))) throw new Error("não parece um link do Facebook");
+    if (!token || !id || (!adUrl&&!libraryUrl)) throw new Error("faltou token/id/link do Facebook");
+    if (!/facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(adUrl||libraryUrl))) throw new Error("não parece um link do Facebook");
 
     // admin?
     const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
     if (!u.ok) throw new Error("sessão inválida");
     const email = String(((await u.json()) || {}).email || "").toLowerCase();
     if (!WRITER_EMAILS.has(email)) throw new Error("usuário sem permissão de escrita");
+
+    if(batch){
+      await abortStuckRuns();
+      const wanted=Math.max(1,Math.min(12,Array.isArray(body.links)?body.links.length:5)),items=await scrapeAds(libraryUrl||adUrl,wanted+5),ads=items.filter(x=>pickVideoUrl(x)||pickImageUrl(x)).slice(0,wanted),nowU=Math.floor(Date.now()/1000),updates=[];
+      for(let i=0;i<wanted;i++){const ad=ads[i];if(!ad){updates.push({ingestStatus:"error",ingestError:"anúncio correspondente não retornado pela biblioteca",ingestedAt:new Date().toISOString()});continue;}const startU=toUnix(deepVal(ad,k=>/(ad_delivery_start_time|start_?date|start_?time)/i.test(k))),stopU=toUnix(deepVal(ad,k=>/(ad_delivery_stop_time|end_?date|stop_?time)/i.test(k))),active=!stopU||stopU>nowU,media=await storeBatchMedia(ad,id,i,token);updates.push({...(media.type==="video"?{video:media.url}:media.type==="image"?{img:media.url}:{}),startDateUnix:startU||null,endDateUnix:stopU||null,startDate:startU?new Date(startU*1000).toLocaleDateString("pt-BR",{timeZone:"UTC"}):"",active,daysActive:startU?Math.max(0,Math.floor(((active?nowU:stopU)-startU)/86400)):null,pageName:deepVal(ad,k=>/page_?name/i.test(k))||"Joymode",ingestStatus:media.status,ingestError:media.error||"",ingestedAt:new Date().toISOString()});}
+      await patchOffer(id,token,data=>{if(!Array.isArray(data.brandTopAds))data.brandTopAds=[];updates.forEach((up,i)=>{data.brandTopAds[i]=Object.assign({},data.brandTopAds[i]||{},up);});data.brandMediaBatchAt=new Date().toISOString();});
+      console.log(`fb-ingest batch ${id}: ${updates.map(x=>x.ingestStatus).join(",")}`);return{statusCode:202,body:""};
+    }
 
     // 1) raspa o anúncio
     const ad = await scrapeAd(adUrl);

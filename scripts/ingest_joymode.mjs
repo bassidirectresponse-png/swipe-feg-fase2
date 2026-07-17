@@ -8,8 +8,14 @@ const SUPABASE_URL = html.match(/const DEFAULT_URL="([^"]+)"/)?.[1];
 const ANON = html.match(/const DEFAULT_KEY="([^"]+)"/)?.[1];
 if (!SUPABASE_URL || !ANON) throw new Error("Configuração do Supabase não encontrada no index.html");
 function netlifySecret(name) {
-  try { return execFileSync("npx", ["netlify", "env:get", name, "--plain"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
+  try { return execFileSync("npx", ["netlify", "env:get", name, "--context", "production"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
   catch { return ""; }
+}
+if(process.argv.includes("--diagnose-apify")){
+  const token=netlifySecret("APIFY_TOKEN"),actor=process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper";
+  if(!token)throw new Error("APIFY_TOKEN ausente no Netlify");
+  const [me,act]=await Promise.all([fetch(`https://api.apify.com/v2/users/me?token=${token}`),fetch(`https://api.apify.com/v2/acts/${actor}?token=${token}`)]);
+  console.log(JSON.stringify({account:me.status,actor:act.status}));process.exit(act.ok?0:1);
 }
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.CI ? "" : netlifySecret("SUPABASE_SERVICE_ROLE_KEY"));
 const API_KEY = SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ANON;
@@ -208,10 +214,7 @@ if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY&&process.
 }else if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
   const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
   const finalStates=new Set(["done","partial","error"]);
-  const pendingIndexes=brandTopAds.map((ad,i)=>finalStates.has(ad.ingestStatus)?-1:i).filter(i=>i>=0);
-  for(const i of pendingIndexes){
-    await fetch(`${appUrl}/.netlify/functions/fb-ingest-background`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${AUTH_TOKEN}`},body:JSON.stringify({id:savedId,adUrl:brandTopAds[i].link,targetIndex:i})});
-  }
+  await fetch(`${appUrl}/.netlify/functions/fb-ingest-background`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${AUTH_TOKEN}`},body:JSON.stringify({id:savedId,batch:true,libraryUrl:data.bibliotecas[0].link,links:brandTopAds.map(ad=>ad.link)})});
   let statuses=[];
   for(let attempt=0;attempt<120;attempt++){
     await new Promise(resolve=>setTimeout(resolve,5000));
