@@ -122,6 +122,17 @@ query.searchParams.set("data->>kind", "eq.brandsvalidated");
 const existingRows = await fetch(query, { headers }).then(async r => r.ok ? r.json() : Promise.reject(new Error(await r.text())));
 const existing = existingRows.find(row => String(row.data?.nomeOferta || "").trim().toLowerCase() === "joymode");
 const previousAds = Array.isArray(existing?.data?.brandTopAds) ? existing.data.brandTopAds : [];
+if (process.argv.includes("--audit-media")) {
+  const storagePrefix = `${SUPABASE_URL}/storage/v1/object/public/`;
+  console.log(JSON.stringify({
+    offerFound: !!existing,
+    topAds: previousAds.length,
+    videosStored: previousAds.filter(ad => String(ad.video || "").startsWith(storagePrefix)).length,
+    imagesStored: previousAds.filter(ad => String(ad.img || "").startsWith(storagePrefix)).length,
+    linksOnly: previousAds.filter(ad => ad.link && !ad.video && !ad.img).length,
+  }));
+  process.exit(0);
+}
 const brandTopAds = links.map((link, i) => {
   const previous = previousAds.find(ad => ad.link === link) || {};
   return {
@@ -162,13 +173,13 @@ const data = {
   bmCostIc: "Não exibido no print",
   bmRoas: "— (múltiplas conversões)",
   bmUpdatedAt: "15/07/2026",
-  bmNotes: "Conta em USD. Médias do card: rodapé do Gerenciador no período de 09/07 a 15/07/2026. O custo por IC não aparece nas colunas enviadas; por isso foi mantido como não exibido. Configuração observada: objetivo Vendas, conversão no site, evento Comprar, pixel JOYMODE 2026 Pixel Test, atribuição de 7 dias após clique e 1 dia após visualização. Público: Estados Unidos, 18–65+, todos os gêneros. Orçamento do conjunto analisado: US$ 500/dia, iniciado em 07/07/2026, sem data final.",
+  bmNotes: "",
   bmReports: reports,
   bmPrints,
   brandSemrush1m: existing?.data?.brandSemrush1m || "",
   brandSemrush3m: existing?.data?.brandSemrush3m || "",
   funil: "Meta Ads → página do produto Hard+ → carrinho → checkout",
-  comentario: "Primeira oferta Insider cadastrada como padrão de referência. Prints, médias gerais e métricas por campanha foram separados por período. Os cinco top ads estão vinculados diretamente ao Facebook; a mídia pode ser anexada manualmente ao card quando o arquivo estiver disponível.",
+  comentario: "",
 };
 
 if (process.argv.includes("--emit-seed")) {

@@ -30,8 +30,8 @@ function gridWork(count) {
   for (let i = 0; i < count; i++) output += `<article class="card"><img src="thumb-${i}.jpg"><p>${"copy ".repeat(30)}</p></article>`;
   return { cards: count, ms: +(performance.now() - t0).toFixed(2), bytes: output.length };
 }
-const radarBefore = gridWork(1032), radarAfter = gridWork(48);
-const brainBefore = gridWork(213), brainAfter = gridWork(36);
+const radarBefore = gridWork(1032), radarAfter = gridWork(20);
+const brainBefore = gridWork(213), brainAfter = gridWork(20);
 
 function syncLag(updateInterval, duration = 120, wordInterval = .31) {
   const lags = [];

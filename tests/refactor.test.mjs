@@ -11,6 +11,8 @@ const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissecto
 const vslJobFn = await readFile(new URL("../netlify/functions/vsl-job.mjs", import.meta.url), "utf8");
 const vslBackgroundFn = await readFile(new URL("../netlify/functions/vsl-dissector-background.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
+const joymodeIngest = await readFile(new URL("../scripts/ingest_joymode.mjs", import.meta.url), "utf8");
+const joymodeSeed = JSON.parse(await readFile(new URL("../assets/joymode/seed.json", import.meta.url), "utf8"));
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /height:calc\(100dvh - var\(--topbar-h\)\)/);
@@ -75,10 +77,14 @@ test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
   assert.match(html, /r\.q\.get\("autor"\)/);
 });
 
-test("Mega Brain e Radar limitam o DOM e evitam trabalho pesado durante interação", () => {
-  assert.match(html, /GRID_PAGE_SIZES=\{tiktok:48,megabrain:36\}/);
+test("todas as listas usam 20 itens por página com opções de 50 e 100", () => {
+  assert.match(html, /GRID_PAGE_OPTIONS=\[20,50,100\]/);
+  assert.match(html, /gridPageSize=20/);
   assert.match(html, /function pagedItems\(items\)/);
   assert.match(html, /function gridPager\(page\)/);
+  assert.match(html, /data-grid-size/);
+  assert.match(html, /const page=pagedItems\(items\),visible=page\.items/);
+  assert.match(html, /const page=pagedItems\(list\),groups=new Map/);
   assert.match(html, /gridSearchTimer=setTimeout\(\(\)=>renderGrid\(true\),140\)/);
   assert.match(html, /requestIdleCallback\(run,\{timeout:1800\}\)/);
   assert.match(html, /d\.transcricao="";d\.copy=""/);
@@ -246,6 +252,25 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /Link do Facebook/);
   assert.doesNotMatch(html, /triggerBrandFbIngest/);
   assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
+});
+
+test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {
+  assert.match(html, /async function uploadBrandTopAdFile\(file,dz\)/);
+  assert.match(html, /BRAND_VIDEO_MAX_BYTES=50\*1024\*1024/);
+  assert.match(html, /brands\/top-ads\//);
+  assert.match(html, /await storageUploadWithProgress\(file,path/);
+  assert.match(html, /if\(isVideo\)\{ad\.video=url;ad\.img="";\}else\{ad\.img=url;ad\.video="";\}/);
+  assert.match(html, /if\(brandMediaUploading\)/);
+  assert.match(html, /O arquivo é salvo no Storage do Swipe/);
+});
+
+test("Joymode não exibe o contexto técnico nem o comentário de referência", () => {
+  assert.equal(joymodeSeed.bmNotes, "");
+  assert.equal(joymodeSeed.comentario, "");
+  assert.match(joymodeIngest, /bmNotes: ""/);
+  assert.match(joymodeIngest, /comentario: ""/);
+  assert.doesNotMatch(joymodeIngest, /Conta em USD\. Médias do card/);
+  assert.doesNotMatch(joymodeIngest, /Primeira oferta Insider cadastrada/);
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
