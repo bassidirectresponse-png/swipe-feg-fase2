@@ -206,6 +206,11 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /Abrir copy em português \(doc\)/);
   assert.match(html, /\["wheel","touchstart","pointerdown"\]/);
   assert.match(html, /if\(follow\)setFollow\(false\)/);
+  assert.match(html, /requestVideoFrameCallback/);
+  assert.match(html, /metadata\.mediaTime/);
+  assert.match(html, /cancelVideoFrameCallback/);
+  assert.match(html, /let lo=0,hi=words\.length-1,ans=-1/);
+  assert.match(html, /\.brainword\{[^\n]*transition:none/);
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 

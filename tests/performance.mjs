@@ -33,9 +33,20 @@ function gridWork(count) {
 const radarBefore = gridWork(1032), radarAfter = gridWork(48);
 const brainBefore = gridWork(213), brainAfter = gridWork(36);
 
+function syncLag(updateInterval, duration = 120, wordInterval = .31) {
+  const lags = [];
+  for (let wordStart = wordInterval; wordStart < duration; wordStart += wordInterval) {
+    const firstVisibleUpdate = Math.ceil(wordStart / updateInterval) * updateInterval;
+    lags.push((firstVisibleUpdate - wordStart) * 1000);
+  }
+  return { maxMs: +Math.max(...lags).toFixed(1), averageMs: +(lags.reduce((a,b)=>a+b,0)/lags.length).toFixed(1) };
+}
+const timeupdateLag=syncLag(.25),videoFrameLag=syncLag(1/30);
+
 console.log(JSON.stringify({
   streaming: { before: run(1), after80msAt20msChunks: run(4) },
   karaoke: { words: words.length, frames: times.length, linearMs: +linearMs.toFixed(2), binaryMs: +binaryMs.toFixed(2), speedup: +(linearMs / binaryMs).toFixed(1) },
+  videoSync: { beforeTimeupdate: timeupdateLag, afterVideoFrame: videoFrameLag, maxLagReduction: +(timeupdateLag.maxMs/videoFrameLag.maxMs).toFixed(1) },
   boundedGrid: {
     radar: { before: radarBefore, after: radarAfter, domReduction: +(radarBefore.cards / radarAfter.cards).toFixed(1) },
     megaBrain: { before: brainBefore, after: brainAfter, domReduction: +(brainBefore.cards / brainAfter.cards).toFixed(1) }

@@ -539,7 +539,7 @@
   .brain-follow.active{color:var(--on-accent);background:var(--accent);border-color:var(--accent);}
   .brain-copy{white-space:pre-wrap;line-height:1.6;font-size:.96rem;color:var(--fg);}
   .brain-copy.empty{color:var(--faint);font-style:italic;}
-  .brainword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:color .1s,background .1s;}
+  .brainword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:none;}
   .brainword:hover,.brainword:focus-visible{color:var(--fg);background:var(--surface-3);}
   .brainword.is-past{color:var(--fg);}
   .brainword.is-active{color:var(--on-accent);background:var(--accent);}
@@ -3089,7 +3089,7 @@ function brainCopyIsTranscript(d){return !!String((d&&d.transcricao)||"").trim()
 function brainCopyMarkup(d){
   const copy=brainCopyText(d);if(!copy)return"";
   const timings=Array.isArray(d.transcricaoWords)?d.transcricaoWords.filter(w=>w&&String(w.word||"").trim()&&isFinite(+w.start)):[];
-  if(timings.length)return timings.map(w=>`<button type="button" class="brainword" data-brainword data-start="${Math.max(0,+w.start||0)}">${esc(String(w.word||"").trim())}</button>`).join(" ");
+  if(timings.length)return timings.map(w=>`<button type="button" class="brainword" data-brainword data-start="${Math.max(0,+w.start||0)}"${isFinite(+w.end)?` data-end="${Math.max(+w.start||0,+w.end||0)}"`:""}>${esc(String(w.word||"").trim())}</button>`).join(" ");
   if(!String((d&&d.transcricao)||"").trim())return esc(copy);
   const tokens=copy.split(/(\s+)/),words=tokens.filter(t=>t&&!/^\s+$/.test(t));
   let wi=0;
@@ -3102,14 +3102,19 @@ function brainCopyMarkup(d){
 function wireVideoTranscripts(root){
   $$('[data-video-sync]',root||document).forEach(stage=>{
     const video=$("video.vplayer",stage),pane=$("[data-transcript-pane]",stage),words=$$('[data-brainword]',stage);if(!video||!words.length||!pane)return;
-    const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1;
+    const followBtn=$("[data-brain-follow]",stage);let follow=true,active=-1,running=false,frameHandle=0,videoFrameClock=false;
     const setFollow=value=>{follow=value;if(followBtn){followBtn.classList.toggle("active",follow);followBtn.innerHTML=ic("play")+(follow?"Seguindo áudio":"Seguir áudio");followBtn.setAttribute("aria-pressed",String(follow));}};
     const activate=index=>{if(index===active||index<0||index>=words.length)return;if(active>=0){words[active].classList.remove("is-active");if(index>active){for(let i=active;i<index;i++)words[i].classList.add("is-past");}else{for(let i=index;i<=active;i++)words[i].classList.remove("is-past");}}active=index;const current=words[index];current.classList.add("is-active");if(follow){const target=Math.max(0,current.offsetTop-pane.clientHeight*.42);if(Math.abs(pane.scrollTop-target)>pane.clientHeight*.3)pane.scrollTo({top:target,behavior:"auto"});}};
-    const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
-    video.addEventListener("timeupdate",()=>activate(atTime(video.currentTime||0)));video.addEventListener("seeked",()=>activate(atTime(video.currentTime||0)));
+    const atTime=time=>{const timed=words[0].dataset.start!==undefined;if(timed){let lo=0,hi=words.length-1,ans=-1;while(lo<=hi){const mid=(lo+hi)>>1;if((+words[mid].dataset.start||0)<=time){ans=mid;lo=mid+1;}else hi=mid-1;}return ans;}const duration=video.duration||0;if(!duration)return 0;return Math.min(words.length-1,Math.floor((time/duration)*words.length));};
+    const syncNow=time=>activate(atTime(isFinite(time)?time:(video.currentTime||0)));
+    const stopClock=()=>{running=false;if(!frameHandle)return;if(videoFrameClock&&typeof video.cancelVideoFrameCallback==="function")video.cancelVideoFrameCallback(frameHandle);else cancelAnimationFrame(frameHandle);frameHandle=0;};
+    const scheduleClock=()=>{if(!running||frameHandle)return;if(typeof video.requestVideoFrameCallback==="function"){videoFrameClock=true;frameHandle=video.requestVideoFrameCallback((_now,metadata)=>{frameHandle=0;if(!running)return;syncNow(metadata&&isFinite(metadata.mediaTime)?metadata.mediaTime:video.currentTime);if(!video.paused&&!video.ended&&stage.isConnected)scheduleClock();else stopClock();});}else{videoFrameClock=false;frameHandle=requestAnimationFrame(()=>{frameHandle=0;if(!running)return;syncNow(video.currentTime);if(!video.paused&&!video.ended&&stage.isConnected)scheduleClock();else stopClock();});}};
+    const startClock=()=>{running=true;syncNow(video.currentTime);scheduleClock();};
+    video.addEventListener("play",startClock);video.addEventListener("pause",()=>{syncNow(video.currentTime);stopClock();});video.addEventListener("ended",()=>{syncNow(video.currentTime);stopClock();});
+    video.addEventListener("timeupdate",()=>syncNow(video.currentTime));video.addEventListener("seeking",()=>syncNow(video.currentTime));video.addEventListener("seeked",()=>syncNow(video.currentTime));video.addEventListener("ratechange",()=>syncNow(video.currentTime));video.addEventListener("loadedmetadata",()=>syncNow(video.currentTime));
     pane.addEventListener("click",event=>{const word=event.target.closest("[data-brainword]");if(!word||!pane.contains(word))return;const index=words.indexOf(word);if(index<0)return;const start=word.dataset.start!==undefined?(+word.dataset.start||0):((+word.dataset.ratio||0)*(video.duration||0));video.currentTime=start;activate(index);if(video.paused)video.play().catch(()=>{});});
     ["wheel","touchstart","pointerdown"].forEach(type=>pane.addEventListener(type,()=>{if(follow)setFollow(false);},{passive:true}));
-    if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);
+    if(followBtn)followBtn.addEventListener("click",()=>setFollow(!follow));setFollow(true);syncNow(video.currentTime);if(!video.paused&&!video.ended)startClock();
   });
 }
 function wireBrainTranscript(root){wireVideoTranscripts(root);}
