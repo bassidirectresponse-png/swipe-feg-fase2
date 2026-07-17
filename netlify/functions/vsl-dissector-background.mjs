@@ -87,7 +87,14 @@ function analysisGaps(job) {
   return [...new Set(missing)];
 }
 
-async function collectAnthropicOnce(user, images, maxTokens) {
+async function collectAnthropicOnce(user, images, maxTokens, previousOutput = "") {
+  const messages = [{ role: "user", content: [{ type: "text", text: clean(user) }, ...imageContent(images)] }];
+  if (previousOutput) {
+    messages.push(
+      { role: "assistant", content: [{ type: "text", text: previousOutput }] },
+      { role: "user", content: [{ type: "text", text: "Continue exatamente do ponto em que a resposta foi interrompida. Não reinicie, não resuma e não repita o conteúdo anterior. Termine todas as seções pendentes e encerre somente quando esta parte estiver completa." }] },
+    );
+  }
   const upstream = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -96,7 +103,7 @@ async function collectAnthropicOnce(user, images, maxTokens) {
       max_tokens: maxTokens,
       system: clean(SYSTEM),
       thinking: { type: "disabled" },
-      messages: [{ role: "user", content: [{ type: "text", text: clean(user) }, ...imageContent(images)] }],
+      messages,
       stream: true,
     }),
   });
@@ -127,21 +134,29 @@ async function collectAnthropicOnce(user, images, maxTokens) {
   buffer += decoder.decode();
   if (buffer.trim()) consume(buffer);
   if (!output.trim()) throw new Error("o serviço de análise não retornou conteúdo");
-  if (stopReason === "max_tokens") throw new Error("esta parte terminou antes de ficar completa");
-  return output.trim();
+  return { output: output.trim(), stopReason };
 }
 
 async function collectAnthropic(user, images, maxTokens) {
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try { return await collectAnthropicOnce(user, images, maxTokens); }
-    catch (error) {
-      lastError = error;
-      if (attempt === 2 || !/(HTTP (408|409|429|5\d\d)|fetch|network|socket|timeout|terminated)/i.test(String(error && error.message || error))) throw error;
-      await wait(1_500 * (attempt + 1));
+  let complete = "";
+  for (let continuation = 0; continuation < 3; continuation++) {
+    let lastError;
+    let page;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        page = await collectAnthropicOnce(user, images, maxTokens, complete);
+        break;
+      } catch (error) {
+        lastError = error;
+        if (attempt === 2 || !/(HTTP (408|409|429|5\d\d)|fetch|network|socket|timeout|terminated)/i.test(String(error && error.message || error))) throw error;
+        await wait(1_500 * (attempt + 1));
+      }
     }
+    if (!page) throw lastError || new Error("o serviço de análise não retornou conteúdo");
+    complete = complete ? `${complete}\n${page.output}` : page.output;
+    if (page.stopReason !== "max_tokens") return complete.trim();
   }
-  throw lastError;
+  throw new Error("Esta parte é extensa demais para uma única etapa. O conteúdo anterior foi preservado; use Tentar novamente para continuar.");
 }
 
 function checkpointIndex(job) {
@@ -224,7 +239,7 @@ export default async (req) => {
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
       const translation = Array.isArray(job.translationParts) ? job.translationParts[index] || "" : "";
-      const part = await collectAnthropic(analysisChunkPrompt(input, chunks[index], index, chunks.length, translation), input.contactSheets, 11_000);
+      const part = await collectAnthropic(analysisChunkPrompt(input, chunks[index], index, chunks.length, translation), input.contactSheets, 16_000);
       job.coreParts = Array.isArray(job.coreParts) ? job.coreParts : [];
       job.coreParts[index] = part;
       job.chunkIndex = index + 1;
@@ -236,7 +251,7 @@ export default async (req) => {
       job.progress = 91;
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
-      job.synthesisDoc = await collectAnthropic(analysisSynthesisPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 11_000);
+      job.synthesisDoc = await collectAnthropic(analysisSynthesisPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 16_000);
       job.phase = "assets";
       job.analysisDoc = composeAnalysis(job);
       job.message = "Estratégia global concluída e salva.";
@@ -245,7 +260,7 @@ export default async (req) => {
       job.progress = 96;
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
-      job.assetsDoc = await collectAnthropic(analysisAssetsFromPartsPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 11_000);
+      job.assetsDoc = await collectAnthropic(analysisAssetsFromPartsPrompt(input, synthesisSource(job.coreParts)), input.contactSheets, 16_000);
       job.phase = "validate";
       job.analysisDoc = composeAnalysis(job);
       job.message = "Conferindo se a dissecação está completa…";
@@ -268,7 +283,7 @@ export default async (req) => {
       job.progress = 98;
       job.updatedAt = new Date().toISOString();
       await store.setJSON(job.id, job);
-      job.repairDoc = await collectAnthropic(analysisRepairPrompt(input, composeAnalysis(job), missing), input.contactSheets, 10_000);
+      job.repairDoc = await collectAnthropic(analysisRepairPrompt(input, composeAnalysis(job), missing), input.contactSheets, 16_000);
       job.analysisDoc = composeAnalysis(job);
       const remaining = analysisGaps(job);
       if (remaining.length) throw new Error(`A análise ainda ficou incompleta: ${remaining.join(", ")}.`);
@@ -299,4 +314,4 @@ export default async (req) => {
 };
 
 export const config = { background: true };
-export { analysisGaps, splitCompleteText, synthesisSource };
+export { analysisGaps, collectAnthropic, splitCompleteText, synthesisSource };
