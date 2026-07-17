@@ -1,4 +1,4 @@
-name: Seed Ancestral Supplements and Mars Men
+name: Seed Ancestral Supplements, Mars Men and Ultima Peak
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
       - "scripts/ingest_extra_brands.mjs"
       - "assets/ancestral-supplements/**"
       - "assets/mars-men/**"
+      - "assets/ultima-peak/**"
       - ".github/workflows/seed-extra-brands.yml"
 
 permissions:
@@ -32,3 +33,8 @@ jobs:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
         run: node scripts/ingest_extra_brands.mjs mars-men
+      - name: Cadastrar Ultima Peak
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: node scripts/ingest_extra_brands.mjs ultima-peak

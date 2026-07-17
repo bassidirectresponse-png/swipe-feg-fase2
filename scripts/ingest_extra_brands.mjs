@@ -27,6 +27,13 @@ const marsLinks = [
   "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBALonB6TGxgcfOezEZBqxs-6Wmd-kF5pD11w_tZ6q_TZwUcJ0zalHSzvs86Ztb3PJAEb7Kq6ayRV",
   "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAKzrXXqYAbi_bMebCc_ucPvOOtuarpmsqXUd_Cw6j94ecsrNXTXdfX0NMrusqiIdlh4jEMiryoyCg",
 ];
+const ultimaPeakLinks = [
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAIm-H9jKneBK3IUL1iecUnufChfplmOt_5d4HxoGwBK_kDJJ4NRe_mVAtw9vIiaitf3bMDWYWsN7TI",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAL957gEliP6p-Tt2_Gekeu2t39Pi4GbXu0U0uGsP7nEb3Yk1bSQoEXw_Rp8SzWI-Sx-_NNwz2aYQw",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAIMMpQ6E0sDlp25XShKmAM9LLD0E49BMyClvhSBZ0M4e5wwTWjjO0iMRRPwUXr4xmnnH6XzrHSGuA",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAIH59gpkX0MTVHR3M50INV1znQwi0Q1L5wWiddV6Oi-9yKPb9_61FZqgHJpT37v0PY5BIXFD4aAjQ",
+  "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAI98FOHy2qcrVZ_Sjx67c5t7XMLjhMSPYIg4iFNej-q9IH2CGDImXvedk8k6v5afPAtbkAmCgM4Ug",
+];
 const exactMedia = {
   "ancestral-supplements": [
     "/assets/ancestral-supplements/top-ad-01.mp4",
@@ -41,6 +48,13 @@ const exactMedia = {
     "/assets/mars-men/top-ad-03.mp4",
     "/assets/mars-men/top-ad-04.jpg",
     "/assets/mars-men/top-ad-05.mp4",
+  ],
+  "ultima-peak": [
+    "/assets/ultima-peak/top-ad-01.jpg",
+    "/assets/ultima-peak/top-ad-02.mp4",
+    "/assets/ultima-peak/top-ad-03.jpg",
+    "/assets/ultima-peak/top-ad-04.jpg",
+    "/assets/ultima-peak/top-ad-05.jpg",
   ],
 };
 
@@ -115,10 +129,45 @@ const configs = {
     top: {spend:"1.060.674,62", average:"63,71", ctr:"0,65%", cpc:"2,13", cpm:"24,78", cpcLink:"3,84", unique:"2,94"},
     funnel: "Meta Ads → quiz de cortisol → oferta Mars Men",
   },
+  "ultima-peak": {
+    name: "Ultima Peak", niche: "Saúde masculina", format: "Gomas para libido, desempenho e vitalidade masculina", ads: "29", approximate: true,
+    image: "/assets/ultima-peak/product.png",
+    library: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&view_all_page_id=688168747706811",
+    domain: "https://ultimapeak.com/products/ultimapeak-daily-gummies", links: ultimaPeakLinks,
+    prints: ["Desempenho · anúncios · últimos 7 dias","Configuração · orçamento da campanha","Desempenho · campanhas · últimos 7 dias","Desempenho · campanhas · 15/07/2026","Configuração · público e localização","Configuração · conversão, pixel e atribuição","Desempenho · campanhas · últimos 30 dias","Desempenho · conjuntos · últimos 7 dias","Desempenho · campanhas · últimos 14 dias","Configuração · atribuição e início"],
+    reports: [
+      report("1d", "15 de julho", "15/07/2026", totals("35.814,85", "98,88", "3,75%", "0,37", "25,50", "0,68", "0,45"), [
+        ["Ultimapeak WW - Performance Gummies - BOF - CBO","7.427,62","0,45","98,60","218,46","34","1,07%","1,90","38,28","3,59",""],
+        ["Ultimapeak WW - Performance Gummies - Shopify Hims","7.064,27","0,66","96,70","147,17","48","3,62%","0,28","22,56","0,62",""],
+        ["Ultimapeak WW - Performance Gummies - Spartan Quiz","6.029,92","0,67","105,63","158,68","38","4,24%","0,26","18,05","0,43",""],
+        ["Ultimapeak WW - Performance Gummies - PDP - CBO","4.806,31","1,00","96,41","96,13","50","3,99%","0,34","27,06","0,68",""],
+      ]),
+      report("7d", "Últimos 7 dias", "09/07/2026 a 15/07/2026", totals("290.352,06", "99,96", "3,83%", "0,38", "26,30", "0,69", "0,56"), [
+        ["Ultimapeak WW - Performance Gummies - BOF - CBO","63.197,82","0,74","101,54","137,09","461","1,37%","1,85","41,10","2,99",""],
+        ["Ultimapeak WW - Performance Gummies - Spartan Quiz","56.787,93","0,54","96,80","180,28","315","4,37%","0,32","21,97","0,50",""],
+        ["Ultimapeak WW - Performance Gummies - Shopify Hims","51.938,05","0,79","100,64","127,30","408","4,19%","0,27","22,50","0,54",""],
+        ["Ultimapeak WW - Performance Gummies - PDP - CBO","35.925,23","0,80","100,62","125,61","286","3,99%","0,39","27,55","0,69",""],
+      ]),
+      report("14d", "Últimos 14 dias", "02/07/2026 a 15/07/2026", totals("609.682,02", "99,74", "4,03%", "0,38", "25,39", "0,63", "0,66"), [
+        ["Ultimapeak WW - Performance Gummies - BOF - CBO","162.999,89","0,75","101,42","134,60","1.211","1,38%","1,91","41,79","3,04",""],
+        ["Ultimapeak WW - Performance Gummies - Spartan Quiz","135.588,17","0,59","97,78","165,55","819","3,89%","0,34","20,66","0,53",""],
+        ["Ultimapeak WW - Performance Gummies - Shopify Hims","85.517,63","0,78","100,29","129,38","661","4,82%","0,26","21,96","0,46",""],
+        ["Ultimapeak WW - Performance Gummies - PDP - CBO","75.007,00","0,75","99,81","133,94","560","4,99%","0,28","21,97","0,44",""],
+      ]),
+      report("30d", "Últimos 30 dias", "16/06/2026 a 15/07/2026", totals("1.306.187,40", "101,08", "4,50%", "0,31", "25,45", "0,56", "0,60"), [
+        ["Ultimapeak WW - Performance Gummies - Spartan Quiz","390.651,41","0,66","97,65","146,97","2.658","3,38%","0,30","22,62","0,67",""],
+        ["Ultimapeak WW - Performance Gummies - BOF - CBO","275.828,21","0,80","104,96","130,91","2.107","1,48%","1,88","44,62","3,01",""],
+        ["Ultimapeak WW - Performance Gummies - PDP - CBO","244.867,76","0,76","100,98","132,29","1.851","5,20%","0,28","24,91","0,48",""],
+        ["Ultimapeak WW - Performance Gummies - Shopify Hims","124.470,36","0,77","101,72","132,70","938","7,11%","0,18","19,80","0,28",""],
+      ]),
+    ],
+    top: {spend:"290.352,06", average:"99,96", ctr:"3,83%", cpc:"0,38", cpm:"26,30", cpcLink:"0,69", unique:"0,56"},
+    funnel: "Meta Ads → página UltimaPeak Daily Gummies → checkout",
+  },
 };
 
 const config = configs[target];
-if (!config) throw new Error("Use ancestral-supplements ou mars-men");
+if (!config) throw new Error("Use ancestral-supplements, mars-men ou ultima-peak");
 const printPath = index => `/assets/${target}/print-${String(index + 1).padStart(2, "0")}.jpeg`;
 const makeData = previous => {
   const previousAds = Array.isArray(previous.brandTopAds) ? previous.brandTopAds : [];
