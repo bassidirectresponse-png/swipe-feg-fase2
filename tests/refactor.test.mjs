@@ -8,6 +8,8 @@ const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-bac
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
 const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
 const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissector.mjs", import.meta.url), "utf8");
+const vslJobFn = await readFile(new URL("../netlify/functions/vsl-job.mjs", import.meta.url), "utf8");
+const vslBackgroundFn = await readFile(new URL("../netlify/functions/vsl-dissector-background.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
@@ -149,7 +151,7 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /Fechamento e CTA/);
   assert.match(html, /Transcrição completa/);
   assert.match(html, /Dissecação estratégica/);
-  assert.match(html, /canonicalScript:vslCanonical/);
+  assert.match(html, /if\(vslCanonical\)doc\+=`\\n# Apêndice — Roteiro canônico fornecido/);
   assert.match(html, /vslRenderTimer=setTimeout/);
   assert.match(html, /\.vslactions \[hidden\]\{display:none!important/);
   assert.match(html, /\.vslactions \.btn:disabled\{opacity:/);
@@ -159,13 +161,19 @@ test("Dissecador de VSL transcreve, lê o vídeo e entrega dois documentos", () 
   assert.match(html, /max-height:none;overflow:visible/);
 });
 
-test("Dissecador valida cada etapa estratégica antes de anunciar conclusão", () => {
-  assert.match(html, /vslStreamPhase\(token,"analysis-core",payload\)/);
-  assert.match(html, /vslStreamPhase\(token,"analysis-assets",payload\)/);
-  assert.match(html, /if\(!phaseDone\)throw new Error/);
-  assert.match(vslDissectorFn, /phase === "analysis-core"/);
-  assert.match(vslDissectorFn, /phase === "analysis-assets"/);
-  assert.match(vslDissectorFn, /send\(\{ t: "phase_done", phase \}\)/);
+test("Dissecador persiste, acompanha e retoma a análise em segundo plano", () => {
+  assert.match(html, /const VSL_JOB_FN="\/\.netlify\/functions\/vsl-job"/);
+  assert.match(html, /async function vslPollJob\(token,id,signal\)/);
+  assert.match(html, /localStorage\.setItem\(VSL_LAST_JOB_KEY,id\)/);
+  assert.match(html, /async function vslResumeLastJob\(\)/);
+  assert.match(html, /A dissecação continua em segundo plano/);
+  assert.match(vslJobFn, /getStore\(\{ name: "vsl-jobs", consistency: "strong" \}\)/);
+  assert.match(vslJobFn, /vsl-dissector-background/);
+  assert.match(vslBackgroundFn, /Cada chamada[\s\S]*salva o checkpoint/);
+  assert.match(vslBackgroundFn, /job\.coreParts\[index\] = part/);
+  assert.match(vslBackgroundFn, /request\.phase !== job\.phase/);
+  assert.match(vslBackgroundFn, /if \(job\.status !== "complete"\) await requeue/);
+  assert.match(vslBackgroundFn, /job\.status = "complete"/);
 });
 
 test("seções com vídeo usam o áudio original e sincronizam palavra por palavra", () => {

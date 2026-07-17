@@ -4,22 +4,22 @@
 const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
 const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = process.env.VSL_DISSECTOR_MODEL || process.env.FURTADO_MODEL || "claude-sonnet-5";
+export const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+export const MODEL = process.env.VSL_DISSECTOR_MODEL || process.env.FURTADO_MODEL || "claude-sonnet-5";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
 
-const clean = (s) => String(s == null ? "" : s)
+export const clean = (s) => String(s == null ? "" : s)
   .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
   .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
-const clip = (s, n) => {
+export const clip = (s, n) => {
   s = clean(s);
   if (s.length <= n) return s;
   let out = s.slice(0, n);
   if (/[\uD800-\uDBFF]$/.test(out)) out = out.slice(0, -1);
   return out + "…";
 };
-const time = (value) => {
+export const time = (value) => {
   const total = Math.max(0, Math.round(Number(value) || 0));
   const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
@@ -27,7 +27,7 @@ const time = (value) => {
 const segmentText = (segments) => (Array.isArray(segments) ? segments : []).slice(0, 9000)
   .map((s) => `[${time(s.start)}-${time(s.end)}] ${clean(s.text).trim()}`).filter(Boolean).join("\n");
 
-function imageContent(images) {
+export function imageContent(images) {
   const content = [];
   for (const [index, image] of (Array.isArray(images) ? images : []).slice(0, 5).entries()) {
     const media = ["image/jpeg", "image/png", "image/webp"].includes(image && image.mediaType) ? image.mediaType : "image/jpeg";
@@ -39,7 +39,7 @@ function imageContent(images) {
   return content;
 }
 
-const SYSTEM = `Você é um copy chief sênior especializado em VSLs de resposta direta. Sua tarefa é transformar uma VSL em um ativo reutilizável de copy.
+export const SYSTEM = `Você é um copy chief sênior especializado em VSLs de resposta direta. Sua tarefa é transformar uma VSL em um ativo reutilizável de copy.
 
 Princípios obrigatórios:
 - A transcrição organizada é completa, não um resumo. Preserve claims, números, nomes, tom, ordem e ambiguidades reais.
@@ -148,6 +148,56 @@ DURAÇÃO: ${time(meta.duration)}
 
 TRANSCRIÇÃO COMPLETA ORIGINAL:
 ${clip(meta.organized || meta.transcript, 190_000)}`;
+}
+
+// Prompts usados pelo pipeline persistente. A análise cronológica é dividida
+// em blocos independentes para que nenhuma VSL seja cortada por tamanho.
+export function analysisChunkPrompt(meta, chunk, index, total) {
+  return `DISSEQUE A PARTE ${index + 1} DE ${total} DA VSL "${meta.name}".
+
+Esta é uma parte cronológica; analise TODO o trecho recebido sem antecipar ou inventar partes ausentes.
+Escreva em PT-BR. ${index === 0 ? `Comece exatamente com "# ${meta.name} — Dissecação Estratégica".` : `Comece com "# Continuação da Dissecação — Parte ${index + 1} de ${total}".`}
+
+CONTRATO DE SAÍDA:
+1. Cubra o trecho inteiro, do primeiro ao último bloco/timestamp presente.
+2. Para cada bloco use a função real (Micro-Lead, Lead, Background Story, Emotional Story, Discovery Story, Marketing Thesis, Product Build Up, Big Offer, Close ou equivalente conservador).
+3. Explique: o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova, emoção, transição e como modelar.
+4. Inclua no final "## Síntese factual e ativos desta parte" com fatos, claims, provas, objeções, mecanismo, oferta, frases fortes e CTAs realmente encontrados. Essa síntese alimentará a consolidação global.
+5. Não resuma em poucos parágrafos, não crie compliance e não invente fatos.
+
+NICHO: ${meta.niche || "inferir"}
+IDIOMA ORIGINAL: ${meta.language || "não detectado"}
+DURAÇÃO TOTAL: ${time(meta.duration)}
+PARTE: ${index + 1}/${total}
+
+TRECHO COMPLETO DESTA PARTE:
+${clean(chunk)}`;
+}
+
+export function analysisSynthesisPrompt(meta, source) {
+  return `CONSOLIDE A ESTRATÉGIA GLOBAL DA VSL "${meta.name}" usando as análises cronológicas abaixo.
+
+Comece com "# Consolidação Estratégica Global" e escreva em PT-BR. Não repita a dissecação bloco a bloco.
+Inclua obrigatoriamente: Veredito estratégico; Big Idea detalhada; Pergunta paradoxal; Gimmick; Avatar completo (tentativas, crenças, vergonha, solução rejeitada, promessa desejada, inimigo aceito, culpa removida e identidade ferida); Belief Ladder em ordem; MUP; MSOL; mecanismo; provas categorizadas; objeções e quebras; oferta completa (produto, stack, bônus, preço/âncoras, garantia, urgência e CTA). Não invente itens ausentes.
+
+NICHO: ${meta.niche || "inferir"}
+DURAÇÃO: ${time(meta.duration)}
+
+ANÁLISES E SÍNTESES DE TODAS AS PARTES:
+${clean(source)}`;
+}
+
+export function analysisAssetsFromPartsPrompt(meta, source) {
+  return `CRIE O INVENTÁRIO ESTRATÉGICO FINAL DA VSL "${meta.name}" com base nas análises de todas as partes.
+
+Comece com "# Inventário Estratégico e Banco de Ativos". Escreva em PT-BR e não repita a dissecação cronológica.
+Inclua: inventário de provas (Demonstração, Motivo Lógico, Especificidade, Mecanismo, Crenças do Leitor, Reconhecimento da Descrença, Autoridade, Depoimentos, Humildade, Copy Lógica e Personalidade), sempre informando como aparece, onde, função e como modelar; frases fortes; analogias; nomes chiclete; curiosidades; bullets/fascinations; histórias; claims; comparações; demonstrações; mecanismos; inimigos; CTAs; garantias; reason why now; padrões de fechamento; blueprint de modelagem; mapa para Obsidian; perguntas em aberto e ambiguidades reais. Não invente elementos ausentes.
+
+NICHO: ${meta.niche || "inferir"}
+DURAÇÃO: ${time(meta.duration)}
+
+ANÁLISES E SÍNTESES DE TODAS AS PARTES:
+${clean(source)}`;
 }
 
 async function streamAnthropic({ system, user, images, maxTokens, channel }, send) {
