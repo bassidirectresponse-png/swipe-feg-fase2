@@ -178,6 +178,8 @@ test("Dissecador persiste, acompanha e retoma a análise em segundo plano", () =
   assert.match(vslBackgroundFn, /if \(job\.status !== "complete"\) await requeue/);
   assert.match(vslBackgroundFn, /job\.status = "complete"/);
   assert.match(vslJobFn, /needsRecovery/);
+  assert.match(vslJobFn, /canResumeAutomatically/);
+  assert.match(vslJobFn, /terminou antes de ficar completa/);
   assert.match(vslJobFn, /body\.action === "retry"/);
   assert.match(html, /vslJobStatus=job\.status/);
   assert.match(html, /retry\.hidden=vslJobStatus!=="error"/);

@@ -41,6 +41,7 @@ function publicJob(job) {
 
 const isPortuguese = (language) => /^(pt|portugu)/i.test(String(language || "").trim());
 const checkpointIndex = (job) => job.phase === "translation" ? Number(job.translationIndex || 0) : Number(job.chunkIndex || 0);
+const canResumeAutomatically = (job) => job.status === "error" && /terminou antes de ficar completa|extensa demais para uma única etapa/i.test(String(job.error || job.message || ""));
 
 async function dispatchBackground(req, job) {
   const backgroundUrl = new URL("/.netlify/functions/vsl-dissector-background", req.url);
@@ -68,7 +69,7 @@ export default async (req) => {
     const job = await store.get(id, { type: "json" });
     if (!job || job.owner !== String(user.id || "")) return json(404, { ok: false, error: "análise não encontrada" });
     const idleMs = Date.now() - (Date.parse(job.updatedAt || job.createdAt || "") || 0);
-    const needsRecovery = (job.status === "queued" && idleMs > 15_000) || (job.status === "working" && idleMs > 12 * 60_000);
+    const needsRecovery = canResumeAutomatically(job) || (job.status === "queued" && idleMs > 15_000) || (job.status === "working" && idleMs > 12 * 60_000);
     if (needsRecovery) {
       job.status = "queued";
       job.message = "Retomando a análise do último ponto salvo…";
