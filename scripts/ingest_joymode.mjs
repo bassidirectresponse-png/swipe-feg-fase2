@@ -181,16 +181,18 @@ console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted"
 
 if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
   const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
-  for(let i=0;i<brandTopAds.length;i++){
+  const finalStates=new Set(["done","partial","error"]);
+  const pendingIndexes=brandTopAds.map((ad,i)=>finalStates.has(ad.ingestStatus)?-1:i).filter(i=>i>=0);
+  for(const i of pendingIndexes){
     await fetch(`${appUrl}/.netlify/functions/fb-ingest-background`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${AUTH_TOKEN}`},body:JSON.stringify({id:savedId,adUrl:brandTopAds[i].link,targetIndex:i})});
   }
   let statuses=[];
-  for(let attempt=0;attempt<60;attempt++){
+  for(let attempt=0;attempt<120;attempt++){
     await new Promise(resolve=>setTimeout(resolve,5000));
     const check=await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(savedId)}&select=data`,{headers});
     const current=check.ok?(await check.json())[0]?.data:null;
     statuses=(current?.brandTopAds||[]).map(ad=>ad?.ingestStatus||"pending");
-    if(statuses.length===brandTopAds.length&&statuses.every(s=>["done","partial","error"].includes(s)))break;
+    if(statuses.length===brandTopAds.length&&statuses.every(s=>finalStates.has(s)))break;
   }
   console.log(JSON.stringify({mediaStatuses:statuses}));
   if(statuses.length!==brandTopAds.length||statuses.some(s=>s==="pending"||s==="working"||!s))throw new Error("captura dos top ads não terminou no prazo");
