@@ -29,6 +29,9 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.
 const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "adminswipefeg@swipefeg.app")
   .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const AUTOMATION_EMAILS = (process.env.AUTOMATION_EMAILS || "noticias-bot@swipefeg.app")
+  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const WRITER_EMAILS = new Set([...ADMIN_EMAILS, ...AUTOMATION_EMAILS]);
 const APIFY_TOKEN = process.env.APIFY_TOKEN || "";
 const FB_ADS_ACTOR = process.env.FB_ADS_ACTOR || "curious_coder~facebook-ads-library-scraper";
 const MAX_BYTES = 60 * 1024 * 1024; // teto de download/upload do criativo
@@ -130,7 +133,7 @@ export const handler = async (event) => {
     const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
     if (!u.ok) throw new Error("sessão inválida");
     const email = String(((await u.json()) || {}).email || "").toLowerCase();
-    if (!ADMIN_EMAILS.includes(email)) throw new Error("não é admin");
+    if (!WRITER_EMAILS.has(email)) throw new Error("usuário sem permissão de escrita");
 
     // 1) raspa o anúncio
     const ad = await scrapeAd(adUrl);

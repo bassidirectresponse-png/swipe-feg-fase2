@@ -176,4 +176,22 @@ const response = await fetch(endpoint, {
 });
 if (!response.ok) throw new Error(`Supabase ${response.status}: ${(await response.text()).slice(0, 300)}`);
 const rows = await response.json();
-console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", id: rows[0]?.id || existing?.id, prints: bmPrints.length, reports: reports.length, campaigns: reports.reduce((n, r) => n + r.campaigns.length, 0), topAds: brandTopAds.length }));
+const savedId=rows[0]?.id||existing?.id;
+console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", id: savedId, prints: bmPrints.length, reports: reports.length, campaigns: reports.reduce((n, r) => n + r.campaigns.length, 0), topAds: brandTopAds.length }));
+
+if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
+  const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
+  for(let i=0;i<brandTopAds.length;i++){
+    await fetch(`${appUrl}/.netlify/functions/fb-ingest-background`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${AUTH_TOKEN}`},body:JSON.stringify({id:savedId,adUrl:brandTopAds[i].link,targetIndex:i})});
+  }
+  let statuses=[];
+  for(let attempt=0;attempt<60;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,5000));
+    const check=await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(savedId)}&select=data`,{headers});
+    const current=check.ok?(await check.json())[0]?.data:null;
+    statuses=(current?.brandTopAds||[]).map(ad=>ad?.ingestStatus||"pending");
+    if(statuses.length===brandTopAds.length&&statuses.every(s=>["done","partial","error"].includes(s)))break;
+  }
+  console.log(JSON.stringify({mediaStatuses:statuses}));
+  if(statuses.length!==brandTopAds.length||statuses.some(s=>s==="pending"||s==="working"||!s))throw new Error("captura dos top ads não terminou no prazo");
+}
