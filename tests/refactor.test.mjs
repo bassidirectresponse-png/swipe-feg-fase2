@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const adsScraper = await readFile(new URL("../scripts/ads_scraper.py", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
 const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
@@ -236,6 +237,9 @@ test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () =
   assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated"\]\)/);
   assert.doesNotMatch(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
   assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
+  assert.match(html, /snav__group--dr/);
+  assert.match(html, /division-pill--brands/);
+  assert.match(html, /DTC Intelligence/);
   assert.match(html, /FEG DR/);
   assert.doesNotMatch(html, /FEG Brands <span>Admin<\/span>/);
   assert.doesNotMatch(html, /Em validação somente no painel admin/);
@@ -268,10 +272,21 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.doesNotMatch(html, /Total conferido na Meta Ads Library com o filtro Ativos/);
   assert.doesNotMatch(html, /não do número de linhas do Gerenciador de Anúncios/);
   assert.match(html, /Conferir na biblioteca/);
+  assert.match(html, /Ads ativos · evolução diária/);
+  assert.match(html, /adsChartSvg\(ah\)/);
   assert.match(html, /Abrir mídia salva/);
   assert.match(html, /Mídia salva no Swipe/);
   assert.match(html, /Views do domínio/);
   assert.match(html, /Período das views/);
+});
+
+test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histórico diário", () => {
+  assert.match(adsScraper, /\("oferta", "brandsgeneral", "brandsvalidated"\)/);
+  assert.match(adsScraper, /data\["adsHistory"\] = update_history/);
+  assert.match(adsScraper, /data\["adsLibraryCheckedAt"\]/);
+  assert.match(adsScraper, /hist\.append\(\{"d": checked, "n": previous\}\)/);
+  assert.match(html, /brand-ads-history/);
+  assert.match(html, /Ads ativos · evolução diária/);
 });
 
 test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {

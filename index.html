@@ -95,6 +95,14 @@
   /* indicadores compactos das áreas autenticadas */
   .page{padding:18px clamp(16px,4vw,48px) 0;}
   .page .meta-row{margin-top:0;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .division-pill{display:inline-flex;align-items:center;gap:10px;min-height:42px;padding:7px 13px 7px 9px;border:1px solid rgba(229,255,45,.24);border-radius:12px;background:linear-gradient(135deg,rgba(229,255,45,.12),rgba(229,255,45,.025));box-shadow:inset 3px 0 0 var(--accent);}
+  .division-pill__mark{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:#080904;font-size:.68rem;font-weight:800;letter-spacing:-.02em;}
+  .division-pill__copy{display:flex;flex-direction:column;line-height:1.08;}
+  .division-pill__name{font-size:.9rem;font-weight:750;letter-spacing:.02em;color:#f7f8f2;}
+  .division-pill__desc{margin-top:4px;font-size:.58rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#aeb48a;}
+  .division-pill--brands{border-color:rgba(114,212,255,.3);background:linear-gradient(135deg,rgba(49,170,224,.16),rgba(49,170,224,.025));box-shadow:inset 3px 0 0 #72d4ff;}
+  .division-pill--brands .division-pill__mark{background:#72d4ff;color:#031119;}
+  .division-pill--brands .division-pill__desc{color:#8fd8ff;}
   .stat{display:flex;align-items:baseline;gap:8px;}
   .stat .n{font-size:1.8rem;font-weight:700;letter-spacing:-.02em;}
   .stat .l{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);}
@@ -136,10 +144,13 @@
   .sidenav__brand .lime{color:var(--accent);}
   .sidenav__x{display:none;margin-left:auto;width:38px;height:38px;border-radius:10px;border:1px solid var(--border-2);align-items:center;justify-content:center;color:var(--muted-fg);}
   .sidenav__x:hover{background:var(--surface-2);color:var(--fg);}
-  .snav__group{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);font-weight:700;padding:16px 12px 8px;display:flex;align-items:center;gap:7px;}
-  .snav__group--ai{color:var(--accent);margin-top:8px;border-top:1px solid var(--border);padding-top:17px;}
+  .snav__group{position:relative;margin:14px 3px 7px;padding:10px 12px 10px 14px;display:flex;align-items:center;gap:9px;border:1px solid rgba(229,255,45,.18);border-radius:12px;background:linear-gradient(110deg,rgba(229,255,45,.11),rgba(229,255,45,.018));color:#f1f5c8;font-size:.79rem;line-height:1;font-weight:750;letter-spacing:.055em;text-transform:uppercase;box-shadow:inset 3px 0 0 var(--accent);}
+  .snav__group::after{content:"Direct Response";margin-left:auto;color:#929775;font-size:.48rem;font-weight:750;letter-spacing:.09em;}
+  .snav__group--ai{color:var(--accent);margin-top:14px;border-color:var(--border);background:var(--surface);box-shadow:none;padding-top:10px;}
+  .snav__group--ai::after{content:"";}
   .snav__group--ai .ico{width:13px;height:13px;}
-  .snav__group--brands{color:#8fd8ff;margin-top:8px;border-top:1px solid var(--border);padding-top:17px;}
+  .snav__group--brands{color:#d7f4ff;border-color:rgba(114,212,255,.23);background:linear-gradient(110deg,rgba(49,170,224,.16),rgba(49,170,224,.02));box-shadow:inset 3px 0 0 #72d4ff;}
+  .snav__group--brands::after{content:"DTC";color:#72d4ff;}
   .snav__group--brands .ico{width:13px;height:13px;}
 
   .snav__sec{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 13px;border-radius:11px;border:1px solid transparent;color:var(--muted-fg);font-size:.93rem;font-weight:600;transition:background .18s,color .18s,border-color .18s,transform .12s ease;}
@@ -673,6 +684,7 @@
   .adschart .axl{fill:var(--faint);font-size:11px;font-weight:600;}
   .adschart .axv{fill:var(--accent);font-size:13px;font-weight:700;}
   .adschart .axv--dim{fill:var(--muted-fg);font-size:11px;font-weight:600;}
+  .brand-ads-history{--accent:#72d4ff;--accent-soft:rgba(114,212,255,.1);}
   .adsmeta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:.7rem;color:var(--faint);font-weight:600;}
   .adsmeta .ico{width:12px;height:12px;}
   .adsmeta .adsupd{display:inline-flex;align-items:center;gap:5px;}
@@ -1018,7 +1030,7 @@ create policy "public_all" on offers
     <div class="sidenav-backdrop" id="sideNavBackdrop"></div>
     <main class="main">
       <div class="page">
-        <div class="meta-row"><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
+        <div class="meta-row"><div class="division-pill" id="divisionPill"><span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span></div><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
       </div>
       <div class="grid-wrap"><div class="subfilter" id="subFilter"></div><div id="gridArea"></div></div>
     </main>
@@ -1513,7 +1525,7 @@ function renderSideNav(){
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
   };
-  html+=`<div class="snav__group">FEG DR</div>`;
+  html+=`<div class="snav__group snav__group--dr">FEG DR</div>`;
   SECTIONS.filter(s=>!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
@@ -1862,7 +1874,11 @@ function openView(id){
   if(!native){
     if(isBrand){
       const library=(d.bibliotecas.find(x=>x.link)||{}).link||"";
-      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+      const ah=adsHistOf(d);
+      const upd=d.adsUpdatedAt
+        ?`<div class="adsmeta" style="margin-top:12px"><span class="adsauto">${ic("zap")}atualização automática</span><span class="adsupd">${ic("clock")}última leitura: ${esc(relTime(d.adsUpdatedAt))}</span></div>`
+        :`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">O histórico começa na próxima leitura automática.</div>`;
+      adsSection=`<section class="sec brand-ads-history"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos · evolução diária</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div style="margin-top:18px">${adsChartSvg(ah)}</div>${upd}${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
     }else{
       const ah=adsHistOf(d);
       const upd=d.adsUpdatedAt
@@ -2457,6 +2473,8 @@ function setSectionHeader(){
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
   const sw=$(".topbar .search");if(sw)sw.style.display=cc?"none":"";
   if(cc)return;
+  const division=$("#divisionPill"),brands=BRAND_SECTIONS.has(activeSection);
+  if(division){division.classList.toggle("division-pill--brands",brands);division.innerHTML=brands?`<span class="division-pill__mark">BR</span><span class="division-pill__copy"><span class="division-pill__name">FEG Brands</span><span class="division-pill__desc">DTC Intelligence</span></span>`:`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;}
   const lbl=$("#statLabel");if(lbl)lbl.textContent=cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;

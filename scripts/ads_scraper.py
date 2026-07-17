@@ -3,7 +3,7 @@
 """
 Atualizador de "anúncios ativos" das ofertas do dashboard Swipe FEG.
 
-Para cada oferta (kind:"oferta") de tráfego Meta que tenha bibliotecas de
+Para cada oferta da FEG DR ou FEG Brands de tráfego Meta que tenha bibliotecas de
 anúncios (data.bibliotecas), abre cada link da Biblioteca de Anúncios do Meta
 num Chromium headless (Playwright), lê o contador "X resultados" e SOMA os
 anúncios ativos de todas as bibliotecas da oferta. Grava de volta no Supabase:
@@ -98,9 +98,9 @@ def fetch_offers(token):
 
 
 def eligible(row):
-    """Oferta Meta (kind oferta/ausente), tipoTrafego meta, com >=1 biblioteca."""
+    """Oferta Meta da FEG DR/Brands, com pelo menos uma biblioteca."""
     d = row.get("data") or {}
-    if d.get("kind", "oferta") != "oferta":
+    if d.get("kind", "oferta") not in ("oferta", "brandsgeneral", "brandsvalidated"):
         return None
     if d.get("tipoTrafego", "meta") != "meta":
         return None
@@ -150,6 +150,16 @@ def update_history(data, total, now):
     if not isinstance(hist, list):
         hist = []
     hist = [h for h in hist if isinstance(h, dict) and h.get("d")]
+    # Cards de Brands anteriores à automação já têm total/data conferidos à mão.
+    # Preserva essa leitura como ponto inicial para o gráfico não perder contexto.
+    if not hist and data.get("adsLibraryCheckedAt") and data.get("numAdsAtivos") is not None:
+        try:
+            checked = datetime.strptime(str(data["adsLibraryCheckedAt"]).strip(), "%d/%m/%Y").strftime("%Y-%m-%d")
+            previous = int(re.sub(r"\D", "", str(data["numAdsAtivos"])))
+            if checked != today:
+                hist.append({"d": checked, "n": previous})
+        except (TypeError, ValueError):
+            pass
     if hist and hist[-1].get("d") == today:
         hist[-1]["n"] = total            # mesma data -> atualiza o ponto do dia
     else:
@@ -219,6 +229,9 @@ def main():
             data["numAdsAtivos"] = str(total)
             data["adsUpdatedAt"] = now.isoformat()
             data["adsHistory"] = update_history(data, total, now)
+            if data.get("kind") in ("brandsgeneral", "brandsvalidated"):
+                data["adsLibraryCheckedAt"] = now.strftime("%d/%m/%Y")
+                data["adsLibraryApprox"] = False
             print(f"   => total {total} ads (antes: {prev!r})")
 
             if DRY_RUN:
