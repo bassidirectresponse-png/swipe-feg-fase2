@@ -214,6 +214,34 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
+test("FEG Brands fica restrita ao admin e separa spy de ofertas validadas", () => {
+  assert.match(html, /key:"brandsgeneral",label:"Ofertas de Brands no Geral"/);
+  assert.match(html, /key:"brandsvalidated",label:"Ofertas Validadas"/);
+  assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated"\]\)/);
+  assert.match(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
+  assert.match(html, /if\(isAdmin\)\{\s*html\+=`<div class="snav__group snav__group--brands"/);
+  assert.match(html, /FEG DR/);
+  assert.match(html, /FEG Brands <span>Admin<\/span>/);
+  assert.match(html, /brandsgeneral:"feg-brands-geral"/);
+  assert.match(html, /brandsvalidated:"feg-brands-validadas"/);
+  assert.match(html, /activeSection==="oferta"\|\|BRAND_SECTIONS\.has\(activeSection\)/);
+});
+
+test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
+  for (const field of ["bmSpend7d","bmSpend14d","bmCpc","bmCpm","bmCtr","bmCostIc","bmRoas","bmUpdatedAt"]) assert.match(html,new RegExp(field));
+  assert.match(html, /function brandMetricGrid\(d,detail\)/);
+  assert.match(html, /Aguardando acesso à BM/);
+  assert.match(html, /Resumo da Business Manager/);
+  assert.match(html, /Prints da BM/);
+  assert.match(html, /Top ads/);
+  assert.match(html, /data-zone="bm\|\$\{i\}"/);
+  assert.match(html, /data-zone="brandad\|\$\{i\}"/);
+  assert.match(html, /data-action="set-brand-stage"/);
+  assert.match(html, /bmPrints:fBmPrints\.filter/);
+  assert.match(html, /brandTopAds:fBrandTopAds\.filter/);
+  assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
+});
+
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
   assert.match(html, /VSL_CHUNK_SEC=45/);
   assert.match(html, /async function vslTranscribeSlice/);
