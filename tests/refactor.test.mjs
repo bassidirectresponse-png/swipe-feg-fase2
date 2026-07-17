@@ -243,7 +243,8 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /brandTopAds:fBrandTopAds\.filter/);
   assert.match(html, /data-zone="brandsemrush1m"/);
   assert.match(html, /data-zone="brandsemrush3m"/);
-  assert.match(html, /triggerBrandFbIngest/);
+  assert.match(html, /Link do Facebook/);
+  assert.doesNotMatch(html, /triggerBrandFbIngest/);
   assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
 });
 

@@ -11,12 +11,6 @@ function netlifySecret(name) {
   try { return execFileSync("npx", ["netlify", "env:get", name, "--context", "production"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
   catch { return ""; }
 }
-if(process.argv.includes("--diagnose-apify")){
-  const token=netlifySecret("APIFY_TOKEN"),actor=process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper";
-  if(!token)throw new Error("APIFY_TOKEN ausente no Netlify");
-  const [me,act]=await Promise.all([fetch(`https://api.apify.com/v2/users/me?token=${token}`),fetch(`https://api.apify.com/v2/acts/${actor}?token=${token}`)]);
-  console.log(JSON.stringify({account:me.status,actor:act.status}));process.exit(act.ok?0:1);
-}
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.CI ? "" : netlifySecret("SUPABASE_SERVICE_ROLE_KEY"));
 const API_KEY = SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ANON;
 let AUTH_TOKEN = API_KEY;
@@ -51,29 +45,6 @@ const bmPrints = await Promise.all(printFiles.map(async ([nome, file], i) => {
 }));
 
 const money = value => value ? `US$ ${value}` : "";
-function deepFind(o,predicate){let hit="";(function walk(x){if(hit)return;if(Array.isArray(x)){for(const v of x){walk(v);if(hit)return;}return;}if(x&&typeof x==="object")for(const [k,v] of Object.entries(x)){if(hit)return;if(typeof v==="string"&&/^https?:\/\//.test(v)&&predicate(k,v)){hit=v;return;}walk(v);}})(o);return hit;}
-function deepValue(o,predicate){let hit=null;(function walk(x){if(hit!=null)return;if(Array.isArray(x)){for(const v of x){walk(v);if(hit!=null)return;}return;}if(x&&typeof x==="object")for(const [k,v] of Object.entries(x)){if(hit!=null)return;if((typeof v==="string"||typeof v==="number")&&v!==""&&predicate(k,v)){hit=v;return;}walk(v);}})(o);return hit;}
-function mediaOf(ad){const video=deepFind(ad,k=>/video_hd_url/i.test(k))||deepFind(ad,k=>/video_sd_url/i.test(k))||deepFind(ad,(k,v)=>/video/i.test(k)&&/\.(mp4|mov|m4v)(\?|$)/i.test(v));const image=deepFind(ad,k=>/(image_snapshot_url|original_image_url|image_url|thumbnail_url)/i.test(k))||deepFind(ad,(k,v)=>/image|thumb|cover|poster/i.test(k)&&/\.(jpe?g|png|webp)(\?|$)/i.test(v));return{video,image,url:video||image};}
-function unixOf(v){if(v==null||v==="")return null;if(typeof v==="number")return v>1e12?Math.floor(v/1000):Math.floor(v);const s=String(v).trim();if(/^\d+$/.test(s)){const n=+s;return n>1e12?Math.floor(n/1000):n;}const t=Date.parse(s);return Number.isNaN(t)?null:Math.floor(t/1000);}
-async function abortStuckFacebookRuns(token,actor){
-  for(const status of ["READY","RUNNING"]){const res=await fetch(`https://api.apify.com/v2/acts/${actor}/runs?token=${token}&status=${status}&limit=50&desc=1`);if(!res.ok)continue;const items=(await res.json())?.data?.items||[];for(const run of items)await fetch(`https://api.apify.com/v2/actor-runs/${run.id}/abort?token=${token}`,{method:"POST"});}
-}
-async function captureTopAdsBatch({token,actor,libraryUrl,offerId,currentData,headers}){
-  await abortStuckFacebookRuns(token,actor);
-  const input={urls:[{url:libraryUrl}],scrapeAdDetails:true,count:12,limitPerSource:12,activeStatus:"active"};
-  const scrape=await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}&timeout=300`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
-  const raw=await scrape.text();if(!scrape.ok)throw new Error(`Apify ${scrape.status}: ${raw.slice(0,180)}`);const items=JSON.parse(raw);if(!Array.isArray(items)||!items.length)throw new Error("A biblioteca não retornou anúncios");
-  const ads=items.filter(ad=>mediaOf(ad).url).slice(0,currentData.brandTopAds.length);const now=Math.floor(Date.now()/1000);
-  for(let i=0;i<currentData.brandTopAds.length;i++){
-    const target=currentData.brandTopAds[i],ad=ads[i];if(!ad){target.ingestStatus="error";target.ingestError="Anúncio correspondente não retornado pela biblioteca";continue;}
-    const media=mediaOf(ad),start=unixOf(deepValue(ad,k=>/(ad_delivery_start_time|start_?date|start_?time)/i.test(k))),end=unixOf(deepValue(ad,k=>/(ad_delivery_stop_time|end_?date|stop_?time)/i.test(k))),active=!end||end>now;
-    target.startDateUnix=start;target.endDateUnix=end;target.startDate=start?new Date(start*1000).toLocaleDateString("pt-BR",{timeZone:"UTC"}):"";target.active=active;target.daysActive=start?Math.max(0,Math.floor(((active?now:end)-start)/86400)):null;target.pageName=String(deepValue(ad,k=>/page_?name/i.test(k))||"Joymode");
-    try{const download=await fetch(media.url);if(!download.ok)throw new Error(`download ${download.status}`);const buf=Buffer.from(await download.arrayBuffer());if(!buf.length||buf.length>60*1024*1024)throw new Error("mídia fora do limite de 60 MB");const isVideo=!!media.video,contentType=isVideo?"video/mp4":((download.headers.get("content-type")||"image/jpeg").split(";")[0]),ext=isVideo?"mp4":contentType.includes("png")?"png":contentType.includes("webp")?"webp":"jpg",storagePath=`brands/${offerId}/joymode-top-${i+1}-${Date.now()}.${ext}`;const upload=await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${storagePath}`,{method:"POST",headers:{apikey:ANON,Authorization:`Bearer ${AUTH_TOKEN}`,"Content-Type":contentType,"x-upsert":"true"},body:buf});if(!upload.ok)throw new Error(`storage ${upload.status}`);const publicUrl=`${SUPABASE_URL}/storage/v1/object/public/criativos/${storagePath}`;if(isVideo)target.video=publicUrl;else target.img=publicUrl;target.ingestStatus="done";target.ingestError="";}catch(e){target.ingestStatus="partial";target.ingestError=String(e.message||e);}
-    target.ingestedAt=new Date().toISOString();
-  }
-  const save=await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(offerId)}`,{method:"PATCH",headers:{...headers,Prefer:"return=minimal"},body:JSON.stringify({data:currentData})});if(!save.ok)throw new Error(`Falha ao salvar top ads: ${save.status}`);
-  return currentData.brandTopAds.map(ad=>ad.ingestStatus||"pending");
-}
 const reports = [
   {
     key: "7d", label: "Últimos 7 dias", range: "09/07/2026 a 15/07/2026", level: "Campanhas",
@@ -151,12 +122,21 @@ query.searchParams.set("data->>kind", "eq.brandsvalidated");
 const existingRows = await fetch(query, { headers }).then(async r => r.ok ? r.json() : Promise.reject(new Error(await r.text())));
 const existing = existingRows.find(row => String(row.data?.nomeOferta || "").trim().toLowerCase() === "joymode");
 const previousAds = Array.isArray(existing?.data?.brandTopAds) ? existing.data.brandTopAds : [];
-const brandTopAds = links.map((link, i) => ({
-  nome: `Joymode · Top Ad ${String(i + 1).padStart(2, "0")}`,
-  link,
-  ingestStatus: "pending",
-  ...(previousAds.find(ad => ad.link === link) || {}),
-}));
+const brandTopAds = links.map((link, i) => {
+  const previous = previousAds.find(ad => ad.link === link) || {};
+  return {
+    nome: `Joymode · Top Ad ${String(i + 1).padStart(2, "0")}`,
+    link,
+    ...previous,
+    ingestStatus: previous.video || previous.img ? "done" : "link_only",
+    ingestError: "",
+    active: null,
+    daysActive: null,
+    startDate: "",
+    startDateUnix: null,
+    endDateUnix: null,
+  };
+});
 
 const data = {
   ...(existing?.data || {}),
@@ -188,7 +168,7 @@ const data = {
   brandSemrush1m: existing?.data?.brandSemrush1m || "",
   brandSemrush3m: existing?.data?.brandSemrush3m || "",
   funil: "Meta Ads → página do produto Hard+ → carrinho → checkout",
-  comentario: "Primeira oferta Insider cadastrada como padrão de referência. Prints, médias gerais e métricas por campanha foram separados por período. Os cinco anúncios estão vinculados e preparados para captura automática da mídia e dos dias ativos.",
+  comentario: "Primeira oferta Insider cadastrada como padrão de referência. Prints, médias gerais e métricas por campanha foram separados por período. Os cinco top ads estão vinculados diretamente ao Facebook; a mídia pode ser anexada manualmente ao card quando o arquivo estiver disponível.",
 };
 
 if (process.argv.includes("--emit-seed")) {
@@ -207,22 +187,3 @@ if (!response.ok) throw new Error(`Supabase ${response.status}: ${(await respons
 const rows = await response.json();
 const savedId=rows[0]?.id||existing?.id;
 console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", id: savedId, prints: bmPrints.length, reports: reports.length, campaigns: reports.reduce((n, r) => n + r.campaigns.length, 0), topAds: brandTopAds.length }));
-
-if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY&&process.env.APIFY_TOKEN){
-  try{const statuses=await captureTopAdsBatch({token:process.env.APIFY_TOKEN,actor:process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper",libraryUrl:data.bibliotecas[0].link,offerId:savedId,currentData:data,headers});console.log(JSON.stringify({mediaStatuses:statuses}));}
-  catch(e){const safe=String(e&&e.message||e).replace(/token=[^&\s]+/gi,"token=[oculto]").slice(0,500);console.error(`::error title=Captura Joymode::${safe}`);throw e;}
-}else if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
-  const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
-  const finalStates=new Set(["done","partial","error"]);
-  await fetch(`${appUrl}/.netlify/functions/fb-ingest-background`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${AUTH_TOKEN}`},body:JSON.stringify({id:savedId,batch:true,libraryUrl:data.bibliotecas[0].link,links:brandTopAds.map(ad=>ad.link)})});
-  let statuses=[];
-  for(let attempt=0;attempt<120;attempt++){
-    await new Promise(resolve=>setTimeout(resolve,5000));
-    const check=await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(savedId)}&select=data`,{headers});
-    const current=check.ok?(await check.json())[0]?.data:null;
-    statuses=(current?.brandTopAds||[]).map(ad=>ad?.ingestStatus||"pending");
-    if(statuses.length===brandTopAds.length&&statuses.every(s=>finalStates.has(s)))break;
-  }
-  console.log(JSON.stringify({mediaStatuses:statuses}));
-  if(statuses.length!==brandTopAds.length||statuses.some(s=>s==="pending"||s==="working"||!s))throw new Error("captura dos top ads não terminou no prazo");
-}

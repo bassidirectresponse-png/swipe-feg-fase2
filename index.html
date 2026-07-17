@@ -1311,7 +1311,6 @@ async function ensureJoymodeInsider(){
   const current=offers.find(o=>sectionOf(o)==="brandsvalidated"&&String((o.data||{}).nomeOferta||"").trim().toLowerCase()==="joymode");
   if(current){
     try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}
-    (current.data.brandTopAds||[]).forEach((ad,i)=>{if(ad&&ad.link&&(!ad.video&&!ad.img||ad.ingestStatus==="pending"))setTimeout(()=>triggerBrandFbIngest(current.id,i,true),i*1400);});
     return;
   }
   let lock="";try{lock=localStorage.getItem("feg_joymode_seed_v1")||"";}catch(e){}
@@ -1320,9 +1319,11 @@ async function ensureJoymodeInsider(){
   try{
     const seedRes=await fetch("/assets/joymode/seed.json",{cache:"no-store"});if(!seedRes.ok)throw new Error("seed indisponível");
     const data=await seedRes.json();
+    data.brandTopAds=(data.brandTopAds||[]).map(ad=>Object.assign({},ad,{ingestStatus:ad.video||ad.img?"done":"link_only",ingestError:"",active:null,daysActive:null,startDate:"",startDateUnix:null,endDateUnix:null}));
+    data.comentario="Primeira oferta Insider cadastrada como padrão de referência. Prints, médias gerais e métricas por campanha foram separados por período. Os cinco top ads estão vinculados diretamente ao Facebook; a mídia pode ser anexada manualmente ao card quando o arquivo estiver disponível.";
     data.bmPrints=await Promise.all((data.bmPrints||[]).map(async p=>{const b64=await fetch(p.asset,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error("print indisponível");return r.text();});return{nome:p.nome,img:"data:image/jpeg;base64,"+b64.trim()};}));
     const {data:rows,error}=await sb.from("offers").insert({data}).select();if(error)throw error;
-    const row=rows&&rows[0];if(row){offers.push(row);renderGrid();renderSubfilter();writeCache();try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}toast("Joymode adicionada em Ofertas Insider ✓");(row.data.brandTopAds||[]).forEach((ad,i)=>{if(ad&&ad.link)setTimeout(()=>triggerBrandFbIngest(row.id,i,true),i*1400);});}
+    const row=rows&&rows[0];if(row){offers.push(row);renderGrid();renderSubfilter();writeCache();try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}toast("Joymode adicionada em Ofertas Insider ✓");}
   }catch(e){console.error("seed Joymode falhou",e);try{localStorage.removeItem("feg_joymode_seed_v1");}catch(_){}toast("Não foi possível adicionar a Joymode automaticamente.",true);}
   finally{joymodeSeedWorking=false;}
 }
@@ -1864,7 +1865,7 @@ function openView(id){
   if(isBrand){
     const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta">${x.daysActive!=null?`<span class="chip accent">${x.active===false?"Veiculou":"Ativo há"} ${esc(x.daysActive)} dia${+x.daysActive===1?"":"s"}</span>`:""}${x.startDate?`<span class="chip">Desde ${esc(x.startDate)}</span>`:""}${x.ingestStatus==="pending"?`<span class="chip">Mídia pendente</span>`:""}${x.ingestStatus==="error"?`<span class="chip">Falha ao baixar</span>`:""}</div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${isAdmin&&x.link?`<button class="btn btn--outline btn--sm" data-brand-fbingest="${o.id}" data-brand-ad-index="${i}">${ic("download")}${x.video?"Atualizar mídia":"Baixar e medir"}</button>`:""}</div>${x.ingestError?`<div class="fbnote fbnote--err">${ic("alert")}${esc(x.ingestError)}</div>`:""}</div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia anexada":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${brandMetricGrid(d,true)}
       ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
@@ -1906,7 +1907,6 @@ function openView(id){
     </aside>
   </div>`;
   wireLightboxLinks($("#viewBody"));
-  $$('[data-brand-fbingest]',$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrandFbIngest(b.dataset.brandFbingest,+b.dataset.brandAdIndex)));
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeView());
@@ -3662,7 +3662,6 @@ async function requestInstantTranscription(offerId,videoUrl){
 /* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (Apify → Storage) ===== */
 const FB_INGEST_FN="/.netlify/functions/fb-ingest-background";
 const fbIngesting=new Set();
-const brandFbIngesting=new Set();
 function isFbUrl(u){return /facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(u||""));}
 function fbStatusOf(o){const d=(o&&o.data)||{};return fbIngesting.has(o.id)?"working":(d.fbIngestStatus||"");}
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
@@ -3708,34 +3707,6 @@ async function triggerFbIngest(offerId,adUrl){
   }else if(status==="partial")toast("Peguei os dados do anúncio, mas não o vídeo — veja a observação no card.",true);
   else if(status==="error")toast("Falha no Facebook: "+((cur.data||{}).fbIngestError||"tente de novo"),true);
   else toast("Processando em segundo plano — aparece aqui em instantes.");
-}
-async function pollBrandFbIngest(offerId,index,tries=60,intervalMs=4000){
-  for(let i=0;i<tries;i++){
-    await new Promise(r=>setTimeout(r,intervalMs));
-    try{
-      const {data,error}=await sb.from("offers").select("data").eq("id",offerId).single();
-      const item=data&&data.data&&Array.isArray(data.data.brandTopAds)?data.data.brandTopAds[index]:null;
-      if(!error&&item&&item.ingestStatus&&item.ingestStatus!=="working"){
-        const o=offers.find(x=>x.id===offerId);if(o){o.data=o.data||{};o.data.brandTopAds=Array.isArray(o.data.brandTopAds)?o.data.brandTopAds:[];o.data.brandTopAds[index]=item;}
-        return item.ingestStatus;
-      }
-    }catch(e){}
-  }
-  return "";
-}
-async function triggerBrandFbIngest(offerId,index,silent=false){
-  const o=offers.find(x=>x.id===offerId),item=o&&o.data&&Array.isArray(o.data.brandTopAds)?o.data.brandTopAds[index]:null;
-  if(!o||!item||!isFbUrl(item.link)){toast("O link desse top ad não é reconhecido como Facebook.",true);return;}
-  const key=`${offerId}:${index}`;if(brandFbIngesting.has(key))return;
-  brandFbIngesting.add(key);item.ingestStatus="working";item.ingestError="";if(!silent){openView(offerId);toast(`Baixando top ad ${index+1} e calculando dias ativos…`);}
-  let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  try{await fetch(FB_INGEST_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({id:offerId,adUrl:item.link,targetIndex:index})});}catch(e){}
-  const status=await pollBrandFbIngest(offerId,index);
-  brandFbIngesting.delete(key);renderGrid();writeCache();if($("#viewOverlay").classList.contains("open"))openView(offerId);
-  if(!silent){if(status==="done")toast(`Top ad ${index+1} salvo ✓`);
-  else if(status==="partial")toast(`Top ad ${index+1}: dados encontrados, mas a mídia não pôde ser salva.`,true);
-  else if(status==="error")toast(`Top ad ${index+1}: falha na captura.`,true);
-  else toast(`Top ad ${index+1} continua em segundo plano.`);}
 }
 function fbIngestControl(o){
   const d=o.data||{};
