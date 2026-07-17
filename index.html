@@ -141,7 +141,6 @@
   .snav__group--ai .ico{width:13px;height:13px;}
   .snav__group--brands{color:#8fd8ff;margin-top:8px;border-top:1px solid var(--border);padding-top:17px;}
   .snav__group--brands .ico{width:13px;height:13px;}
-  .snav__group--brands>span{margin-left:auto;font-size:.52rem;letter-spacing:.08em;color:#071117;background:#8fd8ff;border-radius:999px;padding:3px 7px;}
 
   .snav__sec{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 13px;border-radius:11px;border:1px solid transparent;color:var(--muted-fg);font-size:.93rem;font-weight:600;transition:background .18s,color .18s,border-color .18s,transform .12s ease;}
   .snav__sec .ico{width:18px;height:18px;flex:none;opacity:.82;}
@@ -1441,7 +1440,6 @@ function applyRoute(){
   if(!routeReady)return;
   const r=parseLocation();
   if(r.notFound){renderNotFound();return;}
-  if(BRAND_SECTIONS.has(r.section)&&!isAdmin){renderNotFound("A área FEG Brands está em validação e, por enquanto, só aparece no painel admin.");return;}
   activeSection=r.section;
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";
@@ -1517,10 +1515,8 @@ function renderSideNav(){
   };
   html+=`<div class="snav__group">FEG DR</div>`;
   SECTIONS.filter(s=>!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
-  if(isAdmin){
-    html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands <span>Admin</span></div>`;
-    SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
-  }
+  html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
+  SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
   html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;
   SECTIONS.filter(s=>AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
   nav.innerHTML=html;
@@ -1666,7 +1662,7 @@ function brandCard(o){
   const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent" title="Total conferido na Meta Ads Library com o filtro Ativos">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=(topAds.find(x=>x.link)||{}).link||"";
   return card({
     id:o.id,variant:"brand-card",
@@ -1866,7 +1862,7 @@ function openView(id){
   if(!native){
     if(isBrand){
       const library=(d.bibliotecas.find(x=>x.link)||{}).link||"";
-      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div class="ta-info">${ic("info")}<span>Este total vem da Meta Ads Library com o filtro <b>Ativos</b>, não do número de linhas do Gerenciador de Anúncios.</span></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+      adsSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos na biblioteca</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div>${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
     }else{
       const ah=adsHistOf(d);
       const upd=d.adsUpdatedAt
@@ -2496,7 +2492,7 @@ function renderSubFilter(){
   if(BRAND_SECTIONS.has(activeSection)){
     el.style.display="";
     const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;
-    el.innerHTML=`<div class="subfilter__row"><div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div><span class="brand-bm-state">${ic("info")}Em validação somente no painel admin</span></div>`;
+    el.innerHTML=`<div class="subfilter__row"><div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div></div>`;
     return;
   }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}

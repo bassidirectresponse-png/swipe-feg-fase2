@@ -230,14 +230,15 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
-test("FEG Brands fica restrita ao admin e separa spy de Ofertas Insider", () => {
+test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () => {
   assert.match(html, /key:"brandsgeneral",label:"Ofertas de Brands no Geral"/);
   assert.match(html, /key:"brandsvalidated",label:"Ofertas Insider"/);
   assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated"\]\)/);
-  assert.match(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
-  assert.match(html, /if\(isAdmin\)\{\s*html\+=`<div class="snav__group snav__group--brands"/);
+  assert.doesNotMatch(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
+  assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
   assert.match(html, /FEG DR/);
-  assert.match(html, /FEG Brands <span>Admin<\/span>/);
+  assert.doesNotMatch(html, /FEG Brands <span>Admin<\/span>/);
+  assert.doesNotMatch(html, /Em validação somente no painel admin/);
   assert.match(html, /brandsgeneral:"feg-brands-geral"/);
   assert.match(html, /brandsvalidated:"feg-brands-insider"/);
   assert.match(html, /PATH2SEC\["feg-brands-validadas"\]="brandsvalidated"/);
@@ -264,8 +265,8 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
   assert.match(html, /Ads ativos na biblioteca/);
   assert.match(html, /Biblioteca conferida em/);
-  assert.match(html, /Total conferido na Meta Ads Library com o filtro Ativos/);
-  assert.match(html, /não do número de linhas do Gerenciador de Anúncios/);
+  assert.doesNotMatch(html, /Total conferido na Meta Ads Library com o filtro Ativos/);
+  assert.doesNotMatch(html, /não do número de linhas do Gerenciador de Anúncios/);
   assert.match(html, /Conferir na biblioteca/);
   assert.match(html, /Abrir mídia salva/);
   assert.match(html, /Mídia salva no Swipe/);
