@@ -1,0 +1,34 @@
+name: Seed Ancestral Supplements and Mars Men
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ingest_extra_brands.mjs"
+      - "assets/ancestral-supplements/**"
+      - "assets/mars-men/**"
+      - ".github/workflows/seed-extra-brands.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cadastrar Ancestral Supplements
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: node scripts/ingest_extra_brands.mjs ancestral-supplements
+      - name: Cadastrar Mars Men
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: node scripts/ingest_extra_brands.mjs mars-men
