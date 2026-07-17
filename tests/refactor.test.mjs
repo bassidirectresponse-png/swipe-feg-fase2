@@ -179,6 +179,8 @@ test("Dissecador persiste, acompanha e retoma a análise em segundo plano", () =
   assert.match(vslBackgroundFn, /job\.status = "complete"/);
   assert.match(vslJobFn, /needsRecovery/);
   assert.match(vslJobFn, /body\.action === "retry"/);
+  assert.match(html, /vslJobStatus=job\.status/);
+  assert.match(html, /retry\.hidden=vslJobStatus!=="error"/);
 });
 
 test("seções com vídeo usam o áudio original e sincronizam palavra por palavra", () => {

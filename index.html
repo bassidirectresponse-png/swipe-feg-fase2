@@ -2724,7 +2724,7 @@ const VSL_JOB_FN="/.netlify/functions/vsl-job",VSL_LAST_JOB_KEY="feg-vsl-last-jo
 const VSL_CHUNK_SEC=45,VSL_MIN_CHUNK_SEC=10,VSL_TRANSIENT_RETRIES=3;
 let vslFile=null,vslObjectUrl="",vslBusy=false,vslAbort=null,vslName="",vslNiche="",vslLang="auto",vslCanonical="";
 let vslRaw="",vslSegments=[],vslWords=[],vslDetectedLang="",vslDuration=0,vslSheets=[],vslTranscriptDoc="",vslAnalysisDoc="",vslActiveTab="transcript";
-let vslRenderTimer=0,vslChunkCache=new Map(),vslCacheKey="",vslJobId="",vslRestoring=false;
+let vslRenderTimer=0,vslChunkCache=new Map(),vslCacheKey="",vslJobId="",vslJobStatus="",vslRestoring=false;
 function vslBytes(n){n=+n||0;if(n<1024)return n+" B";if(n<1024*1024)return(n/1024).toFixed(1)+" KB";return(n/1024/1024).toFixed(1)+" MB";}
 function vslBaseName(name){return String(name||"VSL").replace(/\.[^.]+$/," ").trim()||"VSL";}
 function vslSlug(name){return String(name||"vsl").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"vsl";}
@@ -2739,6 +2739,7 @@ function vslRenderFile(){
   drop.classList.toggle("ready",!!vslFile);drop.classList.toggle("busy",vslBusy);
   drop.innerHTML=vslFile?`<div class="vsldrop__inner">${ic(vslFile.type.startsWith("video/")?"film":"mic")}<strong>${esc(vslFile.name)}</strong><div class="vslfilemeta"><span>${vslFile.type.startsWith("video/")?"Vídeo":"Áudio"}</span><span>${vslBytes(vslFile.size)}</span>${vslDuration?`<span>${trTime(vslDuration)}</span>`:""}</div><small>Clique para trocar o arquivo. Ele permanece neste navegador durante a preparação.</small></div>`:`<div class="vsldrop__inner">${ic("upload")}<strong>Clique ou arraste a VSL aqui</strong><small>Envie o vídeo ou áudio completo. A análise considera o conteúdo do início ao fechamento.</small></div>`;
   const run=$("#vslRun");if(run)run.disabled=!vslFile||vslBusy;
+  const retry=$("#vslRetry");if(retry)retry.hidden=vslJobStatus!=="error";
 }
 function vslRenderSheets(){const host=$("#vslSheets");if(host)host.innerHTML=vslSheets.map((s,i)=>`<img src="data:${s.mediaType};base64,${s.data}" alt="Contact sheet ${i+1}: ${esc(s.label)}">`).join("");}
 function vslRenderDocs(){
@@ -2822,7 +2823,7 @@ function vslBuildCompleteTranscript(){
 }
 function vslRememberJob(id){vslJobId=id||"";try{if(id)localStorage.setItem(VSL_LAST_JOB_KEY,id);else localStorage.removeItem(VSL_LAST_JOB_KEY);}catch(_){}}
 function vslApplyJob(job){
-  if(!job)return;vslJobId=job.id||vslJobId;vslName=job.name||vslName;vslNiche=job.niche||vslNiche;vslDetectedLang=job.language||vslDetectedLang;vslDuration=+job.duration||vslDuration;
+  if(!job)return;vslJobId=job.id||vslJobId;vslJobStatus=job.status||vslJobStatus;vslName=job.name||vslName;vslNiche=job.niche||vslNiche;vslDetectedLang=job.language||vslDetectedLang;vslDuration=+job.duration||vslDuration;
   if(job.transcriptDoc)vslTranscriptDoc=job.transcriptDoc;if(typeof job.analysisDoc==="string")vslAnalysisDoc=job.analysisDoc;
   const n=$("#vslName"),ni=$("#vslNiche");if(n)n.value=vslName;if(ni&&vslNiche)ni.value=vslNiche;
   const retry=$("#vslRetry");if(retry)retry.hidden=job.status!=="error";
@@ -2849,12 +2850,12 @@ async function vslCreateJob(token,payload,signal){
   vslRememberJob(data.id);return data.id;
 }
 async function vslRetryLastJob(){
-  if(vslBusy||!vslJobId)return;vslBusy=true;vslAbort=new AbortController();const retry=$("#vslRetry"),cancel=$("#vslCancel");if(retry)retry.hidden=true;if(cancel){cancel.hidden=false;cancel.textContent="Fechar acompanhamento";}
+  if(vslBusy||!vslJobId)return;vslBusy=true;vslJobStatus="queued";vslAbort=new AbortController();const retry=$("#vslRetry"),cancel=$("#vslCancel");if(retry)retry.hidden=true;if(cancel){cancel.hidden=false;cancel.textContent="Fechar acompanhamento";}
   try{
     const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
     const response=await fetch(VSL_JOB_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({action:"retry",id:vslJobId}),signal:vslAbort.signal});let data={};try{data=await response.json();}catch(_){}if(!response.ok||!data.ok)throw new Error(data.error||"Não foi possível retomar a análise.");
     vslSetStatus(3,"Retomando do último ponto salvo…",Math.max(70,+($("#vslProgressFill")&&parseFloat($("#vslProgressFill").style.width))||70));await vslPollJob(token,vslJobId,vslAbort.signal);toast("VSL dissecada ✓");
-  }catch(e){if(e&&e.name==="AbortError")vslSetStatus(3,"Acompanhamento fechado. A análise continua e reaparecerá quando você voltar.",70);else{vslSetStatus(3,(e&&e.message)||"Não foi possível retomar a análise.",0);if(retry)retry.hidden=false;toast((e&&e.message)||"Não foi possível retomar a análise.",true);}}
+  }catch(e){if(e&&e.name==="AbortError")vslSetStatus(3,"Acompanhamento fechado. A análise continua e reaparecerá quando você voltar.",70);else{vslJobStatus="error";vslSetStatus(3,(e&&e.message)||"Não foi possível retomar a análise.",0);if(retry)retry.hidden=false;toast((e&&e.message)||"Não foi possível retomar a análise.",true);}}
   finally{vslBusy=false;vslAbort=null;if(cancel){cancel.hidden=true;cancel.textContent="Cancelar";}vslRenderFile();vslRenderDocs();}
 }
 async function vslResumeLastJob(){
@@ -2931,7 +2932,7 @@ async function vslRun(){
   }finally{vslBusy=false;vslAbort=null;if(vslRenderTimer){clearTimeout(vslRenderTimer);vslRenderTimer=0;}vslRenderFile();vslRenderDocs();if(cancel){cancel.hidden=true;cancel.textContent="Cancelar";}if(run)run.disabled=!vslFile;}
 }
 function vslReset(){
-  if(vslBusy)return;vslRememberJob("");vslFile=null;if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl="";vslName="";vslNiche="";vslLang="auto";vslCanonical="";vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslDuration=0;vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslChunkCache.clear();vslCacheKey="";renderVslDissector(true);
+  if(vslBusy)return;vslRememberJob("");vslJobStatus="";vslFile=null;if(vslObjectUrl)URL.revokeObjectURL(vslObjectUrl);vslObjectUrl="";vslName="";vslNiche="";vslLang="auto";vslCanonical="";vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslDuration=0;vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslChunkCache.clear();vslCacheKey="";renderVslDissector(true);
 }
 function renderVslDissector(force){
   const area=$("#gridArea");if(!area)return;if($("#vslDissector")&&!force)return;
