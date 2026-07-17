@@ -203,8 +203,8 @@ const savedId=rows[0]?.id||existing?.id;
 console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", id: savedId, prints: bmPrints.length, reports: reports.length, campaigns: reports.reduce((n, r) => n + r.campaigns.length, 0), topAds: brandTopAds.length }));
 
 if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY&&process.env.APIFY_TOKEN){
-  const statuses=await captureTopAdsBatch({token:process.env.APIFY_TOKEN,actor:process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper",libraryUrl:data.bibliotecas[0].link,offerId:savedId,currentData:data,headers});
-  console.log(JSON.stringify({mediaStatuses:statuses}));
+  try{const statuses=await captureTopAdsBatch({token:process.env.APIFY_TOKEN,actor:process.env.FB_ADS_ACTOR||"curious_coder~facebook-ads-library-scraper",libraryUrl:data.bibliotecas[0].link,offerId:savedId,currentData:data,headers});console.log(JSON.stringify({mediaStatuses:statuses}));}
+  catch(e){const safe=String(e&&e.message||e).replace(/token=[^&\s]+/gi,"token=[oculto]").slice(0,500);console.error(`::error title=Captura Joymode::${safe}`);throw e;}
 }else if(savedId&&process.env.JOYMODE_SKIP_MEDIA!=="1"&&AUTH_TOKEN!==API_KEY){
   const appUrl=(process.env.APP_URL||"https://benchmarkinggrupofeg.site").replace(/\/+$/,"");
   const finalStates=new Set(["done","partial","error"]);
