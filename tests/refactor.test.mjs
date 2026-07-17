@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
@@ -15,6 +17,11 @@ const joymodeIngest = await readFile(new URL("../scripts/ingest_joymode.mjs", im
 const joymodeSeed = JSON.parse(await readFile(new URL("../assets/joymode/seed.json", import.meta.url), "utf8"));
 const primalVikingIngest = await readFile(new URL("../scripts/ingest_primal_viking.mjs", import.meta.url), "utf8");
 const primalVikingSeed = JSON.parse(await readFile(new URL("../assets/primal-viking/seed.json", import.meta.url), "utf8"));
+const extraBrandsScriptUrl = new URL("../scripts/ingest_extra_brands.mjs", import.meta.url);
+const extraBrandsIngest = await readFile(extraBrandsScriptUrl, "utf8");
+const extraBrandsScript = fileURLToPath(extraBrandsScriptUrl);
+const ancestralSeed = JSON.parse(execFileSync(process.execPath, [extraBrandsScript, "ancestral-supplements", "--emit-seed"], { encoding: "utf8" }));
+const marsSeed = JSON.parse(execFileSync(process.execPath, [extraBrandsScript, "mars-men", "--emit-seed"], { encoding: "utf8" }));
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /height:calc\(100dvh - var\(--topbar-h\)\)/);
@@ -309,6 +316,27 @@ test("Joymode e Primal Viking usam somente os dez links exatos enviados", async 
   assert.match(primalVikingIngest, /storage\/v1\/object\/public\/criativos\/\$\{objectPath\}/);
   assert.match(joymodeIngest, /storage\/v1\/object\/criativos\/\$\{objectPath\}/);
   assert.match(joymodeIngest, /await persistExactMedia\(\)/);
+});
+
+test("Ancestral Supplements e Mars Men preservam prints e as dez mídias exatas", async () => {
+  assert.equal(ancestralSeed.bmPrints.length, 10);
+  assert.equal(marsSeed.bmPrints.length, 10);
+  assert.equal(ancestralSeed.bmReports.length, 4);
+  assert.equal(marsSeed.bmReports.length, 4);
+  for (const seed of [ancestralSeed, marsSeed]) {
+    assert.equal(seed.brandTopAds.length, 5);
+    for (const ad of seed.brandTopAds) {
+      assert.match(ad.link, /^https:\/\/business\.facebook\.com\/ads\/experience\/confirmation\/\?is_responsive=0&encrypted_experience_id=Q8DfBA/);
+      assert.equal(ad.ingestStatus, "done");
+      const media = ad.video || ad.img;
+      assert.match(media, /^\/assets\/(ancestral-supplements|mars-men)\/top-ad-0[1-5]\.(mp4|jpg)$/);
+      assert.ok((await stat(new URL(`..${media}`, import.meta.url))).size > 1_000);
+    }
+  }
+  assert.match(extraBrandsIngest, /async function persistExactMedia\(data\)/);
+  assert.match(extraBrandsIngest, /storage\/v1\/object\/criativos\/\$\{objectPath\}/);
+  assert.match(extraBrandsIngest, /storage\/v1\/object\/public\/criativos\/\$\{objectPath\}/);
+  assert.match(extraBrandsIngest, /await persistExactMedia\(data\)/);
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {

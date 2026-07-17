@@ -27,13 +27,30 @@ const marsLinks = [
   "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBALonB6TGxgcfOezEZBqxs-6Wmd-kF5pD11w_tZ6q_TZwUcJ0zalHSzvs86Ztb3PJAEb7Kq6ayRV",
   "https://business.facebook.com/ads/experience/confirmation/?is_responsive=0&encrypted_experience_id=Q8DfBAKzrXXqYAbi_bMebCc_ucPvOOtuarpmsqXUd_Cw6j94ecsrNXTXdfX0NMrusqiIdlh4jEMiryoyCg",
 ];
+const exactMedia = {
+  "ancestral-supplements": [
+    "/assets/ancestral-supplements/top-ad-01.mp4",
+    "/assets/ancestral-supplements/top-ad-02.jpg",
+    "/assets/ancestral-supplements/top-ad-03.jpg",
+    "/assets/ancestral-supplements/top-ad-04.jpg",
+    "/assets/ancestral-supplements/top-ad-05.jpg",
+  ],
+  "mars-men": [
+    "/assets/mars-men/top-ad-01.jpg",
+    "/assets/mars-men/top-ad-02.jpg",
+    "/assets/mars-men/top-ad-03.mp4",
+    "/assets/mars-men/top-ad-04.jpg",
+    "/assets/mars-men/top-ad-05.mp4",
+  ],
+};
 
 const configs = {
   "ancestral-supplements": {
     name: "Ancestral Supplements", niche: "Saúde e suplementos", format: "Suplementos de órgãos liofilizados", ads: "300", approximate: true,
     image: "/assets/ancestral-supplements/product.png",
     library: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&view_all_page_id=187583778382475",
-    domain: "https://ancestralsupplements.com/pages/liver-changes-lives-v1", links: ancestralLinks, prints: [],
+    domain: "https://ancestralsupplements.com/pages/liver-changes-lives-v1", links: ancestralLinks,
+    prints: ["Configuração · orçamento do conjunto e início","Configuração · conversão, pixel e atribuição","Configuração · campanha e orçamento","Desempenho · campanhas · 15/07/2026","Desempenho · campanhas · últimos 7 dias","Configuração · público e localização","Desempenho · campanhas · últimos 30 dias","Desempenho · anúncios · últimos 7 dias","Desempenho · conjuntos · últimos 7 dias","Desempenho · campanhas · últimos 14 dias"],
     reports: [
       report("1d", "15 de julho", "15/07/2026", totals("15.360,58", "105,69", "0,88%", "0,89", "19,11", "2,17", "1,16"), [
         ["dr-nc_cbo-maxconv_hv_sales_7dc_Sale_0326","3.450,85","0,94","134,84","143,79","24","0,52%","2,44","20,38","3,92","2,93"],
@@ -103,15 +120,25 @@ const configs = {
 const config = configs[target];
 if (!config) throw new Error("Use ancestral-supplements ou mars-men");
 const printPath = index => `/assets/${target}/print-${String(index + 1).padStart(2, "0")}.jpeg`;
-const makeData = previous => ({ ...previous,
+const makeData = previous => {
+  const previousAds = Array.isArray(previous.brandTopAds) ? previous.brandTopAds : [];
+  const brandTopAds = config.links.map((link, index) => {
+    const old = previousAds.find(item => item.link === link) || {};
+    const source = exactMedia[target][index];
+    const savedVideo = String(old.video || "").includes("/storage/v1/object/public/") ? old.video : source.endsWith(".mp4") ? source : "";
+    const savedImage = String(old.img || "").includes("/storage/v1/object/public/") ? old.img : source.endsWith(".mp4") ? "" : source;
+    return { ...old, nome: `${config.name} · Top Ad ${String(index + 1).padStart(2, "0")}`, link, img: savedImage, video: savedVideo, ingestStatus: "done", ingestError: "", ingestSource: "Link exato enviado", downloadedAt: old.downloadedAt || "17/07/2026" };
+  });
+  return ({ ...previous,
   kind: "brandsvalidated", tipoTrafego: "meta", nomeOferta: config.name, nomeMarca: config.name, nicho: config.niche,
   formato: config.format, numAdsAtivos: config.ads, adsLibraryApprox: config.approximate, adsLibraryCheckedAt: "17/07/2026", imagemProduto: config.image,
   bibliotecas: [{ nome: `${config.name} · Meta Ads Library`, link: config.library }],
   dominios: [{ nome: "Página principal", linkDominio: config.domain, views: "", viewsPeriod: "", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" }],
-  brandTopAds: config.links.map((link, index) => ({ nome: `${config.name} · Top Ad ${String(index + 1).padStart(2, "0")}`, link, img: "", video: "", ingestStatus: "link_only", ingestError: "A mídia ainda não foi baixada; o link oficial de prévia está preservado.", ingestSource: "Link de prévia enviado", downloadedAt: "" })),
+  brandTopAds,
   bmSpend7d: money(config.top.spend), bmSpend14d: config.reports.find(x => x.key === "14d")?.totals.spend || "", bmAvgConversion: money(config.top.average), bmCpc: money(config.top.cpc), bmCpcLink: money(config.top.cpcLink), bmCpm: money(config.top.cpm), bmCtr: config.top.ctr, bmCostUnique: money(config.top.unique), bmCostIc: "Não exibido nos prints", bmRoas: "— (múltiplas conversões)", bmUpdatedAt: "15/07/2026", bmNotes: "", bmReports: config.reports,
   bmPrints: config.prints.map((nome, index) => ({ nome, img: printPath(index) })), brandSemrush1m: previous.brandSemrush1m || "", brandSemrush3m: previous.brandSemrush3m || "", funil: config.funnel, comentario: "",
-});
+  });
+};
 
 if (process.argv.includes("--emit-seed")) { console.log(JSON.stringify(makeData({}))); process.exit(0); }
 const html = await fs.readFile(new URL("index.html", ROOT), "utf8");
@@ -126,9 +153,27 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_BOT_EMAIL && 
   if (!login.ok) throw new Error(`Login do bot falhou: ${login.status}`); auth = (await login.json()).access_token;
 }
 const headers = { apikey: API_KEY, Authorization: `Bearer ${auth}`, "Content-Type": "application/json" };
+async function persistExactMedia(data) {
+  for (let index = 0; index < data.brandTopAds.length; index++) {
+    const ad = data.brandTopAds[index];
+    const source = ad.video || ad.img || "";
+    if (!source.startsWith(`/assets/${target}/`)) continue;
+    const ext = source.split(".").pop().toLowerCase();
+    const isVideo = ext === "mp4";
+    const contentType = isVideo ? "video/mp4" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const objectPath = `brands/${target}/top-ad-${String(index + 1).padStart(2, "0")}.${ext}`;
+    const body = await fs.readFile(new URL(`.${source}`, ROOT));
+    const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${objectPath}`, { method: "POST", headers: { apikey: API_KEY, Authorization: `Bearer ${auth}`, "Content-Type": contentType, "x-upsert": "true" }, body });
+    if (!upload.ok) throw new Error(`Storage ${config.name} ${index + 1}: ${upload.status} ${(await upload.text()).slice(0, 200)}`);
+    const stored = `${SUPABASE_URL}/storage/v1/object/public/criativos/${objectPath}`;
+    if (isVideo) { ad.video = stored; ad.img = ""; } else { ad.img = stored; ad.video = ""; }
+  }
+}
 const query = new URL(`${SUPABASE_URL}/rest/v1/offers`); query.searchParams.set("select", "id,data"); query.searchParams.set("data->>kind", "eq.brandsvalidated");
 const existingRows = await fetch(query, { headers }).then(async response => response.ok ? response.json() : Promise.reject(new Error(await response.text())));
 const existing = existingRows.find(row => String(row.data?.nomeOferta || "").trim().toLowerCase() === config.name.toLowerCase());
-const response = await fetch(existing ? `${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(existing.id)}` : `${SUPABASE_URL}/rest/v1/offers`, { method: existing ? "PATCH" : "POST", headers: { ...headers, Prefer: "return=representation" }, body: JSON.stringify({ data: makeData(existing?.data || {}) }) });
+const data = makeData(existing?.data || {});
+await persistExactMedia(data);
+const response = await fetch(existing ? `${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(existing.id)}` : `${SUPABASE_URL}/rest/v1/offers`, { method: existing ? "PATCH" : "POST", headers: { ...headers, Prefer: "return=representation" }, body: JSON.stringify({ data }) });
 if (!response.ok) throw new Error(`Supabase ${response.status}: ${(await response.text()).slice(0, 300)}`);
 console.log(JSON.stringify({ ok: true, action: existing ? "updated" : "inserted", name: config.name, reports: config.reports.length, topAds: config.links.length, prints: config.prints.length }));
