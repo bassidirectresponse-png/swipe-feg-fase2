@@ -117,7 +117,7 @@ test("Mega Brain acompanha o vídeo grifando a copy", () => {
   assert.match(html, /video\.addEventListener\("timeupdate"/);
   assert.match(html, /transcricaoWords=allWords/);
   assert.match(backgroundFn, /timestamp_granularities\[\]", "word"/);
-  assert.match(backgroundFn, /data\.transcricaoWords = words/);
+  assert.match(backgroundFn, /data\.transcricaoWords = result\.words/);
 });
 
 test("Mega Brain importa novos cards e atualiza existentes por manifesto", () => {
@@ -128,12 +128,12 @@ test("Mega Brain importa novos cards e atualiza existentes por manifesto", () =>
   assert.match(html, /existing=new Map\(offers\.filter/);
   assert.match(html, /sb\.from\("offers"\)\.update\(\{data\}\)\.eq\("id",current\.id\)/);
   assert.match(html, /transcribeNew=.*parsed\.transcribeNew===true/);
-  assert.match(html, /file\.size>VIDEO_MAX/);
+  assert.match(html, /inspectUploadFile\(file,\["image","video"\],VIDEO_MAX\)/);
   assert.match(html, /sb\.storage\.from\(VIDEO_BUCKET\)\.upload/);
   assert.match(html, /sb\.from\("offers"\)\.insert\(\{data\}\)/);
   assert.match(html, /missingMedia=record\.videoMissing===true\|\|record\.mediaMissing===true/);
   assert.match(html, /metricaPendente:record\.metricaPendente===true\|\|!metricValue\.trim\(\)/);
-  assert.match(html, /isImage=\/\^image\\\//);
+  assert.match(html, /isImage=mediaInfo\.kind==="image"/);
   assert.match(html, /d\.videoMissing===true\?"Falta adicionar o vídeo"/);
   assert.match(html, /if\(d\.videoMissing===true\)kvs\.push/);
 });
@@ -306,7 +306,7 @@ test("histórico de ads ativos aparece no topo do detalhe de Brands", () => {
 });
 
 test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {
-  assert.match(html, /async function uploadBrandTopAdFile\(file,dz\)/);
+  assert.match(html, /async function uploadBrandTopAdFile\(file,dz,info\)/);
   assert.match(html, /BRAND_VIDEO_MAX_BYTES=50\*1024\*1024/);
   assert.match(html, /brands\/top-ads\//);
   assert.match(html, /await storageUploadWithProgress\(file,path/);

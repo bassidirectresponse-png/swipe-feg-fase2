@@ -12,7 +12,7 @@ function anthropicStream(text) {
 async function runPhase(phase) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
-    if (String(url).includes("/auth/v1/user")) return new Response("{}", { status: 200 });
+    if (String(url).includes("/auth/v1/user")) return Response.json({ id: "11111111-1111-4111-8111-111111111111", email: "adminswipefeg@swipefeg.app" });
     if (String(url).includes("api.anthropic.com")) return anthropicStream(`conteúdo de ${phase}`);
     throw new Error(`URL inesperada: ${url}`);
   };

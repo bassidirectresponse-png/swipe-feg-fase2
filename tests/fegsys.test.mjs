@@ -7,6 +7,7 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const syncFn = await readFile(new URL("../netlify/functions/fegsys-sync.mjs", import.meta.url), "utf8");
 const apiFn = await readFile(new URL("../netlify/functions/fegsys-megabrain.mjs", import.meta.url), "utf8");
 const coreFn = await readFile(new URL("../netlify/functions/_fegsys-bigquery.mjs", import.meta.url), "utf8");
+const securityFn = await readFile(new URL("../netlify/functions/_security.mjs", import.meta.url), "utf8");
 
 test("JavaScript embutido do painel permanece sintaticamente válido", () => {
   const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]).filter(Boolean);
@@ -17,18 +18,19 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(syncFn, /schedule: "13 \* \* \* \*"/);
   assert.match(syncFn, /safeSyncError/);
   assert.match(syncFn, /sales: snapshot\.sourceStatus/);
-  assert.match(apiFn, /ADMIN_EMAILS/);
-  assert.match(apiFn, /ADMIN_IDS/);
-  assert.match(apiFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
-  assert.match(apiFn, /x-feg-auth/);
+  assert.match(apiFn, /authenticate/);
+  assert.match(apiFn, /isAdmin/);
+  assert.match(securityFn, /ADMIN_EMAILS/);
+  assert.match(securityFn, /ADMIN_IDS/);
+  assert.match(securityFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
+  assert.match(securityFn, /x-feg-auth/);
   assert.match(html, /"X-Feg-Auth":"Bearer "\+accessToken/);
-  assert.match(apiFn, /\.well-known\/jwks\.json/);
-  assert.match(apiFn, /header\.alg !== "ES256"/);
-  assert.match(apiFn, /dsaEncoding: "ieee-p1363"/);
-  assert.match(apiFn, /claims\.iss !== EXPECTED_ISSUER/);
-  assert.match(apiFn, /sessão do administrador não reconhecida/);
+  assert.match(securityFn, /\/auth\/v1\/user/);
+  assert.match(apiFn, /sessão não reconhecida/);
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_JSON_B64/);
-  assert.doesNotMatch([html, syncFn, apiFn, coreFn].join("\n"), /BEGIN PRIVATE KEY/);
+  assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID/);
+  assert.match(coreFn, /não foi aprovada após rotação/);
+  assert.doesNotMatch([html, syncFn, apiFn, coreFn, securityFn].join("\n"), /BEGIN PRIVATE KEY/);
 });
 
 test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", () => {
