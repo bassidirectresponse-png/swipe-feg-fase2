@@ -1,10 +1,14 @@
 {
   "name": "swipe-feg-fase2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/validate-build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "benchmark": "node tests/performance.mjs"
+    "benchmark": "node tests/performance.mjs",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "security:csp": "node scripts/csp-hashes.mjs --check"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.9"
