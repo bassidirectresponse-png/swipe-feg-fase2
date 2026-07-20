@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { aggregateSnapshot, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
+import { aggregateSnapshot, buildQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const syncFn = await readFile(new URL("../netlify/functions/fegsys-sync.mjs", import.meta.url), "utf8");
@@ -41,7 +41,7 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /manual\.has\(brainNameKey\(card\.nome\)\)/);
   assert.match(html, /Mídia não vinculada/);
   assert.match(html, /Vídeo e copy não estão disponíveis na fonte/);
-  assert.match(html, /<span>Pedidos<\/span>/);
+  assert.match(html, /salesReady\?"Pedidos":"Conversões Google"/);
   assert.match(html, /<span>Faturamento<\/span>/);
   assert.match(html, /<span>ROAS<\/span>/);
   assert.match(html, /<span>CPC<\/span>/);
@@ -77,6 +77,24 @@ test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa 
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").meta_hook_rate, .42);
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").mediaAvailable, true);
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").copyAvailable, true);
+});
+
+test("esquema atual da view não confunde conversões Google com pedidos oficiais", () => {
+  const fields = ["data", "criativo", "ad_platform", "ad_channel_type", "spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "conversions"].map(name => ({ name }));
+  const plan = buildQuery(fields);
+  assert.equal(plan.salesAvailable, false);
+  assert.match(plan.salesError, /não fornece pedidos nem faturamento/);
+  assert.match(plan.query, /SUM\(COALESCE\(SAFE_CAST\(`conversions` AS FLOAT64\), 0\)\) AS google_conversions/);
+  assert.match(plan.query, /SUM\(0\) AS orders/);
+});
+
+test("view passa a fornecer resultados oficiais automaticamente quando purchases e revenue existirem", () => {
+  const fields = ["data", "criativo", "spend_brl", "purchases", "revenue", "roas"].map(name => ({ name }));
+  const plan = buildQuery(fields);
+  assert.equal(plan.salesAvailable, true);
+  assert.equal(plan.salesError, "");
+  assert.match(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
+  assert.match(plan.query, /SAFE_CAST\(`revenue` AS FLOAT64\)/);
 });
 
 test("período personalizado é normalizado mesmo com datas invertidas", () => {

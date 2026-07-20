@@ -60,7 +60,7 @@ async function accessToken(credential) {
 }
 
 const FIELD_ALIASES = {
-  data: ["data", "date", "dt", "day"],
+  data: ["data", "ref_date", "date", "dt", "day"],
   criativo: ["criativo", "creative", "creative_name", "nome_criativo", "ad_name"],
   ad_platform: ["ad_platform", "platform", "plataforma"],
   ad_channel_type: ["ad_channel_type", "channel_type", "canal"],
@@ -70,10 +70,10 @@ const FIELD_ALIASES = {
   clicks: ["clicks", "cliques", "link_clicks"],
   video_3s: ["video_3s", "video_plays_3s"],
   video_p75: ["video_p75", "video_plays_75"],
-  orders: ["quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "purchases", "compras", "orders", "conversions", "results"],
-  official_revenue_brl: ["faturamento_liquido_front", "faturamento_liquido_front_brl", "faturamento_liquido", "faturamento", "faturamento_brl", "receita_liquida", "receita", "receita_brl", "revenue", "revenue_brl", "purchase_value"],
+  orders: ["purchases", "quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders"],
+  official_revenue_brl: ["revenue", "faturamento_liquido_front", "faturamento_liquido_front_brl", "faturamento_liquido", "faturamento", "faturamento_brl", "receita_liquida", "receita", "receita_brl", "revenue_brl", "purchase_value"],
   official_revenue_usd: ["faturamento_liquido_front_usd", "faturamento_liquido_usd", "faturamento_usd", "receita_usd", "revenue_usd"],
-  google_conversions: ["google_conversions", "conversions_google", "google_ads_conversions"],
+  google_conversions: ["conversions", "google_conversions", "conversions_google", "google_ads_conversions"],
   roas: ["roas", "purchase_roas", "return_on_ad_spend"],
   video_url: ["video_url", "creative_video_url", "media_url", "asset_url", "url_video"],
   thumbnail_url: ["thumbnail_url", "image_url", "creative_image_url", "thumb_url"],
@@ -90,7 +90,7 @@ function numberExpr(field) { return field ? `COALESCE(SAFE_CAST(${quoteField(fie
 function textExpr(field) { return field ? `ANY_VALUE(NULLIF(TRIM(CAST(${quoteField(field)} AS STRING)), ''))` : "CAST(NULL AS STRING)"; }
 function textSetExpr(field) { return field ? `STRING_AGG(DISTINCT NULLIF(TRIM(CAST(${quoteField(field)} AS STRING)), ''), ' + ')` : "CAST(NULL AS STRING)"; }
 
-function buildQuery(fields) {
+export function buildQuery(fields) {
   const f = fieldMap(fields);
   if (!f.data || !f.criativo) throw new Error("a view precisa conter as colunas de data e nome do criativo");
   const spendWeight = f.spend_brl || f.spend_usd;
@@ -98,7 +98,7 @@ function buildQuery(fields) {
     ? `SAFE_DIVIDE(SUM(${numberExpr(f.roas)} * ${numberExpr(spendWeight)}), NULLIF(SUM(${numberExpr(spendWeight)}), 0))`
     : "0";
   const salesAvailable = !!(f.orders && f.official_revenue_brl);
-  const salesError = salesAvailable ? "" : `campos não localizados na view: ${[!f.orders ? "pedidos" : "", !f.official_revenue_brl ? "faturamento" : ""].filter(Boolean).join(" e ")}`;
+  const salesError = salesAvailable ? "" : `a vw_ads_criativo_diario não fornece ${[!f.orders ? "pedidos" : "", !f.official_revenue_brl ? "faturamento" : ""].filter(Boolean).join(" nem ")}`;
   return { salesAvailable, salesError, query: `
 SELECT
   DATE(${quoteField(f.data)}) AS data,
