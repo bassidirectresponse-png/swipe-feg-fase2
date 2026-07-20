@@ -18,8 +18,19 @@ SECURITY_REPORT.md
 # Segredos (preventivo)
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.dump
+*.bak
+*.old
+*.sqlite
+*.sqlite3
+*.tgz
 
 # Python
 __pycache__/

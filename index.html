@@ -1172,8 +1172,8 @@ create policy "public_all" on offers
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
 <script>
 /* ===== CONFIG ===== */
 const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
@@ -2307,6 +2307,23 @@ $("#cfDiscard").addEventListener("click",()=>{if(pendingCloseForm==="simple"){sF
 $("#cfSave").addEventListener("click",async()=>{if(pendingCloseForm==="simple"){const ok=await saveSimpleForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#simpleFormOverlay");toast("Salvo");}}else{const ok=await saveForm();if(ok){closeOverlay("#confirmOverlay");closeOverlay("#formOverlay");toast("Oferta salva");}}});
 
 /* ===== IMAGE ZONES ===== */
+const SAFE_UPLOADS={
+  jpg:{kind:"image",contentType:"image/jpeg"},jpeg:{kind:"image",contentType:"image/jpeg"},
+  png:{kind:"image",contentType:"image/png"},webp:{kind:"image",contentType:"image/webp"},
+  mp4:{kind:"video",contentType:"video/mp4"},mov:{kind:"video",contentType:"video/quicktime"},webm:{kind:"video",contentType:"video/webm"}
+};
+async function inspectUploadFile(file,kinds=["image","video"],maxBytes=160*1024*1024){
+  if(!file||!file.size||file.size>maxBytes)throw new Error(`arquivo deve ter até ${Math.round(maxBytes/1048576)} MB`);
+  const bytes=new Uint8Array(await file.slice(0,16).arrayBuffer());let ext="";
+  if(bytes.length>=8&&bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e&&bytes[3]===0x47&&bytes[4]===0x0d&&bytes[5]===0x0a&&bytes[6]===0x1a&&bytes[7]===0x0a)ext="png";
+  else if(bytes.length>=3&&bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)ext="jpg";
+  else if(bytes.length>=12&&String.fromCharCode(...bytes.slice(0,4))==="RIFF"&&String.fromCharCode(...bytes.slice(8,12))==="WEBP")ext="webp";
+  else if(bytes.length>=12&&String.fromCharCode(...bytes.slice(4,8))==="ftyp")ext=/\.mov$/i.test(file.name||"")?"mov":"mp4";
+  else if(bytes.length>=4&&bytes[0]===0x1a&&bytes[1]===0x45&&bytes[2]===0xdf&&bytes[3]===0xa3)ext="webm";
+  const info=SAFE_UPLOADS[ext];if(!info||!kinds.includes(info.kind))throw new Error("formato de arquivo não permitido");
+  const declared=String(file.type||"").toLowerCase();if(declared&&declared!==info.contentType&&!(ext==="jpg"&&declared==="image/jpg"))throw new Error("tipo do arquivo não corresponde ao conteúdo");
+  return{...info,ext};
+}
 function getZone(key){
   if(key==="produto")return fProductImg;
   if(key==="semrush")return fSemrushThumb||fSemrushOriginal;
@@ -2391,31 +2408,35 @@ function fileToImage(file,dz){
   r.readAsDataURL(file);
 }
 const SEMRUSH_MAX_BYTES=12*1024*1024;
-function handleZoneFile(file,dz){return dz.dataset.zone.startsWith("brandad|")?uploadBrandTopAdFile(file,dz):dz.dataset.zone==="semrush"?uploadSemrushFile(file,dz):fileToImage(file,dz);}
+async function handleZoneFile(file,dz){
+  const brand=dz.dataset.zone.startsWith("brandad|"),max=brand?(file.type.startsWith("video/")?50:15)*1024*1024:15*1024*1024;
+  let info;try{info=await inspectUploadFile(file,brand?["image","video"]:["image"],max);}catch(e){toast((e&&e.message)||"Arquivo inválido.",true);return;}
+  return brand?uploadBrandTopAdFile(file,dz,info):dz.dataset.zone==="semrush"?uploadSemrushFile(file,dz,info):fileToImage(file,dz);
+}
 function imageFileToWebp(file,maxW=1280,maxH=1800,quality=.78){
   return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();
     img.onload=()=>{try{const scale=Math.min(1,maxW/img.naturalWidth,maxH/img.naturalHeight),w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);c.toBlob(b=>b?resolve(b):reject(new Error("não foi possível gerar a miniatura")),"image/webp",quality);}catch(e){reject(e);}finally{URL.revokeObjectURL(url);}};
     img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("imagem inválida"));};img.src=url;
   });
 }
-async function storageUploadWithProgress(file,path,onProgress){
+async function storageUploadWithProgress(file,path,onProgress,contentType=file.type){
   const session=await sb.auth.getSession(),token=(session.data&&session.data.session&&session.data.session.access_token)||currentSbKey;
   const safePath=path.split("/").map(encodeURIComponent).join("/");
-  return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",file.type||"application/octet-stream");xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
+  return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",contentType);xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
 }
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
-async function uploadBrandTopAdFile(file,dz){
-  const index=+(dz.dataset.zone.split("|")[1]),ad=fBrandTopAds[index],isVideo=!!(file&&file.type&&file.type.startsWith("video/")),isImage=!!(file&&file.type&&file.type.startsWith("image/"));
+async function uploadBrandTopAdFile(file,dz,info){
+  const index=+(dz.dataset.zone.split("|")[1]),ad=fBrandTopAds[index],isVideo=info&&info.kind==="video",isImage=info&&info.kind==="image";
   if(!ad||(!isVideo&&!isImage)){toast("Use um arquivo de vídeo ou imagem.",true);return;}
   const max=isVideo?BRAND_VIDEO_MAX_BYTES:BRAND_IMAGE_MAX_BYTES;
   if(file.size>max){toast(`${isVideo?"O vídeo":"A imagem"} deve ter no máximo ${Math.round(max/1048576)} MB.`,true);return;}
   if(!sb||!currentSbUrl){toast("Conexão com o Storage indisponível.",true);return;}
   if(dz.dataset.busy)return;dz.dataset.busy="1";brandMediaUploading++;
-  const ext=((file.name||"").split(".").pop()||(isVideo?"mp4":"jpg")).toLowerCase().replace(/[^a-z0-9]/g,"")||(isVideo?"mp4":"jpg"),uid=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2)),path=`brands/top-ads/${new Date().toISOString().slice(0,10)}/${uid}.${ext}`;
+  const ext=info.ext,uid=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2)),path=`brands/top-ads/${new Date().toISOString().slice(0,10)}/${uid}.${ext}`;
   dz.classList.remove("has");dz.innerHTML=`<div class="dz__upload"><strong>${esc(file.name||"Arquivo do top ad")}</strong><div class="dz__progress"><span></span></div><div class="dz__status">Salvando no Swipe… 0%</div></div>`;
   const bar=$(".dz__progress span",dz),status=$(".dz__status",dz);
   try{
-    await storageUploadWithProgress(file,path,p=>{if(bar)bar.style.width=p+"%";if(status)status.textContent=`Salvando no Swipe… ${p}%`;});
+    await storageUploadWithProgress(file,path,p=>{if(bar)bar.style.width=p+"%";if(status)status.textContent=`Salvando no Swipe… ${p}%`;},info.contentType);
     const url=sb.storage.from("criativos").getPublicUrl(path).data.publicUrl;
     if(isVideo){ad.video=url;ad.img="";}else{ad.img=url;ad.video="";}
     ad.storagePath=path;ad.storedAt=new Date().toISOString();ad.ingestStatus="done";ad.ingestError="";
@@ -2423,7 +2444,7 @@ async function uploadBrandTopAdFile(file,dz){
   }catch(e){paintZone(dz);toast("Falha ao salvar o top ad: "+((e&&e.message)||e),true);}
   finally{delete dz.dataset.busy;brandMediaUploading=Math.max(0,brandMediaUploading-1);}
 }
-async function uploadSemrushFile(file,dz){
+async function uploadSemrushFile(file,dz,info){
   if(semrushUploading)return;
   if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("Use JPG, PNG ou WebP no print do SEMrush.",true);return;}
   if(file.size>SEMRUSH_MAX_BYTES){toast("O print do SEMrush deve ter no máximo 12 MB.",true);return;}
@@ -2431,8 +2452,8 @@ async function uploadSemrushFile(file,dz){
   semrushUploading=true;const clean=(file.name||"semrush").replace(/[^a-z0-9._-]+/gi,"-").toLowerCase(),id=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2)),base=`semrush/${new Date().toISOString().slice(0,10)}/${id}`;
   dz.classList.remove("has");dz.innerHTML=`<div class="dz__upload"><strong>${esc(file.name)}</strong><div class="dz__progress"><span></span></div><div class="dz__status">Preparando upload…</div></div>`;
   const bar=$(".dz__progress span",dz),status=$(".dz__status",dz);
-  try{const thumb=await imageFileToWebp(file),ext=(clean.match(/\.[a-z0-9]+$/i)||[".bin"])[0],originalPath=base+ext,thumbPath=base+"-thumb.webp";
-    status.textContent="Enviando original… 0%";await storageUploadWithProgress(file,originalPath,p=>{bar.style.width=(p*.82)+"%";status.textContent=`Enviando original… ${p}%`;});
+  try{const thumb=await imageFileToWebp(file),originalPath=base+"."+info.ext,thumbPath=base+"-thumb.webp";
+    status.textContent="Enviando original… 0%";await storageUploadWithProgress(file,originalPath,p=>{bar.style.width=(p*.82)+"%";status.textContent=`Enviando original… ${p}%`;},info.contentType);
     status.textContent="Enviando miniatura otimizada…";await storageUploadWithProgress(thumb,thumbPath,p=>{bar.style.width=(82+p*.18)+"%";});
     const bucket=sb.storage.from("criativos");fSemrushOriginal=bucket.getPublicUrl(originalPath).data.publicUrl;fSemrushThumb=bucket.getPublicUrl(thumbPath).data.publicUrl;bar.style.width="100%";status.textContent="Upload concluído";markDirty();setTimeout(()=>paintZone(dz),350);toast("Print SEMrush enviado ✓");
   }catch(e){paintZone(dz);toast("Falha no upload: "+((e&&e.message)||e),true);}finally{semrushUploading=false;}
@@ -4052,14 +4073,14 @@ async function importBrainBatch(files){
     const fileName=String(record.mediaFile||record.videoFile||record.video_name||(nome+".mp4")).split(/[\\/]/).pop();
     const file=byName.get(fileName.toLowerCase());
     if(!file&&!missingMedia){failures.push(`${nome}: mídia não encontrada na pasta`);done++;setBrainBatchState(done,queue.length);continue;}
-    if(file&&file.size>VIDEO_MAX){failures.push(`${nome}: mídia acima de 50 MB`);done++;setBrainBatchState(done,queue.length);continue;}
+    let mediaInfo=null;if(file){try{mediaInfo=await inspectUploadFile(file,["image","video"],VIDEO_MAX);}catch(e){failures.push(`${nome}: ${(e&&e.message)||"mídia inválida"}`);done++;setBrainBatchState(done,queue.length);continue;}}
     let storagePath="",publicMedia="",isImage=false;
     if(file){
-      const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
-      isImage=/^image\//.test(file.type||"")||/\.(jpg|jpeg|png|webp)$/i.test(file.name);
+      const ext=mediaInfo.ext;
+      isImage=mediaInfo.kind==="image";
       const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
       storagePath=`megabrain/${uid}.${ext}`;
-      let up;try{up=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:file.type||(isImage?"image/jpeg":"video/mp4"),upsert:false});}catch(e){up={error:e};}
+      let up;try{up=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:mediaInfo.contentType,upsert:false});}catch(e){up={error:e};}
       if(up.error){failures.push(`${nome}: falha na mídia — ${up.error.message||up.error}`);done++;setBrainBatchState(done,queue.length);continue;}
       publicMedia=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
     }
@@ -4339,16 +4360,15 @@ async function uploadVideoFile(file){
   const zone=$("#vidUpZone");
   if(!file)return;
   if(!sb){toast("Conexão indisponível",true);return;}
-  if(!/^video\//.test(file.type||"")){toast("Selecione um arquivo de vídeo (MP4).",true);return;}
-  if(file.size>VIDEO_MAX){toast("Vídeo acima de 50MB. Comprima ou use um link.",true);return;}
+  let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(e){toast((e&&e.message)||"Selecione um vídeo válido.",true);return;}
   if(zone&&zone.dataset.busy)return;
   if(zone)zone.dataset.busy="1";
   setVidUpState(zone,"uploading",file.name);
-  const ext=((file.name.split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4");
+  const ext=mediaInfo.ext;
   const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
   const path=`${sKind||"criativo"}/${uid}.${ext}`;
   let res;
-  try{res=await sb.storage.from(VIDEO_BUCKET).upload(path,file,{contentType:file.type||"video/mp4",upsert:false});}
+  try{res=await sb.storage.from(VIDEO_BUCKET).upload(path,file,{contentType:mediaInfo.contentType,upsert:false});}
   catch(err){res={error:err};}
   if(zone)delete zone.dataset.busy;
   if(res.error){

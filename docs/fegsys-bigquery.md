@@ -14,9 +14,12 @@ Nunca salve o JSON no repositório. Como a primeira chave foi compartilhada em u
 1. Gere uma nova chave JSON para `swipe-reader@grupofeg-lakehouse.iam.gserviceaccount.com`.
 2. Converta o arquivo completo para Base64 sem quebras de linha.
 3. Na Netlify, crie a variável protegida `GOOGLE_SERVICE_ACCOUNT_JSON_B64` com esse valor.
-4. Faça um novo deploy. A função `fegsys-sync` executa no minuto 13 de cada hora.
+4. Cadastre `GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID` com o identificador da **nova** chave aprovada. A integração falha de forma segura se esse identificador não corresponder ao JSON.
+5. Faça um novo deploy. A função `fegsys-sync` executa no minuto 13 de cada hora.
 
 Também é aceito `GOOGLE_SERVICE_ACCOUNT_JSON`, mas Base64 evita problemas com as quebras de linha da chave privada.
+
+Se uma chave já tiver sido enviada por chat, e-mail ou outro canal não projetado para segredos, revogue-a no Google Cloud antes de cadastrar a substituta. Não reutilize a chave anterior.
 
 ## Comportamento
 
