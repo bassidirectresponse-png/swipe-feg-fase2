@@ -228,6 +228,8 @@
   .tbadge--native .tdot{background:var(--native);box-shadow:0 0 8px var(--native);}
   .tbadge--brands{color:#b8e8ff;background:rgba(60,180,235,.1);border-color:rgba(95,196,240,.34);}
   .tbadge--brands .tdot{background:#72d4ff;box-shadow:0 0 8px rgba(114,212,255,.7);}
+  .collection-flag{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 13px;padding:9px 12px;border:1px solid rgba(229,255,45,.45);border-radius:10px;background:linear-gradient(90deg,rgba(229,255,45,.16),rgba(229,255,45,.05));color:var(--accent);font-size:.66rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;box-shadow:inset 0 0 22px rgba(229,255,45,.035);}
+  .collection-flag .ico{width:14px;height:14px;filter:drop-shadow(0 0 6px rgba(229,255,45,.55));}
   .hotbadge{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(229,255,45,.4);padding:4px 9px;border-radius:999px;white-space:nowrap;}
   .hotbadge .ico{width:12px;height:12px;}
 
@@ -3519,11 +3521,12 @@ function criativoCard(o){
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
   const fbwork=st==="working"?`<div class="fbwork">${ic("download")}Baixando criativo do Facebook…</div>`:"";
+  const collection=d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:"";
   return card({
     id:o.id,variant:"kcard",
     head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
-    brand:d.marca||"",title:d.nome||"Sem título",
+    body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}`,
     chips:`${chips}${fbwork}`,
     actions:acts
   });
@@ -4212,6 +4215,7 @@ function openSimpleView(o,skipOpen){
     if(d.fbDaysActive!=null)kvs.push(`<div class="kv"><div class="k">No ar (Facebook)</div><div class="v" style="color:var(--accent)">${esc(fbDaysText(d))}</div></div>`);
     if(d.fbPageName)kvs.push(`<div class="kv"><div class="k">Página</div><div class="v">${esc(d.fbPageName)}</div></div>`);
     if(d.fbMetrics&&d.fbMetrics.impressions!=null)kvs.push(`<div class="kv"><div class="k">Impressões (FB)</div><div class="v">${esc(String(d.fbMetrics.impressions))}</div></div>`);
+    if(d.collectionLabel)kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(d.collectionLabel)}</div></div>`);
   }
   if(kind==="noticia"){
     if(d.fonte)kvs.push(`<div class="kv"><div class="k">Fonte</div><div class="v">${esc(d.fonte)}</div></div>`);
@@ -4316,6 +4320,7 @@ function openSimpleView(o,skipOpen){
   const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
   $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">
+      ${d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:""}
       <div class="brand">${esc(kind==="noticia"?(d.fonte||cfg.label):(d.marca||cfg.label))}</div>
       <h2>${esc(d.nome||"Sem título")}</h2>
       <div class="kvs">${kvs.join("")}</div>
