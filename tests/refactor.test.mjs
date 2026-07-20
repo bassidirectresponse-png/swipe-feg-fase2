@@ -163,6 +163,17 @@ test("transcritor pede timestamps reais e sincroniza por busca binária", () => 
   assert.match(html, /data-trword/);
 });
 
+test("Transcritor retoma vídeos longos e reduz automaticamente partes lentas", () => {
+  assert.match(html, /TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3/);
+  assert.match(html, /async function trTranscribeSlice\(samples,rate,token,lang,offset,onAdapt,depth=0\)/);
+  assert.match(html, /status===502\|\|status===503\|\|status===504/);
+  assert.match(html, /reduzindo \$\{Math\.round\(seconds\)\}s para trechos menores/);
+  assert.match(html, /trSaveProgress\(file,i\+1,nChunks\)/);
+  assert.match(html, /Continuar da última parte/);
+  assert.match(html, /const saved=trReadProgress\(file\)/);
+  assert.match(html, /part=await trTranscribeSlice\(slice,rate,token,"auto",i\*TR_CHUNK_SEC\)/);
+});
+
 test("Mega Brain transcreve vídeos grandes em partes e grava a copy", () => {
   assert.match(html, /async function transcribeBrainInChunks\(offerId,videoUrl\)/);
   assert.match(html, /queueBrainChunkedTranscription/);

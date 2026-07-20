@@ -2867,8 +2867,9 @@ async function furRun(){
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */
 const TR_FN="/.netlify/functions/transcribe-file";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
+const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
-let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true;
+let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null;
 const TR_STORE="feg_transcricoes_v1";
 const TR_SAVE_FN="/.netlify/functions/transcript";
 function trStoreRead(){try{return JSON.parse(localStorage.getItem(TR_STORE)||"{}");}catch(_){return{};}}
@@ -2934,10 +2935,50 @@ function trWav(samples,rate){
   let o=44;for(let i=0;i<n;i++){let s=samples[i];s=s<-1?-1:s>1?1:s;v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);o+=2;}
   return new Blob([ab],{type:"audio/wav"});
 }
+function trDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function trFileKey(file){return [file.name,file.size,file.lastModified||0,trLang].join(":");}
+function trReadProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");return p&&p.key===trFileKey(file)?p:null;}catch(_){return null;}}
+function trSaveProgress(file,nextChunk,totalChunks){
+  const p={key:trFileKey(file),nextChunk,totalChunks,text:trText,segments:trSegs,words:trWords,language:trDetLang,duration:trDur,savedAt:new Date().toISOString()};
+  try{localStorage.setItem(TR_PROGRESS_KEY,JSON.stringify(p));}catch(_){}
+}
+function trClearProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");if(!file||!p||p.key===trFileKey(file))localStorage.removeItem(TR_PROGRESS_KEY);}catch(_){}}
+function trRetryStatus(message){
+  trSetStatus(`<span class="trerr">⚠ ${esc(message)}</span> <button type="button" class="btn btn--outline btn--sm" id="trRetryPart" style="margin-left:10px">Continuar da última parte</button>`);
+  const retry=$("#trRetryPart");if(retry)retry.addEventListener("click",()=>{if(trLastFile&&!trBusy)trHandleFile(trLastFile);});
+}
+async function trPostSlice(samples,rate,token,lang,offset){
+  let r,j={};
+  try{
+    r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate)});
+    try{j=await r.json();}catch(_){}
+  }catch(error){error.status=0;throw error;}
+  if(!r.ok||!j.ok){const error=new Error(j.error||("HTTP "+r.status));error.status=r.status;error.retryable=j.retryable===true||r.status===429||r.status>=500;throw error;}
+  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)+offset,end:(+w.end||0)+offset})):[]};
+}
+function trMergeSlices(a,b){return{text:[a.text,b.text].filter(Boolean).join(" "),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
+async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0){
+  const seconds=samples.length/rate;let lastError;
+  for(let attempt=0;attempt<TR_TRANSIENT_RETRIES;attempt++){
+    try{return await trPostSlice(samples,rate,token,lang,offset);}catch(error){
+      lastError=error;const status=+error.status||0,authFailure=status===400||status===401||status===403,canSplit=seconds>TR_MIN_CHUNK_SEC*2.05;
+      if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
+        if(onAdapt)onAdapt(`Uma parte demorou; reduzindo ${Math.round(seconds)}s para trechos menores…`);
+        const middle=Math.floor(samples.length/2),left=await trTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,onAdapt,depth+1),right=await trTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+middle/rate,onAdapt,depth+1);
+        return trMergeSlices(left,right);
+      }
+      const transient=status===0||status===429||status===502||status===503||status===504;
+      if(!transient||attempt===TR_TRANSIENT_RETRIES-1)throw error;
+      if(onAdapt)onAdapt(`Serviço ocupado; nova tentativa ${attempt+2}/${TR_TRANSIENT_RETRIES}…`);
+      await trDelay(1400*(attempt+1));
+    }
+  }
+  throw lastError||new Error("falha ao transcrever esta parte");
+}
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trBusy=true; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  trBusy=true;trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
@@ -2947,24 +2988,21 @@ async function trHandleFile(file){
   catch(e){trSetStatus(`<span class="trerr">⚠ ${esc((e&&e.message)||"falha ao ler o áudio")}. Tente outro formato ou um trecho menor.</span>`);trBusy=false;if(drop)drop.classList.remove("busy");return;}
   const rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen)),totalDur=mono.length/rate;
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  let fullText="",allSegs=[],allWords=[],detLang="";
-  for(let i=0;i<nChunks;i++){
+  const saved=trReadProgress(file);let fullText=saved?String(saved.text||""):"",allSegs=saved&&Array.isArray(saved.segments)?saved.segments:[],allWords=saved&&Array.isArray(saved.words)?saved.words:[],detLang=saved?String(saved.language||""):"",startChunk=saved?Math.max(0,Math.min(nChunks,+saved.nextChunk||0)):0;
+  if(saved){trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();}
+  for(let i=startChunk;i<nChunks;i++){
     trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${nChunks>1?` parte ${i+1}/${nChunks}`:""}…`);
     const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*TR_CHUNK_SEC;
     try{
-      const r=await fetch(TR_FN+"?lang="+encodeURIComponent(trLang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate)});
-      let j={};try{j=await r.json();}catch(e){}
-      if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
-      if(j.text)fullText+=(fullText?" ":"")+j.text.trim();
-      if(Array.isArray(j.segments))allSegs.push(...j.segments.map(s=>({start:s.start+offset,end:s.end+offset,text:s.text})));
-      if(Array.isArray(j.words))allWords.push(...j.words.map(w=>({word:w.word,start:(+w.start||0)+offset,end:(+w.end||0)+offset})));
-      if(j.language&&!detLang)detLang=j.language;
-      trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput(); // parcial
-    }catch(e){trSetStatus(`<span class="trerr">⚠ Falha na parte ${i+1}: ${esc((e&&e.message)||"erro")}</span>`);trBusy=false;if(drop)drop.classList.remove("busy");return;}
+      const part=await trTranscribeSlice(slice,rate,token,trLang,offset,msg=>trSetStatus(`<span class="vidup__spin"></span>${esc(msg)} <b>Parte ${i+1}/${nChunks}</b>`));
+      if(part.text)fullText+=(fullText?" ":"")+part.text;
+      allSegs.push(...part.segments);allWords.push(...part.words);if(part.language&&!detLang)detLang=part.language;
+      trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();trSaveProgress(file,i+1,nChunks);
+    }catch(e){trBusy=false;if(drop)drop.classList.remove("busy");trRetryStatus(`A parte ${i+1} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
   }
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
-  else{trSetStatus(`<span class="vidup__spin"></span>Salvando link permanente…`);renderTrOutput();await trPersist();trSetStatus("");toast("Transcrição pronta ✓");}
+  else{trSetStatus(`<span class="vidup__spin"></span>Salvando link permanente…`);renderTrOutput();await trPersist();trClearProgress(file);trSetStatus("");toast("Transcrição pronta ✓");}
   trBusy=false;if(drop)drop.classList.remove("busy");
 }
 function renderTranscritor(){
@@ -3663,15 +3701,9 @@ async function transcribeBrainInChunks(offerId,videoUrl){
   const mono=await trDecodeMono16k(file),rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));
   const token=await trToken();let fullText="",detLang="",allWords=[],allSegments=[];
   for(let i=0;i<nChunks;i++){
-    const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen));
-    const r=await fetch(TR_FN+"?lang=auto",{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(slice,rate)});
-    let j={};try{j=await r.json();}catch(e){}
-    if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
-    if(j.text)fullText+=(fullText?" ":"")+j.text.trim();
-    if(j.language&&!detLang)detLang=j.language;
-    const offset=i*TR_CHUNK_SEC;
-    if(Array.isArray(j.words))allWords.push(...j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word));
-    if(Array.isArray(j.segments))allSegments.push(...j.segments.map(s=>({text:String(s.text||"").trim(),start:(+s.start||0)+offset,end:(+s.end||0)+offset})).filter(s=>s.text));
+    const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),part=await trTranscribeSlice(slice,rate,token,"auto",i*TR_CHUNK_SEC);
+    if(part.text)fullText+=(fullText?" ":"")+part.text;if(part.language&&!detLang)detLang=part.language;
+    allWords.push(...part.words.filter(w=>String(w.word||"").trim()));allSegments.push(...part.segments.filter(s=>String(s.text||"").trim()));
   }
   if(!fullText.trim())throw new Error("nenhuma fala detectada");
   const {data:row,error:readError}=await sb.from("offers").select("data").eq("id",offerId).single();
