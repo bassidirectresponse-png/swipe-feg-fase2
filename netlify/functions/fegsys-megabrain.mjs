@@ -9,6 +9,17 @@ const ADMIN_IDS = new Set(["ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3"]);
 const configured = () => !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64);
 const json = (status, body) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
+function tokenClaims(token) {
+  try { return JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")); }
+  catch { return {}; }
+}
+
+function isAllowedAdmin(user) {
+  const id = String(user && (user.id || user.sub) || "").toLowerCase();
+  const email = String(user && user.email || "").trim().toLowerCase();
+  return ADMIN_IDS.has(id) || ADMIN_EMAILS.has(email);
+}
+
 async function adminUser(req) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
@@ -20,11 +31,22 @@ async function adminUser(req) {
     const response = await fetch(`${baseUrl}/auth/v1/user`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
     }).catch(() => null);
-    if (!response || !response.ok) continue;
-    const user = await response.json();
-    const id = String(user.id || "").toLowerCase();
-    const email = String(user.email || "").trim().toLowerCase();
-    if (ADMIN_IDS.has(id) || ADMIN_EMAILS.has(email)) return user;
+    if (response && response.ok) {
+      const user = await response.json();
+      if (isAllowedAdmin(user)) return user;
+    }
+
+    // Alguns projetos Supabase recusam /auth/v1/user durante a rotação das
+    // chaves públicas, embora o mesmo JWT continue válido no PostgREST. O
+    // PostgREST valida a assinatura antes de responder; só então usamos as
+    // claims assinadas para conferir o admin permitido.
+    const rest = await fetch(`${baseUrl}/rest/v1/offers?select=id&limit=1`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+    }).catch(() => null);
+    if (rest && rest.ok) {
+      const claims = tokenClaims(token);
+      if (isAllowedAdmin(claims)) return claims;
+    }
   }
   return null;
 }

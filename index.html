@@ -567,6 +567,10 @@
   .fegsys-kpi--accent strong{color:var(--accent);}
   .fegsys-pending{display:flex;align-items:center;gap:7px;font-size:.73rem;color:#e2c37d;}
   .fegsys-pending .ico{width:14px;height:14px;}
+  video.fegsys-card.cmedia,.fegsys-card video.cmedia{width:100%;object-fit:cover;cursor:default;}
+  .fegsys-copy{padding:10px 11px;border-radius:10px;background:var(--surface-2);color:var(--muted-fg);}
+  .fegsys-copy strong{display:block;margin-bottom:4px;font-size:.7rem;color:var(--fg);}
+  .fegsys-copy p{font-size:.73rem;line-height:1.45;text-wrap:pretty;}
   @media(max-width:880px){.fegsys-panel__top{flex-direction:column;}.fegsys-panel__body{align-items:flex-start;}.fegsys-summary{width:100%;}.fegsys-custom{width:100%;}.fegsys-date{flex:1;}.fegsys-date input{width:100%;}}
   .chip.brain-ing{display:inline-flex;align-items:center;gap:5px;}
   .chip.brain-ing .ico{width:12px;height:12px;animation:pulse 1s infinite;}
@@ -2543,13 +2547,15 @@ async function loadFegsysBrain(force=false){
     const session=await sb.auth.getSession(),token=session.data&&session.data.session&&session.data.session.access_token;
     if(!token)throw new Error("sessão expirada");
     const p=new URLSearchParams({period:brainPeriod});if(brainPeriod==="custom"){if(brainDateFrom)p.set("from",brainDateFrom);if(brainDateTo)p.set("to",brainDateTo);}if(force)p.set("refresh","1");
-    const response=await fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    const request=accessToken=>fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+accessToken},cache:"no-store"});
+    let response=await request(token);
+    if(response.status===401){const refreshed=await sb.auth.refreshSession();const fresh=refreshed.data&&refreshed.data.session&&refreshed.data.session.access_token;if(fresh)response=await request(fresh);}
     const result=await response.json().catch(()=>({}));if(!response.ok||!result.ok)throw new Error(result.error||"não foi possível consultar o FEGSYS");
     const manual=new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>brainNameKey((o.data||{}).nome)).filter(Boolean));
     const incoming=(result.cards||[]).filter(card=>card&&card.nome),unique=incoming.filter(card=>!manual.has(brainNameKey(card.nome)));
     fegsysDuplicates=incoming.length-unique.length;
     if(brainPeriod==="custom"){if(!brainDateFrom)brainDateFrom=result.range&&result.range.from||"";if(!brainDateTo)brainDateTo=result.range&&result.range.to||"";}
-    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],fegsysRange:result.range,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,videoMissing:true,copyMissing:true}}));
+    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],fegsysRange:result.range,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
     fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysLoadedKey=key;
   }catch(error){fegsysCards=[];fegsysTotals=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
   finally{fegsysLoading=false;renderGrid();}
@@ -2559,7 +2565,7 @@ function fegsysPanelHtml(){
   const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
   const totals=fegsysTotals||{};
-  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>${esc(fegsysPeriodLabel())}</span><strong class="accent">${esc(fegsysMoney(totals.spend_brl||0))}</strong></span><span class="fegsys-summary__item"><span>Impressões</span><strong>${fmtNum(totals.impressions||0)}</strong></span><span class="fegsys-summary__item"><span>Cliques</span><strong>${fmtNum(totals.clicks||0)}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span></div></div></section>`;
+  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Vendas</span><strong class="accent">${fmtNum(totals.conversions||0)}</strong></span><span class="fegsys-summary__item"><span>ROAS</span><strong>${(+totals.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></span><span class="fegsys-summary__item"><span>Investimento</span><strong>${esc(fegsysMoney(totals.spend_brl||0))}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span><span class="fegsys-summary__item"><span>CPC</span><strong>${esc(fegsysMoney(totals.cpc_brl||0))}</strong></span></div></div></section>`;
 }
 function wireFegsysPanel(el){
   $$('[data-fegsys-period]',el).forEach(button=>button.addEventListener("click",()=>{brainPeriod=button.dataset.fegsysPeriod;if(brainPeriod!=="custom"){brainDateFrom="";brainDateTo="";}fegsysLoadedKey="";navigate(currentPath(),{replace:true});}));
@@ -3527,15 +3533,18 @@ function fegsysBrainCard(o){
   const d=o.data||{},m=d.fegsysMetrics||{},range=d.fegsysRange||{};
   const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
   const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
-  const conv=(+m.conversions||0),convText=(d.platforms||[]).includes("GOOGLE")?fmtNum(conv):"—";
+  const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const media=d.video?`<video class="cmedia" src="${esc(d.video)}"${d.print?` poster="${esc(d.print)}"`:""} controls preload="none"></video>`:d.print?`<img class="cmedia" src="${esc(d.print)}" alt="Prévia do criativo ${esc(d.nome||"")}" loading="lazy">`:`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não vinculada</span></div>`;
+  const copyPreview=d.copy?`<div class="fegsys-copy"><strong>Copy</strong><p>${esc(String(d.copy).slice(0,220))}${String(d.copy).length>220?"…":""}</p></div>`:"";
+  const sourceLinks=`${d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:""}${d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir copy</a>`:""}`;
   return card({
     id:o.id,variant:"kcard kcard--brain fegsys-card",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
-    media:`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não disponível na view</span></div>`,
-    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_brl||0))}</strong></div><div class="fegsys-kpi"><span>Impressões</span><strong>${fmtNum(m.impressions||0)}</strong></div><div class="fegsys-kpi"><span>Cliques · CTR</span><strong>${fmtNum(m.clicks||0)} · ${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>Conversões Google</span><strong>${convText}</strong></div></div>`,
+    media,
+    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Vendas</span><strong>${fmtNum(m.conversions||0)}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>ROAS</span><strong>${roas}</strong></div><div class="fegsys-kpi"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_brl||0))}</strong></div><div class="fegsys-kpi"><span>CTR</span><strong>${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>CPC</span><strong>${esc(fegsysMoney(m.cpc_brl||0))}</strong></div><div class="fegsys-kpi"><span>Impressões</span><strong>${fmtNum(m.impressions||0)}</strong></div></div>`,
     chips:`<div class="card__chips"><span class="chip accent">${esc(period)}</span>${(d.channels||[]).map(channel=>`<span class="chip">${esc(channel)}</span>`).join("")}</div>`,
-    extra:`<div class="fegsys-pending">${ic("alert")}Vídeo e copy aguardam uma fonte vinculada</div>`,
-    actions:`<span class="muted-empty" style="font-size:.78rem">Atualizado automaticamente pelo FEGSYS</span>`
+    extra:copyPreview||(!d.video&&!d.copyLink?`<div class="fegsys-pending">${ic("alert")}Vídeo e copy não estão disponíveis na fonte</div>`:""),
+    actions:sourceLinks||`<span class="muted-empty" style="font-size:.78rem">Dados atualizados automaticamente</span>`
   });
 }
 function megabrainCard(o){
