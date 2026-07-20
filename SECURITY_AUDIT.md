@@ -8,7 +8,7 @@ Escopo: repositório Swipe FEG Fase 2, configuração Netlify, funções serverl
 
 A aplicação foi inventariada e endurecida com base no OWASP Top 10:2025, OWASP ASVS 5.0 Level 2, WSTG, Cheat Sheet Series e NIST SP 800-63B-4. Foram corrigidos 16 achados confirmados: 5 altos, 7 médios e 4 baixos. Os controles incluem autenticação e autorização no servidor, rate limiting distribuído, limites de corpo e download, proteção SSRF, validação de mídia por assinatura, CORS restrito, CSP com hash, SRI, políticas de upload, CI de segurança, secret scanning do código e de todo o histórico Git e SBOM.
 
-Não foram encontrados segredos no estado atual nem nos 132 commits e 294 blobs históricos examinados. Há, porém, um bloqueio externo crítico: uma credencial de conta de serviço Google foi divulgada fora do repositório. Como não há acesso de gerenciamento IAM autorizado neste ambiente, sua revogação e rotação não puderam ser confirmadas. O código agora recusa essa integração até que o identificador exato de uma nova chave aprovada também seja configurado.
+Não foram encontrados segredos no estado atual nem em todo o histórico Git acessível examinado. Há, porém, um bloqueio externo crítico: uma credencial de conta de serviço Google foi divulgada fora do repositório. Como não há acesso de gerenciamento IAM autorizado neste ambiente, sua revogação e rotação não puderam ser confirmadas. O código agora recusa essa integração até que o identificador exato de uma nova chave aprovada também seja configurado.
 
 O release não deve ser liberado enquanto os gates externos da seção **Bloqueios para liberação** não forem concluídos.
 
@@ -76,7 +76,7 @@ Todas as respostas serverless recebem headers de segurança consistentes. Prefli
 ## Segredos e credenciais
 
 - Scanner atual: 78 arquivos, sem achados.
-- Histórico Git: 132 commits e 294 blobs únicos, sem achados.
+- Histórico Git: todas as branches, tags, commits e blobs acessíveis, sem achados.
 - O scanner cobre arquivos ocultos e não rastreados, texto e `.b64`, além de todas as branches/tags acessíveis pelo Git.
 - O relatório deliberadamente não contém valores, trechos ou fingerprints derivados de material sensível exposto fora do repositório.
 - O identificador público e a chave anônima pública do Supabase não são tratados como segredo; autorização continua dependente de RLS e validação no servidor.
