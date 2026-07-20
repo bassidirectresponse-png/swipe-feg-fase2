@@ -289,6 +289,11 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(html, /Ads ativos · evolução diária/);
 });
 
+test("histórico de ads ativos aparece no topo do detalhe de Brands", () => {
+  const detailTemplate = html.slice(html.indexOf('$("#viewBody").innerHTML=`'), html.indexOf('wireLightboxLinks($("#viewBody"));'));
+  assert.ok(detailTemplate.indexOf("${adsSection}") < detailTemplate.indexOf("${bmSection}"));
+});
+
 test("top ads enviados pelo admin ficam persistidos no Storage do Swipe", () => {
   assert.match(html, /async function uploadBrandTopAdFile\(file,dz\)/);
   assert.match(html, /BRAND_VIDEO_MAX_BYTES=50\*1024\*1024/);
