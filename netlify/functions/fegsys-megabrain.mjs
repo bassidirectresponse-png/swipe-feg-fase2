@@ -1,4 +1,5 @@
 import { aggregateSnapshot, getSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
+import { createPublicKey, createVerify } from "node:crypto";
 
 const DEFAULT_SUPABASE_URL = "https://ppaajtzbhjixhyfidojd.supabase.co";
 const DEFAULT_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYXNlIiwicmVmIjoicHBhYWp0emJoaml4aHlmaWRvamQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4MTIwOTM1NywiZXhwIjoyMDk2Nzg1MzUwfQ.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
@@ -6,6 +7,8 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(
 const ANON = process.env.SUPABASE_ANON_KEY || DEFAULT_ANON;
 const ADMIN_EMAILS = new Set(["adminswipefeg@swipefeg.app"]);
 const ADMIN_IDS = new Set(["ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3"]);
+const EXPECTED_ISSUER = `${DEFAULT_SUPABASE_URL}/auth/v1`;
+let cachedJwks = null;
 const configured = () => !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64);
 const json = (status, body) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
@@ -20,6 +23,38 @@ function isAllowedAdmin(user) {
   return ADMIN_IDS.has(id) || ADMIN_EMAILS.has(email);
 }
 
+function jwtPart(value) {
+  try { return JSON.parse(Buffer.from(value, "base64url").toString("utf8")); }
+  catch { return null; }
+}
+
+async function verifiedJwtUser(token) {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const header = jwtPart(parts[0]), claims = jwtPart(parts[1]);
+  if (!header || !claims || header.alg !== "ES256" || !header.kid) return null;
+  if (claims.iss !== EXPECTED_ISSUER || claims.aud !== "authenticated") return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (!claims.sub || !claims.exp || +claims.exp <= now) return null;
+
+  if (!cachedJwks || cachedJwks.expiresAt <= Date.now()) {
+    const response = await fetch(`${EXPECTED_ISSUER}/.well-known/jwks.json`, { headers: { accept: "application/json" } }).catch(() => null);
+    if (!response || !response.ok) return null;
+    const result = await response.json().catch(() => null);
+    if (!result || !Array.isArray(result.keys)) return null;
+    cachedJwks = { keys: result.keys, expiresAt: Date.now() + 10 * 60 * 1000 };
+  }
+  const jwk = cachedJwks.keys.find(key => key.kid === header.kid && key.kty === "EC" && key.crv === "P-256");
+  if (!jwk) return null;
+  try {
+    const verifier = createVerify("SHA256");
+    verifier.update(`${parts[0]}.${parts[1]}`);
+    verifier.end();
+    const valid = verifier.verify({ key: createPublicKey({ key: jwk, format: "jwk" }), dsaEncoding: "ieee-p1363" }, Buffer.from(parts[2], "base64url"));
+    return valid ? claims : null;
+  } catch { return null; }
+}
+
 async function adminUser(req) {
   // Alguns proxies/CDNs tratam `Authorization` como cabeçalho reservado. O
   // painel envia também uma cópia no cabeçalho privado abaixo; em ambos os
@@ -28,6 +63,8 @@ async function adminUser(req) {
     .replace(/^Bearer\s+/i, "")
     .trim();
   if (!token) return null;
+  const verified = await verifiedJwtUser(token);
+  if (verified && isAllowedAdmin(verified)) return verified;
   // A configuração da Netlify pode manter uma URL antiga. Valida primeiro nela e,
   // se necessário, repete no projeto que efetivamente atende o painel.
   const targets = [[SUPABASE_URL, ANON], [DEFAULT_SUPABASE_URL, DEFAULT_ANON]]
