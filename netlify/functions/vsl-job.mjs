@@ -2,23 +2,12 @@
 // O conteúdo pesado fica no Netlify Blobs; a Background Function recebe apenas
 // id + segredo e pode encadear quantas execuções forem necessárias.
 import { getStore } from "@netlify/blobs";
+import { authenticate, corsHeaders, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
-const json = (status, body) => Response.json(body, { status, headers: { ...CORS, "Cache-Control": "no-store" } });
+const METHODS = "GET, POST, OPTIONS";
 const clean = (value) => String(value == null ? "" : value)
   .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
   .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
-
-async function authenticated(req) {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!token) return null;
-  try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    return response.ok ? await response.json() : null;
-  } catch { return null; }
-}
 
 function publicJob(job) {
   return {
@@ -53,21 +42,24 @@ async function dispatchBackground(req, job) {
 }
 
 export default async (req) => {
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
+  const options = preflight(req, METHODS); if (options) return options;
   const url = new URL(req.url);
   if (req.method === "GET" && !url.searchParams.get("id")) {
-    return json(200, { ok: true, service: "vsl-job", ready: !!process.env.ANTHROPIC_API_KEY });
+    return json(req, 200, { ok: true, service: "vsl-job", ready: !!process.env.ANTHROPIC_API_KEY }, METHODS);
   }
 
-  const user = await authenticated(req);
-  if (!user) return json(401, { ok: false, error: "sessão inválida — faça login novamente" });
+  if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
+  const user = await authenticate(req);
+  if (!user) return json(req, 401, { ok: false, error: "sessão inválida — faça login novamente" }, METHODS);
   const store = getStore({ name: "vsl-jobs", consistency: "strong" });
 
   if (req.method === "GET") {
+    const quota = await rateLimit("vsl-job-read", user.id, { limit: 180, windowMs: 60_000 });
+    if (!quota.allowed) return json(req, 429, { ok: false, error: "consultas demais; aguarde um instante", retryAfter: quota.retryAfter }, METHODS);
     const id = url.searchParams.get("id") || "";
-    if (!/^[a-f0-9-]{20,80}$/i.test(id)) return json(400, { ok: false, error: "id inválido" });
+    if (!/^[a-f0-9-]{20,80}$/i.test(id)) return json(req, 400, { ok: false, error: "id inválido" }, METHODS);
     const job = await store.get(id, { type: "json" });
-    if (!job || job.owner !== String(user.id || "")) return json(404, { ok: false, error: "análise não encontrada" });
+    if (!job || job.owner !== String(user.id || "")) return json(req, 404, { ok: false, error: "análise não encontrada" }, METHODS);
     const idleMs = Date.now() - (Date.parse(job.updatedAt || job.createdAt || "") || 0);
     const needsRecovery = canResumeAutomatically(job) || (job.status === "queued" && idleMs > 15_000) || (job.status === "working" && idleMs > 12 * 60_000);
     if (needsRecovery) {
@@ -78,19 +70,22 @@ export default async (req) => {
       await store.setJSON(job.id, job);
       await dispatchBackground(req, job);
     }
-    return json(200, { ok: true, job: publicJob(job) });
+    return json(req, 200, { ok: true, job: publicJob(job) }, METHODS);
   }
-  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
-  if (!process.env.ANTHROPIC_API_KEY) return json(500, { ok: false, error: "ANTHROPIC_API_KEY não configurada no Netlify" });
+  if (req.method !== "POST") return json(req, 405, { ok: false, error: "método inválido" }, METHODS);
+  if (!process.env.ANTHROPIC_API_KEY) return json(req, 500, { ok: false, error: "serviço não configurado" }, METHODS);
+  const quota = await rateLimit("vsl-job-write", user.id, { limit: 6, windowMs: 10 * 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário de análises atingido", retryAfter: quota.retryAfter }, METHODS);
 
   let body;
-  try { body = await req.json(); } catch { return json(400, { ok: false, error: "JSON inválido" }); }
+  try { body = await readJson(req, { maxBytes: 12 * 1024 * 1024 }); }
+  catch (error) { return json(req, error.status || 400, { ok: false, error: error.message }, METHODS); }
   if (body.action === "retry") {
     const retryId = String(body.id || "");
-    if (!/^[a-f0-9-]{20,80}$/i.test(retryId)) return json(400, { ok: false, error: "id inválido" });
+    if (!/^[a-f0-9-]{20,80}$/i.test(retryId)) return json(req, 400, { ok: false, error: "id inválido" }, METHODS);
     const previous = await store.get(retryId, { type: "json" });
-    if (!previous || previous.owner !== String(user.id || "")) return json(404, { ok: false, error: "análise não encontrada" });
-    if (previous.status === "complete") return json(200, { ok: true, id: previous.id, status: previous.status });
+    if (!previous || previous.owner !== String(user.id || "")) return json(req, 404, { ok: false, error: "análise não encontrada" }, METHODS);
+    if (previous.status === "complete") return json(req, 200, { ok: true, id: previous.id, status: previous.status }, METHODS);
     previous.status = "queued";
     previous.error = "";
     previous.message = "Retomando a análise do último ponto salvo…";
@@ -98,13 +93,13 @@ export default async (req) => {
     previous.dispatchCount = Number(previous.dispatchCount || 0) + 1;
     await store.setJSON(previous.id, previous);
     const restarted = await dispatchBackground(req, previous);
-    if (!restarted || !restarted.ok) return json(502, { ok: false, error: "Não foi possível retomar agora. Tente novamente em instantes." });
-    return json(202, { ok: true, id: previous.id, status: "queued" });
+    if (!restarted || !restarted.ok) return json(req, 502, { ok: false, error: "Não foi possível retomar agora. Tente novamente em instantes." }, METHODS);
+    return json(req, 202, { ok: true, id: previous.id, status: "queued" }, METHODS);
   }
   const transcript = clean(body.transcript || "").trim();
   const organized = clean(body.organizedTranscript || "").trim();
   const canonical = clean(body.canonicalScript || "").trim();
-  if (!transcript && !organized && !canonical) return json(400, { ok: false, error: "transcrição vazia" });
+  if (!transcript && !organized && !canonical) return json(req, 400, { ok: false, error: "transcrição vazia" }, METHODS);
 
   const id = crypto.randomUUID();
   const jobKey = `${crypto.randomUUID()}-${crypto.randomUUID()}`;
@@ -151,7 +146,7 @@ export default async (req) => {
     job.message = job.error;
     job.updatedAt = new Date().toISOString();
     await store.setJSON(id, job);
-    return json(502, { ok: false, error: job.error });
+    return json(req, 502, { ok: false, error: job.error }, METHODS);
   }
-  return json(202, { ok: true, id, status: "queued" });
+  return json(req, 202, { ok: true, id, status: "queued" }, METHODS);
 };

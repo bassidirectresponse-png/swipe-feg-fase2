@@ -1,13 +1,11 @@
 // Dissecador de VSL — organiza a transcrição completa e gera uma análise
 // estratégica separada usando o áudio transcrito + contact sheets do vídeo.
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
+import { authenticate, corsHeaders, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 export const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 export const MODEL = process.env.VSL_DISSECTOR_MODEL || process.env.FURTADO_MODEL || "claude-sonnet-5";
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
-const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+const METHODS = "POST, GET, OPTIONS";
 
 export const clean = (s) => String(s == null ? "" : s)
   .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
@@ -267,27 +265,28 @@ async function streamAnthropic({ system, user, images, maxTokens, channel }, sen
 }
 
 export default async (req) => {
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
-  if (req.method === "GET") return json(200, { ok: true, service: "vsl-dissector", ready: !!ANTHROPIC_KEY, model: MODEL });
-  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
-  if (!ANTHROPIC_KEY) return json(500, { ok: false, error: "ANTHROPIC_API_KEY não configurada no Netlify" });
+  const options = preflight(req, METHODS); if (options) return options;
+  if (req.method === "GET") return json(req, 200, { ok: true, service: "vsl-dissector", ready: !!ANTHROPIC_KEY }, METHODS);
+  if (req.method !== "POST") return json(req, 405, { ok: false, error: "método inválido" }, METHODS);
+  if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
+  if (!ANTHROPIC_KEY) return json(req, 500, { ok: false, error: "serviço não configurado" }, METHODS);
 
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!token) return json(401, { ok: false, error: "sem autenticação" });
-  try {
-    const user = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    if (!user.ok) return json(401, { ok: false, error: "sessão inválida — faça login de novo" });
-  } catch { return json(401, { ok: false, error: "não deu para validar a sessão" }); }
+  const sessionUser = await authenticate(req);
+  if (!sessionUser) return json(req, 401, { ok: false, error: "sessão inválida — faça login de novo" }, METHODS);
+  const quota = await rateLimit("vsl-dissector", sessionUser.id, { limit: 4, windowMs: 10 * 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário de análises atingido", retryAfter: quota.retryAfter }, METHODS);
 
-  let body; try { body = await req.json(); } catch { return json(400, { ok: false, error: "corpo inválido" }); }
+  let body;
+  try { body = await readJson(req, { maxBytes: 12 * 1024 * 1024 }); }
+  catch (error) { return json(req, error.status || 400, { ok: false, error: error.message }, METHODS); }
   const meta = {
     name: clip(body.name || "VSL sem título", 140), niche: clip(body.niche || "", 100), language: clip(body.language || "", 16),
     duration: Number(body.duration) || 0, transcript: clean(body.transcript || "").trim(), canonical: clean(body.canonicalScript || "").trim(),
     organized: clean(body.organizedTranscript || "").trim(), segmentText: segmentText(body.segments), images: body.contactSheets,
   };
-  if (!meta.transcript && !meta.canonical) return json(400, { ok: false, error: "transcrição vazia" });
+  if (!meta.transcript && !meta.canonical) return json(req, 400, { ok: false, error: "transcrição vazia" }, METHODS);
   const phase = String(body.phase || "legacy");
-  if (!["legacy", "analysis-core", "analysis-assets"].includes(phase)) return json(400, { ok: false, error: "etapa inválida" });
+  if (!["legacy", "analysis-core", "analysis-assets"].includes(phase)) return json(req, 400, { ok: false, error: "etapa inválida" }, METHODS);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -321,5 +320,5 @@ export default async (req) => {
       }
     },
   });
-  return new Response(stream, { status: 200, headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no", ...CORS } });
+  return new Response(stream, { status: 200, headers: { ...corsHeaders(req, METHODS), "Content-Type": "application/x-ndjson; charset=utf-8", "X-Accel-Buffering": "no" } });
 };

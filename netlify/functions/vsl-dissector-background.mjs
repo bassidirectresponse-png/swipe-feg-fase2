@@ -107,7 +107,10 @@ async function collectAnthropicOnce(user, images, maxTokens, previousOutput = ""
       stream: true,
     }),
   });
-  if (!upstream.ok || !upstream.body) throw new Error(`Claude HTTP ${upstream.status}: ${(await upstream.text().catch(() => "")).slice(0, 300)}`);
+  if (!upstream.ok || !upstream.body) {
+    await upstream.body?.cancel().catch(() => {});
+    throw new Error(`Claude HTTP ${upstream.status}`);
+  }
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "", output = "", stopReason = "";
@@ -187,11 +190,17 @@ export default async (req) => {
   let job;
   try {
     if (!ANTHROPIC_KEY) throw new Error("O serviço de análise ainda não foi configurado.");
-    const request = await req.json();
-    if (!request.id || !request.key) throw new Error("job inválido");
+    const declared = Number(req.headers.get("content-length") || 0);
+    if (declared > 32 * 1024) throw new Error("job inválido");
+    const raw = await req.text();
+    if (Buffer.byteLength(raw, "utf8") > 32 * 1024) throw new Error("job inválido");
+    const request = JSON.parse(raw || "{}");
+    if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(request.id || "")) || !/^[\w-]{32,256}$/.test(String(request.key || ""))) throw new Error("job inválido");
     job = await store.get(request.id, { type: "json" });
     if (!job || job.jobKey !== request.key) throw new Error("job não encontrado");
     if (job.status === "complete") return;
+    if (request.phase && request.phase !== job.phase) return;
+    if (Number.isInteger(request.index) && request.index !== checkpointIndex(job)) return;
 
     const input = job.input || {};
     const sourceText = input.organizedTranscript || input.transcript || input.canonicalScript || "";
@@ -300,7 +309,7 @@ export default async (req) => {
     await store.setJSON(job.id, job);
     if (job.status !== "complete") await requeue(req, job);
   } catch (error) {
-    console.error("vsl-dissector-background falhou:", String(error && error.message || error).slice(0, 400));
+    console.error("vsl-dissector-background falhou:", friendlyError(error).slice(0, 240));
     if (job) {
       job.status = "error";
       job.error = friendlyError(error);

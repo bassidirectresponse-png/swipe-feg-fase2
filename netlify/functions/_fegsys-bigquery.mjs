@@ -1,4 +1,4 @@
-import { createHash, createSign } from "node:crypto";
+import { createHash, createPrivateKey, createSign } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 
 const PROJECT_ID = "grupofeg-lakehouse";
@@ -15,9 +15,10 @@ function base64url(value) {
 }
 
 export function readCredential() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64
-    ? Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64, "base64").toString("utf8")
-    : process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64 || "";
+  const plain = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "";
+  if (encoded.length > 32_000 || plain.length > 24_000) throw new Error("credencial de conta de serviço inválida");
+  const raw = encoded ? Buffer.from(encoded, "base64").toString("utf8") : plain;
   if (!raw) return null;
   let credential;
   try { credential = JSON.parse(raw); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON inválido"); }
@@ -25,6 +26,16 @@ export function readCredential() {
     throw new Error("credencial de conta de serviço incompleta");
   }
   if (credential.project_id !== PROJECT_ID) throw new Error("projeto da credencial não corresponde ao FEG Lakehouse");
+  const expectedKeyId = String(process.env.GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID || "").trim();
+  if (!/^[0-9a-f]{40}$/i.test(expectedKeyId) || credential.private_key_id !== expectedKeyId) {
+    throw new Error("credencial do BigQuery não foi aprovada após rotação");
+  }
+  const expectedEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || `swipe-reader@${PROJECT_ID}.iam.gserviceaccount.com`;
+  if (credential.client_email !== expectedEmail || !credential.client_email.endsWith(`@${PROJECT_ID}.iam.gserviceaccount.com`)) {
+    throw new Error("conta de serviço não autorizada para esta integração");
+  }
+  if (credential.token_uri !== "https://oauth2.googleapis.com/token") throw new Error("endpoint OAuth da credencial não autorizado");
+  try { createPrivateKey(credential.private_key); } catch { throw new Error("chave privada da conta de serviço inválida"); }
   return credential;
 }
 

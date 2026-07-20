@@ -21,8 +21,7 @@
 // Env (Netlify): ANTHROPIC_API_KEY (obrigatória), SUPABASE_URL, SUPABASE_ANON_KEY (com default),
 //                FURTADO_MODEL (opcional; default claude-sonnet-5 — mesmo do Feguinho).
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
+import { SUPABASE_ANON_KEY as ANON, SUPABASE_URL, authenticate, bearerToken, corsHeaders, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.FURTADO_MODEL || "claude-sonnet-5";  // suporta web_search_20260209
@@ -34,8 +33,7 @@ const WEB_MAX_USES = 6;   // teto de buscas na Fase 2 (equilíbrio entre profund
 const WEB_TOOL = process.env.FURTADO_WEB_TOOL || "web_search_20250305";
 const WEB_COUNTRY = process.env.FURTADO_WEB_COUNTRY || "US";   // busca no mercado dos EUA (inglês)
 
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
-const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+const METHODS = "POST, GET, OPTIONS";
 
 // ---------- helpers (surrogate-safe, igual ao Feguinho) ----------
 const clean = (s) => String(s == null ? "" : s)
@@ -333,20 +331,21 @@ ${clip(biblia, 9000) || "(no Bible provided — use the niche above)"}`;
 
 // ---------- handler (Netlify Functions v2, streaming NDJSON) ----------
 export default async (req) => {
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
-  if (req.method === "GET") return json(200, { ok: true, service: "furtado", ready: !!ANTHROPIC_KEY });
-  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
-  if (!ANTHROPIC_KEY) return json(500, { ok: false, error: "ANTHROPIC_API_KEY não configurada no Netlify" });
+  const options = preflight(req, METHODS); if (options) return options;
+  if (req.method === "GET") return json(req, 200, { ok: true, service: "furtado", ready: !!ANTHROPIC_KEY }, METHODS);
+  if (req.method !== "POST") return json(req, 405, { ok: false, error: "método inválido" }, METHODS);
+  if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
+  if (!ANTHROPIC_KEY) return json(req, 500, { ok: false, error: "serviço não configurado" }, METHODS);
 
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!token) return json(401, { ok: false, error: "sem autenticação" });
-  try {
-    const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    if (!u.ok) return json(401, { ok: false, error: "sessão inválida — faça login de novo" });
-  } catch { return json(401, { ok: false, error: "não deu para validar a sessão" }); }
+  const token = bearerToken(req);
+  const sessionUser = await authenticate(req);
+  if (!sessionUser) return json(req, 401, { ok: false, error: "sessão inválida — faça login de novo" }, METHODS);
+  const quota = await rateLimit("furtado", sessionUser.id, { limit: 12, windowMs: 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "muitas solicitações; aguarde um instante", retryAfter: quota.retryAfter }, METHODS);
 
   let body;
-  try { body = await req.json(); } catch { return json(400, { ok: false, error: "corpo inválido" }); }
+  try { body = await readJson(req, { maxBytes: 256 * 1024 }); }
+  catch (error) { return json(req, error.status || 400, { ok: false, error: error.message }, METHODS); }
   const phase = ["biblia", "voc", "remessa", "escrita"].includes(body.phase) ? body.phase : "biblia";
   const nicho = clip(body.nicho || "", 80) || "(nicho não informado)";
   const biblia = String(body.biblia || "");
@@ -359,14 +358,14 @@ export default async (req) => {
   let built;
   if (phase === "biblia") {
     const ads = String(body.input || "").trim();
-    if (!ads) return json(400, { ok: false, error: "cole 2 a 4 anúncios validados para gerar a Bíblia" });
+    if (!ads) return json(req, 400, { ok: false, error: "cole 2 a 4 anúncios validados para gerar a Bíblia" }, METHODS);
     const ctx = await vaultCtx(slug(nicho), token);
     built = { ...bibliaPrompt(nicho, ads, ctx), model: MODEL };
   } else if (phase === "voc") {
     built = { ...vocPrompt(nicho, biblia), model: MODEL };
   } else if (phase === "remessa") {
     const oferta = String(body.input || "").trim();
-    if (!oferta) return json(400, { ok: false, error: "informe os dados da oferta (expert, mecanismos, nome chiclete, promessa)" });
+    if (!oferta) return json(req, 400, { ok: false, error: "informe os dados da oferta (expert, mecanismos, nome chiclete, promessa)" }, METHODS);
     built = { ...remessaPrompt(nicho, biblia, oferta, nCorpos, nHooks), model: MODEL };
   } else {
     built = { ...escritaPrompt(nicho, biblia, voc, briefing, nCorpos, nHooks), model: MODEL };
@@ -412,6 +411,6 @@ export default async (req) => {
 
   return new Response(stream, {
     status: 200,
-    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no", ...CORS },
+    headers: { ...corsHeaders(req, METHODS), "Content-Type": "application/x-ndjson; charset=utf-8", "X-Accel-Buffering": "no" },
   });
 };

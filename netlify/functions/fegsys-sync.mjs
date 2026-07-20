@@ -22,9 +22,10 @@ export default async () => {
         sales: snapshot.sourceStatus?.sales?.available !== false,
         meta: snapshot.sourceStatus?.meta?.available !== false
       }
-    });
+    }, { headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'; frame-ancestors 'none'", "x-content-type-options": "nosniff" } });
   } catch (error) {
-    console.error("FEGSYS sync failed", String(error && error.message || error));
-    return Response.json({ ok: false, error: safeSyncError(error) }, { status: 500, headers: { "cache-control": "no-store" } });
+    const message = safeSyncError(error);
+    console.error("FEGSYS sync failed:", message);
+    return Response.json({ ok: false, error: message }, { status: 500, headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'; frame-ancestors 'none'", "x-content-type-options": "nosniff" } });
   }
 };

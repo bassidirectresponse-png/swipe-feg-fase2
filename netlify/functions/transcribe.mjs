@@ -1,105 +1,107 @@
-// Transcrição instantânea de vídeo (Groq Whisper) — Swipe FEG
-//
-// Fluxo: o app manda { id, videoUrl } + o token do usuário logado.
-// A função confere que o usuário é ADMIN, baixa o vídeo do Storage,
-// manda pro Groq (whisper-large-v3-turbo) e grava a transcrição de volta
-// na linha da oferta (com o token do próprio admin — o RLS confirma).
-//
-// Variáveis de ambiente (Netlify → Site settings → Environment variables):
-//   GROQ_API_KEY        (obrigatória, secreta)  -> https://console.groq.com/keys
-//   SUPABASE_URL        (opcional, tem default)
-//   SUPABASE_ANON_KEY   (opcional, tem default; é pública)
-//   ADMIN_EMAILS        (opcional, csv; default adminswipefeg@swipefeg.app)
+import {
+  SUPABASE_ANON_KEY as ANON,
+  SUPABASE_URL,
+  authenticateToken,
+  boundedBuffer,
+  isAdmin,
+  rateLimit,
+} from "./_security.mjs";
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "adminswipefeg@swipefeg.app")
-  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
-const STORAGE_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/criativos/`;
-const MAX_BYTES = 24 * 1024 * 1024; // limite seguro do Groq (25MB)
+const MAX_BYTES = 24 * 1024 * 1024;
+const STORAGE_ORIGIN = new URL(SUPABASE_URL).origin;
+const STORAGE_PATH = "/storage/v1/object/public/criativos/";
 
-const json = (status, obj) => ({
-  statusCode: status,
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(obj),
-});
+const headers = {
+  "Cache-Control": "no-store",
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+  "Content-Type": "application/json; charset=utf-8",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+};
+const json = (statusCode, body, extra = {}) => ({ statusCode, headers: { ...headers, ...extra }, body: JSON.stringify(body) });
+
+function storageVideoUrl(value) {
+  let url;
+  try { url = new URL(String(value || "")); } catch { return null; }
+  if (url.origin !== STORAGE_ORIGIN || !url.pathname.startsWith(STORAGE_PATH) || url.username || url.password) return null;
+  return url;
+}
+
+function isVideo(buffer) {
+  return (buffer.length > 12 && buffer.subarray(4, 8).toString("latin1") === "ftyp")
+    || (buffer.length > 4 && buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3);
+}
 
 export const handler = async (event) => {
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, body: "" };
-  // health-check mínimo (sem expor nada sensível)
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
   if (event.httpMethod === "GET") return json(200, { ok: true, service: "transcribe", ready: !!GROQ_KEY });
   if (event.httpMethod !== "POST") return json(405, { ok: false, error: "método inválido" });
-  if (!GROQ_KEY) return json(500, { ok: false, error: "GROQ_API_KEY não configurada no Netlify" });
+  if (!GROQ_KEY) return json(503, { ok: false, error: "serviço de transcrição indisponível" });
+  if (Buffer.byteLength(event.body || "", "utf8") > 64 * 1024) return json(413, { ok: false, error: "requisição muito grande" });
 
-  // 1) token do usuário
-  const auth = event.headers.authorization || event.headers.Authorization || "";
-  const token = auth.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return json(401, { ok: false, error: "sem autenticação" });
+  const token = String(event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "").trim();
+  const user = await authenticateToken(token);
+  if (!user) return json(401, { ok: false, error: "sessão inválida" });
+  if (!isAdmin(user)) return json(403, { ok: false, error: "somente o admin pode transcrever" });
+  const limit = await rateLimit("transcribe-sync", user.id, { limit: 12, windowMs: 10 * 60_000 });
+  if (!limit.allowed) return json(429, { ok: false, error: "muitas transcrições; tente novamente em instantes" }, { "Retry-After": String(limit.retryAfter) });
 
-  // 2) corpo
   let body;
   try { body = JSON.parse(event.body || "{}"); } catch { return json(400, { ok: false, error: "corpo inválido" }); }
-  const { id, videoUrl } = body;
-  if (!id || !videoUrl) return json(400, { ok: false, error: "faltou id ou videoUrl" });
-  if (!String(videoUrl).startsWith(STORAGE_PREFIX))
-    return json(400, { ok: false, error: "vídeo fora do Storage do projeto" });
+  const id = String(body.id || "");
+  const videoUrl = storageVideoUrl(body.videoUrl);
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id) || !videoUrl) return json(400, { ok: false, error: "id ou vídeo inválido" });
 
-  // 3) confere ADMIN
-  let email = "";
+  let buffer;
   try {
-    const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    if (!u.ok) return json(401, { ok: false, error: "sessão inválida" });
-    email = String(((await u.json()) || {}).email || "").toLowerCase();
-  } catch { return json(401, { ok: false, error: "não deu para validar a sessão" }); }
-  if (!ADMIN_EMAILS.includes(email)) return json(403, { ok: false, error: "somente o admin pode transcrever" });
+    const response = await fetch(videoUrl, { redirect: "error", signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) return json(400, { ok: false, error: `download do vídeo falhou (HTTP ${response.status})` });
+    buffer = await boundedBuffer(response, MAX_BYTES);
+    if (!isVideo(buffer)) return json(415, { ok: false, error: "arquivo não é um vídeo suportado" });
+  } catch (error) {
+    if (/excede o limite/.test(String(error && error.message || error))) return json(413, { ok: false, error: "vídeo grande demais para a transcrição instantânea" });
+    return json(400, { ok: false, error: "download do vídeo falhou" });
+  }
 
-  // 4) baixa o vídeo
-  let buf;
-  try {
-    const v = await fetch(videoUrl);
-    if (!v.ok) return json(400, { ok: false, error: `download do vídeo falhou (HTTP ${v.status})` });
-    buf = Buffer.from(await v.arrayBuffer());
-  } catch (e) { return json(400, { ok: false, error: "download do vídeo falhou" }); }
-  if (buf.length > MAX_BYTES)
-    return json(413, { ok: false, error: "vídeo grande demais para a transcrição instantânea; o processo automático cuida dele" });
-
-  // 5) Groq Whisper
-  let text = "", lang = "";
+  let text = "";
+  let language = "";
   try {
     const form = new FormData();
-    form.append("file", new Blob([buf], { type: "video/mp4" }), "audio.mp4");
+    form.append("file", new Blob([buffer], { type: "video/mp4" }), "audio.mp4");
     form.append("model", GROQ_MODEL);
     form.append("response_format", "verbose_json");
-    const g = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${GROQ_KEY}` },
       body: form,
+      signal: AbortSignal.timeout(120_000),
     });
-    const gt = await g.text();
-    if (!g.ok) return json(502, { ok: false, error: `Groq HTTP ${g.status}: ${gt.slice(0, 160)}` });
-    const gj = JSON.parse(gt);
-    text = String(gj.text || "").trim();
-    lang = String(gj.language || "");
-  } catch (e) { return json(502, { ok: false, error: "falha ao chamar o Groq" }); }
+    if (!response.ok) return json(502, { ok: false, error: "serviço de transcrição não concluiu o arquivo" });
+    const result = await response.json();
+    text = String(result.text || "").trim().slice(0, 2_000_000);
+    language = String(result.language || "").slice(0, 40);
+  } catch { return json(502, { ok: false, error: "falha ao chamar o serviço de transcrição" }); }
 
-  // 6) grava de volta (com o token do admin; o RLS confirma)
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`,
-      { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    const rows = r.ok ? await r.json() : [];
-    const data = (rows[0] && rows[0].data) || {};
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const rows = response.ok ? await response.json() : [];
+    if (rows.length !== 1) return json(404, { ok: false, error: "criativo não encontrado" });
+    const data = rows[0].data || {};
     data.transcricao = text;
     data.transcricaoStatus = "done";
-    data.transcricaoLang = lang;
-    const p = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
+    data.transcricaoLang = language;
+    const update = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({ data }),
+      signal: AbortSignal.timeout(10_000),
     });
-    if (!p.ok) return json(500, { ok: false, error: `gravação bloqueada (HTTP ${p.status})` });
-  } catch (e) { return json(500, { ok: false, error: "falha ao gravar a transcrição" }); }
-
-  return json(200, { ok: true, transcricao: text, lang });
+    if (!update.ok) return json(500, { ok: false, error: "falha ao gravar a transcrição" });
+  } catch { return json(500, { ok: false, error: "falha ao gravar a transcrição" }); }
+  return json(200, { ok: true, transcricao: text, lang: language });
 };

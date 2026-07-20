@@ -1,41 +1,43 @@
 // Persistência das transcrições avulsas em Netlify Blobs.
 // O áudio nunca é armazenado: somente texto, segmentos e timestamps por palavra.
 import { getStore } from "@netlify/blobs";
+import { authenticate, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYXNlIiwicmVmIjoicHBhYWp0emJoaml4aHlmaWRvamQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4MTIwOTM1NywiZXhwIjoyMDk2Nzg1MzUwfQ.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
-const json = (status, body) => Response.json(body, { status, headers: CORS });
-
-async function authenticated(req) {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!token) return null;
-  try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    return response.ok ? await response.json() : null;
-  } catch { return null; }
-}
+const METHODS = "GET, POST, OPTIONS";
+const finite = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+const cleanSegments = value => Array.isArray(value) ? value.slice(0, 20_000).map(item => ({
+  start: finite(item && item.start), end: finite(item && item.end), text: String(item && item.text || "").slice(0, 4_000),
+})).filter(item => item.text) : [];
+const cleanWords = value => Array.isArray(value) ? value.slice(0, 100_000).map(item => ({
+  start: finite(item && item.start), end: finite(item && item.end), word: String(item && item.word || "").slice(0, 240),
+})).filter(item => item.word) : [];
 
 export default async (req) => {
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
-  const user = await authenticated(req);
-  if (!user) return json(401, { ok: false, error: "sessão inválida" });
+  const options = preflight(req, METHODS); if (options) return options;
+  if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
+  const user = await authenticate(req);
+  if (!user) return json(req, 401, { ok: false, error: "sessão inválida" }, METHODS);
   const store = getStore({ name: "transcricoes", consistency: "strong" });
 
   if (req.method === "GET") {
+    const quota = await rateLimit("transcript-read", user.id, { limit: 120, windowMs: 60_000 });
+    if (!quota.allowed) return json(req, 429, { ok: false, error: "consultas demais; aguarde um instante", retryAfter: quota.retryAfter }, METHODS);
     const id = new URL(req.url).searchParams.get("id") || "";
-    if (!/^[a-f0-9-]{20,50}$/i.test(id)) return json(400, { ok: false, error: "id inválido" });
+    if (!/^[a-f0-9-]{20,50}$/i.test(id)) return json(req, 400, { ok: false, error: "id inválido" }, METHODS);
     const entry = await store.get(id, { type: "json" });
-    return entry ? json(200, { ok: true, transcript: entry }) : json(404, { ok: false, error: "transcrição não encontrada" });
+    return entry ? json(req, 200, { ok: true, transcript: entry }, METHODS) : json(req, 404, { ok: false, error: "transcrição não encontrada" }, METHODS);
   }
-  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
+  if (req.method !== "POST") return json(req, 405, { ok: false, error: "método inválido" }, METHODS);
+  const quota = await rateLimit("transcript-write", user.id, { limit: 20, windowMs: 10 * 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário atingido", retryAfter: quota.retryAfter }, METHODS);
 
   let input;
-  try { input = await req.json(); } catch { return json(400, { ok: false, error: "JSON inválido" }); }
+  try { input = await readJson(req, { maxBytes: 4 * 1024 * 1024 }); }
+  catch (error) { return json(req, error.status || 400, { ok: false, error: error.message }, METHODS); }
   const text = String(input.text || "").trim();
-  const segments = Array.isArray(input.segments) ? input.segments.slice(0, 20_000) : [];
-  const words = Array.isArray(input.words) ? input.words.slice(0, 100_000) : [];
-  if (!text && !segments.length) return json(400, { ok: false, error: "transcrição vazia" });
+  const segments = cleanSegments(input.segments);
+  const words = cleanWords(input.words);
+  if (!text && !segments.length) return json(req, 400, { ok: false, error: "transcrição vazia" }, METHODS);
   const id = crypto.randomUUID();
   const transcript = {
     id,
@@ -49,5 +51,5 @@ export default async (req) => {
     createdBy: String(user.id || "")
   };
   await store.setJSON(id, transcript);
-  return json(201, { ok: true, id });
+  return json(req, 201, { ok: true, id }, METHODS);
 };

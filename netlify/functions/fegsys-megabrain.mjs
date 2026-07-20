@@ -1,115 +1,31 @@
 import { aggregateSnapshot, getSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
-import { createPublicKey, createVerify } from "node:crypto";
+import { authenticate, isAdmin, json, rateLimit } from "./_security.mjs";
 
-const DEFAULT_SUPABASE_URL = "https://ppaajtzbhjixhyfidojd.supabase.co";
-const DEFAULT_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYXNlIiwicmVmIjoicHBhYWp0emJoaml4aHlmaWRvamQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4MTIwOTM1NywiZXhwIjoyMDk2Nzg1MzUwfQ.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
-const SUPABASE_URL = (process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || DEFAULT_ANON;
-const ADMIN_EMAILS = new Set(["adminswipefeg@swipefeg.app"]);
-const ADMIN_IDS = new Set(["ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3"]);
-const EXPECTED_ISSUER = `${DEFAULT_SUPABASE_URL}/auth/v1`;
-let cachedJwks = null;
-const configured = () => !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64);
-const json = (status, body) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
-
-function tokenClaims(token) {
-  try { return JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")); }
-  catch { return {}; }
-}
-
-function isAllowedAdmin(user) {
-  const id = String(user && (user.id || user.sub) || "").toLowerCase();
-  const email = String(user && user.email || "").trim().toLowerCase();
-  return ADMIN_IDS.has(id) || ADMIN_EMAILS.has(email);
-}
-
-function jwtPart(value) {
-  try { return JSON.parse(Buffer.from(value, "base64url").toString("utf8")); }
-  catch { return null; }
-}
-
-async function verifiedJwtUser(token) {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const header = jwtPart(parts[0]), claims = jwtPart(parts[1]);
-  if (!header || !claims || header.alg !== "ES256" || !header.kid) return null;
-  if (claims.iss !== EXPECTED_ISSUER || claims.aud !== "authenticated") return null;
-  const now = Math.floor(Date.now() / 1000);
-  if (!claims.sub || !claims.exp || +claims.exp <= now) return null;
-
-  if (!cachedJwks || cachedJwks.expiresAt <= Date.now()) {
-    const response = await fetch(`${EXPECTED_ISSUER}/.well-known/jwks.json`, { headers: { accept: "application/json" } }).catch(() => null);
-    if (!response || !response.ok) return null;
-    const result = await response.json().catch(() => null);
-    if (!result || !Array.isArray(result.keys)) return null;
-    cachedJwks = { keys: result.keys, expiresAt: Date.now() + 10 * 60 * 1000 };
-  }
-  const jwk = cachedJwks.keys.find(key => key.kid === header.kid && key.kty === "EC" && key.crv === "P-256");
-  if (!jwk) return null;
-  try {
-    const verifier = createVerify("SHA256");
-    verifier.update(`${parts[0]}.${parts[1]}`);
-    verifier.end();
-    const valid = verifier.verify({ key: createPublicKey({ key: jwk, format: "jwk" }), dsaEncoding: "ieee-p1363" }, Buffer.from(parts[2], "base64url"));
-    return valid ? claims : null;
-  } catch { return null; }
-}
-
-async function adminUser(req) {
-  // Alguns proxies/CDNs tratam `Authorization` como cabeçalho reservado. O
-  // painel envia também uma cópia no cabeçalho privado abaixo; em ambos os
-  // casos o JWT continua sendo validado pelo próprio Supabase antes do acesso.
-  const token = (req.headers.get("x-feg-auth") || req.headers.get("authorization") || "")
-    .replace(/^Bearer\s+/i, "")
-    .trim();
-  if (!token) return null;
-  const verified = await verifiedJwtUser(token);
-  if (verified && isAllowedAdmin(verified)) return verified;
-  // A configuração da Netlify pode manter uma URL antiga. Valida primeiro nela e,
-  // se necessário, repete no projeto que efetivamente atende o painel.
-  const targets = [[SUPABASE_URL, ANON], [DEFAULT_SUPABASE_URL, DEFAULT_ANON]]
-    .filter(([url, key], index, all) => all.findIndex(([u, k]) => u === url && k === key) === index);
-  for (const [baseUrl, anonKey] of targets) {
-    const response = await fetch(`${baseUrl}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
-    }).catch(() => null);
-    if (response && response.ok) {
-      const user = await response.json();
-      if (isAllowedAdmin(user)) return user;
-    }
-
-    // Alguns projetos Supabase recusam /auth/v1/user durante a rotação das
-    // chaves públicas, embora o mesmo JWT continue válido no PostgREST. O
-    // PostgREST valida a assinatura antes de responder; só então usamos as
-    // claims assinadas para conferir o admin permitido.
-    const rest = await fetch(`${baseUrl}/rest/v1/offers?select=id&limit=1`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
-    }).catch(() => null);
-    if (rest && rest.ok) {
-      const claims = tokenClaims(token);
-      if (isAllowedAdmin(claims)) return claims;
-    }
-  }
-  return null;
-}
+const configured = () => !!((process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64)
+  && process.env.GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID);
 
 export default async req => {
-  if (req.method !== "GET") return json(405, { ok: false, error: "método inválido" });
-  if (!await adminUser(req)) return json(401, { ok: false, error: "sessão do administrador não reconhecida; saia e entre novamente" });
+  if (req.method !== "GET") return json(req, 405, { ok: false, error: "método inválido" }, "GET");
+  const user = await authenticate(req);
+  if (!user) return json(req, 401, { ok: false, error: "sessão não reconhecida; saia e entre novamente" }, "GET");
+  if (!isAdmin(user)) return json(req, 403, { ok: false, error: "acesso restrito ao administrador" }, "GET");
+  const quota = await rateLimit("fegsys-megabrain", user.id, { limit: 30, windowMs: 5 * 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "consultas demais; aguarde um instante", retryAfter: quota.retryAfter }, "GET");
+
   const url = new URL(req.url);
   const range = resolveRange(url.searchParams);
   let snapshot;
   try { snapshot = await getSnapshot({ refresh: url.searchParams.get("refresh") === "1" }); }
-  catch (error) { return json(502, { ok: false, error: String(error && error.message || "falha na leitura do FEGSYS"), configured: configured() }); }
-  if (!snapshot) return json(503, { ok: false, error: "integração aguardando a nova credencial segura", configured: configured() });
+  catch { return json(req, 502, { ok: false, error: "falha temporária na leitura do FEGSYS", configured: configured() }, "GET"); }
+  if (!snapshot) return json(req, 503, { ok: false, error: "integração aguardando credencial", configured: configured() }, "GET");
   const result = aggregateSnapshot(snapshot, range);
-  return json(200, {
+  return json(req, 200, {
     ok: true,
     configured: configured(),
     range,
     syncedAt: snapshot.syncedAt,
     coverage: { from: snapshot.oldestDate, to: snapshot.newestDate },
     sourceStatus: snapshot.sourceStatus || null,
-    ...result
-  });
+    ...result,
+  }, "GET");
 };

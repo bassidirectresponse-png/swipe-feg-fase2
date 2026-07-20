@@ -20,8 +20,7 @@
 // "thinking" antes do texto. Por isso: max_tokens folgado (>=5000) e só repassamos
 // os deltas de TEXTO (o "pensando" vira um status discreto, sem vazar o raciocínio).
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ppaajtzbhjixhyfidojd.supabase.co").replace(/\/+$/, "");
-const ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
+import { SUPABASE_ANON_KEY as ANON, SUPABASE_URL, authenticate, bearerToken, corsHeaders, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
@@ -32,8 +31,7 @@ const MODELS = {
 };
 const MAX_TOKENS = { gerar: 5000, dissecar: 4800, modelar: 5000 };
 
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
-const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } });
+const METHODS = "POST, GET, OPTIONS";
 
 // ---------- helpers ----------
 // Remove surrogates órfãos (emoji cortado ao meio / dado corrompido) — senão a API
@@ -166,28 +164,26 @@ ${S.ctxTt}`;
 
 // ---------- handler (Netlify Functions v2, streaming) ----------
 export default async (req) => {
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: CORS });
-  if (req.method === "GET") return json(200, { ok: true, service: "feguinho", ready: !!ANTHROPIC_KEY });
-  if (req.method !== "POST") return json(405, { ok: false, error: "método inválido" });
-  if (!ANTHROPIC_KEY) return json(500, { ok: false, error: "ANTHROPIC_API_KEY não configurada no Netlify" });
+  const options = preflight(req, METHODS); if (options) return options;
+  if (req.method === "GET") return json(req, 200, { ok: true, service: "feguinho", ready: !!ANTHROPIC_KEY }, METHODS);
+  if (req.method !== "POST") return json(req, 405, { ok: false, error: "método inválido" }, METHODS);
+  if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
+  if (!ANTHROPIC_KEY) return json(req, 500, { ok: false, error: "serviço não configurado" }, METHODS);
 
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return json(401, { ok: false, error: "sem autenticação" });
-
-  // valida a sessão (qualquer usuário logado serve; a função é só leitura)
-  try {
-    const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
-    if (!u.ok) return json(401, { ok: false, error: "sessão inválida — faça login de novo" });
-  } catch { return json(401, { ok: false, error: "não deu para validar a sessão" }); }
+  const token = bearerToken(req);
+  const sessionUser = await authenticate(req);
+  if (!sessionUser) return json(req, 401, { ok: false, error: "sessão inválida — faça login de novo" }, METHODS);
+  const quota = await rateLimit("feguinho", sessionUser.id, { limit: 20, windowMs: 60_000 });
+  if (!quota.allowed) return json(req, 429, { ok: false, error: "muitas solicitações; aguarde um instante", retryAfter: quota.retryAfter }, METHODS);
 
   let body;
-  try { body = await req.json(); } catch { return json(400, { ok: false, error: "corpo inválido" }); }
+  try { body = await readJson(req, { maxBytes: 128 * 1024 }); }
+  catch (error) { return json(req, error.status || 400, { ok: false, error: error.message }, METHODS); }
   const tool = ["gerar", "dissecar", "modelar"].includes(body.tool) ? body.tool : "gerar";
   const nicho = clip(body.nicho || "", 60);
   const formato = body.formato === "vsl" ? "vsl" : "anuncio";
   const input = String(body.input || "").trim();
-  if (!input) return json(400, { ok: false, error: "escreva algo para o Feguinho trabalhar" });
+  if (!input) return json(req, 400, { ok: false, error: "escreva algo para o Feguinho trabalhar" }, METHODS);
   const mega = Array.isArray(body.mega) ? body.mega.slice(0, 8) : [];
   const tiktok = Array.isArray(body.tiktok) ? body.tiktok.slice(0, 8) : [];
 
@@ -253,6 +249,6 @@ export default async (req) => {
 
   return new Response(stream, {
     status: 200,
-    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no", ...CORS },
+    headers: { ...corsHeaders(req, METHODS), "Content-Type": "application/x-ndjson; charset=utf-8", "X-Accel-Buffering": "no" },
   });
 };
