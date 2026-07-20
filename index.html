@@ -3549,13 +3549,13 @@ function fegsysNumber(value,decimals=0){return (+value||0).toLocaleString("pt-BR
 function fegsysMetricCell(label,value,accent=false){return `<div class="fegsys-detail__metric${accent?" is-accent":""}"><span>${esc(label)}</span><strong>${esc(String(value))}</strong></div>`;}
 function fegsysDetailsSections(d,num){
   const m=d.fegsysMetrics||{};
-  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),official=value=>salesReady?value:"—";
+  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),officialValue=value=>salesReady?value:"—";
   const official=[
-    fegsysMetricCell("Pedidos",official(fmtNum(m.orders||m.conversions||0)),true),
-    fegsysMetricCell("Faturamento",official(fegsysMoney(m.revenue_brl||0)),true),
-    fegsysMetricCell("ROAS",official(fegsysNumber(m.roas||0,2)),true),
-    fegsysMetricCell("Ticket médio",official(fegsysMoney(m.ticket_brl||0))),
-    fegsysMetricCell("Faturamento USD",official(fegsysMoney(m.official_revenue_usd||0,"USD")))
+    fegsysMetricCell("Pedidos",officialValue(fmtNum(m.orders||m.conversions||0)),true),
+    fegsysMetricCell("Faturamento",officialValue(fegsysMoney(m.revenue_brl||0)),true),
+    fegsysMetricCell("ROAS",officialValue(fegsysNumber(m.roas||0,2)),true),
+    fegsysMetricCell("Ticket médio",officialValue(fegsysMoney(m.ticket_brl||0))),
+    fegsysMetricCell("Faturamento USD",officialValue(fegsysMoney(m.official_revenue_usd||0,"USD")))
   ].join("");
   const media=[
     fegsysMetricCell("Investimento",fegsysMoney(m.spend_brl||0)),

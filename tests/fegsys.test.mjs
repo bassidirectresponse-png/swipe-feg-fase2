@@ -8,6 +8,11 @@ const syncFn = await readFile(new URL("../netlify/functions/fegsys-sync.mjs", im
 const apiFn = await readFile(new URL("../netlify/functions/fegsys-megabrain.mjs", import.meta.url), "utf8");
 const coreFn = await readFile(new URL("../netlify/functions/_fegsys-bigquery.mjs", import.meta.url), "utf8");
 
+test("JavaScript embutido do painel permanece sintaticamente válido", () => {
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]).filter(Boolean);
+  for (const script of scripts) assert.doesNotThrow(() => new Function(script));
+});
+
 test("integração FEGSYS é horária, somente admin e não contém chave privada", () => {
   assert.match(syncFn, /schedule: "13 \* \* \* \*"/);
   assert.match(syncFn, /safeSyncError/);
