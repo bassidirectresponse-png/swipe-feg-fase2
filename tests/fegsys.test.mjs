@@ -18,11 +18,13 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.doesNotMatch([html, syncFn, apiFn, coreFn].join("\n"), /BEGIN PRIVATE KEY/);
 });
 
-test("Mega Brain preserva cards manuais e oferece períodos do FEGSYS", () => {
-  assert.match(html, /brainSource="all",brainPeriod="7d"/);
-  assert.match(html, /Mega Brain conectado ao FEGSYS/);
+test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", () => {
+  assert.match(html, /key:"megabrainfegsys"/);
+  assert.match(html, /mega-brain-fegsys/);
+  assert.match(html, /Mega Brain - Fegsys/);
+  assert.match(html, /activeSection==="megabrainfegsys"\?\[\.\.\.fegsysCards\]/);
+  assert.doesNotMatch(html, /brainSource/);
   assert.match(html, /data-fegsys-period/);
-  assert.match(html, /Acervo manual/);
   assert.match(html, /manual\.has\(brainNameKey\(card\.nome\)\)/);
   assert.match(html, /Mídia não disponível na view/);
   assert.match(html, /Vídeo e copy aguardam uma fonte vinculada/);
