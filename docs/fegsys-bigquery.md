@@ -4,7 +4,7 @@
 
 A conta de serviço deve continuar com acesso somente leitura:
 
-- `BigQuery Data Viewer` nos datasets `gold_feg` e `marts_feg`;
+- `BigQuery Data Viewer` no dataset `gold_feg`;
 - `BigQuery Job User` no projeto `grupofeg-lakehouse`.
 
 Nunca salve o JSON no repositório. Como a primeira chave foi compartilhada em uma conversa, ela deve ser revogada e substituída antes da ativação.
@@ -20,8 +20,8 @@ Também é aceito `GOOGLE_SERVICE_ACCOUNT_JSON`, mas Base64 evita problemas com 
 
 ## Comportamento
 
-- O backend lê os últimos 365 dias da view de mídia `gold_feg.vw_ads_criativo_diario`, do mart oficial `marts_feg.mart_criativos_diario` e da tabela `gold_feg.fct_meta_ads_performance`.
-- Pedidos, faturamento e ticket vêm do mart oficial. O ROAS principal é calculado com o faturamento oficial dividido pelo investimento consolidado.
+- O backend lê os últimos 365 dias da view `gold_feg.vw_ads_criativo_diario`, incluindo pedidos, faturamento e mídia, e usa `gold_feg.fct_meta_ads_performance` apenas para complementar os detalhes da Meta.
+- Pedidos, faturamento e ticket vêm da própria `vw_ads_criativo_diario`. O ROAS principal é calculado com o faturamento da view dividido pelo investimento consolidado.
 - Compras, receita, ROAS, CPA, checkouts, alcance, frequência e retenção reportados pela Meta aparecem separadamente no detalhe do card.
 - Um snapshot diário é mantido em Netlify Blobs e atualizado de hora em hora.
 - O endpoint do Mega Brain exige uma sessão do usuário administrador.

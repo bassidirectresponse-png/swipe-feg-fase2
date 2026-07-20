@@ -3,10 +3,9 @@ import { getStore } from "@netlify/blobs";
 
 const PROJECT_ID = "grupofeg-lakehouse";
 const VIEW = "grupofeg-lakehouse.gold_feg.vw_ads_criativo_diario";
-const SALES_MART = "grupofeg-lakehouse.marts_feg.mart_criativos_diario";
 const META_PERFORMANCE = "grupofeg-lakehouse.gold_feg.fct_meta_ads_performance";
 const STORE_NAME = "fegsys-megabrain";
-const STORE_KEY = "daily-v3";
+const STORE_KEY = "daily-v4";
 const MAX_AGE_MS = 75 * 60 * 1000;
 const QUERY_DAYS = 365;
 let cachedToken = null;
@@ -71,8 +70,10 @@ const FIELD_ALIASES = {
   clicks: ["clicks", "cliques", "link_clicks"],
   video_3s: ["video_3s", "video_plays_3s"],
   video_p75: ["video_p75", "video_plays_75"],
-  conversions: ["vendas", "sales", "purchases", "compras", "conversions", "results"],
-  revenue_brl: ["faturamento", "faturamento_brl", "receita", "receita_brl", "revenue", "revenue_brl", "purchase_value"],
+  orders: ["quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "purchases", "compras", "orders", "conversions", "results"],
+  official_revenue_brl: ["faturamento_liquido_front", "faturamento_liquido_front_brl", "faturamento_liquido", "faturamento", "faturamento_brl", "receita_liquida", "receita", "receita_brl", "revenue", "revenue_brl", "purchase_value"],
+  official_revenue_usd: ["faturamento_liquido_front_usd", "faturamento_liquido_usd", "faturamento_usd", "receita_usd", "revenue_usd"],
+  google_conversions: ["google_conversions", "conversions_google", "google_ads_conversions"],
   roas: ["roas", "purchase_roas", "return_on_ad_spend"],
   video_url: ["video_url", "creative_video_url", "media_url", "asset_url", "url_video"],
   thumbnail_url: ["thumbnail_url", "image_url", "creative_image_url", "thumb_url"],
@@ -96,7 +97,9 @@ function buildQuery(fields) {
   const sourceRoas = f.roas
     ? `SAFE_DIVIDE(SUM(${numberExpr(f.roas)} * ${numberExpr(spendWeight)}), NULLIF(SUM(${numberExpr(spendWeight)}), 0))`
     : "0";
-  return `
+  const salesAvailable = !!(f.orders && f.official_revenue_brl);
+  const salesError = salesAvailable ? "" : `campos não localizados na view: ${[!f.orders ? "pedidos" : "", !f.official_revenue_brl ? "faturamento" : ""].filter(Boolean).join(" e ")}`;
+  return { salesAvailable, salesError, query: `
 SELECT
   DATE(${quoteField(f.data)}) AS data,
   CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
@@ -108,8 +111,11 @@ SELECT
   SUM(${numberExpr(f.clicks)}) AS clicks,
   SUM(${numberExpr(f.video_3s)}) AS video_3s,
   SUM(${numberExpr(f.video_p75)}) AS video_p75,
-  SUM(${numberExpr(f.conversions)}) AS google_conversions,
-  SUM(${numberExpr(f.revenue_brl)}) AS attributed_revenue_brl,
+  SUM(${numberExpr(f.orders)}) AS orders,
+  SUM(${numberExpr(f.official_revenue_brl)}) AS official_revenue_brl,
+  SUM(${numberExpr(f.official_revenue_usd)}) AS official_revenue_usd,
+  SUM(${numberExpr(f.google_conversions)}) AS google_conversions,
+  ${salesAvailable ? "TRUE" : "FALSE"} AS official_sales_available,
   ${sourceRoas} AS source_roas,
   ${textExpr(f.video_url)} AS video_url,
   ${textExpr(f.thumbnail_url)} AS thumbnail_url,
@@ -120,24 +126,7 @@ WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'),
   AND ${quoteField(f.criativo)} IS NOT NULL
   AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
 GROUP BY 1, 2
-ORDER BY data DESC, spend_brl DESC`;
-}
-
-function officialSalesQuery() {
-  return `
-SELECT
-  DATE(data_referencia) AS data,
-  COALESCE(NULLIF(TRIM(criativo_limpo), ''), NULLIF(TRIM(criativo), '')) AS criativo,
-  STRING_AGG(DISTINCT NULLIF(TRIM(shop_slug), ''), ' + ') AS shops,
-  STRING_AGG(DISTINCT NULLIF(TRIM(platform), ''), ' + ') AS sales_platforms,
-  SUM(COALESCE(quantidade_pedidos, 0)) AS orders,
-  SUM(COALESCE(faturamento_liquido_front, 0)) AS official_revenue_brl,
-  SUM(COALESCE(faturamento_liquido_front_usd, 0)) AS official_revenue_usd
-FROM \`${SALES_MART}\`
-WHERE DATE(data_referencia) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
-  AND COALESCE(NULLIF(TRIM(criativo_limpo), ''), NULLIF(TRIM(criativo), '')) IS NOT NULL
-GROUP BY 1, 2
-ORDER BY data DESC, official_revenue_brl DESC`;
+ORDER BY data DESC, spend_brl DESC` };
 }
 
 function metaPerformanceQuery() {
@@ -249,7 +238,7 @@ export function mergeFegsysSources(baseRows = [], salesRows = [], metaRows = [])
     if (!merged.has(key)) merged.set(key, {
       data, criativo, ad_platform: "", ad_channel_type: "", shops: "", sales_platforms: "",
       spend_usd: 0, spend_brl: 0, impressions: 0, clicks: 0, video_3s: 0, video_p75: 0,
-      google_conversions: 0, attributed_revenue_brl: 0, orders: 0, official_revenue_brl: 0, official_revenue_usd: 0,
+      google_conversions: 0, orders: 0, official_revenue_brl: 0, official_revenue_usd: 0,
       meta_spend: 0, meta_impressions: 0, meta_reach: 0, meta_unique_clicks: 0, meta_link_clicks: 0,
       meta_outbound_clicks: 0, meta_landing_page_views: 0, meta_video_plays: 0, meta_initiate_checkout: 0,
       meta_purchases: 0, meta_revenue: 0, meta_hook_rate: 0, meta_midpoint_rate: 0, meta_hold_rate: 0,
@@ -308,17 +297,15 @@ async function queryBigQuery(credential) {
   const table = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/gold_feg/tables/vw_ads_criativo_diario`, { headers });
   const metadata = await table.json().catch(() => ({}));
   if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
-  const baseRaw = await runBigQueryQuery(headers, buildQuery(metadata.schema && metadata.schema.fields), "mídia consolidada");
+  const viewPlan = buildQuery(metadata.schema && metadata.schema.fields);
+  const baseRaw = await runBigQueryQuery(headers, viewPlan.query, "vw_ads_criativo_diario");
   const optional = async (query, label) => {
     try { return { rows: await runBigQueryQuery(headers, query, label), available: true, error: "" }; }
     catch (error) { return { rows: [], available: false, error: String(error && error.message || error) }; }
   };
-  const [salesResult, metaResult] = await Promise.all([
-    optional(officialSalesQuery(), "pedidos e faturamento"),
-    optional(metaPerformanceQuery(), "performance Meta")
-  ]);
-  const salesRaw = salesResult.rows, metaRaw = metaResult.rows;
-  const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions", "attributed_revenue_brl", "source_roas"]).map(row => ({
+  const metaResult = await optional(metaPerformanceQuery(), "performance Meta");
+  const metaRaw = metaResult.rows;
+  const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "orders", "official_revenue_brl", "official_revenue_usd", "google_conversions", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
     ad_platform: String(row.ad_platform || "").toUpperCase(),
@@ -329,21 +316,23 @@ async function queryBigQuery(credential) {
     clicks: +row.clicks || 0,
     video_3s: +row.video_3s || 0,
     video_p75: +row.video_p75 || 0,
+    orders: +row.orders || 0,
+    official_revenue_brl: +row.official_revenue_brl || 0,
+    official_revenue_usd: +row.official_revenue_usd || 0,
     google_conversions: +row.google_conversions || 0,
-    attributed_revenue_brl: +row.attributed_revenue_brl || 0,
     source_roas: +row.source_roas || 0,
+    official_sales_available: String(row.official_sales_available).toLowerCase() === "true",
     video_url: String(row.video_url || "").trim(),
     thumbnail_url: String(row.thumbnail_url || "").trim(),
     copy_text: String(row.copy_text || "").trim(),
     copy_url: String(row.copy_url || "").trim()
   })).filter(row => row.data && row.criativo);
-  const salesRows = numericRows(salesRaw, ["orders", "official_revenue_brl", "official_revenue_usd"]);
   const metaNumeric = ["meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks", "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue", "meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds", "meta_frequency", "meta_ctr", "meta_cpc", "meta_cpm", "meta_cplpv", "meta_cpi", "meta_cpa", "meta_roas", "meta_aov"];
   return {
-    rows: mergeFegsysSources(baseRows, salesRows, numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo),
+    rows: mergeFegsysSources(baseRows, [], numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo),
     sourceStatus: {
       media: { available: true, error: "" },
-      sales: { available: salesResult.available, error: salesResult.error },
+      sales: { available: viewPlan.salesAvailable, error: viewPlan.salesError },
       meta: { available: metaResult.available, error: metaResult.error }
     }
   };
@@ -355,7 +344,7 @@ export async function refreshSnapshot() {
   const result = await queryBigQuery(credential), rows = result.rows;
   const dates = rows.map(row => row.data).sort();
   const snapshot = {
-    version: 2,
+    version: 3,
     syncedAt: new Date().toISOString(),
     oldestDate: dates[0] || "",
     newestDate: dates[dates.length - 1] || "",
@@ -406,7 +395,7 @@ export function aggregateSnapshot(snapshot, range) {
   const source = (snapshot && snapshot.rows || []).filter(row => row.data >= range.from && row.data <= range.to);
   const map = new Map();
   const additive = [
-    "spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions", "attributed_revenue_brl",
+    "spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions",
     "orders", "official_revenue_brl", "official_revenue_usd", "meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks",
     "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue"
   ];

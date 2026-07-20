@@ -2576,7 +2576,7 @@ async function loadFegsysBrain(force=false){
 }
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
-  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("pedidos e faturamento aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");
+  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("pedidos e faturamento não localizados na view");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");
   const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
   const totals=fegsysTotals||{},salesReady=!(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false),official=value=>salesReady?value:"—";

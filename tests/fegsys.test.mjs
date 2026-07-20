@@ -45,24 +45,22 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /<span>ROAS<\/span>/);
   assert.match(html, /<span>CPC<\/span>/);
   assert.match(html, /Reportado pela Meta/);
-  assert.match(coreFn, /marts_feg\.mart_criativos_diario/);
+  assert.doesNotMatch(coreFn, /marts_feg\.mart_criativos_diario/);
+  assert.match(coreFn, /quantidade_pedidos/);
+  assert.match(coreFn, /faturamento_liquido_front/);
   assert.match(coreFn, /gold_feg\.fct_meta_ads_performance/);
 });
 
-test("fontes são unidas por data e criativo sem usar conversões de mídia como vendas", () => {
+test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa o card", () => {
   const base = [
-    { data: "2026-07-20", criativo: "BB 238.3 GB7", ad_platform: "META", spend_brl: 66, impressions: 1200, clicks: 30, google_conversions: 99, video_url: "https://cdn.example/video.mp4", copy_text: "Copy original" },
-    { data: "2026-07-20", criativo: "Google A", ad_platform: "GOOGLE", spend_brl: 27, impressions: 500, clicks: 10, google_conversions: 2 }
-  ];
-  const sales = [
-    { data: "2026-07-20", criativo: "BB 238.3 GB7", orders: 8, official_revenue_brl: 198, official_revenue_usd: 36, shops: "feg", sales_platforms: "shopify" }
+    { data: "2026-07-20", criativo: "BB 238.3 GB7", ad_platform: "META", spend_brl: 66, impressions: 1200, clicks: 30, orders: 8, official_revenue_brl: 198, official_revenue_usd: 36, official_sales_available: true, video_url: "https://cdn.example/video.mp4", copy_text: "Copy original" },
+    { data: "2026-07-20", criativo: "Google A", ad_platform: "GOOGLE", spend_brl: 27, impressions: 500, clicks: 10, orders: 2, official_revenue_brl: 54, official_sales_available: true }
   ];
   const meta = [
     { data: "2026-07-20", criativo: "BB 238.3 GB7", meta_spend: 60, meta_impressions: 1000, meta_reach: 800, meta_link_clicks: 25, meta_video_plays: 500, meta_initiate_checkout: 10, meta_purchases: 7, meta_revenue: 180, meta_hook_rate: .42, meta_hold_rate: .24 }
   ];
-  const rows = mergeFegsysSources(base, sales, meta);
+  const rows = mergeFegsysSources(base, [], meta);
   assert.equal(rows.find(row => row.criativo === "BB 238.3 GB7").conversions, 8);
-  assert.equal(rows.find(row => row.criativo === "BB 238.3 GB7").google_conversions, 99);
   assert.equal(rows.find(row => row.criativo === "BB 238.3 GB7").meta_roas, 3);
   const snapshot = { rows };
   const result = aggregateSnapshot(snapshot, { from: "2026-07-20", to: "2026-07-20" });
@@ -70,8 +68,8 @@ test("fontes são unidas por data e criativo sem usar conversões de mídia como
   assert.equal(result.totals.spend_brl, 93);
   assert.equal(result.totals.impressions, 1700);
   assert.equal(result.totals.clicks, 40);
-  assert.equal(result.totals.conversions, 8);
-  assert.equal(result.totals.google_conversions, 101);
+  assert.equal(result.totals.conversions, 10);
+  assert.equal(result.totals.revenue_brl, 252);
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").roas, 3);
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").ticket_brl, 24.75);
   assert.equal(result.cards.find(card => card.nome === "BB 238.3 GB7").meta_cpi, 6);
