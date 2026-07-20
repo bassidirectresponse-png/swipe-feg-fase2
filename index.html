@@ -535,6 +535,39 @@
   .brainfilter select{height:38px;min-width:0;color:var(--fg);background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:0 34px 0 12px;font-size:.82rem;font-weight:600;outline:none;}
   .brainfilter select:focus{border-color:var(--accent);box-shadow:var(--ring);}
   @media(max-width:760px){.brainfilters{width:100%;}.brainfilter{flex:1 1 160px;}}
+  .fegsys-panel{width:100%;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);overflow:hidden;}
+  .fegsys-panel__top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:16px 18px;border-bottom:1px solid var(--border);}
+  .fegsys-panel__identity{display:flex;align-items:flex-start;gap:11px;min-width:0;}
+  .fegsys-panel__mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--on-accent);flex:none;}
+  .fegsys-panel__mark .ico{width:17px;height:17px;}
+  .fegsys-panel__title{font-size:.94rem;font-weight:700;color:var(--fg);}
+  .fegsys-panel__status{margin-top:3px;font-size:.78rem;color:var(--muted-fg);text-wrap:pretty;}
+  .fegsys-panel__status.is-error{color:#ff9b9b;}
+  .fegsys-periods{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .fegsys-period{height:34px;padding:0 11px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);font-size:.74rem;font-weight:650;color:var(--muted-fg);transition:background .18s,color .18s,border-color .18s;}
+  .fegsys-period:hover{color:var(--fg);border-color:var(--border-strong);}
+  .fegsys-period.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+  .fegsys-panel__body{display:flex;align-items:end;justify-content:space-between;gap:14px;padding:13px 18px;flex-wrap:wrap;}
+  .fegsys-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;}
+  .fegsys-custom{display:flex;align-items:end;gap:8px;}
+  .fegsys-date{display:flex;flex-direction:column;gap:4px;font-size:.7rem;font-weight:650;color:var(--muted-fg);}
+  .fegsys-date input{height:36px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);color:var(--fg);padding:0 10px;color-scheme:dark;}
+  .fegsys-summary{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .fegsys-summary__item{display:flex;flex-direction:column;gap:2px;}
+  .fegsys-summary__item span{font-size:.68rem;color:var(--muted-fg);}
+  .fegsys-summary__item strong{font-size:.9rem;color:var(--fg);font-variant-numeric:tabular-nums;}
+  .fegsys-summary__item strong.accent{color:var(--accent);}
+  .fegsys-source{height:36px;min-width:160px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);color:var(--fg);padding:0 34px 0 11px;font-size:.76rem;font-weight:650;}
+  .fegsys-card{border-color:rgba(229,255,45,.26);}
+  .fegsys-card .cmedia{background:linear-gradient(135deg,rgba(229,255,45,.07),var(--surface-2));}
+  .fegsys-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:auto;}
+  .fegsys-kpi{padding:9px 10px;border-radius:10px;background:var(--surface-2);}
+  .fegsys-kpi span{display:block;font-size:.65rem;color:var(--muted-fg);}
+  .fegsys-kpi strong{display:block;margin-top:2px;font-size:.9rem;color:var(--fg);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;}
+  .fegsys-kpi--accent strong{color:var(--accent);}
+  .fegsys-pending{display:flex;align-items:center;gap:7px;font-size:.73rem;color:#e2c37d;}
+  .fegsys-pending .ico{width:14px;height:14px;}
+  @media(max-width:880px){.fegsys-panel__top{flex-direction:column;}.fegsys-panel__body{align-items:flex-start;}.fegsys-summary{width:100%;}.fegsys-custom{width:100%;}.fegsys-date{flex:1;}.fegsys-date input{width:100%;}}
   .chip.brain-ing{display:inline-flex;align-items:center;gap:5px;}
   .chip.brain-ing .ico{width:12px;height:12px;animation:pulse 1s infinite;}
   .chip.brain-err{display:inline-flex;align-items:center;gap:5px;color:#ff9a9a;background:var(--red-soft);border-color:rgba(255,93,93,.32);}
@@ -1156,6 +1189,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="";
+let brainSource="all",brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -1249,6 +1283,7 @@ const ADMIN_EMAILS=["adminswipefeg@swipefeg.app"];
 let isAdmin=false;
 function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
+  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysLoadedKey="";fegsysError="";brainSource="manual";}
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
 }
@@ -1303,6 +1338,7 @@ async function boot(){
   else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
   const ok=await loadOffers();
   if(ok!==false&&isAdmin)ensureJoymodeInsider();
+  if(ok!==false&&isAdmin&&activeSection==="megabrain")loadFegsysBrain();
   if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
 }
 async function loadOffers(){
@@ -1366,7 +1402,12 @@ function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
 function filtered(){
   let list=offers.filter(o=>sectionOf(o)===activeSection);
   if(activeSection==="criativo"&&critPlatform!=="all")list=list.filter(o=>((o.data||{}).plataforma||"meta")===critPlatform);
-  if(activeSection==="megabrain"&&brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
+  if(activeSection==="megabrain"){
+    const manual=list;
+    if(isAdmin&&brainSource!=="manual")list=brainSource==="fegsys"?[...fegsysCards]:manual.concat(fegsysCards);
+    else list=manual;
+    if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
+  }
   if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:n===activeNiche;});}
   if(searchTerm){
     const t=searchTerm.toLowerCase();
@@ -1403,6 +1444,7 @@ function qsFromState(){
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if(activeSection==="megabrain"&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
+  if(activeSection==="megabrain"&&isAdmin){if(brainSource!=="all")p.set("origem",brainSource);if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);}
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
@@ -1457,7 +1499,10 @@ function applyRoute(){
   searchTerm=r.q.get("q")||"";
   critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
-  if(activeSection==="megabrain"){brainSort=r.q.get("ordem")||"metrica";brainAuthor=r.q.get("autor")||"";}else brainAuthor="";
+  if(activeSection==="megabrain"){
+    brainSort=r.q.get("ordem")||"metrica";brainAuthor=r.q.get("autor")||"";
+    if(isAdmin){brainSource=["all","manual","fegsys"].includes(r.q.get("origem"))?r.q.get("origem"):"all";brainPeriod=["today","yesterday","7d","14d","30d","90d","custom"].includes(r.q.get("periodo"))?r.q.get("periodo"):"7d";brainDateFrom=r.q.get("de")||"";brainDateTo=r.q.get("ate")||"";}
+  }else brainAuthor="";
   // canoniza URL "nua" de seção com nicho -> /base/todos (ex.: /ofertas -> /ofertas/todos)
   if(NICHE_SECTIONS.has(activeSection)&&!r.id&&location.pathname!=="/"){
     const segN=decodeURIComponent(location.pathname).replace(/\/+$/,"").split("/").filter(Boolean).length;
@@ -1467,6 +1512,7 @@ function applyRoute(){
   setDocTitle();
   document.body.classList.toggle("route-detail-full",!!r.id&&!isToolSection(activeSection)&&!(history.state&&history.state.modal));
   renderGrid();
+  if(activeSection==="megabrain"&&isAdmin)setTimeout(()=>loadFegsysBrain(),0);
   if(isMobileNav())closeSideNav();
   if(r.id&&activeSection==="transcritor")loadTrRoute(r.id);
   else if(r.id)maybeOpenView(r.id);
@@ -1700,7 +1746,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,brainSource,brainPeriod,brainDateFrom,brainDateTo,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -1727,8 +1773,9 @@ function renderGrid(skipNav){
   if(activeSection==="furtado"){renderFurtado();return;}
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   const cfg=sectionCfg(activeSection);
-  const secCount=offers.filter(o=>sectionOf(o)===activeSection).length;
+  const manualSecCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
+  const secCount=activeSection==="megabrain"&&isAdmin&&brainSource!=="manual"?(brainSource==="fegsys"?fegsysCards.length:manualSecCount+fegsysCards.length):manualSecCount;
   $("#statTotal").textContent=secCount;
   const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor));
   const shownWrap=$("#statShownWrap");
@@ -2479,6 +2526,43 @@ function setSectionHeader(){
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;
 }
+function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+function fegsysMoney(value,currency="BRL"){return new Intl.NumberFormat("pt-BR",{style:"currency",currency,maximumFractionDigits:2}).format(+value||0);}
+function fegsysPercent(value){return (+value||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";}
+function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
+function fegsysLoadKey(){return [brainPeriod,brainDateFrom,brainDateTo].join("|");}
+async function loadFegsysBrain(force=false){
+  if(!isAdmin||activeSection!=="megabrain"||fegsysLoading)return;
+  const key=fegsysLoadKey();if(!force&&fegsysLoadedKey===key)return;
+  fegsysLoading=true;fegsysError="";renderSubFilter();
+  try{
+    const session=await sb.auth.getSession(),token=session.data&&session.data.session&&session.data.session.access_token;
+    if(!token)throw new Error("sessão expirada");
+    const p=new URLSearchParams({period:brainPeriod});if(brainPeriod==="custom"){if(brainDateFrom)p.set("from",brainDateFrom);if(brainDateTo)p.set("to",brainDateTo);}if(force)p.set("refresh","1");
+    const response=await fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    const result=await response.json().catch(()=>({}));if(!response.ok||!result.ok)throw new Error(result.error||"não foi possível consultar o FEGSYS");
+    const manual=new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>brainNameKey((o.data||{}).nome)).filter(Boolean));
+    const incoming=(result.cards||[]).filter(card=>card&&card.nome),unique=incoming.filter(card=>!manual.has(brainNameKey(card.nome)));
+    fegsysDuplicates=incoming.length-unique.length;
+    if(brainPeriod==="custom"){if(!brainDateFrom)brainDateFrom=result.range&&result.range.from||"";if(!brainDateTo)brainDateTo=result.range&&result.range.to||"";}
+    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],fegsysRange:result.range,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,videoMissing:true,copyMissing:true}}));
+    fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysLoadedKey=key;
+  }catch(error){fegsysCards=[];fegsysTotals=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
+  finally{fegsysLoading=false;renderGrid(true);}
+}
+function fegsysPanelHtml(){
+  if(!isAdmin)return"";
+  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} novos criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existentes preservados`:""}`:"Preparando a primeira sincronização");
+  const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
+  const totals=fegsysTotals||{};
+  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain conectado ao FEGSYS</div><div class="fegsys-panel__status${fegsysError?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls"><select class="fegsys-source" id="brainSourceFilter" aria-label="Origem dos cards"><option value="all"${brainSource==="all"?" selected":""}>Todos os cards</option><option value="manual"${brainSource==="manual"?" selected":""}>Acervo manual</option><option value="fegsys"${brainSource==="fegsys"?" selected":""}>Sincronizados</option></select>${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>${esc(fegsysPeriodLabel())}</span><strong class="accent">${esc(fegsysMoney(totals.spend_brl||0))}</strong></span><span class="fegsys-summary__item"><span>Impressões</span><strong>${fmtNum(totals.impressions||0)}</strong></span><span class="fegsys-summary__item"><span>Cliques</span><strong>${fmtNum(totals.clicks||0)}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span></div></div></section>`;
+}
+function wireFegsysPanel(el){
+  $$('[data-fegsys-period]',el).forEach(button=>button.addEventListener("click",()=>{brainPeriod=button.dataset.fegsysPeriod;if(brainPeriod!=="custom"){brainDateFrom="";brainDateTo="";}fegsysLoadedKey="";navigate(currentPath(),{replace:true});}));
+  const source=$("#brainSourceFilter");if(source)source.addEventListener("change",()=>{brainSource=source.value;navigate(currentPath(),{replace:true});});
+  const apply=$("#brainApplyDates");if(apply)apply.addEventListener("click",()=>{brainDateFrom=$("#brainDateFrom").value;brainDateTo=$("#brainDateTo").value;fegsysLoadedKey="";navigate(currentPath(),{replace:true});});
+  const refresh=$("#brainFegsysRefresh");if(refresh)refresh.addEventListener("click",()=>{fegsysLoadedKey="";loadFegsysBrain(true);});
+}
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
@@ -2499,12 +2583,13 @@ function renderSubFilter(){
     const batchBtn=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="brainBatchImport" title="Importa uma pasta com megabrain-import.json e os vídeos correspondentes">${ic("upload")}Importar lote</button>`:"";
     const authorOptions=`<option value="">Todos os copywriters</option>${authors.map(a=>`<option value="${esc(a)}"${brainAuthor===a?" selected":""}>${esc(a)}</option>`).join("")}`;
     const nicheOptions=`<option value="">Todos os nichos</option>${niches.map(n=>`<option value="${esc(n)}"${activeNiche===n?" selected":""}>${esc(n)}</option>`).join("")}`;
-    el.innerHTML=`<div class="subfilter__row"><div class="brainfilters"><label class="brainfilter"><span>Copywriter</span><select id="brainAuthorFilter" aria-label="Filtrar por copywriter">${authorOptions}</select></label><label class="brainfilter"><span>Nicho</span><select id="brainNicheFilter" aria-label="Filtrar por nicho">${nicheOptions}</select></label></div><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}${batchBtn}</div>`;
+    el.innerHTML=`${fegsysPanelHtml()}<div class="subfilter__row" style="margin-top:${isAdmin?"12px":"0"}"><div class="brainfilters"><label class="brainfilter"><span>Copywriter</span><select id="brainAuthorFilter" aria-label="Filtrar por copywriter">${authorOptions}</select></label><label class="brainfilter"><span>Nicho</span><select id="brainNicheFilter" aria-label="Filtrar por nicho">${nicheOptions}</select></label></div><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div>${importBtn}${batchBtn}</div>`;
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);}));
     const af=$("#brainAuthorFilter");if(af)af.addEventListener("change",()=>{brainAuthor=af.value;navigate(currentPath());});
     const nf=$("#brainNicheFilter");if(nf)nf.addEventListener("change",()=>{activeNiche=nf.value;navigate(currentPath());});
     const ib=$("#brainImportAll");if(ib)ib.addEventListener("click",importAllBrainDrive);
     const bb=$("#brainBatchImport");if(bb)bb.addEventListener("click",pickBrainBatchImport);
+    wireFegsysPanel(el);
     return;
   }
   if(BRAND_SECTIONS.has(activeSection)){
@@ -3428,8 +3513,24 @@ function wireVideoTranscripts(root){
   });
 }
 function wireBrainTranscript(root){wireVideoTranscripts(root);}
+function fegsysBrainCard(o){
+  const d=o.data||{},m=d.fegsysMetrics||{},range=d.fegsysRange||{};
+  const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
+  const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
+  const conv=(+m.conversions||0),convText=(d.platforms||[]).includes("GOOGLE")?fmtNum(conv):"—";
+  return card({
+    id:o.id,variant:"kcard kcard--brain fegsys-card",
+    head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
+    media:`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não disponível na view</span></div>`,
+    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_brl||0))}</strong></div><div class="fegsys-kpi"><span>Impressões</span><strong>${fmtNum(m.impressions||0)}</strong></div><div class="fegsys-kpi"><span>Cliques · CTR</span><strong>${fmtNum(m.clicks||0)} · ${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>Conversões Google</span><strong>${convText}</strong></div></div>`,
+    chips:`<div class="card__chips"><span class="chip accent">${esc(period)}</span>${(d.channels||[]).map(channel=>`<span class="chip">${esc(channel)}</span>`).join("")}</div>`,
+    extra:`<div class="fegsys-pending">${ic("alert")}Vídeo e copy aguardam uma fonte vinculada</div>`,
+    actions:`<span class="muted-empty" style="font-size:.78rem">Atualizado automaticamente pelo FEGSYS</span>`
+  });
+}
 function megabrainCard(o){
   const d=o.data||{};
+  if(d.source==="fegsys")return fegsysBrainCard(o);
   const copy=brainCopyText(d);
   const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
   const video=videoOfBrain(d),image=String(d.print||"").trim();
