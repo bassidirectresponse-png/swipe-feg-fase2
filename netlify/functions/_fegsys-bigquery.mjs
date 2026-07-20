@@ -190,14 +190,14 @@ function rowsFromResult(schema, rows) {
   return (rows || []).map(row => Object.fromEntries(fields.map((name, index) => [name, row.f && row.f[index] ? row.f[index].v : null])));
 }
 
-async function runBigQueryQuery(headers, query) {
+async function runBigQueryQuery(headers, query, label = "fonte") {
   const start = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/queries`, {
     method: "POST",
     headers,
     body: JSON.stringify({ query, useLegacySql: false, timeoutMs: 25_000, maxResults: 100_000 })
   });
   let result = await start.json().catch(() => ({}));
-  if (!start.ok) throw new Error(`consulta BigQuery recusada (${start.status})`);
+  if (!start.ok) throw new Error(`${label}: consulta BigQuery recusada (${start.status})`);
   const job = result.jobReference || {};
   for (let attempt = 0; result.jobComplete === false && attempt < 12; attempt += 1) {
     await new Promise(resolve => setTimeout(resolve, 750));
@@ -207,9 +207,9 @@ async function runBigQueryQuery(headers, query) {
     url.searchParams.set("maxResults", "100000");
     const poll = await fetch(url, { headers });
     result = await poll.json().catch(() => ({}));
-    if (!poll.ok) throw new Error(`consulta BigQuery interrompida (${poll.status})`);
+    if (!poll.ok) throw new Error(`${label}: consulta BigQuery interrompida (${poll.status})`);
   }
-  if (result.jobComplete === false) throw new Error("consulta BigQuery excedeu o tempo seguro");
+  if (result.jobComplete === false) throw new Error(`${label}: consulta BigQuery excedeu o tempo seguro`);
   const schema = result.schema;
   let rows = rowsFromResult(schema, result.rows);
   let pageToken = result.pageToken;
@@ -220,7 +220,7 @@ async function runBigQueryQuery(headers, query) {
     url.searchParams.set("maxResults", "100000");
     const page = await fetch(url, { headers });
     const next = await page.json().catch(() => ({}));
-    if (!page.ok) throw new Error(`paginação BigQuery interrompida (${page.status})`);
+    if (!page.ok) throw new Error(`${label}: paginação BigQuery interrompida (${page.status})`);
     rows = rows.concat(rowsFromResult(next.schema || schema, next.rows));
     pageToken = next.pageToken;
   }
@@ -308,11 +308,16 @@ async function queryBigQuery(credential) {
   const table = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/gold_feg/tables/vw_ads_criativo_diario`, { headers });
   const metadata = await table.json().catch(() => ({}));
   if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
-  const [baseRaw, salesRaw, metaRaw] = await Promise.all([
-    runBigQueryQuery(headers, buildQuery(metadata.schema && metadata.schema.fields)),
-    runBigQueryQuery(headers, officialSalesQuery()),
-    runBigQueryQuery(headers, metaPerformanceQuery())
+  const baseRaw = await runBigQueryQuery(headers, buildQuery(metadata.schema && metadata.schema.fields), "mídia consolidada");
+  const optional = async (query, label) => {
+    try { return { rows: await runBigQueryQuery(headers, query, label), available: true, error: "" }; }
+    catch (error) { return { rows: [], available: false, error: String(error && error.message || error) }; }
+  };
+  const [salesResult, metaResult] = await Promise.all([
+    optional(officialSalesQuery(), "pedidos e faturamento"),
+    optional(metaPerformanceQuery(), "performance Meta")
   ]);
+  const salesRaw = salesResult.rows, metaRaw = metaResult.rows;
   const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions", "attributed_revenue_brl", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
@@ -334,19 +339,27 @@ async function queryBigQuery(credential) {
   })).filter(row => row.data && row.criativo);
   const salesRows = numericRows(salesRaw, ["orders", "official_revenue_brl", "official_revenue_usd"]);
   const metaNumeric = ["meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks", "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue", "meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds", "meta_frequency", "meta_ctr", "meta_cpc", "meta_cpm", "meta_cplpv", "meta_cpi", "meta_cpa", "meta_roas", "meta_aov"];
-  return mergeFegsysSources(baseRows, salesRows, numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo);
+  return {
+    rows: mergeFegsysSources(baseRows, salesRows, numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo),
+    sourceStatus: {
+      media: { available: true, error: "" },
+      sales: { available: salesResult.available, error: salesResult.error },
+      meta: { available: metaResult.available, error: metaResult.error }
+    }
+  };
 }
 
 export async function refreshSnapshot() {
   const credential = readCredential();
   if (!credential) throw new Error("credencial do BigQuery ainda não configurada");
-  const rows = await queryBigQuery(credential);
+  const result = await queryBigQuery(credential), rows = result.rows;
   const dates = rows.map(row => row.data).sort();
   const snapshot = {
     version: 2,
     syncedAt: new Date().toISOString(),
     oldestDate: dates[0] || "",
     newestDate: dates[dates.length - 1] || "",
+    sourceStatus: result.sourceStatus,
     rows
   };
   await getStore({ name: STORE_NAME, consistency: "strong" }).setJSON(STORE_KEY, snapshot);

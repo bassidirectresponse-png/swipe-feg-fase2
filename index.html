@@ -1209,7 +1209,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="";
-let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
+let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -1303,7 +1303,7 @@ const ADMIN_EMAILS=["adminswipefeg@swipefeg.app"];
 let isAdmin=false;
 function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
-  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysLoadedKey="";fegsysError="";}
+  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysLoadedKey="";fegsysError="";}
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
 }
@@ -2569,17 +2569,18 @@ async function loadFegsysBrain(force=false){
     const incoming=(result.cards||[]).filter(card=>card&&card.nome),unique=incoming.filter(card=>!manual.has(brainNameKey(card.nome)));
     fegsysDuplicates=incoming.length-unique.length;
     if(brainPeriod==="custom"){if(!brainDateFrom)brainDateFrom=result.range&&result.range.from||"";if(!brainDateTo)brainDateTo=result.range&&result.range.to||"";}
-    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
-    fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysLoadedKey=key;
-  }catch(error){fegsysCards=[];fegsysTotals=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
+    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
+    fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysSourceStatus=result.sourceStatus||null;fegsysLoadedKey=key;
+  }catch(error){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
   finally{fegsysLoading=false;renderGrid();}
 }
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
-  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}`:"Preparando a primeira sincronização");
+  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("pedidos e faturamento aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");
+  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
-  const totals=fegsysTotals||{};
-  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Pedidos</span><strong class="accent">${fmtNum(totals.conversions||0)}</strong></span><span class="fegsys-summary__item"><span>Faturamento</span><strong class="accent">${esc(fegsysMoney(totals.revenue_brl||0))}</strong></span><span class="fegsys-summary__item"><span>ROAS</span><strong>${(+totals.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></span><span class="fegsys-summary__item"><span>Investimento</span><strong>${esc(fegsysMoney(totals.spend_brl||0))}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span><span class="fegsys-summary__item"><span>CPC</span><strong>${esc(fegsysMoney(totals.cpc_brl||0))}</strong></span></div></div></section>`;
+  const totals=fegsysTotals||{},salesReady=!(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false),official=value=>salesReady?value:"—";
+  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Pedidos</span><strong class="accent">${official(fmtNum(totals.conversions||0))}</strong></span><span class="fegsys-summary__item"><span>Faturamento</span><strong class="accent">${official(esc(fegsysMoney(totals.revenue_brl||0)))}</strong></span><span class="fegsys-summary__item"><span>ROAS</span><strong>${official((+totals.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}))}</strong></span><span class="fegsys-summary__item"><span>Investimento</span><strong>${esc(fegsysMoney(totals.spend_brl||0))}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span><span class="fegsys-summary__item"><span>CPC</span><strong>${esc(fegsysMoney(totals.cpc_brl||0))}</strong></span></div></div></section>`;
 }
 function wireFegsysPanel(el){
   $$('[data-fegsys-period]',el).forEach(button=>button.addEventListener("click",()=>{brainPeriod=button.dataset.fegsysPeriod;if(brainPeriod!=="custom"){brainDateFrom="";brainDateTo="";}fegsysLoadedKey="";navigate(currentPath(),{replace:true});}));
@@ -3548,12 +3549,13 @@ function fegsysNumber(value,decimals=0){return (+value||0).toLocaleString("pt-BR
 function fegsysMetricCell(label,value,accent=false){return `<div class="fegsys-detail__metric${accent?" is-accent":""}"><span>${esc(label)}</span><strong>${esc(String(value))}</strong></div>`;}
 function fegsysDetailsSections(d,num){
   const m=d.fegsysMetrics||{};
+  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),official=value=>salesReady?value:"—";
   const official=[
-    fegsysMetricCell("Pedidos",fmtNum(m.orders||m.conversions||0),true),
-    fegsysMetricCell("Faturamento",fegsysMoney(m.revenue_brl||0),true),
-    fegsysMetricCell("ROAS",fegsysNumber(m.roas||0,2),true),
-    fegsysMetricCell("Ticket médio",fegsysMoney(m.ticket_brl||0)),
-    fegsysMetricCell("Faturamento USD",fegsysMoney(m.official_revenue_usd||0,"USD"))
+    fegsysMetricCell("Pedidos",official(fmtNum(m.orders||m.conversions||0)),true),
+    fegsysMetricCell("Faturamento",official(fegsysMoney(m.revenue_brl||0)),true),
+    fegsysMetricCell("ROAS",official(fegsysNumber(m.roas||0,2)),true),
+    fegsysMetricCell("Ticket médio",official(fegsysMoney(m.ticket_brl||0))),
+    fegsysMetricCell("Faturamento USD",official(fegsysMoney(m.official_revenue_usd||0,"USD")))
   ].join("");
   const media=[
     fegsysMetricCell("Investimento",fegsysMoney(m.spend_brl||0)),
@@ -3590,11 +3592,12 @@ function fegsysDetailsSections(d,num){
     fegsysMetricCell("Tempo médio assistido",fegsysNumber(m.meta_avg_watch_time_seconds||0,1)+"s")
   ].join(""):"";
   const shops=(d.shops||[]).join(" · "),salesPlatforms=(d.salesPlatforms||[]).join(" · ");
-  const sourceNote=[shops?`Lojas: ${shops}`:"",salesPlatforms?`Plataformas de venda: ${salesPlatforms}`:""].filter(Boolean).join(" · ");
+  const sourceNote=salesReady?[shops?`Lojas: ${shops}`:"",salesPlatforms?`Plataformas de venda: ${salesPlatforms}`:""].filter(Boolean).join(" · "):"Pedidos e faturamento aguardam autorização de leitura para a conta de serviço.";
   return `<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Desempenho do período</span><span class="sec__line"></span></div><div class="fegsys-detail"><div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Resultados oficiais</h3><span class="fegsys-detail__source">FEGSYS</span></div><div class="fegsys-detail__metrics">${official}</div>${sourceNote?`<div class="fegsys-detail__note">${esc(sourceNote)}</div>`:""}</div><div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Distribuição de mídia</h3><span class="fegsys-detail__source">Consolidado</span></div><div class="fegsys-detail__metrics">${media}</div></div>${meta?`<div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Leitura complementar da campanha</h3><span class="fegsys-detail__source">Reportado pela Meta</span></div><div class="fegsys-detail__metrics">${meta}</div></div>`:""}</div></section>`;
 }
 function fegsysBrainCard(o){
   const d=o.data||{},m=d.fegsysMetrics||{},range=d.fegsysRange||{};
+  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),official=value=>salesReady?value:"—";
   const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
   const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
   const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3605,7 +3608,7 @@ function fegsysBrainCard(o){
     id:o.id,variant:"kcard kcard--brain fegsys-card",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
     media,
-    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Pedidos</span><strong>${fmtNum(m.conversions||0)}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>Faturamento</span><strong>${esc(fegsysMoney(m.revenue_brl||0))}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>ROAS</span><strong>${roas}</strong></div><div class="fegsys-kpi"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_brl||0))}</strong></div><div class="fegsys-kpi"><span>CTR</span><strong>${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>CPC</span><strong>${esc(fegsysMoney(m.cpc_brl||0))}</strong></div></div>`,
+    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Pedidos</span><strong>${official(fmtNum(m.conversions||0))}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>Faturamento</span><strong>${official(esc(fegsysMoney(m.revenue_brl||0)))}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>ROAS</span><strong>${official(roas)}</strong></div><div class="fegsys-kpi"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_brl||0))}</strong></div><div class="fegsys-kpi"><span>CTR</span><strong>${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>CPC</span><strong>${esc(fegsysMoney(m.cpc_brl||0))}</strong></div></div>`,
     chips:`<div class="card__chips"><span class="chip accent">${esc(period)}</span>${(d.shops||[]).slice(0,2).map(shop=>`<span class="chip">${esc(shop)}</span>`).join("")}${(d.channels||[]).map(channel=>`<span class="chip">${esc(channel)}</span>`).join("")}</div>`,
     extra:copyPreview||(!d.video&&!d.copyLink?`<div class="fegsys-pending">${ic("alert")}Vídeo e copy não estão disponíveis na fonte</div>`:""),
     actions:sourceLinks||`<span class="muted-empty" style="font-size:.78rem">Dados atualizados automaticamente</span>`

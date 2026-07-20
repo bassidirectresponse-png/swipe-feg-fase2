@@ -109,6 +109,7 @@ export default async req => {
     range,
     syncedAt: snapshot.syncedAt,
     coverage: { from: snapshot.oldestDate, to: snapshot.newestDate },
+    sourceStatus: snapshot.sourceStatus || null,
     ...result
   });
 };
