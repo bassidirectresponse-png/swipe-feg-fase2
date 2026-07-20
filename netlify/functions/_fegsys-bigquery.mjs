@@ -3,8 +3,10 @@ import { getStore } from "@netlify/blobs";
 
 const PROJECT_ID = "grupofeg-lakehouse";
 const VIEW = "grupofeg-lakehouse.gold_feg.vw_ads_criativo_diario";
+const SALES_MART = "grupofeg-lakehouse.marts_feg.mart_criativos_diario";
+const META_PERFORMANCE = "grupofeg-lakehouse.gold_feg.fct_meta_ads_performance";
 const STORE_NAME = "fegsys-megabrain";
-const STORE_KEY = "daily-v2";
+const STORE_KEY = "daily-v3";
 const MAX_AGE_MS = 75 * 60 * 1000;
 const QUERY_DAYS = 365;
 let cachedToken = null;
@@ -85,6 +87,7 @@ function fieldMap(fields) {
 }
 function numberExpr(field) { return field ? `COALESCE(SAFE_CAST(${quoteField(field)} AS FLOAT64), 0)` : "0"; }
 function textExpr(field) { return field ? `ANY_VALUE(NULLIF(TRIM(CAST(${quoteField(field)} AS STRING)), ''))` : "CAST(NULL AS STRING)"; }
+function textSetExpr(field) { return field ? `STRING_AGG(DISTINCT NULLIF(TRIM(CAST(${quoteField(field)} AS STRING)), ''), ' + ')` : "CAST(NULL AS STRING)"; }
 
 function buildQuery(fields) {
   const f = fieldMap(fields);
@@ -97,16 +100,16 @@ function buildQuery(fields) {
 SELECT
   DATE(${quoteField(f.data)}) AS data,
   CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
-  ${f.ad_platform ? `CAST(${quoteField(f.ad_platform)} AS STRING)` : "''"} AS ad_platform,
-  ${f.ad_channel_type ? `CAST(${quoteField(f.ad_channel_type)} AS STRING)` : "''"} AS ad_channel_type,
+  ${textSetExpr(f.ad_platform)} AS ad_platform,
+  ${textSetExpr(f.ad_channel_type)} AS ad_channel_type,
   SUM(${numberExpr(f.spend_usd)}) AS spend_usd,
   SUM(${numberExpr(f.spend_brl)}) AS spend_brl,
   SUM(${numberExpr(f.impressions)}) AS impressions,
   SUM(${numberExpr(f.clicks)}) AS clicks,
   SUM(${numberExpr(f.video_3s)}) AS video_3s,
   SUM(${numberExpr(f.video_p75)}) AS video_p75,
-  SUM(${numberExpr(f.conversions)}) AS conversions,
-  SUM(${numberExpr(f.revenue_brl)}) AS revenue_brl,
+  SUM(${numberExpr(f.conversions)}) AS google_conversions,
+  SUM(${numberExpr(f.revenue_brl)}) AS attributed_revenue_brl,
   ${sourceRoas} AS source_roas,
   ${textExpr(f.video_url)} AS video_url,
   ${textExpr(f.thumbnail_url)} AS thumbnail_url,
@@ -116,8 +119,70 @@ FROM \`${VIEW}\`
 WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
   AND ${quoteField(f.criativo)} IS NOT NULL
   AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
-GROUP BY 1, 2, 3, 4
+GROUP BY 1, 2
 ORDER BY data DESC, spend_brl DESC`;
+}
+
+function officialSalesQuery() {
+  return `
+SELECT
+  DATE(data_referencia) AS data,
+  COALESCE(NULLIF(TRIM(criativo_limpo), ''), NULLIF(TRIM(criativo), '')) AS criativo,
+  STRING_AGG(DISTINCT NULLIF(TRIM(shop_slug), ''), ' + ') AS shops,
+  STRING_AGG(DISTINCT NULLIF(TRIM(platform), ''), ' + ') AS sales_platforms,
+  SUM(COALESCE(quantidade_pedidos, 0)) AS orders,
+  SUM(COALESCE(faturamento_liquido_front, 0)) AS official_revenue_brl,
+  SUM(COALESCE(faturamento_liquido_front_usd, 0)) AS official_revenue_usd
+FROM \`${SALES_MART}\`
+WHERE DATE(data_referencia) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
+  AND COALESCE(NULLIF(TRIM(criativo_limpo), ''), NULLIF(TRIM(criativo), '')) IS NOT NULL
+GROUP BY 1, 2
+ORDER BY data DESC, official_revenue_brl DESC`;
+}
+
+function metaPerformanceQuery() {
+  return `
+WITH daily AS (
+  SELECT
+    DATE(ref_date) AS data,
+    COALESCE(NULLIF(TRIM(campaign_name), ''), NULLIF(TRIM(creative_name), ''), NULLIF(TRIM(ad_name), '')) AS criativo,
+    ANY_VALUE(NULLIF(TRIM(creative_id), '')) AS creative_id,
+    ANY_VALUE(NULLIF(TRIM(ad_id), '')) AS ad_id,
+    SUM(COALESCE(spend, 0)) AS meta_spend,
+    SUM(COALESCE(impressions, 0)) AS meta_impressions,
+    SUM(COALESCE(reach, 0)) AS meta_reach,
+    SUM(COALESCE(unique_clicks, 0)) AS meta_unique_clicks,
+    SUM(COALESCE(link_clicks, 0)) AS meta_link_clicks,
+    SUM(COALESCE(outbound_clicks, 0)) AS meta_outbound_clicks,
+    SUM(COALESCE(landing_page_views, 0)) AS meta_landing_page_views,
+    SUM(COALESCE(video_plays, 0)) AS meta_video_plays,
+    SUM(COALESCE(initiate_checkout, 0)) AS meta_initiate_checkout,
+    SUM(COALESCE(purchases, 0)) AS meta_purchases,
+    SUM(COALESCE(revenue, 0)) AS meta_revenue,
+    SAFE_DIVIDE(SUM(COALESCE(hook_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_hook_rate,
+    SAFE_DIVIDE(SUM(COALESCE(midpoint_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_midpoint_rate,
+    SAFE_DIVIDE(SUM(COALESCE(hold_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_hold_rate,
+    SAFE_DIVIDE(SUM(COALESCE(p95_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_p95_rate,
+    SAFE_DIVIDE(SUM(COALESCE(completion_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_completion_rate,
+    SAFE_DIVIDE(SUM(COALESCE(avg_watch_time_seconds, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_avg_watch_time_seconds
+  FROM \`${META_PERFORMANCE}\`
+  WHERE DATE(ref_date) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
+    AND COALESCE(NULLIF(TRIM(campaign_name), ''), NULLIF(TRIM(creative_name), ''), NULLIF(TRIM(ad_name), '')) IS NOT NULL
+  GROUP BY 1, 2
+)
+SELECT
+  *,
+  SAFE_DIVIDE(meta_impressions, NULLIF(meta_reach, 0)) AS meta_frequency,
+  SAFE_DIVIDE(meta_link_clicks * 100, NULLIF(meta_impressions, 0)) AS meta_ctr,
+  SAFE_DIVIDE(meta_spend, NULLIF(meta_link_clicks, 0)) AS meta_cpc,
+  SAFE_DIVIDE(meta_spend * 1000, NULLIF(meta_impressions, 0)) AS meta_cpm,
+  SAFE_DIVIDE(meta_spend, NULLIF(meta_landing_page_views, 0)) AS meta_cplpv,
+  SAFE_DIVIDE(meta_spend, NULLIF(meta_initiate_checkout, 0)) AS meta_cpi,
+  SAFE_DIVIDE(meta_spend, NULLIF(meta_purchases, 0)) AS meta_cpa,
+  SAFE_DIVIDE(meta_revenue, NULLIF(meta_spend, 0)) AS meta_roas,
+  SAFE_DIVIDE(meta_revenue, NULLIF(meta_purchases, 0)) AS meta_aov
+FROM daily
+ORDER BY data DESC, meta_spend DESC`;
 }
 
 function rowsFromResult(schema, rows) {
@@ -125,13 +190,7 @@ function rowsFromResult(schema, rows) {
   return (rows || []).map(row => Object.fromEntries(fields.map((name, index) => [name, row.f && row.f[index] ? row.f[index].v : null])));
 }
 
-async function queryBigQuery(credential) {
-  const token = await accessToken(credential);
-  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
-  const table = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/gold_feg/tables/vw_ads_criativo_diario`, { headers });
-  const metadata = await table.json().catch(() => ({}));
-  if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
-  const query = buildQuery(metadata.schema && metadata.schema.fields);
+async function runBigQueryQuery(headers, query) {
   const start = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/queries`, {
     method: "POST",
     headers,
@@ -165,7 +224,96 @@ async function queryBigQuery(credential) {
     rows = rows.concat(rowsFromResult(next.schema || schema, next.rows));
     pageToken = next.pageToken;
   }
-  return rows.map(row => ({
+  return rows;
+}
+
+function normalizedCreative(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function listValues(value) {
+  return String(value || "").split("+").map(item => item.trim()).filter(Boolean);
+}
+
+function numericRows(rows, fields) {
+  return rows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, fields.includes(key) ? (+value || 0) : String(value || "").trim()])));
+}
+
+export function mergeFegsysSources(baseRows = [], salesRows = [], metaRows = []) {
+  const merged = new Map();
+  const ensure = (row, preferredName = "") => {
+    const data = String(row.data || "");
+    const criativo = String(preferredName || row.criativo || "").trim();
+    const key = `${data}|${normalizedCreative(criativo)}`;
+    if (!data || !normalizedCreative(criativo)) return null;
+    if (!merged.has(key)) merged.set(key, {
+      data, criativo, ad_platform: "", ad_channel_type: "", shops: "", sales_platforms: "",
+      spend_usd: 0, spend_brl: 0, impressions: 0, clicks: 0, video_3s: 0, video_p75: 0,
+      google_conversions: 0, attributed_revenue_brl: 0, orders: 0, official_revenue_brl: 0, official_revenue_usd: 0,
+      meta_spend: 0, meta_impressions: 0, meta_reach: 0, meta_unique_clicks: 0, meta_link_clicks: 0,
+      meta_outbound_clicks: 0, meta_landing_page_views: 0, meta_video_plays: 0, meta_initiate_checkout: 0,
+      meta_purchases: 0, meta_revenue: 0, meta_hook_rate: 0, meta_midpoint_rate: 0, meta_hold_rate: 0,
+      meta_p95_rate: 0, meta_completion_rate: 0, meta_avg_watch_time_seconds: 0, creative_id: "", ad_id: "",
+      video_url: "", thumbnail_url: "", copy_text: "", copy_url: "", official_sales_available: false, meta_available: false
+    });
+    return merged.get(key);
+  };
+
+  for (const row of baseRows) {
+    const item = ensure(row); if (!item) continue;
+    Object.assign(item, row);
+  }
+  for (const row of salesRows) {
+    const item = ensure(row); if (!item) continue;
+    item.orders += +row.orders || 0;
+    item.official_revenue_brl += +row.official_revenue_brl || 0;
+    item.official_revenue_usd += +row.official_revenue_usd || 0;
+    item.shops = [...new Set([...listValues(item.shops), ...listValues(row.shops)])].join(" + ");
+    item.sales_platforms = [...new Set([...listValues(item.sales_platforms), ...listValues(row.sales_platforms)])].join(" + ");
+    item.official_sales_available = true;
+  }
+  for (const row of metaRows) {
+    const item = ensure(row); if (!item) continue;
+    for (const field of ["meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks", "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue"]) item[field] += +row[field] || 0;
+    const playsBefore = item.meta_video_plays - (+row.meta_video_plays || 0), plays = +row.meta_video_plays || 0, totalPlays = playsBefore + plays;
+    for (const field of ["meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds"]) {
+      item[field] = totalPlays ? ((+item[field] || 0) * playsBefore + (+row[field] || 0) * plays) / totalPlays : 0;
+    }
+    if (!item.creative_id) item.creative_id = String(row.creative_id || "");
+    if (!item.ad_id) item.ad_id = String(row.ad_id || "");
+    item.meta_available = true;
+  }
+  return [...merged.values()].map(item => ({
+    ...item,
+    conversions: item.orders,
+    revenue_brl: item.official_revenue_brl,
+    ticket_brl: item.orders ? item.official_revenue_brl / item.orders : 0,
+    ticket_usd: item.orders ? item.official_revenue_usd / item.orders : 0,
+    source_roas: item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0,
+    meta_frequency: item.meta_reach ? item.meta_impressions / item.meta_reach : 0,
+    meta_ctr: item.meta_impressions ? item.meta_link_clicks / item.meta_impressions * 100 : 0,
+    meta_cpc: item.meta_link_clicks ? item.meta_spend / item.meta_link_clicks : 0,
+    meta_cpm: item.meta_impressions ? item.meta_spend / item.meta_impressions * 1000 : 0,
+    meta_cplpv: item.meta_landing_page_views ? item.meta_spend / item.meta_landing_page_views : 0,
+    meta_cpi: item.meta_initiate_checkout ? item.meta_spend / item.meta_initiate_checkout : 0,
+    meta_cpa: item.meta_purchases ? item.meta_spend / item.meta_purchases : 0,
+    meta_roas: item.meta_spend ? item.meta_revenue / item.meta_spend : 0,
+    meta_aov: item.meta_purchases ? item.meta_revenue / item.meta_purchases : 0
+  }));
+}
+
+async function queryBigQuery(credential) {
+  const token = await accessToken(credential);
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  const table = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/gold_feg/tables/vw_ads_criativo_diario`, { headers });
+  const metadata = await table.json().catch(() => ({}));
+  if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
+  const [baseRaw, salesRaw, metaRaw] = await Promise.all([
+    runBigQueryQuery(headers, buildQuery(metadata.schema && metadata.schema.fields)),
+    runBigQueryQuery(headers, officialSalesQuery()),
+    runBigQueryQuery(headers, metaPerformanceQuery())
+  ]);
+  const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions", "attributed_revenue_brl", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
     ad_platform: String(row.ad_platform || "").toUpperCase(),
@@ -176,14 +324,17 @@ async function queryBigQuery(credential) {
     clicks: +row.clicks || 0,
     video_3s: +row.video_3s || 0,
     video_p75: +row.video_p75 || 0,
-    conversions: +row.conversions || 0,
-    revenue_brl: +row.revenue_brl || 0,
+    google_conversions: +row.google_conversions || 0,
+    attributed_revenue_brl: +row.attributed_revenue_brl || 0,
     source_roas: +row.source_roas || 0,
     video_url: String(row.video_url || "").trim(),
     thumbnail_url: String(row.thumbnail_url || "").trim(),
     copy_text: String(row.copy_text || "").trim(),
     copy_url: String(row.copy_url || "").trim()
   })).filter(row => row.data && row.criativo);
+  const salesRows = numericRows(salesRaw, ["orders", "official_revenue_brl", "official_revenue_usd"]);
+  const metaNumeric = ["meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks", "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue", "meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds", "meta_frequency", "meta_ctr", "meta_cpc", "meta_cpm", "meta_cplpv", "meta_cpi", "meta_cpa", "meta_roas", "meta_aov"];
+  return mergeFegsysSources(baseRows, salesRows, numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo);
 }
 
 export async function refreshSnapshot() {
@@ -192,7 +343,7 @@ export async function refreshSnapshot() {
   const rows = await queryBigQuery(credential);
   const dates = rows.map(row => row.data).sort();
   const snapshot = {
-    version: 1,
+    version: 2,
     syncedAt: new Date().toISOString(),
     oldestDate: dates[0] || "",
     newestDate: dates[dates.length - 1] || "",
@@ -241,45 +392,91 @@ function stableId(value) {
 export function aggregateSnapshot(snapshot, range) {
   const source = (snapshot && snapshot.rows || []).filter(row => row.data >= range.from && row.data <= range.to);
   const map = new Map();
+  const additive = [
+    "spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "google_conversions", "attributed_revenue_brl",
+    "orders", "official_revenue_brl", "official_revenue_usd", "meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks",
+    "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue"
+  ];
+  const weightedMeta = ["meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds"];
   for (const row of source) {
-    const key = row.criativo.trim().toLocaleLowerCase("pt-BR");
+    const key = normalizedCreative(row.criativo);
     if (!map.has(key)) map.set(key, {
       id: `fegsys-${stableId(key)}`,
       nome: row.criativo,
-      platforms: new Set(), channels: new Set(), dates: new Set(),
-      spend_usd: 0, spend_brl: 0, impressions: 0, clicks: 0, video_3s: 0, video_p75: 0, conversions: 0, revenue_brl: 0,
-      source_roas_numerator: 0, source_roas_weight: 0, video_url: "", thumbnail_url: "", copy_text: "", copy_url: ""
+      platforms: new Set(), channels: new Set(), shops: new Set(), sales_platforms: new Set(), dates: new Set(),
+      ...Object.fromEntries(additive.map(metric => [metric, 0])),
+      ...Object.fromEntries(weightedMeta.map(metric => [`${metric}_numerator`, 0])),
+      meta_rate_weight: 0, creative_id: "", ad_id: "", video_url: "", thumbnail_url: "", copy_text: "", copy_url: "",
+      official_sales_available: false, meta_available: false
     });
     const item = map.get(key);
-    if (row.ad_platform) item.platforms.add(row.ad_platform);
-    if (row.ad_channel_type) item.channels.add(row.ad_channel_type);
+    for (const value of listValues(row.ad_platform)) item.platforms.add(value.toUpperCase());
+    for (const value of listValues(row.ad_channel_type)) item.channels.add(value);
+    for (const value of listValues(row.shops)) item.shops.add(value);
+    for (const value of listValues(row.sales_platforms)) item.sales_platforms.add(value);
     item.dates.add(row.data);
-    for (const metric of ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "conversions", "revenue_brl"]) item[metric] += +row[metric] || 0;
-    const weight = +row.spend_brl || +row.spend_usd || 0;
-    item.source_roas_numerator += (+row.source_roas || 0) * weight;
-    item.source_roas_weight += weight;
-    for (const field of ["video_url", "thumbnail_url", "copy_text", "copy_url"]) if (!item[field] && row[field]) item[field] = row[field];
+    for (const metric of additive) item[metric] += +row[metric] || 0;
+    const rateWeight = +row.meta_video_plays || 0;
+    item.meta_rate_weight += rateWeight;
+    for (const metric of weightedMeta) item[`${metric}_numerator`] += (+row[metric] || 0) * rateWeight;
+    item.official_sales_available ||= !!row.official_sales_available;
+    item.meta_available ||= !!row.meta_available;
+    for (const field of ["creative_id", "ad_id", "video_url", "thumbnail_url", "copy_text", "copy_url"]) if (!item[field] && row[field]) item[field] = row[field];
   }
   const cards = [...map.values()].map(item => {
     const ctr = item.impressions ? item.clicks / item.impressions * 100 : 0;
     const cpc_brl = item.clicks ? item.spend_brl / item.clicks : 0;
     const cpm_brl = item.impressions ? item.spend_brl / item.impressions * 1000 : 0;
-    const roas = item.spend_brl && item.revenue_brl ? item.revenue_brl / item.spend_brl : (item.source_roas_weight ? item.source_roas_numerator / item.source_roas_weight : 0);
+    const roas = item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0;
+    const conversions = item.orders;
+    const revenue_brl = item.official_revenue_brl;
+    const ticket_brl = item.orders ? item.official_revenue_brl / item.orders : 0;
+    const ticket_usd = item.orders ? item.official_revenue_usd / item.orders : 0;
+    const meta_frequency = item.meta_reach ? item.meta_impressions / item.meta_reach : 0;
+    const meta_ctr = item.meta_impressions ? item.meta_link_clicks / item.meta_impressions * 100 : 0;
+    const meta_cpc = item.meta_link_clicks ? item.meta_spend / item.meta_link_clicks : 0;
+    const meta_cpm = item.meta_impressions ? item.meta_spend / item.meta_impressions * 1000 : 0;
+    const meta_cplpv = item.meta_landing_page_views ? item.meta_spend / item.meta_landing_page_views : 0;
+    const meta_cpi = item.meta_initiate_checkout ? item.meta_spend / item.meta_initiate_checkout : 0;
+    const meta_cpa = item.meta_purchases ? item.meta_spend / item.meta_purchases : 0;
+    const meta_roas = item.meta_spend ? item.meta_revenue / item.meta_spend : 0;
+    const meta_aov = item.meta_purchases ? item.meta_revenue / item.meta_purchases : 0;
+    const weighted = Object.fromEntries(weightedMeta.map(metric => [metric, item.meta_rate_weight ? item[`${metric}_numerator`] / item.meta_rate_weight : 0]));
+    const { meta_rate_weight, ...clean } = item;
+    for (const metric of weightedMeta) delete clean[`${metric}_numerator`];
     return {
-      ...item,
-      platforms: [...item.platforms], channels: [...item.channels], dates: [...item.dates].sort(),
-      ctr, cpc_brl, cpm_brl, roas,
+      ...clean,
+      platforms: [...item.platforms], channels: [...item.channels], shops: [...item.shops], sales_platforms: [...item.sales_platforms], dates: [...item.dates].sort(),
+      conversions, revenue_brl, ticket_brl, ticket_usd, ctr, cpc_brl, cpm_brl, roas,
+      meta_frequency, meta_ctr, meta_cpc, meta_cpm, meta_cplpv, meta_cpi, meta_cpa, meta_roas, meta_aov, ...weighted,
       mediaAvailable: !!item.video_url, copyAvailable: !!(item.copy_text || item.copy_url)
     };
   }).sort((a, b) => b.spend_brl - a.spend_brl || b.clicks - a.clicks || a.nome.localeCompare(b.nome, "pt-BR"));
   const totals = cards.reduce((total, card) => {
-    for (const metric of ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "conversions", "revenue_brl"]) total[metric] += card[metric];
+    for (const metric of additive) total[metric] += card[metric];
+    for (const metric of weightedMeta) total[`${metric}_numerator`] += card[metric] * card.meta_video_plays;
     return total;
-  }, { spend_usd: 0, spend_brl: 0, impressions: 0, clicks: 0, video_3s: 0, video_p75: 0, conversions: 0, revenue_brl: 0 });
+  }, { ...Object.fromEntries(additive.map(metric => [metric, 0])), ...Object.fromEntries(weightedMeta.map(metric => [`${metric}_numerator`, 0])) });
+  totals.conversions = totals.orders;
+  totals.revenue_brl = totals.official_revenue_brl;
+  totals.ticket_brl = totals.orders ? totals.official_revenue_brl / totals.orders : 0;
+  totals.ticket_usd = totals.orders ? totals.official_revenue_usd / totals.orders : 0;
   totals.ctr = totals.impressions ? totals.clicks / totals.impressions * 100 : 0;
   totals.cpc_brl = totals.clicks ? totals.spend_brl / totals.clicks : 0;
-  totals.roas = totals.spend_brl && totals.revenue_brl
-    ? totals.revenue_brl / totals.spend_brl
-    : (totals.spend_brl ? cards.reduce((sum, card) => sum + card.roas * card.spend_brl, 0) / totals.spend_brl : 0);
+  totals.cpm_brl = totals.impressions ? totals.spend_brl / totals.impressions * 1000 : 0;
+  totals.roas = totals.spend_brl ? totals.official_revenue_brl / totals.spend_brl : 0;
+  totals.meta_frequency = totals.meta_reach ? totals.meta_impressions / totals.meta_reach : 0;
+  totals.meta_ctr = totals.meta_impressions ? totals.meta_link_clicks / totals.meta_impressions * 100 : 0;
+  totals.meta_cpc = totals.meta_link_clicks ? totals.meta_spend / totals.meta_link_clicks : 0;
+  totals.meta_cpm = totals.meta_impressions ? totals.meta_spend / totals.meta_impressions * 1000 : 0;
+  totals.meta_cplpv = totals.meta_landing_page_views ? totals.meta_spend / totals.meta_landing_page_views : 0;
+  totals.meta_cpi = totals.meta_initiate_checkout ? totals.meta_spend / totals.meta_initiate_checkout : 0;
+  totals.meta_cpa = totals.meta_purchases ? totals.meta_spend / totals.meta_purchases : 0;
+  totals.meta_roas = totals.meta_spend ? totals.meta_revenue / totals.meta_spend : 0;
+  totals.meta_aov = totals.meta_purchases ? totals.meta_revenue / totals.meta_purchases : 0;
+  for (const metric of weightedMeta) {
+    totals[metric] = totals.meta_video_plays ? totals[`${metric}_numerator`] / totals.meta_video_plays : 0;
+    delete totals[`${metric}_numerator`];
+  }
   return { cards, totals };
 }

@@ -6,8 +6,8 @@ function safeSyncError(error) {
   const raw = String(error && error.message || "").toLowerCase();
   if (raw.includes("ainda não configurada")) return "credencial do BigQuery ainda não configurada";
   if (raw.includes("credencial") || raw.includes("autenticação google")) return "credencial do BigQuery inválida ou expirada";
-  if (raw.includes("(403)") || raw.includes("permiss")) return "a conta de serviço não possui acesso suficiente à view";
-  if (raw.includes("colunas de data") || raw.includes("estrutura da view")) return "a estrutura da view não contém os campos obrigatórios";
+  if (raw.includes("(403)") || raw.includes("permiss")) return "a conta de serviço não possui acesso suficiente às fontes do FEGSYS";
+  if (raw.includes("colunas de data") || raw.includes("estrutura da view")) return "as fontes do FEGSYS não contêm os campos obrigatórios";
   return "sincronização do FEGSYS indisponível";
 }
 

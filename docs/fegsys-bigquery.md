@@ -4,7 +4,7 @@
 
 A conta de serviço deve continuar com acesso somente leitura:
 
-- `BigQuery Data Viewer` no dataset `gold_feg`;
+- `BigQuery Data Viewer` nos datasets `gold_feg` e `marts_feg`;
 - `BigQuery Job User` no projeto `grupofeg-lakehouse`.
 
 Nunca salve o JSON no repositório. Como a primeira chave foi compartilhada em uma conversa, ela deve ser revogada e substituída antes da ativação.
@@ -20,14 +20,15 @@ Também é aceito `GOOGLE_SERVICE_ACCOUNT_JSON`, mas Base64 evita problemas com 
 
 ## Comportamento
 
-- O backend lê os últimos 365 dias da view `gold_feg.vw_ads_criativo_diario`.
+- O backend lê os últimos 365 dias da view de mídia `gold_feg.vw_ads_criativo_diario`, do mart oficial `marts_feg.mart_criativos_diario` e da tabela `gold_feg.fct_meta_ads_performance`.
+- Pedidos, faturamento e ticket vêm do mart oficial. O ROAS principal é calculado com o faturamento oficial dividido pelo investimento consolidado.
+- Compras, receita, ROAS, CPA, checkouts, alcance, frequência e retenção reportados pela Meta aparecem separadamente no detalhe do card.
 - Um snapshot diário é mantido em Netlify Blobs e atualizado de hora em hora.
 - O endpoint do Mega Brain exige uma sessão do usuário administrador.
 - Cards manuais nunca são alterados.
 - Um criativo sincronizado cujo nome já exista no acervo manual é omitido, evitando duplicidade.
 - Os filtros de hoje, ontem, 7, 14, 30, 90 dias e período personalizado afetam somente os dados sincronizados.
 
-## Limite atual da view
+## Limite atual das fontes
 
-A view fornece data, criativo, plataforma, investimento, impressões, cliques, visualizações de vídeo e conversões informativas do Google. Ela não fornece vídeo, copy, autor, nicho nem vendas oficiais da Meta. Por isso, esses campos aparecem como pendentes nos cards sincronizados até que uma fonte vinculada seja adicionada à view.
-
+As fontes atuais não fornecem URL do vídeo, texto da copy, autor ou nicho. `creative_id` e `ad_id` ficam disponíveis para uma futura integração com a API da Meta, mas não são arquivos de mídia. Por isso, vídeo e copy continuam pendentes até existir uma fonte autorizada que entregue esses materiais.
