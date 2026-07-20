@@ -11,7 +11,9 @@ const coreFn = await readFile(new URL("../netlify/functions/_fegsys-bigquery.mjs
 test("integração FEGSYS é horária, somente admin e não contém chave privada", () => {
   assert.match(syncFn, /schedule: "13 \* \* \* \*"/);
   assert.match(apiFn, /ADMIN_EMAILS/);
-  assert.match(apiFn, /recurso disponível apenas no painel admin/);
+  assert.match(apiFn, /ADMIN_IDS/);
+  assert.match(apiFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
+  assert.match(apiFn, /sessão do administrador não reconhecida/);
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_JSON_B64/);
   assert.doesNotMatch([html, syncFn, apiFn, coreFn].join("\n"), /BEGIN PRIVATE KEY/);
 });
