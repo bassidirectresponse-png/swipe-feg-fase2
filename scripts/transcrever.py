@@ -3,11 +3,11 @@
 """
 Transcrição automática dos vídeos MP4 dos criativos do Swipe FEG.
 
-Para cada oferta (kind:"criativo" ou "megabrain") cujo data.video seja um MP4
-hospedado no Supabase Storage e que ainda NÃO tenha transcrição, baixa o vídeo,
-roda o Whisper (faster-whisper, local, sem API key) e grava a transcrição de
-volta em data.transcricao. A transcrição então aparece automaticamente ao lado
-do vídeo no app.
+Para cada card cujo data.video seja um vídeo hospedado no Supabase Storage e
+que ainda NÃO tenha transcrição, baixa o arquivo, roda o Whisper
+(faster-whisper, local, sem API key) e grava texto, segmentos e palavras com
+timestamps. A transcrição então aparece automaticamente ao lado do vídeo no
+app e acompanha o player.
 
 Só depende de faster-whisper (que decodifica o áudio internamente via PyAV).
 Escreve com o bot de baixo privilégio (mesmos secrets das outras automações).
@@ -16,13 +16,16 @@ Env:
   SUPABASE_URL, SUPABASE_ANON_KEY (têm default)
   SUPABASE_BOT_EMAIL, SUPABASE_BOT_PASSWORD (obrigatórias)
   WHISPER_MODEL=small   (tiny/base/small/medium/large-v3 — maior = + preciso, + lento)
-  MAX_VIDEOS=5          (limite por execução, p/ caber no tempo do runner)
+  MAX_VIDEOS=200        (limite por execução; a execução retoma do checkpoint)
+  MAX_RUN_MINUTES=300   (encerra com segurança antes do limite do runner)
+  MAX_RETRIES=4         (tentativas antes de manter o item como erro)
+  TRANSCRIBE_KINDS=criativo (separado por vírgula; padrão: criativo)
   LANG=""               (força idioma, ex.: "pt"/"en"; vazio = detecta sozinho)
 
 Uso local de teste (sem tocar no Supabase):
   python scripts/transcrever.py --file caminho/do/video.mp4
 """
-import os, sys, json, tempfile, urllib.request, urllib.error
+import os, sys, json, tempfile, time, urllib.request, urllib.error
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ppaajtzbhjixhyfidojd.supabase.co").rstrip("/")
 ANON = os.environ.get(
@@ -32,7 +35,13 @@ ANON = os.environ.get(
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
-MAX_VIDEOS = int(os.environ.get("MAX_VIDEOS", "5"))
+MAX_VIDEOS = max(1, int(os.environ.get("MAX_VIDEOS", "200")))
+MAX_RUN_MINUTES = max(5, int(os.environ.get("MAX_RUN_MINUTES", "300")))
+MAX_RETRIES = max(1, int(os.environ.get("MAX_RETRIES", "4")))
+TRANSCRIBE_KINDS = {
+    value.strip() for value in os.environ.get("TRANSCRIBE_KINDS", "criativo").split(",")
+    if value.strip()
+}
 FORCE_LANG = os.environ.get("LANG_FORCE", "") or None
 STORAGE_MARK = "/storage/v1/object/public/criativos/"
 VIDEO_EXT = (".mp4", ".webm", ".mov", ".m4v", ".ogg")
@@ -62,21 +71,32 @@ def bot_login():
     return json.loads(txt)["access_token"]
 
 
+def patch_data(token, oid, data):
+    return sb("PATCH", f"/rest/v1/offers?id=eq.{oid}", token=token,
+              body={"data": data}, prefer="return=minimal")
+
+
 def fetch_pending(token):
-    status, txt = sb("GET", "/rest/v1/offers?select=id,data", token=token)
+    status, txt = sb("GET", "/rest/v1/offers?select=id,created_at,data", token=token)
     if status != 200:
         raise RuntimeError(f"erro ao ler ofertas: HTTP {status} {txt[:200]}")
     out = []
     for row in json.loads(txt):
         d = row.get("data") or {}
-        if d.get("kind") not in ("criativo", "megabrain"):
+        if d.get("kind") not in TRANSCRIBE_KINDS:
             continue
         v = (d.get("video") or "").strip()
         if STORAGE_MARK not in v or not v.lower().split("?")[0].endswith(VIDEO_EXT):
             continue
-        if (d.get("transcricao") or "").strip():
+        # Texto pronto e vídeo sem fala já concluído não voltam para a fila.
+        if (d.get("transcricao") or "").strip() or d.get("transcricaoStatus") == "done":
             continue
-        out.append((row["id"], d, v))
+        attempts = max(0, int(d.get("transcricaoTentativas") or 0))
+        if d.get("transcricaoStatus") == "error" and attempts >= MAX_RETRIES:
+            continue
+        out.append((attempts, row.get("created_at") or "", row["id"], d, v))
+    # Um arquivo que falhou não bloqueia os demais. Novos/nunca tentados vêm primeiro.
+    out.sort(key=lambda item: (item[0], item[1], item[2]))
     return out
 
 
@@ -98,11 +118,29 @@ def load_model():
 
 
 def transcribe(model, path):
-    segments, info = model.transcribe(path, beam_size=5, vad_filter=True,
-                                      language=FORCE_LANG)
-    parts = [s.text.strip() for s in segments]
-    text = " ".join(p for p in parts if p).strip()
-    return text, getattr(info, "language", None)
+    raw_segments, info = model.transcribe(
+        path, beam_size=3, vad_filter=True, word_timestamps=True,
+        language=FORCE_LANG,
+    )
+    parts, segments, words = [], [], []
+    for segment in raw_segments:
+        value = (segment.text or "").strip()
+        if value:
+            parts.append(value)
+            segments.append({
+                "text": value,
+                "start": max(0.0, float(segment.start or 0)),
+                "end": max(0.0, float(segment.end or 0)),
+            })
+        for word in (segment.words or []):
+            token = (word.word or "").strip()
+            if not token:
+                continue
+            start = max(0.0, float(word.start or 0))
+            end = max(start, float(word.end or start))
+            words.append({"word": token, "start": start, "end": end})
+    text = " ".join(parts).strip()
+    return text, getattr(info, "language", None), segments, words
 
 
 # =============================== main ======================================
@@ -110,7 +148,7 @@ def main():
     # modo local de teste: --file video.mp4
     if len(sys.argv) >= 3 and sys.argv[1] == "--file":
         model = load_model()
-        text, lang = transcribe(model, sys.argv[2])
+        text, lang, _segments, _words = transcribe(model, sys.argv[2])
         print(f"\n[idioma detectado: {lang}]\n")
         print(text)
         return
@@ -128,32 +166,54 @@ def main():
 
     pending = pending[:MAX_VIDEOS]
     model = load_model()   # só baixa/carrega o modelo se houver trabalho
-    ok = fail = 0
-    for i, (oid, data, url) in enumerate(pending, 1):
+    ok = fail = deferred = 0
+    deadline = time.monotonic() + MAX_RUN_MINUTES * 60
+    for i, (_attempts, _created_at, oid, data, url) in enumerate(pending, 1):
+        if time.monotonic() >= deadline:
+            deferred = len(pending) - i + 1
+            print(f"\nlimite seguro alcançado; {deferred} vídeo(s) ficam para a próxima execução")
+            break
         nome = data.get("nome", "?")
         print(f"\n[{i}/{len(pending)}] {nome[:44]}")
+        attempts = max(0, int(data.get("transcricaoTentativas") or 0)) + 1
+        data["transcricaoStatus"] = "processing"
+        data["transcricaoTentativas"] = attempts
+        data["transcricaoUltimaTentativa"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        status, resp = patch_data(token, oid, data)
+        if status not in (200, 204):
+            fail += 1
+            print(f"   ERRO ao reservar: HTTP {status} {resp[:160]}", file=sys.stderr)
+            continue
         try:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=True) as tmp:
                 download(url, tmp.name)
-                text, lang = transcribe(model, tmp.name)
+                text, lang, segments, words = transcribe(model, tmp.name)
             if not text:
-                print("   transcrição vazia (sem fala detectada); marcando como concluída")
+                text = "[Sem fala detectada no vídeo]"
+                print("   vídeo sem fala detectada; marcando como concluído")
             data["transcricao"] = text
             data["transcricaoStatus"] = "done"
             data["transcricaoLang"] = lang or ""
-            status, resp = sb("PATCH", f"/rest/v1/offers?id=eq.{oid}",
-                              token=token, body={"data": data}, prefer="return=minimal")
+            data["transcricaoSegments"] = segments
+            data["transcricaoWords"] = words
+            data["transcricaoError"] = ""
+            data["transcricaoConcluidaEm"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            status, resp = patch_data(token, oid, data)
             if status in (200, 204):
                 ok += 1
-                print(f"   ✓ gravado ({len(text)} caracteres, idioma {lang})")
+                print(f"   ✓ gravado ({len(text)} caracteres, {len(words)} palavras, idioma {lang})")
             else:
                 fail += 1
                 print(f"   ERRO ao gravar: HTTP {status} {resp[:160]}", file=sys.stderr)
         except Exception as e:
             fail += 1
-            print(f"   FALHA: {str(e)[:200]}", file=sys.stderr)
+            message = str(e)[:300]
+            data["transcricaoStatus"] = "error" if attempts >= MAX_RETRIES else "pending"
+            data["transcricaoError"] = message
+            patch_data(token, oid, data)
+            print(f"   FALHA ({attempts}/{MAX_RETRIES}): {message[:200]}", file=sys.stderr)
 
-    print(f"\nFim: {ok} transcritos, {fail} falhas")
+    print(f"\nFim: {ok} transcritos, {fail} falhas, {deferred} adiados")
     if fail and not ok:
         sys.exit(1)
 

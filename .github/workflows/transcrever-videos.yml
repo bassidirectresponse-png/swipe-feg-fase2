@@ -6,6 +6,12 @@ name: Transcrição automática de vídeos
 # Roda de hora em hora (pega vídeos novos) + botão manual para forçar na hora.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/transcrever.py"
+      - "scripts/requirements-transcricao.txt"
+      - ".github/workflows/transcrever-videos.yml"
   schedule:
     - cron: "0 * * * *"     # de hora em hora
   workflow_dispatch: {}
@@ -20,7 +26,7 @@ concurrency:
 jobs:
   transcribe:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 330
     env:
       WHISPER_MODEL: small     # tiny/base/small/medium/large-v3 (maior = + preciso, + lento)
     steps:
@@ -49,6 +55,9 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
-          MAX_VIDEOS: "5"
+          TRANSCRIBE_KINDS: "criativo"
+          MAX_VIDEOS: "200"
+          MAX_RUN_MINUTES: "300"
+          MAX_RETRIES: "4"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py
