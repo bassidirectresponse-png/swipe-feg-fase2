@@ -109,13 +109,30 @@ Sem o item 3, a integração FEGSYS falha de forma fechada por projeto.
 
 CodeQL e o workflow completo foram adicionados, mas só produzirão evidência independente após execução no GitHub Actions.
 
+## Hardening operacional do Supabase
+
+Aplicado e verificado no projeto de produção em 20/07/2026:
+
+- backup diário disponível antes da mudança;
+- `db/storage-upload-hardening.sql` aplicado ao bucket `criativos`;
+- limite de 160 MiB e allowlist de seis MIME types de imagem/vídeo confirmados;
+- policies `criativos_insert` e `criativos_update` recriadas e confirmadas;
+- Site URL definido como `https://benchmarkinggrupofeg.site` e redirect allowlist restrita ao domínio de produção;
+- troca segura de e-mail e senha, exigência da senha atual e bloqueio de senhas vazadas ativados;
+- senha mínima elevada para 12 caracteres, sem invalidar credenciais já existentes;
+- refresh token comprometido continua sendo detectado/revogado, com janela recomendada de reutilização de 10 segundos;
+- sessões limitadas a 168 horas e encerradas após 24 horas de inatividade;
+- logins e cadastros limitados a 15 requisições por 5 minutos por IP;
+- MFA TOTP e limitação de sessões AAL1 já estavam ativas;
+- Security Advisor validado com zero erros, zero warnings e zero sugestões.
+
+CAPTCHA foi deliberadamente adiado porque depende de credenciais de um provedor externo. Passkeys permanecem desativadas até existir suporte correspondente na interface do aplicativo.
+
 ## Bloqueios para liberação
 
 1. **Crítico — Google Cloud:** revogar/rotacionar a chave exposta e confirmar o gate do novo identificador na Netlify.
-2. **Banco — Supabase:** criar backup/ponto de recuperação, validar em staging e aplicar `db/storage-upload-hardening.sql`; confirmar que as policies resultantes estão ativas.
-3. **Identidade — Supabase Auth:** pelo painel de gerenciamento, revisar MFA/passkeys para administradores, política e bloqueio de senhas, rotação de refresh token, duração de sessão, CAPTCHA e limites de login/recuperação.
-4. **Repositório — GitHub:** habilitar branch protection, checks obrigatórios, revisão, secret scanning e push protection, quando disponíveis no plano.
-5. **CI:** executar e aprovar os workflows Security gates e CodeQL na branch antes do merge.
+2. **Repositório — GitHub:** habilitar branch protection, checks obrigatórios, revisão, secret scanning e push protection, quando disponíveis no plano.
+3. **CI:** executar e aprovar os workflows Security gates e CodeQL na branch antes do merge.
 
 ## Riscos residuais e decisões
 
@@ -129,10 +146,10 @@ CodeQL e o workflow completo foram adicionados, mas só produzirão evidência i
 ## Rollback e implantação segura
 
 - Os commits foram separados por categoria para permitir reversão seletiva.
-- As mudanças SQL são aditivas/retrocompatíveis, mas só devem ser aplicadas após backup e teste de upload/leitura em staging.
+- As mudanças SQL do Storage foram aplicadas após confirmação de backup. Em caso de ajuste futuro, repetir o teste de upload/leitura em staging antes de alterar as policies de produção.
 - Em caso de regressão de aplicação, reverta o commit da categoria afetada; não reverta a rotação da credencial nem reintroduza a chave comprometida.
 - Após deploy de preview, testar login de usuário/admin, CORS, uploads válidos e inválidos, ingestões, transcrição, jobs longos, FEGSYS e expiração das cotas antes de promover para produção.
 
 ## Critério de conclusão
 
-O código e a configuração versionada atendem aos gates locais definidos nesta auditoria. A conclusão operacional e a liberação permanecem condicionadas aos cinco bloqueios externos acima. Esta auditoria reduz riscos conhecidos no escopo examinado, mas não constitui garantia de segurança absoluta.
+O código e a configuração versionada atendem aos gates locais definidos nesta auditoria. O hardening operacional do Supabase foi concluído no escopo autorizado; a conclusão operacional e a liberação permanecem condicionadas aos três bloqueios externos acima. Esta auditoria reduz riscos conhecidos no escopo examinado, mas não constitui garantia de segurança absoluta.
