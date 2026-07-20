@@ -14,6 +14,8 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(apiFn, /ADMIN_EMAILS/);
   assert.match(apiFn, /ADMIN_IDS/);
   assert.match(apiFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
+  assert.match(apiFn, /x-feg-auth/);
+  assert.match(html, /"X-Feg-Auth":"Bearer "\+accessToken/);
   assert.match(apiFn, /sessão do administrador não reconhecida/);
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_JSON_B64/);
   assert.doesNotMatch([html, syncFn, apiFn, coreFn].join("\n"), /BEGIN PRIVATE KEY/);

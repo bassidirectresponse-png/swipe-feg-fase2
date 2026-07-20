@@ -21,7 +21,12 @@ function isAllowedAdmin(user) {
 }
 
 async function adminUser(req) {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  // Alguns proxies/CDNs tratam `Authorization` como cabeçalho reservado. O
+  // painel envia também uma cópia no cabeçalho privado abaixo; em ambos os
+  // casos o JWT continua sendo validado pelo próprio Supabase antes do acesso.
+  const token = (req.headers.get("x-feg-auth") || req.headers.get("authorization") || "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   if (!token) return null;
   // A configuração da Netlify pode manter uma URL antiga. Valida primeiro nela e,
   // se necessário, repete no projeto que efetivamente atende o painel.

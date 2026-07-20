@@ -2547,7 +2547,7 @@ async function loadFegsysBrain(force=false){
     const session=await sb.auth.getSession(),token=session.data&&session.data.session&&session.data.session.access_token;
     if(!token)throw new Error("sessão expirada");
     const p=new URLSearchParams({period:brainPeriod});if(brainPeriod==="custom"){if(brainDateFrom)p.set("from",brainDateFrom);if(brainDateTo)p.set("to",brainDateTo);}if(force)p.set("refresh","1");
-    const request=accessToken=>fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+accessToken},cache:"no-store"});
+    const request=accessToken=>fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+accessToken,"X-Feg-Auth":"Bearer "+accessToken},cache:"no-store"});
     let response=await request(token);
     if(response.status===401){const refreshed=await sb.auth.refreshSession();const fresh=refreshed.data&&refreshed.data.session&&refreshed.data.session.access_token;if(fresh)response=await request(fresh);}
     const result=await response.json().catch(()=>({}));if(!response.ok||!result.ok)throw new Error(result.error||"não foi possível consultar o FEGSYS");
