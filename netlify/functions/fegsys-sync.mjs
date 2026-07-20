@@ -14,7 +14,15 @@ function safeSyncError(error) {
 export default async () => {
   try {
     const snapshot = await refreshSnapshot();
-    return Response.json({ ok: true, syncedAt: snapshot.syncedAt, rows: snapshot.rows.length });
+    return Response.json({
+      ok: true,
+      syncedAt: snapshot.syncedAt,
+      rows: snapshot.rows.length,
+      sources: {
+        sales: snapshot.sourceStatus?.sales?.available !== false,
+        meta: snapshot.sourceStatus?.meta?.available !== false
+      }
+    });
   } catch (error) {
     console.error("FEGSYS sync failed", String(error && error.message || error));
     return Response.json({ ok: false, error: safeSyncError(error) }, { status: 500, headers: { "cache-control": "no-store" } });
