@@ -7,6 +7,13 @@ name: Ads ativos — atualização automática
 # Reusa os MESMOS secrets do bot já configurados (nada novo a cadastrar).
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ads_scraper.py"
+      - "scripts/ingest_offer_batch_july22.mjs"
+      - "scripts/offer_batch_july22_catalog.mjs"
+      - ".github/workflows/ads-ativos.yml"
   schedule:
     - cron: "0 11 * * *"     # 08:00 America/Sao_Paulo
     - cron: "0 23 * * *"     # 20:00 America/Sao_Paulo

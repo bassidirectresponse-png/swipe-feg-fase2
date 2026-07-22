@@ -7,9 +7,10 @@ const workflow = await readFile(new URL("../.github/workflows/transcrever-videos
 
 test("automação cobre o acervo normal de Criativos e retoma a fila", () => {
   assert.match(workflow, /cron: "0 \* \* \* \*"/);
-  assert.match(workflow, /TRANSCRIBE_KINDS: "criativo"/);
+  assert.match(workflow, /TRANSCRIBE_KINDS: "criativo,megabrain"/);
   assert.match(workflow, /MAX_VIDEOS: "200"/);
   assert.match(workflow, /MAX_RUN_MINUTES: "300"/);
+  assert.match(workflow, /MAX_RETRIES: "8"/);
   assert.match(script, /transcricaoTentativas/);
   assert.match(script, /transcricaoUltimaTentativa/);
   assert.match(script, /out\.sort\(key=lambda item: \(item\[0\], item\[1\], item\[2\]\)\)/);

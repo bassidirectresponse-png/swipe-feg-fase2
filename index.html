@@ -607,8 +607,11 @@
   .cmedia__zoom{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;color:#fff;}
   .cmedia__zoom .ico{width:15px;height:15px;}
   .cmedia--vid{cursor:pointer;background:#000;}
-  .cmedia__vid{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
-  .cmedia--vid:hover .cmedia__play{opacity:0;transition:opacity .2s var(--ease);}
+  .cmedia__poster{width:100%;height:100%;object-fit:cover;display:block;background:#080808;}
+  .cmedia__posterload{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint);background:linear-gradient(135deg,#12140e,#080908);font-size:.72rem;letter-spacing:.02em;}
+  .cmedia__posterload .ico{width:25px;height:25px;opacity:.52;}
+  .cmedia--vid .cmedia__play{transition:transform .2s var(--ease),opacity .2s var(--ease);}
+  .cmedia--vid:hover .cmedia__play{transform:translate(-50%,-50%) scale(1.08);}
   .cmedia--empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);cursor:default;aspect-ratio:16/10;}
   .cmedia--empty .ico{width:26px;height:26px;opacity:.5;}
   .cmedia--empty span{font-size:.78rem;}
@@ -1427,7 +1430,7 @@ function filtered(){
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
-  if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:n===activeNiche;});}
+  if(activeNiche){list=list.filter(o=>{const n=nicheOf(o);return activeNiche===NO_NICHE?!n:sameNiche(n,activeNiche);});}
   if(searchTerm){
     const t=searchTerm.toLowerCase();
     list=list.filter(o=>{const d=o.data||{},topAds=Array.isArray(d.brandTopAds)?d.brandTopAds.flatMap(x=>[x&&x.nome,x&&x.link]):[];return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho,...topAds].some(v=>(v||"").toLowerCase().includes(t));});
@@ -1448,13 +1451,20 @@ PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated"]);
 let routeReady=false;
 function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
+function nicheRouteKey(niche){return niche===NO_NICHE?NO_NICHE:routeSlug(niche);}
+function sameNiche(a,b){return nicheRouteKey(a)===nicheRouteKey(b);}
+function canonicalNiche(niche){
+  const raw=String(niche||"").trim();if(!raw||raw===NO_NICHE)return raw;
+  const key=nicheRouteKey(raw),known=NICHOS.find(n=>nicheRouteKey(n)===key);
+  return known||raw;
+}
 function catSlug(niche){return niche===NO_NICHE?"sem-nicho":(niche?routeSlug(niche):"todos");}
 function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
   if(slug==="sem-nicho")return NO_NICHE;
   const present=new Set(offers.filter(o=>sectionOf(o)===section).map(nicheOf).filter(Boolean));
-  const hit=[...present].find(n=>routeSlug(n)===slug);
-  return hit||null;   // null => categoria inexistente (404)
+  const hit=[...present].find(n=>nicheRouteKey(n)===slug);
+  return hit?canonicalNiche(hit):null;   // null => categoria inexistente (404)
 }
 function qsFromState(){
   const p=new URLSearchParams();
@@ -1505,7 +1515,7 @@ function renderNotFound(msg){
 }
 function maybeOpenView(id){
   const o=offers.find(x=>x.id===id);
-  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?!nicheOf(o):nicheOf(o)===activeNiche));
+  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?!nicheOf(o):sameNiche(nicheOf(o),activeNiche)));
   if(!o||sectionOf(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
@@ -1567,15 +1577,16 @@ function renderSideNav(){
   let nicheHtml="";
   if(!isToolSection(activeSection)&&activeSection!=="megabrainfegsys"){
     const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
-    const nc=new Map();let none=0;
-    secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}nc.set(n,(nc.get(n)||0)+1);});
-    if(activeNiche&&activeNiche!==NO_NICHE&&!nc.has(activeNiche))activeNiche="";
+    const ncByKey=new Map();let none=0;
+    secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
+    const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
+    if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
     const ordered=[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
-    ordered.forEach(n=>{nicheHtml+=nitem(n,n,nc.get(n),activeNiche===n);});
+    ordered.forEach(n=>{nicheHtml+=nitem(n,n,nc.get(n),sameNiche(activeNiche,n));});
     if(none)nicheHtml+=nitem(NO_NICHE,"Sem nicho",none,activeNiche===NO_NICHE);
   }
 
@@ -1741,16 +1752,16 @@ function brandCard(o){
   const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
-  const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=(topAds.find(x=>x.link)||{}).link||"";
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||"");
   return card({
     id:o.id,variant:"brand-card",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Insider":"Spy"}</span>`,
     media:mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`,
-    actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn("Top ad",firstAd,"play")].filter(Boolean).join("")
+    extra:validated?`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`:"",
+    actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
 function cardFor(o){
@@ -1959,10 +1970,10 @@ function openView(id){
     }
   }
   let bmSection="";
-  if(isBrand){
+  if(section==="brandsvalidated"){
     const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="metadata" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${brandMetricGrid(d,true)}
       ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
@@ -2033,12 +2044,13 @@ function openForm(id){
 
   const brandForm=isBrand?`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">B</span> FEG Brands · validação e BM</div>
-      <div class="fsec__hint">Os campos abaixo aparecem no card mesmo enquanto a BM ainda não estiver acessível. Preencha quando os dados estiverem disponíveis.</div>
+      <div class="fsec__title"><span class="num">B</span> FEG Brands · classificação</div>
+      <div class="fsec__hint">Ofertas no Geral reúnem páginas, checkouts, bibliotecas e anúncios. Métricas do Gerenciador ficam somente em Ofertas Insider.</div>
       <div class="field"><label class="lbl">Lista da oferta</label><div class="seg" id="brandStageSeg">
         <button type="button" class="seg-btn${fBrandStage==="brandsgeneral"?" active":""}" data-action="set-brand-stage" data-stage="brandsgeneral">Ofertas no Geral</button>
         <button type="button" class="seg-btn${fBrandStage==="brandsvalidated"?" active":""}" data-action="set-brand-stage" data-stage="brandsvalidated">Ofertas Insider</button>
       </div></div>
+      <div id="brandBmFields"${fBrandStage==="brandsvalidated"?"":" hidden"}>
       <div class="row">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
         <div class="field"><label class="lbl">Gasto nos últimos 14 dias</label><input type="text" id="f_bmSpend14d" placeholder="Ex: R$ 91.600" value="${esc(d.bmSpend14d||"")}"></div>
@@ -2062,6 +2074,7 @@ function openForm(id){
       <label class="lbl">Prints da Business Manager</label><div id="bmPrintsWrap"></div><button type="button" class="add-block" data-action="add-bm-print">+ Adicionar print da BM</button>
       <div style="height:22px"></div>
       <label class="lbl">Top ads</label><div id="brandTopAdsWrap"></div><button type="button" class="add-block" data-action="add-brand-ad">+ Adicionar top ad</button>
+      </div>
     </div>`:"";
 
   $("#formBody").innerHTML=`
@@ -2233,7 +2246,7 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-bm-print"){fBmPrints.splice(+b.dataset.i,1);renderBmPrints();}
   else if(a==="add-brand-ad"){fBrandTopAds.push({nome:"",link:"",img:""});renderBrandTopAds();}
   else if(a==="rm-brand-ad"){fBrandTopAds.splice(+b.dataset.i,1);renderBrandTopAds();}
-  else if(a==="set-brand-stage"){if(!BRAND_SECTIONS.has(b.dataset.stage)||fBrandStage===b.dataset.stage)return;fBrandStage=b.dataset.stage;$$("#brandStageSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.stage===fBrandStage));}
+  else if(a==="set-brand-stage"){if(!BRAND_SECTIONS.has(b.dataset.stage)||fBrandStage===b.dataset.stage)return;fBrandStage=b.dataset.stage;$$("#brandStageSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.stage===fBrandStage));const bm=$("#brandBmFields");if(bm)bm.hidden=fBrandStage!=="brandsvalidated";}
   else if(a==="set-tipo"){if(fTipo===b.dataset.tipo)return;fTipo=b.dataset.tipo;$("#formBody").dataset.tipo=fTipo;$$("#tipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.tipo===fTipo));}
   else return;
   markDirty();
@@ -2256,12 +2269,16 @@ function buildPayload(){
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
     driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
   });
-  if(BRAND_SECTIONS.has(fBrandStage))Object.assign(payload,{
-    kind:fBrandStage,
+  if(fBrandStage==="brandsvalidated")Object.assign(payload,{
+    kind:"brandsvalidated",
     adsLibraryCheckedAt:val("f_adsLibraryCheckedAt"),
     bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
     bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
   });
+  else if(fBrandStage==="brandsgeneral"){
+    payload.kind="brandsgeneral";
+    for(const key of BRAND_BM_METRICS.map(([,key])=>key).concat(["bmNotes","bmPrints","bmReports","brandTopAds"]))delete payload[key];
+  }
   else if(payload.kind==="oferta")delete payload.kind;
   return payload;
 }
@@ -2592,15 +2609,16 @@ async function loadFegsysBrain(force=false){
     const incoming=(result.cards||[]).filter(card=>card&&card.nome),unique=incoming.filter(card=>!manual.has(brainNameKey(card.nome)));
     fegsysDuplicates=incoming.length-unique.length;
     if(brainPeriod==="custom"){if(!brainDateFrom)brainDateFrom=result.range&&result.range.from||"";if(!brainDateTo)brainDateTo=result.range&&result.range.to||"";}
-    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
+    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",linkDrive:card.drive_video_view_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",driveStatus:card.drive_status||"",driveVideoName:card.drive_video_name||"",driveCopyName:card.drive_copy_name||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
     fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysSourceStatus=result.sourceStatus||null;fegsysLoadedKey=key;
   }catch(error){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
   finally{fegsysLoading=false;renderGrid();}
 }
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
-  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");
-  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
+  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
+  const driveReady=fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files>0?` · ${fegsysSourceStatus.drive.matchedVideos||0} vídeos e ${fegsysSourceStatus.drive.matchedCopies||0} copies encontrados`:"";
+  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
   const totals=fegsysTotals||{},salesReady=!(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false),official=value=>salesReady?value:"—";
   const resultLabel=salesReady?"Pedidos":"Conversões Google",resultValue=salesReady?fmtNum(totals.conversions||0):fmtNum(totals.google_conversions||0);
@@ -3455,13 +3473,17 @@ function renderVslDissector(force){
 }
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
+const cardPosterCache=new Map();
 function mediaThumb(img,alt,hasVideo,videoUrl){
   const play=hasVideo?`<span class="cmedia__play">${ic("play")}</span>`:"";
   if(img)return `<a class="cmedia" href="${esc(img)}" data-lightbox="${esc(img)}"><img loading="lazy" decoding="async" fetchpriority="low" width="640" height="400" src="${esc(img)}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span>${play}</a>`;
-  /* sem print, mas com vídeo direto (mp4): mostra um quadro como capa e dá play no hover */
+  /* O card recebe somente uma imagem do primeiro take. O player completo é
+     carregado apenas quando a pessoa abre o criativo. */
   const emb=videoUrl?videoEmbedUrl(videoUrl):null;
-  if(emb&&emb.type==="video")
-    return `<div class="cmedia cmedia--vid" title="Passe o mouse para pré-visualizar"><video class="cmedia__vid" muted loop playsinline preload="metadata" src="${esc(emb.src)}#t=0.1"></video><span class="cmedia__play">${ic("play")}</span></div>`;
+  if(emb&&emb.type==="video"){
+    const cached=cardPosterCache.get(emb.src);
+    return `<div class="cmedia cmedia--vid" title="Abra o card para assistir" data-card-video-poster="${esc(emb.src)}">${cached?`<img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(cached)}" alt="Primeiro take de ${esc(alt||"vídeo")}">`:`<span class="cmedia__posterload">${ic("film")}</span>`}${play}</div>`;
+  }
   if(hasVideo)return `<div class="cmedia cmedia--empty">${ic("film")}<span>Vídeo — abra para assistir</span></div>`;
   return `<div class="cmedia cmedia--empty">${ic("image")}<span>Sem print</span></div>`;
 }
@@ -3516,7 +3538,8 @@ function criativoCard(o){
   const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
   const hasVid=!!va&&!tab;
-  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):""].filter(Boolean).join("");
+  const copy=brainCopyText(d),copyLink=(d.copyLink||"").trim();
+  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
@@ -3626,9 +3649,9 @@ function fegsysBrainCard(o){
   const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
   const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
   const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const media=d.video?`<video class="cmedia" src="${esc(d.video)}"${d.print?` poster="${esc(d.print)}"`:""} controls preload="none"></video>`:d.print?`<img class="cmedia" src="${esc(d.print)}" alt="Prévia do criativo ${esc(d.nome||"")}" loading="lazy">`:`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não vinculada</span></div>`;
+  const media=(d.video||d.print)?mediaThumb(d.print,d.nome,!!d.video,d.video||""):`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não vinculada</span></div>`;
   const copyPreview=d.copy?`<div class="fegsys-copy"><strong>Copy</strong><p>${esc(String(d.copy).slice(0,220))}${String(d.copy).length>220?"…":""}</p></div>`:"";
-  const sourceLinks=`${d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:""}${d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir copy</a>`:""}`;
+  const sourceLinks=`${d.linkDrive?`<a class="btn btn--outline btn--sm" href="${esc(d.linkDrive)}" target="_blank" rel="noopener">${ic("folder")}Abrir no Drive</a>`:""}${d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:""}${d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir copy</a>`:""}`;
   return card({
     id:o.id,variant:"kcard kcard--brain fegsys-card",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
@@ -3828,7 +3851,9 @@ function wireVideoPreviews(root){
     if(v.readyState>=1)paint(); else {try{v.load();}catch(e){}}
   });
 }
-/* miniaturas de vídeo nos cards: pinta 1 quadro de capa e dá play (mudo) no hover */
+/* Miniaturas dos cards: cria uma imagem leve do primeiro take somente para os
+   cards visíveis. O <video> é temporário, fica fora do card e é destruído
+   assim que a imagem foi capturada. */
 function wireCardPreviews(root){
   /* thumbnails do Drive: 1º tenta drive.google.com/thumbnail; se falhar, tenta o
      espelho lh3.googleusercontent.com (mais estável p/ arquivos públicos); só então
@@ -3858,19 +3883,22 @@ function wireCardPreviews(root){
     img.addEventListener("error",fail);
     if(img.complete&&img.naturalWidth===0)fail();
   });
-  (root||document).querySelectorAll("video.cmedia__vid").forEach(v=>{
-    if(v.dataset.prevWired)return; v.dataset.prevWired="1";
-    const frame=()=>Math.min(0.1,(isFinite(v.duration)&&v.duration>0)?v.duration/2:0.1);
-    let painted=false;
-    const paint=()=>{if(!painted&&v.readyState>=1&&isFinite(v.duration)&&v.duration>0){painted=true;try{v.currentTime=frame();}catch(e){}}};
-    v.addEventListener("loadedmetadata",paint);
-    v.addEventListener("loadeddata",paint);
-    if(v.readyState>=1)paint(); else {try{v.load();}catch(e){}}
-    const box=v.closest(".cmedia")||v.parentElement;
-    box.addEventListener("mouseenter",()=>{const p=v.play&&v.play();if(p&&p.catch)p.catch(()=>{});});
-    box.addEventListener("mouseleave",()=>{try{v.pause();v.currentTime=frame();}catch(e){}});
-    v.addEventListener("error",()=>{if(v.parentElement){v.parentElement.classList.add("cmedia--empty");v.remove();}});
+  const boxes=[...(root||document).querySelectorAll("[data-card-video-poster]")];
+  let active=0;const queue=[];
+  const fallback=box=>{box.dataset.posterState="fallback";const load=$(".cmedia__posterload",box);if(load)load.innerHTML=ic("film");};
+  const capture=box=>new Promise(resolve=>{
+    const src=box.dataset.cardVideoPoster;if(!src){fallback(box);resolve();return;}
+    const cached=cardPosterCache.get(src);if(cached){box.innerHTML=`<img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(cached)}" alt="Primeiro take do vídeo"><span class="cmedia__play">${ic("play")}</span>`;box.dataset.posterState="done";resolve();return;}
+    const video=document.createElement("video");video.muted=true;video.playsInline=true;video.preload="metadata";video.crossOrigin="anonymous";
+    let finished=false,timer=setTimeout(()=>done(false),12000);
+    const done=ok=>{if(finished)return;finished=true;clearTimeout(timer);video.removeAttribute("src");try{video.load();}catch(e){}if(!ok)fallback(box);resolve();};
+    const snap=()=>{try{const maxW=640,ratio=(video.videoWidth&&video.videoHeight)?video.videoHeight/video.videoWidth:.625,w=Math.min(maxW,video.videoWidth||maxW),h=Math.max(1,Math.round(w*ratio)),canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,w,h);const data=canvas.toDataURL("image/webp",.72);cardPosterCache.set(src,data);if(box.isConnected){box.innerHTML=`<img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(data)}" alt="Primeiro take do vídeo"><span class="cmedia__play">${ic("play")}</span>`;box.dataset.posterState="done";}done(true);}catch(e){done(false);}};
+    video.addEventListener("loadeddata",()=>{try{video.currentTime=Math.min(.12,Math.max(0,(video.duration||.24)/2));}catch(e){snap();}},{once:true});
+    video.addEventListener("seeked",snap,{once:true});video.addEventListener("error",()=>done(false),{once:true});video.src=src;try{video.load();}catch(e){done(false);}
   });
+  const next=()=>{while(active<2&&queue.length){const box=queue.shift();if(!box||!box.isConnected||box.dataset.posterState)continue;active++;box.dataset.posterState="loading";capture(box).finally(()=>{active--;next();});}};
+  const enqueue=box=>{if(box.dataset.posterState)return;queue.push(box);next();};
+  if("IntersectionObserver" in window){const io=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){io.unobserve(entry.target);enqueue(entry.target);}}),{rootMargin:"320px 0px"});boxes.forEach(box=>io.observe(box));}else boxes.forEach(enqueue);
 }
 
 /* ===== TRANSCRIÇÃO AUTOMÁTICA (Groq via background function) ===== */
@@ -4238,7 +4266,8 @@ function openSimpleView(o,skipOpen){
   if(kind==="presell"&&d.link)mainLink=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Abrir presell",d.link,true,"newspaper")}</div>`;
   if(kind==="criativo"){
     const va=videoOfCrv(d);
-    const btns=[d.linkAnuncio?linkbtn("Abrir anúncio",d.linkAnuncio,true,"external"):"",va?linkbtn("Abrir vídeo",va,false,"play"):""].filter(Boolean).join("");
+    const copyLink=(d.copyLink||"").trim();
+    const btns=[d.linkAnuncio?linkbtn("Abrir anúncio",d.linkAnuncio,true,"external"):"",va?linkbtn("Abrir vídeo",va,false,"play"):"",copyLink?linkbtn("Abrir copy no Drive",copyLink,true,"file"):"",brainCopyText(d)?`<button class="btn btn--outline btn--sm" data-copy="${o.id}">${ic("type")}Ver e copiar a copy</button>`:""].filter(Boolean).join("");
     if(btns)mainLink=`<div class="linkbtns" style="margin-top:18px">${btns}</div>`;
     mainLink+=fbIngestControl(o);
   }
@@ -4333,6 +4362,7 @@ function openSimpleView(o,skipOpen){
   $$("[data-transcribe]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>requestInstantTranscription(b.dataset.transcribe)));
   $$("[data-fbingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerFbIngest(b.dataset.fbingest)));
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
+  $$("[data-copy]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>openCopyPop(b.dataset.copy)));
   wireVideoTranscripts($("#viewBody"));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
@@ -4342,7 +4372,7 @@ function openSimpleView(o,skipOpen){
 function blankSimple(kind){
   const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
   if(kind==="presell")base.tipoTrafego="meta";
-  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:""});
+  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:"",copyLink:""});
   if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
   if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
@@ -4466,6 +4496,7 @@ function renderSimpleForm(){
       <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
       ${videoUpField}
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição original do áudio</label><textarea data-sk="transcricao" placeholder="Texto no idioma original do vídeo — aparece ao lado e acompanha o player.">${esc(it.transcricao||"")}</textarea></div>
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Link da copy no Drive (opcional)</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/... ou https://drive.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>
     <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>

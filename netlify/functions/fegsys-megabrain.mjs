@@ -1,4 +1,5 @@
 import { aggregateSnapshot, getSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
+import { enrichFegsysCards } from "./_fegsys-drive.mjs";
 import { authenticate, isAdmin, json, rateLimit } from "./_security.mjs";
 
 const configured = () => !!((process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64)
@@ -19,13 +20,21 @@ export default async req => {
   catch { return json(req, 502, { ok: false, error: "falha temporária na leitura do FEGSYS", configured: configured() }, "GET"); }
   if (!snapshot) return json(req, 503, { ok: false, error: "integração aguardando credencial", configured: configured() }, "GET");
   const result = aggregateSnapshot(snapshot, range);
+  let driveStatus;
+  try {
+    const drive = await enrichFegsysCards(result.cards, { refresh: url.searchParams.get("refresh") === "1" });
+    result.cards = drive.cards;
+    driveStatus = drive.status;
+  } catch (error) {
+    driveStatus = { available: false, error: String(error && error.message || "Drive indisponível") };
+  }
   return json(req, 200, {
     ok: true,
     configured: configured(),
     range,
     syncedAt: snapshot.syncedAt,
     coverage: { from: snapshot.oldestDate, to: snapshot.newestDate },
-    sourceStatus: snapshot.sourceStatus || null,
+    sourceStatus: { ...(snapshot.sourceStatus || {}), drive: driveStatus },
     ...result,
   }, "GET");
 };

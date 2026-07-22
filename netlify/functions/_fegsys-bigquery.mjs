@@ -8,7 +8,7 @@ const STORE_NAME = "fegsys-megabrain";
 const STORE_KEY = "daily-v4";
 const MAX_AGE_MS = 75 * 60 * 1000;
 const QUERY_DAYS = 365;
-let cachedToken = null;
+const cachedTokens = new Map();
 
 function base64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -39,13 +39,16 @@ export function readCredential() {
   return credential;
 }
 
-async function accessToken(credential) {
+export async function googleAccessToken(credential, scopes = ["https://www.googleapis.com/auth/bigquery.readonly"]) {
+  const scope = [...new Set((Array.isArray(scopes) ? scopes : [scopes]).map(String).filter(Boolean))].sort().join(" ");
+  if (!scope) throw new Error("escopo Google não informado");
+  const cachedToken = cachedTokens.get(scope);
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
   const now = Math.floor(Date.now() / 1000);
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claims = base64url(JSON.stringify({
     iss: credential.client_email,
-    scope: "https://www.googleapis.com/auth/bigquery.readonly",
+    scope,
     aud: credential.token_uri || "https://oauth2.googleapis.com/token",
     iat: now,
     exp: now + 3600
@@ -66,8 +69,9 @@ async function accessToken(credential) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.access_token) throw new Error(`autenticação Google recusada (${response.status})`);
-  cachedToken = { value: result.access_token, expiresAt: Date.now() + Math.max(300, +result.expires_in || 3600) * 1000 };
-  return cachedToken.value;
+  const value = { value: result.access_token, expiresAt: Date.now() + Math.max(300, +result.expires_in || 3600) * 1000 };
+  cachedTokens.set(scope, value);
+  return value.value;
 }
 
 const FIELD_ALIASES = {
@@ -303,7 +307,7 @@ export function mergeFegsysSources(baseRows = [], salesRows = [], metaRows = [])
 }
 
 async function queryBigQuery(credential) {
-  const token = await accessToken(credential);
+  const token = await googleAccessToken(credential);
   const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
   const table = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/gold_feg/tables/vw_ads_criativo_diario`, { headers });
   const metadata = await table.json().catch(() => ({}));

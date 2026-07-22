@@ -2,11 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { aggregateSnapshot, buildQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
+import { matchDriveFiles, normalizeDriveName } from "../netlify/functions/_fegsys-drive.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const syncFn = await readFile(new URL("../netlify/functions/fegsys-sync.mjs", import.meta.url), "utf8");
 const apiFn = await readFile(new URL("../netlify/functions/fegsys-megabrain.mjs", import.meta.url), "utf8");
 const coreFn = await readFile(new URL("../netlify/functions/_fegsys-bigquery.mjs", import.meta.url), "utf8");
+const driveFn = await readFile(new URL("../netlify/functions/_fegsys-drive.mjs", import.meta.url), "utf8");
+const driveMediaFn = await readFile(new URL("../netlify/functions/fegsys-drive-media.mjs", import.meta.url), "utf8");
 const securityFn = await readFile(new URL("../netlify/functions/_security.mjs", import.meta.url), "utf8");
 
 test("JavaScript embutido do painel permanece sintaticamente válido", () => {
@@ -31,6 +34,23 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID/);
   assert.match(coreFn, /não foi aprovada após rotação/);
   assert.doesNotMatch([html, syncFn, apiFn, coreFn, securityFn].join("\n"), /BEGIN PRIVATE KEY/);
+  assert.match(driveFn, /drive\.readonly/);
+  assert.match(driveMediaFn, /verifyDriveMedia/);
+  assert.doesNotMatch([html, driveFn, driveMediaFn].join("\n"), /GOOGLE_SERVICE_ACCOUNT_JSON[^_]/);
+});
+
+test("Drive cruza somente a nomenclatura exata e mantém variações separadas", () => {
+  const files = [
+    { id: "video_exact_123", name: "BB 238.3 GB7.mp4", mimeType: "video/mp4", modifiedTime: "2026-07-20T10:00:00Z", webViewLink: "https://drive.google.com/file/d/video_exact_123/view" },
+    { id: "video_variant_45", name: "BB 238.3 GB7 V2.mp4", mimeType: "video/mp4", modifiedTime: "2026-07-21T10:00:00Z" },
+    { id: "copy_exact_1234", name: "COPY - BB 238.3 GB7", mimeType: "application/vnd.google-apps.document", modifiedTime: "2026-07-22T10:00:00Z", webViewLink: "https://docs.google.com/document/d/copy_exact_1234/edit" }
+  ];
+  assert.equal(normalizeDriveName("BB 238.3 GB7.mp4"), "bb 238 3 gb7");
+  const match = matchDriveFiles("BB 238.3 GB7", files);
+  assert.equal(match.status, "complete");
+  assert.equal(match.video.id, "video_exact_123");
+  assert.equal(match.copy.id, "copy_exact_1234");
+  assert.equal(match.videoCandidates, 1);
 });
 
 test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", () => {
@@ -102,4 +122,12 @@ test("view passa a fornecer resultados oficiais automaticamente quando purchases
 test("período personalizado é normalizado mesmo com datas invertidas", () => {
   const range = resolveRange(new URLSearchParams({ period: "custom", from: "2026-07-20", to: "2026-07-10" }));
   assert.deepEqual(range, { preset: "custom", from: "2026-07-10", to: "2026-07-20" });
+});
+
+test("Drive indexa pastas compartilhadas e fornece thumbnail leve", () => {
+  assert.match(driveFn, /corpora", "allDrives"/);
+  assert.match(driveFn, /includeItemsFromAllDrives", "true"/);
+  assert.match(driveFn, /supportsAllDrives", "true"/);
+  assert.match(driveFn, /thumbnailLink,hasThumbnail/);
+  assert.match(driveFn, /thumbnail_url: thumbnailUrl/);
 });

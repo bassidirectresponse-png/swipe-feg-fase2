@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const adsScraper = await readFile(new URL("../scripts/ads_scraper.py", import.meta.url), "utf8");
+const adsWorkflow = await readFile(new URL("../.github/workflows/ads-ativos.yml", import.meta.url), "utf8");
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
 const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
@@ -86,6 +87,15 @@ test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
   assert.match(html, /id="brainNicheFilter"/);
   assert.match(html, /p\.set\("autor",brainAuthor\)/);
   assert.match(html, /r\.q\.get\("autor"\)/);
+});
+
+test("rotas de cards tratam variações de maiúsculas e acentos do mesmo nicho", () => {
+  assert.match(html, /function nicheRouteKey\(niche\)/);
+  assert.match(html, /function sameNiche\(a,b\)/);
+  assert.match(html, /return hit\?canonicalNiche\(hit\):null/);
+  assert.match(html, /sameNiche\(nicheOf\(o\),activeNiche\)/);
+  assert.match(html, /const ncByKey=new Map\(\)/);
+  assert.match(html, /sameNiche\(activeNiche,n\)/);
 });
 
 test("todas as listas usam 20 itens por página com opções de 50 e 100", () => {
@@ -298,6 +308,16 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsScraper, /hist\.append\(\{"d": checked, "n": previous\}\)/);
   assert.match(html, /brand-ads-history/);
   assert.match(html, /Ads ativos · evolução diária/);
+  assert.match(adsWorkflow, /push:\s+branches: \[main\]/);
+});
+
+test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
+  assert.match(html, /extra:validated\?`<div class="brand-bm-state/);
+  assert.match(html, /if\(section==="brandsvalidated"\)\{/);
+  assert.match(html, /<div id="brandBmFields"\$\{fBrandStage==="brandsvalidated"\?"":" hidden"\}>/);
+  assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
+  assert.match(html, /else if\(fBrandStage==="brandsgeneral"\)\{/);
+  assert.match(html, /for\(const key of BRAND_BM_METRICS\.map/);
 });
 
 test("histórico de ads ativos aparece no topo do detalhe de Brands", () => {
@@ -410,4 +430,19 @@ test("rotas profundas recebem o fallback da SPA", () => {
   assert.match(html, /TR_SAVE_FN="\/\.netlify\/functions\/transcript"/);
   assert.match(transcriptFn, /getStore\(\{ name: "transcricoes", consistency: "strong" \}\)/);
   assert.match(transcriptFn, /store\.setJSON\(id, transcript\)/);
+});
+
+test("cards de vídeo usam primeiro take leve sem manter players na grade", () => {
+  assert.match(html, /data-card-video-poster=/);
+  assert.match(html, /IntersectionObserver/);
+  assert.match(html, /while\(active<2&&queue\.length\)/);
+  assert.doesNotMatch(html, /<video class="cmedia__vid"/);
+  assert.match(html, /\(d\.video\|\|d\.print\)\?mediaThumb\(d\.print,d\.nome,!!d\.video,d\.video\|\|""\)/);
+});
+
+test("criativos expõem copy transcrita e documento opcional do Drive", () => {
+  assert.match(html, /Ver e copiar a copy/);
+  assert.match(html, /Abrir copy no Drive/);
+  assert.match(html, /Link da copy no Drive \(opcional\)/);
+  assert.match(html, /copyLink:""/);
 });

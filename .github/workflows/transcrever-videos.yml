@@ -55,9 +55,9 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
-          TRANSCRIBE_KINDS: "criativo"
+          TRANSCRIBE_KINDS: "criativo,megabrain"
           MAX_VIDEOS: "200"
           MAX_RUN_MINUTES: "300"
-          MAX_RETRIES: "4"
+          MAX_RETRIES: "8"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py

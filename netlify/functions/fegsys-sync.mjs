@@ -1,4 +1,5 @@
 import { refreshSnapshot } from "./_fegsys-bigquery.mjs";
+import { getDriveIndex } from "./_fegsys-drive.mjs";
 
 export const config = { schedule: "13 * * * *" };
 
@@ -14,13 +15,17 @@ function safeSyncError(error) {
 export default async () => {
   try {
     const snapshot = await refreshSnapshot();
+    let drive;
+    try { const index = await getDriveIndex({ refresh: true }); drive = { available: true, files: index.files.length }; }
+    catch { drive = { available: false, files: 0 }; }
     return Response.json({
       ok: true,
       syncedAt: snapshot.syncedAt,
       rows: snapshot.rows.length,
       sources: {
         sales: snapshot.sourceStatus?.sales?.available !== false,
-        meta: snapshot.sourceStatus?.meta?.available !== false
+        meta: snapshot.sourceStatus?.meta?.available !== false,
+        drive
       }
     }, { headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'; frame-ancestors 'none'", "x-content-type-options": "nosniff" } });
   } catch (error) {
