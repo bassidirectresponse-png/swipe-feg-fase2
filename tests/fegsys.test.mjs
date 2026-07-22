@@ -72,6 +72,10 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /const o=itemById\(c\.dataset\.id\)/);
   assert.match(html, /const o=itemById\(id\);if\(!o\)return;/);
   assert.match(html, /Ver e copiar a copy/);
+  assert.match(html, /isFegsys&&embed/);
+  assert.match(html, /Abrir no Drive/);
+  assert.match(html, /Abrir mídia/);
+  assert.match(html, /Abrir documento/);
   assert.doesNotMatch(coreFn, /marts_feg\.mart_criativos_diario/);
   assert.match(coreFn, /quantidade_pedidos/);
   assert.match(coreFn, /faturamento_liquido_front/);
@@ -128,14 +132,24 @@ test("período personalizado é normalizado mesmo com datas invertidas", () => {
   assert.deepEqual(range, { preset: "custom", from: "2026-07-10", to: "2026-07-20" });
 });
 
-test("Drive indexa pastas compartilhadas e fornece thumbnail leve", () => {
-  assert.match(driveFn, /corpora", "allDrives"/);
+test("Drive indexa itens compartilhados sem percorrer cada subpasta", () => {
+  assert.match(driveFn, /corpora", "user"/);
   assert.match(driveFn, /includeItemsFromAllDrives", "true"/);
   assert.match(driveFn, /supportsAllDrives", "true"/);
   assert.match(driveFn, /thumbnailLink,hasThumbnail/);
   assert.match(driveFn, /thumbnail_url: thumbnailUrl/);
   assert.match(driveFn, /1O1HoupHFxPPqHLLuAthkZzY6pb-6q2YO/);
   assert.match(driveFn, /1BVtaUOgSdpWFgU3TFZArlVuSB6FI-DF_/);
-  assert.match(driveFn, /while \(queue\.length\)/);
+  assert.match(driveFn, /application\/vnd\.google-apps\.shortcut/);
+  assert.match(driveFn, /AbortSignal\.timeout/);
+  assert.match(driveFn, /includeCopyText = false/);
+  assert.doesNotMatch(driveFn, /while \(queue\.length\)/);
   assert.match(driveFn, /pasta não acessível/);
+});
+
+test("Swipe de Criativos vem imediatamente depois de Swipe de Ofertas", () => {
+  const offers = html.indexOf('{key:"oferta"');
+  const creatives = html.indexOf('{key:"criativo"');
+  const presells = html.indexOf('{key:"presell"');
+  assert.ok(offers >= 0 && creatives > offers && presells > creatives);
 });

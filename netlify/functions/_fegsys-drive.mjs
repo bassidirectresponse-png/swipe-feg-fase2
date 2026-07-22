@@ -4,12 +4,15 @@ import { googleAccessToken, readCredential } from "./_fegsys-bigquery.mjs";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const STORE_NAME = "fegsys-drive";
-const INDEX_KEY = "files-v2";
+const INDEX_KEY = "files-v3";
 const INDEX_MAX_AGE_MS = 65 * 60 * 1000;
 const COPY_MAX_BYTES = 2 * 1024 * 1024;
+const DRIVE_REQUEST_TIMEOUT_MS = 18_000;
+const DRIVE_MAX_PAGES = 40;
 const VIDEO_RE = /^video\//i;
 const GOOGLE_DOC = "application/vnd.google-apps.document";
 const GOOGLE_FOLDER = "application/vnd.google-apps.folder";
+const GOOGLE_SHORTCUT = "application/vnd.google-apps.shortcut";
 const DEFAULT_ROOT_IDS = [
   "1O1HoupHFxPPqHLLuAthkZzY6pb-6q2YO",
   "1BVtaUOgSdpWFgU3TFZArlVuSB6FI-DF_"
@@ -69,62 +72,69 @@ function configuredRootIds() {
 
 function contentQuery(parentId = "") {
   const parent = parentId ? `'${String(parentId).replaceAll("'", "")}' in parents and ` : "";
-  return `${parent}trashed = false and (mimeType = '${GOOGLE_FOLDER}' or mimeType contains 'video/' or mimeType = '${GOOGLE_DOC}' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`;
+  return `${parent}trashed = false and (mimeType = '${GOOGLE_FOLDER}' or mimeType = '${GOOGLE_SHORTCUT}' or mimeType contains 'video/' or mimeType = '${GOOGLE_DOC}' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`;
+}
+
+async function driveFetch(url, options = {}) {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(DRIVE_REQUEST_TIMEOUT_MS) });
 }
 
 async function listDrivePage(token, parentId = "") {
   const files = [];
-  let pageToken = "";
+  let pageToken = "", pages = 0, incompleteSearch = false;
   do {
     const url = new URL("https://www.googleapis.com/drive/v3/files");
     url.searchParams.set("q", contentQuery(parentId));
     url.searchParams.set("spaces", "drive");
-    url.searchParams.set("corpora", "allDrives");
+    /* A conta de serviço só enxerga o que foi compartilhado com ela. O corpus
+       "user" devolve todos esses arquivos em uma única paginação, inclusive
+       itens herdados de subpastas e de Drives Compartilhados, sem fazer uma
+       chamada por pasta. */
+    url.searchParams.set("corpora", "user");
     url.searchParams.set("includeItemsFromAllDrives", "true");
     url.searchParams.set("supportsAllDrives", "true");
     url.searchParams.set("pageSize", "1000");
-    url.searchParams.set("fields", "nextPageToken,incompleteSearch,files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink,hasThumbnail,md5Checksum,driveId,parents)");
+    url.searchParams.set("fields", "nextPageToken,incompleteSearch,files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink,hasThumbnail,md5Checksum,driveId,parents,shortcutDetails(targetId,targetMimeType))");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+    const response = await driveFetch(url, { headers: { authorization: `Bearer ${token}` } });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(`Drive recusou a listagem (${response.status})`);
     files.push(...(result.files || []));
     pageToken = String(result.nextPageToken || "");
-  } while (pageToken);
-  return files;
+    incompleteSearch ||= result.incompleteSearch === true;
+    pages += 1;
+  } while (pageToken && pages < DRIVE_MAX_PAGES);
+  return { files, incompleteSearch: incompleteSearch || !!pageToken, pages };
 }
 
 async function inspectRoot(token, id) {
   const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}`);
   url.searchParams.set("supportsAllDrives", "true");
   url.searchParams.set("fields", "id,name,mimeType,driveId");
-  const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  const response = await driveFetch(url, { headers: { authorization: `Bearer ${token}` } });
   const file = await response.json().catch(() => ({}));
   if (!response.ok || file.mimeType !== GOOGLE_FOLDER) return { id, available: false, name: "", error: `pasta não acessível (${response.status})` };
-  return { id, available: true, name: String(file.name || ""), error: "" };
+  return { id, available: true, name: String(file.name || ""), driveId: String(file.driveId || ""), error: "" };
+}
+
+function usableDriveFile(file) {
+  if (!file || !file.id || file.mimeType === GOOGLE_FOLDER) return null;
+  if (file.mimeType !== GOOGLE_SHORTCUT) return file;
+  const targetId = String(file.shortcutDetails && file.shortcutDetails.targetId || "");
+  const targetMimeType = String(file.shortcutDetails && file.shortcutDetails.targetMimeType || "");
+  if (!targetId || !(VIDEO_RE.test(targetMimeType) || COPY_MIMES.has(targetMimeType))) return null;
+  return { ...file, id: targetId, mimeType: targetMimeType, shortcutId: file.id };
 }
 
 async function listDriveFiles() {
   const { token } = await driveToken();
   const rootIds = configuredRootIds(), roots = await Promise.all(rootIds.map(id => inspectRoot(token, id)));
-  const queue = roots.filter(root => root.available).map(root => root.id), visited = new Set(), byId = new Map();
-  while (queue.length) {
-    const batch = queue.splice(0, 8).filter(parentId => parentId && !visited.has(parentId));
-    batch.forEach(parentId => visited.add(parentId));
-    const pages = await Promise.all(batch.map(parentId => listDrivePage(token, parentId)));
-    for (const children of pages) {
-      for (const file of children) {
-        if (file.mimeType === GOOGLE_FOLDER) { if (!visited.has(file.id)) queue.push(file.id); continue; }
-        if (file.id) byId.set(file.id, file);
-      }
-    }
+  const listed = await listDrivePage(token), byId = new Map();
+  for (const raw of listed.files) {
+    const file = usableDriveFile(raw);
+    if (file) byId.set(file.id, file);
   }
-  /* Compatibilidade: enquanto nenhuma pasta principal estiver compartilhada,
-     ainda indexamos os arquivos avulsos que a conta de serviço já consegue ver. */
-  if (!roots.some(root => root.available)) {
-    for (const file of await listDrivePage(token)) if (file.mimeType !== GOOGLE_FOLDER && file.id) byId.set(file.id, file);
-  }
-  return { syncedAt: new Date().toISOString(), roots, files: [...byId.values()] };
+  return { syncedAt: new Date().toISOString(), roots, files: [...byId.values()], pages: listed.pages, incompleteSearch: listed.incompleteSearch };
 }
 
 export async function getDriveIndex({ refresh = false } = {}) {
@@ -195,15 +205,17 @@ async function mapLimit(items, limit, worker) {
   return results;
 }
 
-export async function enrichFegsysCards(cards = [], { refresh = false } = {}) {
+export async function enrichFegsysCards(cards = [], { refresh = false, includeCopyText = false } = {}) {
   const index = await getDriveIndex({ refresh });
   let matchedVideos = 0, matchedCopies = 0;
-  const enriched = await mapLimit(cards, 4, async card => {
+  const enriched = await mapLimit(cards, includeCopyText ? 4 : Math.max(1, cards.length), async card => {
     const match = matchDriveFiles(card.nome, index.files || []);
     const videoUrl = card.video_url || (match.video ? signDriveMedia(match.video.id) : "");
     const thumbnailUrl = card.thumbnail_url || (match.video && match.video.thumbnailLink || "");
     const copyUrl = card.copy_url || (match.copy && match.copy.webViewLink || "");
-    const copy = card.copy_text || (match.copy ? await copyText(match.copy) : "");
+    /* A primeira carga entrega imediatamente o link do documento. Exportar o
+       texto de cada Google Doc fica opcional para não segurar todos os cards. */
+    const copy = card.copy_text || (includeCopyText && match.copy ? await copyText(match.copy) : "");
     if (!card.video_url && match.video) matchedVideos += 1;
     if (!(card.copy_text || card.copy_url) && match.copy) matchedCopies += 1;
     return {
@@ -224,7 +236,7 @@ export async function enrichFegsysCards(cards = [], { refresh = false } = {}) {
   });
   return {
     cards: enriched,
-    status: { available: true, error: "", indexedAt: index.syncedAt, roots: index.roots || [], files: (index.files || []).length, matchedVideos, matchedCopies }
+    status: { available: true, error: "", indexedAt: index.syncedAt, roots: index.roots || [], files: (index.files || []).length, pages: index.pages || 0, incompleteSearch: index.incompleteSearch === true, matchedVideos, matchedCopies }
   };
 }
 
@@ -232,5 +244,5 @@ export async function fetchDriveMedia(fileId, range = "") {
   const { token } = await driveToken();
   const headers = { authorization: `Bearer ${token}` };
   if (range) headers.range = range;
-  return fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, { headers });
+  return driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, { headers });
 }
