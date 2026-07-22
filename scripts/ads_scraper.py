@@ -118,6 +118,37 @@ def fetch_offers(token):
     return json.loads(txt)
 
 
+def library_links(data):
+    """Encontra links da Meta Library mesmo em cards antigos/importados.
+
+    O editor atual grava ``data.bibliotecas``, mas lotes e cards legados podem
+    ter salvo o mesmo link em campos singulares ou dentro de outro bloco. A
+    varredura recursiva impede que a origem do card o retire da revisão diária.
+    """
+    found = []
+
+    def add(value):
+        if not isinstance(value, str):
+            return
+        for url in re.findall(r"https?://[^\s\"'<>]+", value):
+            clean = url.rstrip(".,);]")
+            if "facebook.com/ads/library" in clean.lower() and clean not in found:
+                found.append(clean)
+
+    def walk(value):
+        if isinstance(value, dict):
+            for nested in value.values():
+                walk(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                walk(nested)
+        else:
+            add(value)
+
+    walk(data)
+    return found
+
+
 def eligible(row):
     """Oferta Meta da FEG DR/Brands, com pelo menos uma biblioteca."""
     d = row.get("data") or {}
@@ -125,8 +156,7 @@ def eligible(row):
         return None
     if d.get("tipoTrafego", "meta") != "meta":
         return None
-    links = [b.get("link", "").strip() for b in (d.get("bibliotecas") or []) if b.get("link")]
-    links = [l for l in links if l]
+    links = library_links(d)
     if not links:
         return None
     status = str(d.get("analysisStatus") or "").lower()

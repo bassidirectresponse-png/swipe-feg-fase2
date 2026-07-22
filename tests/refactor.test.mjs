@@ -315,6 +315,9 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsWorkflow, /FORCE_REVIEW: "1"/);
   assert.match(adsScraper, /FORCE_REVIEW = os\.environ\.get\("FORCE_REVIEW", "1"\)/);
   assert.match(adsScraper, /if not FORCE_REVIEW and status == "failed"/);
+  assert.match(adsScraper, /def library_links\(data\):/);
+  assert.match(adsScraper, /facebook\.com\/ads\/library/);
+  assert.match(adsScraper, /links = library_links\(d\)/);
 });
 
 test("Transcritor preserva o arquivo até a leitura e entrega original com tradução PT-BR", () => {
