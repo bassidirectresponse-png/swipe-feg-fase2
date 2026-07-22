@@ -149,6 +149,8 @@ test("Drive busca somente os nomes retornados pelo FEGSYS sem percorrer cada sub
   assert.match(driveFn, /name contains/);
   assert.match(driveFn, /creativeBatches/);
   assert.match(driveFn, /creativeNames: cards\.map\(card => card\.nome\)/);
+  assert.match(driveFn, /const lookup = driveLookup\(index\.files \|\| \[\]\)/);
+  assert.match(driveFn, /matchDriveFiles\(card\.nome, index\.files \|\| \[\], lookup\)/);
   assert.doesNotMatch(driveFn, /while \(queue\.length\)/);
   assert.doesNotMatch(driveFn, /mimeType = '\$\{GOOGLE_FOLDER\}' or/);
   assert.match(driveFn, /pasta não acessível/);

@@ -34,6 +34,25 @@ export function normalizeDriveName(value) {
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function driveLookup(files = []) {
+  const videos = new Map(), copies = new Map();
+  const add = (map, key, file) => {
+    if (!key) return;
+    const list = map.get(key) || [];
+    if (!list.some(item => item.id === file.id)) list.push(file);
+    map.set(key, list);
+  };
+  for (const file of files) {
+    if (VIDEO_RE.test(file?.mimeType || "")) add(videos, normalizeDriveName(file.name), file);
+    else if (COPY_MIMES.has(file?.mimeType || "")) {
+      add(copies, normalizeDriveName(file.name), file);
+      add(copies, copyCore(file.name), file);
+    }
+  }
+  for (const list of [...videos.values(), ...copies.values()]) list.sort(byNewest);
+  return { videos, copies };
+}
+
 function copyCore(value) {
   const wrappers = new Set(["copy", "roteiro", "script", "documento", "doc", "texto", "creative", "criativo"]);
   const tokens = normalizeDriveName(value).split(" ").filter(Boolean);
@@ -46,11 +65,12 @@ function byNewest(a, b) {
   return String(b.modifiedTime || "").localeCompare(String(a.modifiedTime || "")) || String(a.name || "").localeCompare(String(b.name || ""));
 }
 
-export function matchDriveFiles(creativeName, files = []) {
+export function matchDriveFiles(creativeName, files = [], lookup = null) {
   const key = normalizeDriveName(creativeName);
   if (!key) return { status: "not_found", video: null, copy: null, videoCandidates: 0, copyCandidates: 0 };
-  const videoMatches = files.filter(file => VIDEO_RE.test(file.mimeType || "") && normalizeDriveName(file.name) === key).sort(byNewest);
-  const copyMatches = files.filter(file => COPY_MIMES.has(file.mimeType || "") && (normalizeDriveName(file.name) === key || copyCore(file.name) === key)).sort(byNewest);
+  const indexed = lookup || driveLookup(files);
+  const videoMatches = indexed.videos.get(key) || [];
+  const copyMatches = indexed.copies.get(key) || [];
   const video = videoMatches[0] || null, copy = copyMatches[0] || null;
   return {
     status: video && copy ? "complete" : video ? "video_only" : copy ? "copy_only" : "not_found",
@@ -252,9 +272,10 @@ async function mapLimit(items, limit, worker) {
 
 export async function enrichFegsysCards(cards = [], { refresh = false, allowStale = true, includeCopyText = false } = {}) {
   const index = await getDriveIndex({ refresh, allowStale, creativeNames: cards.map(card => card.nome) });
+  const lookup = driveLookup(index.files || []);
   let matchedVideos = 0, matchedCopies = 0;
   const enriched = await mapLimit(cards, includeCopyText ? 4 : Math.max(1, cards.length), async card => {
-    const match = matchDriveFiles(card.nome, index.files || []);
+    const match = matchDriveFiles(card.nome, index.files || [], lookup);
     const videoUrl = card.video_url || (match.video ? signDriveMedia(match.video.id) : "");
     const thumbnailUrl = card.thumbnail_url || (match.video && match.video.thumbnailLink || "");
     const copyUrl = card.copy_url || (match.copy && match.copy.webViewLink || "");
