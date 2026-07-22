@@ -68,6 +68,10 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /<span>ROAS<\/span>/);
   assert.match(html, /<span>CPC<\/span>/);
   assert.match(html, /Reportado pela Meta/);
+  assert.match(html, /function itemById\(id\)\{return fegsysCards\.find/);
+  assert.match(html, /const o=itemById\(c\.dataset\.id\)/);
+  assert.match(html, /const o=itemById\(id\);if\(!o\)return;/);
+  assert.match(html, /Ver e copiar a copy/);
   assert.doesNotMatch(coreFn, /marts_feg\.mart_criativos_diario/);
   assert.match(coreFn, /quantidade_pedidos/);
   assert.match(coreFn, /faturamento_liquido_front/);
@@ -130,4 +134,8 @@ test("Drive indexa pastas compartilhadas e fornece thumbnail leve", () => {
   assert.match(driveFn, /supportsAllDrives", "true"/);
   assert.match(driveFn, /thumbnailLink,hasThumbnail/);
   assert.match(driveFn, /thumbnail_url: thumbnailUrl/);
+  assert.match(driveFn, /1O1HoupHFxPPqHLLuAthkZzY6pb-6q2YO/);
+  assert.match(driveFn, /1BVtaUOgSdpWFgU3TFZArlVuSB6FI-DF_/);
+  assert.match(driveFn, /while \(queue\.length\)/);
+  assert.match(driveFn, /pasta não acessível/);
 });

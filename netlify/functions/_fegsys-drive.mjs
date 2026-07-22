@@ -4,11 +4,16 @@ import { googleAccessToken, readCredential } from "./_fegsys-bigquery.mjs";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const STORE_NAME = "fegsys-drive";
-const INDEX_KEY = "files-v1";
+const INDEX_KEY = "files-v2";
 const INDEX_MAX_AGE_MS = 65 * 60 * 1000;
 const COPY_MAX_BYTES = 2 * 1024 * 1024;
 const VIDEO_RE = /^video\//i;
 const GOOGLE_DOC = "application/vnd.google-apps.document";
+const GOOGLE_FOLDER = "application/vnd.google-apps.folder";
+const DEFAULT_ROOT_IDS = [
+  "1O1HoupHFxPPqHLLuAthkZzY6pb-6q2YO",
+  "1BVtaUOgSdpWFgU3TFZArlVuSB6FI-DF_"
+];
 const COPY_MIMES = new Set([
   GOOGLE_DOC,
   "text/plain",
@@ -57,13 +62,22 @@ async function driveToken() {
   return { credential, token: await googleAccessToken(credential, [DRIVE_SCOPE]) };
 }
 
-async function listDriveFiles() {
-  const { token } = await driveToken();
+function configuredRootIds() {
+  const configured = String(process.env.FEGSYS_DRIVE_FOLDER_IDS || "").split(/[\s,;]+/).map(value => value.trim()).filter(Boolean);
+  return [...new Set(configured.length ? configured : DEFAULT_ROOT_IDS)];
+}
+
+function contentQuery(parentId = "") {
+  const parent = parentId ? `'${String(parentId).replaceAll("'", "")}' in parents and ` : "";
+  return `${parent}trashed = false and (mimeType = '${GOOGLE_FOLDER}' or mimeType contains 'video/' or mimeType = '${GOOGLE_DOC}' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`;
+}
+
+async function listDrivePage(token, parentId = "") {
   const files = [];
   let pageToken = "";
   do {
     const url = new URL("https://www.googleapis.com/drive/v3/files");
-    url.searchParams.set("q", "trashed = false and (mimeType contains 'video/' or mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')");
+    url.searchParams.set("q", contentQuery(parentId));
     url.searchParams.set("spaces", "drive");
     url.searchParams.set("corpora", "allDrives");
     url.searchParams.set("includeItemsFromAllDrives", "true");
@@ -77,7 +91,40 @@ async function listDriveFiles() {
     files.push(...(result.files || []));
     pageToken = String(result.nextPageToken || "");
   } while (pageToken);
-  return { syncedAt: new Date().toISOString(), files };
+  return files;
+}
+
+async function inspectRoot(token, id) {
+  const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}`);
+  url.searchParams.set("supportsAllDrives", "true");
+  url.searchParams.set("fields", "id,name,mimeType,driveId");
+  const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  const file = await response.json().catch(() => ({}));
+  if (!response.ok || file.mimeType !== GOOGLE_FOLDER) return { id, available: false, name: "", error: `pasta não acessível (${response.status})` };
+  return { id, available: true, name: String(file.name || ""), error: "" };
+}
+
+async function listDriveFiles() {
+  const { token } = await driveToken();
+  const rootIds = configuredRootIds(), roots = await Promise.all(rootIds.map(id => inspectRoot(token, id)));
+  const queue = roots.filter(root => root.available).map(root => root.id), visited = new Set(), byId = new Map();
+  while (queue.length) {
+    const batch = queue.splice(0, 8).filter(parentId => parentId && !visited.has(parentId));
+    batch.forEach(parentId => visited.add(parentId));
+    const pages = await Promise.all(batch.map(parentId => listDrivePage(token, parentId)));
+    for (const children of pages) {
+      for (const file of children) {
+        if (file.mimeType === GOOGLE_FOLDER) { if (!visited.has(file.id)) queue.push(file.id); continue; }
+        if (file.id) byId.set(file.id, file);
+      }
+    }
+  }
+  /* Compatibilidade: enquanto nenhuma pasta principal estiver compartilhada,
+     ainda indexamos os arquivos avulsos que a conta de serviço já consegue ver. */
+  if (!roots.some(root => root.available)) {
+    for (const file of await listDrivePage(token)) if (file.mimeType !== GOOGLE_FOLDER && file.id) byId.set(file.id, file);
+  }
+  return { syncedAt: new Date().toISOString(), roots, files: [...byId.values()] };
 }
 
 export async function getDriveIndex({ refresh = false } = {}) {
@@ -96,7 +143,7 @@ function mediaSecret(credential) {
 
 function mediaPayload(fileId, expiresAt) { return `${fileId}.${expiresAt}`; }
 
-export function signDriveMedia(fileId, { ttlSeconds = 15 * 60 } = {}) {
+export function signDriveMedia(fileId, { ttlSeconds = 60 * 60 } = {}) {
   const credential = readCredential();
   if (!credential) throw new Error("credencial Google não configurada");
   const expiresAt = Math.floor(Date.now() / 1000) + Math.max(60, Math.min(3600, ttlSeconds));
@@ -177,7 +224,7 @@ export async function enrichFegsysCards(cards = [], { refresh = false } = {}) {
   });
   return {
     cards: enriched,
-    status: { available: true, error: "", indexedAt: index.syncedAt, files: (index.files || []).length, matchedVideos, matchedCopies }
+    status: { available: true, error: "", indexedAt: index.syncedAt, roots: index.roots || [], files: (index.files || []).length, matchedVideos, matchedCopies }
   };
 }
 

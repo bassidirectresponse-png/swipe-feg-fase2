@@ -1481,7 +1481,9 @@ function listPath(section,niche){
   return NICHE_SECTIONS.has(section)?base+"/"+catSlug(niche):base;
 }
 function currentPath(){return listPath(activeSection,activeNiche)+qsFromState();}
-function offerPath(o){const sec=sectionOf(o);return "/"+(SEC2PATH[sec]||"ofertas")+"/"+catSlug(nicheOf(o))+"/"+o.id;}
+function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsys":sectionOf(o);}
+function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
+function offerPath(o){const sec=itemSection(o);return "/"+(SEC2PATH[sec]||"ofertas")+"/"+catSlug(nicheOf(o))+"/"+o.id;}
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
   const parts=[SEC_SHORT[activeSection]||cfg.label];
@@ -1514,9 +1516,9 @@ function renderNotFound(msg){
   const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/ofertas/todos" style="margin-top:18px">Voltar para as ofertas</a></div>`;
 }
 function maybeOpenView(id){
-  const o=offers.find(x=>x.id===id);
+  const o=itemById(id);
   const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?!nicheOf(o):sameNiche(nicheOf(o),activeNiche)));
-  if(!o||sectionOf(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
+  if(!o||itemSection(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
 function applyRoute(){
@@ -1854,7 +1856,7 @@ function renderGrid(skipNav){
      Ctrl/⌘/meio-clique abre a página do item em nova aba nativamente. */
   $$(".card[data-id]",area).forEach(c=>{
     c.removeAttribute("role");c.removeAttribute("tabindex");
-    const o=offers.find(x=>x.id===c.dataset.id);
+    const o=itemById(c.dataset.id);
     if(o&&!c.querySelector(".card__navlink")){
       const a=document.createElement("a");
       a.className="card__navlink";a.setAttribute("data-nav","");a.href=offerPath(o);
@@ -1888,8 +1890,8 @@ function shotView(label,img,thumb){
   return`<a class="shot" href="${esc(img)}" data-lightbox="${esc(img)}"><div class="shot__lbl">${label}<span class="zoom">${ic("maximize")}ampliar</span></div><span class="shot__media"><img loading="lazy" decoding="async" src="${esc(thumb||img)}" alt="${esc(label)}"></span></a>`;
 }
 function openView(id){
-  const o=offers.find(x=>x.id===id);if(!o)return;
-  const section=sectionOf(o),isBrand=BRAND_SECTIONS.has(section);
+  const o=itemById(id);if(!o)return;
+  const section=itemSection(o),isBrand=BRAND_SECTIONS.has(section);
   if(section!=="oferta"&&!isBrand){openSimpleView(o);return;}
   const d=normalize(o.data);
   const native=d.tipoTrafego==="native";
@@ -2504,7 +2506,7 @@ $("#lightboxImg").addEventListener("pointerup",()=>{lbDrag=null;$("#lightboxStag
 
 /* ===== POPUP DA COPY (ver copy direto do card) ===== */
 function openCopyPop(id){
-  const o=offers.find(x=>x.id===id);if(!o)return;
+  const o=itemById(id);if(!o)return;
   const d=o.data||{};
   const copy=brainCopyText(d);
   const copyIsTranscript=brainCopyIsTranscript(d);
@@ -2617,6 +2619,8 @@ async function loadFegsysBrain(force=false){
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
   const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
+  const driveRoots=fegsysSourceStatus&&fegsysSourceStatus.drive&&Array.isArray(fegsysSourceStatus.drive.roots)?fegsysSourceStatus.drive.roots:[];
+  const inaccessibleRoots=driveRoots.filter(root=>!root.available).length;if(inaccessibleRoots)unavailable.push(`${inaccessibleRoots} pasta${inaccessibleRoots>1?"s":""} do Drive aguardando compartilhamento`);
   const driveReady=fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files>0?` · ${fegsysSourceStatus.drive.matchedVideos||0} vídeos e ${fegsysSourceStatus.drive.matchedCopies||0} copies encontrados`:"";
   const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
@@ -3651,7 +3655,12 @@ function fegsysBrainCard(o){
   const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
   const media=(d.video||d.print)?mediaThumb(d.print,d.nome,!!d.video,d.video||""):`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não vinculada</span></div>`;
   const copyPreview=d.copy?`<div class="fegsys-copy"><strong>Copy</strong><p>${esc(String(d.copy).slice(0,220))}${String(d.copy).length>220?"…":""}</p></div>`:"";
-  const sourceLinks=`${d.linkDrive?`<a class="btn btn--outline btn--sm" href="${esc(d.linkDrive)}" target="_blank" rel="noopener">${ic("folder")}Abrir no Drive</a>`:""}${d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:""}${d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir copy</a>`:""}`;
+  const sourceLinks=[
+    d.linkDrive?`<a class="btn btn--outline btn--sm" href="${esc(d.linkDrive)}" target="_blank" rel="noopener">${ic("folder")}Abrir no Drive</a>`:"",
+    d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:"",
+    d.copy?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:"",
+    d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir documento</a>`:""
+  ].filter(Boolean).join("");
   return card({
     id:o.id,variant:"kcard kcard--brain fegsys-card",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
