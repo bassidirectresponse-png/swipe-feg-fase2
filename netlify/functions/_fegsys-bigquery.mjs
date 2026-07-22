@@ -370,10 +370,14 @@ export async function refreshSnapshot() {
   return snapshot;
 }
 
-export async function getSnapshot({ refresh = false } = {}) {
+export async function getSnapshot({ refresh = false, allowStale = false } = {}) {
   const store = getStore({ name: STORE_NAME, consistency: "strong" });
   const snapshot = await store.get(STORE_KEY, { type: "json" }).catch(() => null);
   const stale = !snapshot || !snapshot.syncedAt || Date.now() - Date.parse(snapshot.syncedAt) > MAX_AGE_MS;
+  /* A sincronização agendada renova este snapshot a cada hora. Na navegação,
+     um snapshot já existente deve aparecer imediatamente; uma consulta longa
+     ao BigQuery não pode esconder todos os cards enquanto é renovada. */
+  if (allowStale && snapshot && !refresh) return snapshot;
   if ((refresh || stale) && readCredential()) return refreshSnapshot();
   return snapshot;
 }

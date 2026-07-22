@@ -16,7 +16,7 @@ export default async () => {
   try {
     const snapshot = await refreshSnapshot();
     let drive;
-    try { const index = await getDriveIndex({ refresh: true }); drive = { available: true, files: index.files.length }; }
+    try { const index = await getDriveIndex({ refresh: true, creativeNames: [] }); drive = { available: true, files: index.files.length }; }
     catch { drive = { available: false, files: 0 }; }
     return Response.json({
       ok: true,

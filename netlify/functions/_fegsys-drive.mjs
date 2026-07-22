@@ -4,11 +4,12 @@ import { googleAccessToken, readCredential } from "./_fegsys-bigquery.mjs";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const STORE_NAME = "fegsys-drive";
-const INDEX_KEY = "files-v3";
+const INDEX_KEY = "matches-v4";
 const INDEX_MAX_AGE_MS = 65 * 60 * 1000;
 const COPY_MAX_BYTES = 2 * 1024 * 1024;
 const DRIVE_REQUEST_TIMEOUT_MS = 18_000;
-const DRIVE_MAX_PAGES = 40;
+const DRIVE_MAX_PAGES = 4;
+const DRIVE_SEARCH_BATCH_SIZE = 8;
 const VIDEO_RE = /^video\//i;
 const GOOGLE_DOC = "application/vnd.google-apps.document";
 const GOOGLE_FOLDER = "application/vnd.google-apps.folder";
@@ -70,26 +71,31 @@ function configuredRootIds() {
   return [...new Set(configured.length ? configured : DEFAULT_ROOT_IDS)];
 }
 
-function contentQuery(parentId = "") {
-  const parent = parentId ? `'${String(parentId).replaceAll("'", "")}' in parents and ` : "";
-  return `${parent}trashed = false and (mimeType = '${GOOGLE_FOLDER}' or mimeType = '${GOOGLE_SHORTCUT}' or mimeType contains 'video/' or mimeType = '${GOOGLE_DOC}' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`;
+function driveQueryValue(value) {
+  return String(value || "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+}
+
+function contentQuery(creativeNames = []) {
+  const names = creativeNames.map(value => String(value || "").trim()).filter(Boolean);
+  if (!names.length) return "trashed = false and id = '__none__'";
+  const nameQuery = names.map(name => `name contains '${driveQueryValue(name)}'`).join(" or ");
+  return `trashed = false and (${nameQuery}) and (mimeType = '${GOOGLE_SHORTCUT}' or mimeType contains 'video/' or mimeType = '${GOOGLE_DOC}' or mimeType = 'text/plain' or mimeType = 'application/pdf' or mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`;
 }
 
 async function driveFetch(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(DRIVE_REQUEST_TIMEOUT_MS) });
 }
 
-async function listDrivePage(token, parentId = "") {
+async function listDrivePage(token, creativeNames = []) {
   const files = [];
   let pageToken = "", pages = 0, incompleteSearch = false;
   do {
     const url = new URL("https://www.googleapis.com/drive/v3/files");
-    url.searchParams.set("q", contentQuery(parentId));
+    url.searchParams.set("q", contentQuery(creativeNames));
     url.searchParams.set("spaces", "drive");
-    /* A conta de serviço só enxerga o que foi compartilhado com ela. O corpus
-       "user" devolve todos esses arquivos em uma única paginação, inclusive
-       itens herdados de subpastas e de Drives Compartilhados, sem fazer uma
-       chamada por pasta. */
+    /* A conta de serviço só enxerga o que foi compartilhado com ela. A busca
+       usa os nomes vindos do FEGSYS para não varrer o Drive inteiro antes de
+       devolver os cards do BigQuery. */
     url.searchParams.set("corpora", "user");
     url.searchParams.set("includeItemsFromAllDrives", "true");
     url.searchParams.set("supportsAllDrives", "true");
@@ -126,24 +132,41 @@ function usableDriveFile(file) {
   return { ...file, id: targetId, mimeType: targetMimeType, shortcutId: file.id };
 }
 
-async function listDriveFiles() {
-  const { token } = await driveToken();
-  const rootIds = configuredRootIds(), roots = await Promise.all(rootIds.map(id => inspectRoot(token, id)));
-  const listed = await listDrivePage(token), byId = new Map();
-  for (const raw of listed.files) {
-    const file = usableDriveFile(raw);
-    if (file) byId.set(file.id, file);
-  }
-  return { syncedAt: new Date().toISOString(), roots, files: [...byId.values()], pages: listed.pages, incompleteSearch: listed.incompleteSearch };
+function creativeBatches(creativeNames = []) {
+  const unique = [...new Map(creativeNames.map(value => [normalizeDriveName(value), String(value || "").trim()])).values()].filter(Boolean);
+  const batches = [];
+  for (let index = 0; index < unique.length; index += DRIVE_SEARCH_BATCH_SIZE) batches.push(unique.slice(index, index + DRIVE_SEARCH_BATCH_SIZE));
+  return batches;
 }
 
-export async function getDriveIndex({ refresh = false } = {}) {
+async function listDriveFiles(creativeNames = []) {
+  const { token } = await driveToken();
+  const rootIds = configuredRootIds(), roots = await Promise.all(rootIds.map(id => inspectRoot(token, id)));
+  const batches = creativeBatches(creativeNames);
+  const pages = await mapLimit(batches, 6, batch => listDrivePage(token, batch));
+  const byId = new Map();
+  for (const listed of pages) {
+    for (const raw of listed.files) {
+      const file = usableDriveFile(raw);
+      if (file) byId.set(file.id, file);
+    }
+  }
+  return {
+    syncedAt: new Date().toISOString(), roots, files: [...byId.values()],
+    pages: pages.reduce((total, page) => total + page.pages, 0),
+    incompleteSearch: pages.some(page => page.incompleteSearch), searchedCreatives: creativeNames.length
+  };
+}
+
+export async function getDriveIndex({ refresh = false, creativeNames = [] } = {}) {
   const store = getStore({ name: STORE_NAME, consistency: "strong" });
-  const cached = await store.get(INDEX_KEY, { type: "json" }).catch(() => null);
+  const signature = createHash("sha256").update(creativeNames.map(normalizeDriveName).filter(Boolean).sort().join("\n")).digest("hex").slice(0, 20);
+  const cacheKey = `${INDEX_KEY}-${signature}`;
+  const cached = await store.get(cacheKey, { type: "json" }).catch(() => null);
   const stale = !cached || !cached.syncedAt || Date.now() - Date.parse(cached.syncedAt) > INDEX_MAX_AGE_MS;
   if (!refresh && !stale) return cached;
-  const index = await listDriveFiles();
-  await store.setJSON(INDEX_KEY, index);
+  const index = await listDriveFiles(creativeNames);
+  await store.setJSON(cacheKey, index);
   return index;
 }
 
@@ -206,7 +229,7 @@ async function mapLimit(items, limit, worker) {
 }
 
 export async function enrichFegsysCards(cards = [], { refresh = false, includeCopyText = false } = {}) {
-  const index = await getDriveIndex({ refresh });
+  const index = await getDriveIndex({ refresh, creativeNames: cards.map(card => card.nome) });
   let matchedVideos = 0, matchedCopies = 0;
   const enriched = await mapLimit(cards, includeCopyText ? 4 : Math.max(1, cards.length), async card => {
     const match = matchDriveFiles(card.nome, index.files || []);

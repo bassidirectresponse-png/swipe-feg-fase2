@@ -132,7 +132,7 @@ test("período personalizado é normalizado mesmo com datas invertidas", () => {
   assert.deepEqual(range, { preset: "custom", from: "2026-07-10", to: "2026-07-20" });
 });
 
-test("Drive indexa itens compartilhados sem percorrer cada subpasta", () => {
+test("Drive busca somente os nomes retornados pelo FEGSYS sem percorrer cada subpasta", () => {
   assert.match(driveFn, /corpora", "user"/);
   assert.match(driveFn, /includeItemsFromAllDrives", "true"/);
   assert.match(driveFn, /supportsAllDrives", "true"/);
@@ -143,8 +143,19 @@ test("Drive indexa itens compartilhados sem percorrer cada subpasta", () => {
   assert.match(driveFn, /application\/vnd\.google-apps\.shortcut/);
   assert.match(driveFn, /AbortSignal\.timeout/);
   assert.match(driveFn, /includeCopyText = false/);
+  assert.match(driveFn, /name contains/);
+  assert.match(driveFn, /creativeBatches/);
+  assert.match(driveFn, /creativeNames: cards\.map\(card => card\.nome\)/);
   assert.doesNotMatch(driveFn, /while \(queue\.length\)/);
+  assert.doesNotMatch(driveFn, /mimeType = '\$\{GOOGLE_FOLDER\}' or/);
   assert.match(driveFn, /pasta não acessível/);
+});
+
+test("cards em cache aparecem sem aguardar uma nova consulta longa ao BigQuery", () => {
+  assert.match(coreFn, /allowStale = false/);
+  assert.match(coreFn, /if \(allowStale && snapshot && !refresh\) return snapshot/);
+  assert.match(apiFn, /allowStale: true/);
+  assert.match(apiFn, /enrichFegsysCards\(result\.cards, \{ refresh: false \}\)/);
 });
 
 test("Swipe de Criativos vem imediatamente depois de Swipe de Ofertas", () => {

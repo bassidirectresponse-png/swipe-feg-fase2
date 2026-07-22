@@ -16,13 +16,13 @@ export default async req => {
   const url = new URL(req.url);
   const range = resolveRange(url.searchParams);
   let snapshot;
-  try { snapshot = await getSnapshot({ refresh: url.searchParams.get("refresh") === "1" }); }
+  try { snapshot = await getSnapshot({ refresh: url.searchParams.get("refresh") === "1", allowStale: true }); }
   catch { return json(req, 502, { ok: false, error: "falha temporária na leitura do FEGSYS", configured: configured() }, "GET"); }
   if (!snapshot) return json(req, 503, { ok: false, error: "integração aguardando credencial", configured: configured() }, "GET");
   const result = aggregateSnapshot(snapshot, range);
   let driveStatus;
   try {
-    const drive = await enrichFegsysCards(result.cards, { refresh: url.searchParams.get("refresh") === "1" });
+    const drive = await enrichFegsysCards(result.cards, { refresh: false });
     result.cards = drive.cards;
     driveStatus = drive.status;
   } catch (error) {
