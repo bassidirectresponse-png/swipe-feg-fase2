@@ -1,4 +1,4 @@
-import { refreshSnapshot } from "./_fegsys-bigquery.mjs";
+import { aggregateSnapshot, refreshSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
 import { getDriveIndex } from "./_fegsys-drive.mjs";
 
 export const config = { schedule: "13 * * * *" };
@@ -16,7 +16,14 @@ export default async () => {
   try {
     const snapshot = await refreshSnapshot();
     let drive;
-    try { const index = await getDriveIndex({ refresh: true, creativeNames: [] }); drive = { available: true, files: index.files.length }; }
+    try {
+      /* A janela principal do painel cabe no tempo da rotina horária. O índice
+         global acumula os arquivos encontrados nas execuções seguintes. */
+      const range = resolveRange(new URLSearchParams({ period: "7d" }));
+      const cards = aggregateSnapshot(snapshot, range).cards || [];
+      const index = await getDriveIndex({ refresh: true, creativeNames: cards.map(card => card.nome) });
+      drive = { available: true, files: index.files.length, creatives: cards.length };
+    }
     catch { drive = { available: false, files: 0 }; }
     return Response.json({
       ok: true,

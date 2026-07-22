@@ -156,8 +156,16 @@ test("Drive busca somente os nomes retornados pelo FEGSYS sem percorrer cada sub
 test("cards em cache aparecem sem aguardar uma nova consulta longa ao BigQuery", () => {
   assert.match(coreFn, /allowStale = false/);
   assert.match(coreFn, /if \(allowStale && snapshot && !refresh\) return snapshot/);
-  assert.match(apiFn, /allowStale: true/);
-  assert.match(apiFn, /enrichFegsysCards\(result\.cards, \{ refresh: false \}\)/);
+  assert.match(apiFn, /getSnapshot\(\{ refresh: false, allowStale: true \}\)/);
+  assert.match(apiFn, /enrichFegsysCards\(result\.cards, \{ refresh: false, allowStale: true \}\)/);
+});
+
+test("índice anterior do Drive é servido enquanto a rotina horária renova os arquivos", () => {
+  assert.match(driveFn, /GLOBAL_INDEX_KEY/);
+  assert.match(driveFn, /allowStale = false/);
+  assert.match(driveFn, /allowStale && \(cached \|\| globalCached\)/);
+  assert.match(syncFn, /period: "7d"/);
+  assert.match(syncFn, /cards\.map\(card => card\.nome\)/);
 });
 
 test("Swipe de Criativos vem imediatamente depois de Swipe de Ofertas", () => {

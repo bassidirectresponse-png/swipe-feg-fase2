@@ -5,6 +5,7 @@ import { googleAccessToken, readCredential } from "./_fegsys-bigquery.mjs";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const STORE_NAME = "fegsys-drive";
 const INDEX_KEY = "matches-v4";
+const GLOBAL_INDEX_KEY = "matches-v4-global";
 const INDEX_MAX_AGE_MS = 65 * 60 * 1000;
 const COPY_MAX_BYTES = 2 * 1024 * 1024;
 const DRIVE_REQUEST_TIMEOUT_MS = 18_000;
@@ -158,15 +159,36 @@ async function listDriveFiles(creativeNames = []) {
   };
 }
 
-export async function getDriveIndex({ refresh = false, creativeNames = [] } = {}) {
+function mergeDriveIndexes(previous, current) {
+  const byId = new Map();
+  for (const file of [...(previous?.files || []), ...(current?.files || [])]) {
+    if (file?.id) byId.set(file.id, file);
+  }
+  return {
+    ...(previous || {}),
+    ...(current || {}),
+    files: [...byId.values()],
+    roots: current?.roots?.length ? current.roots : previous?.roots || [],
+    searchedCreatives: Math.max(previous?.searchedCreatives || 0, current?.searchedCreatives || 0)
+  };
+}
+
+export async function getDriveIndex({ refresh = false, allowStale = false, creativeNames = [] } = {}) {
   const store = getStore({ name: STORE_NAME, consistency: "strong" });
   const signature = createHash("sha256").update(creativeNames.map(normalizeDriveName).filter(Boolean).sort().join("\n")).digest("hex").slice(0, 20);
   const cacheKey = `${INDEX_KEY}-${signature}`;
-  const cached = await store.get(cacheKey, { type: "json" }).catch(() => null);
+  const [cached, globalCached] = await Promise.all([
+    store.get(cacheKey, { type: "json" }).catch(() => null),
+    store.get(GLOBAL_INDEX_KEY, { type: "json" }).catch(() => null)
+  ]);
   const stale = !cached || !cached.syncedAt || Date.now() - Date.parse(cached.syncedAt) > INDEX_MAX_AGE_MS;
+  /* O painel nunca deve aguardar uma varredura grande do Drive. O índice
+     anterior continua válido para leitura; a função agendada o renova. */
+  if (!refresh && allowStale && (cached || globalCached)) return cached || globalCached;
   if (!refresh && !stale) return cached;
   const index = await listDriveFiles(creativeNames);
-  await store.setJSON(cacheKey, index);
+  const globalIndex = mergeDriveIndexes(globalCached, index);
+  await Promise.all([store.setJSON(cacheKey, index), store.setJSON(GLOBAL_INDEX_KEY, globalIndex)]);
   return index;
 }
 
@@ -228,8 +250,8 @@ async function mapLimit(items, limit, worker) {
   return results;
 }
 
-export async function enrichFegsysCards(cards = [], { refresh = false, includeCopyText = false } = {}) {
-  const index = await getDriveIndex({ refresh, creativeNames: cards.map(card => card.nome) });
+export async function enrichFegsysCards(cards = [], { refresh = false, allowStale = true, includeCopyText = false } = {}) {
+  const index = await getDriveIndex({ refresh, allowStale, creativeNames: cards.map(card => card.nome) });
   let matchedVideos = 0, matchedCopies = 0;
   const enriched = await mapLimit(cards, includeCopyText ? 4 : Math.max(1, cards.length), async card => {
     const match = matchDriveFiles(card.nome, index.files || []);
