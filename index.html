@@ -969,7 +969,15 @@
   .trstatus{margin-top:14px;font-size:.85rem;color:var(--muted-fg);display:flex;align-items:center;gap:8px;}
   .trerr{color:#ffb3b3;}
   .tractions{display:flex;gap:8px;flex-wrap:wrap;}
-  .trtext{font-size:.95rem;line-height:1.7;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;max-height:min(62vh,620px);overflow:auto;padding-right:6px;}
+  .trdocs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;}
+  .trdoc{min-width:0;border:1px solid var(--border-2);border-radius:14px;background:var(--surface-2);overflow:hidden;}
+  .trdoc__head{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);}
+  .trdoc__title{font-size:.82rem;font-weight:800;color:var(--fg);}
+  .trdoc__state{font-size:.72rem;color:var(--muted-fg);display:inline-flex;align-items:center;gap:6px;text-align:right;}
+  .trdoc__state .vidup__spin{width:13px;height:13px;}
+  .trtext{font-size:.95rem;line-height:1.7;color:var(--fg);white-space:pre-wrap;word-wrap:break-word;max-height:min(62vh,620px);min-height:260px;overflow:auto;padding:16px 14px;}
+  .trtext--translation{color:var(--muted-fg);}
+  .trtranslation-empty{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--faint);font-size:.85rem;line-height:1.5;padding:28px;}
   .trseg{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border);}
   .trseg:last-child{border-bottom:none;}
   .trseg__t{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--accent);font-size:.8rem;font-weight:700;padding-top:2px;min-width:44px;}
@@ -988,6 +996,7 @@
   .trword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:color .1s,background .1s;}
   .trword:hover,.trword:focus-visible{color:var(--fg);background:var(--surface-3);}
   .trword.is-past{color:var(--fg);}
+  @media(max-width:820px){.trdocs{grid-template-columns:1fr;}.trtext{min-height:200px;max-height:52vh;}}
   .trword.is-active{color:var(--on-accent);background:var(--accent);}
   @media(max-width:640px){.trplayer__row{grid-template-columns:auto minmax(0,1fr) auto}.trplayer__speed{grid-column:2/4;justify-self:end}}
 
@@ -3116,18 +3125,18 @@ async function furRun(){
 }
 
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */
-const TR_FN="/.netlify/functions/transcribe-file";
+const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
-let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null;
+let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="";
 const TR_STORE="feg_transcricoes_v1";
 const TR_SAVE_FN="/.netlify/functions/transcript";
 function trStoreRead(){try{return JSON.parse(localStorage.getItem(TR_STORE)||"{}");}catch(_){return{};}}
 function trCache(entry){const all=trStoreRead();all[entry.id]=entry;const ordered=Object.values(all).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,20),next={};ordered.forEach(x=>next[x.id]=x);try{localStorage.setItem(TR_STORE,JSON.stringify(next));}catch(_){} }
-function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;trFollow=true;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
+function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trTranslation=x.translation||"";trTranslationStatus=trTranslation?"done":"idle";trTranslationError="";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;trFollow=true;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
 async function trToken(){try{const r=await sb.auth.getSession();return(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(_){return"";}}
-async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,duration:trDur,fileName:trFileName,createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
+async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,translation:trTranslation,translationLanguage:trTranslation?"pt-BR":"",duration:trDur,fileName:trFileName,createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
 async function loadTrRoute(id){let x=trStoreRead()[id];if(!x){trSetStatus(`<span class="vidup__spin"></span>Carregando transcrição…`);try{const response=await fetch(TR_SAVE_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+await trToken()}}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"não encontrada");x=result.transcript;trCache(x);}catch(_){if(parseLocation().id!==id)return;trSetStatus("");renderNotFound("Transcrição não encontrada.");return;}}if(parseLocation().id!==id)return;trSetStatus("");trLoadEntry(x);}
 function trTime(s){s=Math.max(0,Math.round(+s||0));const m=Math.floor(s/60),ss=s%60;return `${m}:${String(ss).padStart(2,"0")}`;}
 function trSetStatus(html){const el=$("#trStatus");if(!el)return;el.hidden=!html;el.innerHTML=html||"";}
@@ -3145,6 +3154,15 @@ function renderTrOutput(){
   }else{
     body.textContent=trText||trSegs.map(s=>s.text).join(" ");
   }
+  const translated=$("#trTranslation"),state=$("#trTranslationState"),retry=$("#trRetryTranslation"),copyPt=$("#trCopyPt"),downloadPt=$("#trDownloadPt");
+  if(translated){
+    if(trTranslation)translated.textContent=trTranslation;
+    else translated.innerHTML=`<div class="trtranslation-empty">${trTranslationStatus==="translating"?"A tradução está sendo preparada…":trTranslationStatus==="error"?esc(trTranslationError||"Não foi possível traduzir agora."):"A tradução em português aparecerá aqui ao concluir a transcrição."}</div>`;
+  }
+  if(state)state.innerHTML=trTranslationStatus==="translating"?`<span class="vidup__spin"></span>Traduzindo…`:trTranslationStatus==="done"?`<span class="ccdot ccdot--done"></span>Português (Brasil)`:trTranslationStatus==="error"?`<span class="trerr">Tradução interrompida</span>`:"";
+  if(retry){retry.hidden=!(trText&&!trTranslation&&trTranslationStatus!=="translating");retry.textContent=trTranslationStatus==="error"?"Tentar tradução novamente":"Traduzir para português";}
+  if(copyPt)copyPt.disabled=!trTranslation;
+  if(downloadPt)downloadPt.disabled=!trTranslation;
   body.onwheel=()=>{trFollow=false;};body.ontouchstart=()=>{trFollow=false;};body.onpointerdown=()=>{trFollow=false;};
   trActive=-1;if(trAudio&&!trAudio.paused)trSyncWord(trAudio.currentTime||0);
   const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
@@ -3157,7 +3175,8 @@ function trRenderPlayer(){const host=$("#trPlayer");if(!host||!trAudioUrl)return
 }
 // extrai o áudio no navegador → mono 16kHz (Float32). Sem Storage, sem limite de tamanho.
 async function trDecodeMono16k(file){
-  const arr=await file.arrayBuffer();
+  let arr;
+  try{arr=await file.arrayBuffer();}catch(_){throw new Error("o navegador perdeu o acesso ao arquivo; selecione o vídeo novamente");}
   const AC=window.AudioContext||window.webkitAudioContext;
   let ctx; try{ctx=new AC({sampleRate:16000});}catch(e){ctx=new AC();}
   let buf;
@@ -3192,6 +3211,28 @@ function trReadProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PRO
 function trSaveProgress(file,nextChunk,totalChunks){
   const p={key:trFileKey(file),nextChunk,totalChunks,text:trText,segments:trSegs,words:trWords,language:trDetLang,duration:trDur,savedAt:new Date().toISOString()};
   try{localStorage.setItem(TR_PROGRESS_KEY,JSON.stringify(p));}catch(_){}
+}
+function trTranslationChunks(value,max=6000){
+  const text=String(value||"").trim(),parts=[];let cursor=0;
+  while(cursor<text.length){let end=Math.min(text.length,cursor+max);if(end<text.length){const floor=cursor+Math.floor(max*.58),slice=text.slice(floor,end),marks=[slice.lastIndexOf("\n\n"),slice.lastIndexOf(". "),slice.lastIndexOf("! "),slice.lastIndexOf("? ")],best=Math.max(...marks);if(best>=0)end=floor+best+2;}const part=text.slice(cursor,end).trim();if(part)parts.push(part);cursor=end;}
+  return parts;
+}
+async function trTranslatePart(textPart,part,total,token){
+  let lastError;
+  for(let attempt=0;attempt<2;attempt++){
+    try{const response=await fetch(TR_TRANSLATE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({text:textPart,language:trDetLang||trLang,part,total})}),result=await response.json().catch(()=>({}));if(!response.ok||!result.ok){const error=new Error(result.error||("HTTP "+response.status));error.retryable=result.retryable===true||response.status===429||response.status>=500;throw error;}return String(result.translation||"").trim();}
+    catch(error){lastError=error;if(!error.retryable||attempt===1)throw error;await trDelay(1200*(attempt+1));}
+  }
+  throw lastError||new Error("não foi possível traduzir");
+}
+async function trTranslateCurrent({save=false}={}){
+  if(!trText||trTranslationStatus==="translating")return false;
+  trTranslation="";trTranslationError="";trTranslationStatus="translating";renderTrOutput();
+  try{
+    if(/^(pt|portugu)/i.test(String(trDetLang||trLang))){trTranslation=trText;}
+    else{const chunks=trTranslationChunks(trText),token=await trToken(),translated=[];for(let i=0;i<chunks.length;i++){trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português${chunks.length>1?` · parte ${i+1}/${chunks.length}`:""}…`);translated.push(await trTranslatePart(chunks[i],i+1,chunks.length,token));}trTranslation=translated.filter(Boolean).join("\n\n");}
+    trTranslationStatus="done";renderTrOutput();if(save)await trPersist();return true;
+  }catch(error){trTranslationStatus="error";trTranslationError=(error&&error.message)||"Não foi possível traduzir agora.";renderTrOutput();return false;}
 }
 function trClearProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");if(!file||!p||p.key===trFileKey(file))localStorage.removeItem(TR_PROGRESS_KEY);}catch(_){}}
 function trRetryStatus(message){
@@ -3229,7 +3270,7 @@ async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0)
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trBusy=true;trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[]; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  trBusy=true;trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError=""; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
@@ -3253,7 +3294,7 @@ async function trHandleFile(file){
   }
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
-  else{trSetStatus(`<span class="vidup__spin"></span>Salvando link permanente…`);renderTrOutput();await trPersist();trClearProgress(file);trSetStatus("");toast("Transcrição pronta ✓");}
+  else{renderTrOutput();await trTranslateCurrent();trSetStatus(`<span class="vidup__spin"></span>Salvando transcrição…`);await trPersist();trClearProgress(file);trSetStatus("");toast(trTranslation?"Transcrição e tradução prontas ✓":"Transcrição pronta; a tradução pode ser tentada novamente.",!trTranslation);}
   trBusy=false;if(drop)drop.classList.remove("busy");
 }
 function renderTranscritor(){
@@ -3283,18 +3324,24 @@ function renderTranscritor(){
         <div class="tractions">
           <button class="btn btn--outline btn--sm" id="trTimes">Mostrar tempos</button>
           <button class="btn btn--outline btn--sm" id="trCopyLink" hidden>${ic("link")}Copiar link</button>
-          <button class="btn btn--outline btn--sm" id="trCopy">${ic("clipboard")}Copiar</button>
-          <button class="btn btn--outline btn--sm" id="trDownload">${ic("download")}.txt</button>
+          <button class="btn btn--outline btn--sm" id="trCopy">${ic("clipboard")}Copiar original</button>
+          <button class="btn btn--outline btn--sm" id="trDownload">${ic("download")}Original .txt</button>
+          <button class="btn btn--outline btn--sm" id="trCopyPt" disabled>${ic("clipboard")}Copiar tradução</button>
+          <button class="btn btn--outline btn--sm" id="trDownloadPt" disabled>${ic("download")}Tradução .txt</button>
+          <button class="btn btn--outline btn--sm" id="trRetryTranslation" hidden>Traduzir novamente</button>
         </div>
       </div>
       <div id="trPlayer"></div>
-      <div class="trtext" id="trText"></div>
+      <div class="trdocs">
+        <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Transcrição original</span><span class="trdoc__state">Idioma detectado</span></div><div class="trtext" id="trText"></div></section>
+        <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Tradução em português</span><span class="trdoc__state" id="trTranslationState"></span></div><div class="trtext trtext--translation" id="trTranslation"></div></section>
+      </div>
     </div>
   </div>`;
   const lang=$("#trLang");if(lang){lang.value=trLang;lang.addEventListener("change",()=>trLang=lang.value);}
   const fileInput=$("#trFile"), drop=$("#trDrop");
   const pick=()=>{if(!trBusy)fileInput.click();};
-  if(fileInput)fileInput.addEventListener("change",()=>{if(fileInput.files[0])trHandleFile(fileInput.files[0]);fileInput.value="";});
+  if(fileInput)fileInput.addEventListener("change",async()=>{const file=fileInput.files[0];if(!file)return;try{await trHandleFile(file);}finally{fileInput.value="";}});
   if(drop){
     drop.addEventListener("click",pick);
     drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
@@ -3306,11 +3353,14 @@ function renderTranscritor(){
   $("#trCopyLink").addEventListener("click",()=>navigator.clipboard.writeText(location.href).then(()=>toast("Link copiado ✓")));
   $("#trText").addEventListener("click",e=>{const w=e.target.closest("[data-trword]");if(!w||!trAudio)return;trAudio.currentTime=+w.dataset.start||0;trSyncWord(trAudio.currentTime);if(trAudio.paused)trAudio.play();});
   $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
+  $("#trCopyPt").addEventListener("click",()=>{if(trTranslation)navigator.clipboard.writeText(trTranslation).then(()=>toast("Tradução copiada ✓"));});
+  $("#trRetryTranslation").addEventListener("click",async()=>{if(trBusy)return;trBusy=true;const ok=await trTranslateCurrent({save:true});trSetStatus("");trBusy=false;toast(ok?"Tradução pronta ✓":"Não foi possível traduzir agora.",!ok);});
   $("#trDownload").addEventListener("click",()=>{
     const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));
     const blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");
     a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,""):"transcricao")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   });
+  $("#trDownloadPt").addEventListener("click",()=>{if(!trTranslation)return;const blob=new Blob([trTranslation],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,"_"):"transcricao_")+"pt-BR.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);});
   if(trText||trSegs.length||trAudioUrl){renderTrOutput();trRenderPlayer();}
 }
 

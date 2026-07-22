@@ -10,6 +10,7 @@ const adsWorkflow = await readFile(new URL("../.github/workflows/ads-ativos.yml"
 const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
 const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
+const translateTranscriptFn = await readFile(new URL("../netlify/functions/translate-transcript.mjs", import.meta.url), "utf8");
 const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
 const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissector.mjs", import.meta.url), "utf8");
 const vslJobFn = await readFile(new URL("../netlify/functions/vsl-job.mjs", import.meta.url), "utf8");
@@ -309,6 +310,23 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(html, /brand-ads-history/);
   assert.match(html, /Ads ativos · evolução diária/);
   assert.match(adsWorkflow, /push:\s+branches: \[main\]/);
+  assert.match(adsWorkflow, /cron: "0 11 \* \* \*"/);
+  assert.match(adsWorkflow, /cron: "0 23 \* \* \*"/);
+  assert.match(adsWorkflow, /FORCE_REVIEW: "1"/);
+  assert.match(adsScraper, /FORCE_REVIEW = os\.environ\.get\("FORCE_REVIEW", "1"\)/);
+  assert.match(adsScraper, /if not FORCE_REVIEW and status == "failed"/);
+});
+
+test("Transcritor preserva o arquivo até a leitura e entrega original com tradução PT-BR", () => {
+  assert.match(html, /fileInput\.addEventListener\("change",async\(\)=>/);
+  assert.match(html, /try\{await trHandleFile\(file\);\}finally\{fileInput\.value="";\}/);
+  assert.match(html, /Transcrição original/);
+  assert.match(html, /Tradução em português/);
+  assert.match(html, /TR_TRANSLATE_FN="\/\.netlify\/functions\/translate-transcript"/);
+  assert.match(html, /trTranslateCurrent/);
+  assert.match(transcriptFn, /translationLanguage/);
+  assert.match(translateTranscriptFn, /independentemente do idioma de origem/);
+  assert.match(translateTranscriptFn, /Não resuma, não omita/);
 });
 
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {

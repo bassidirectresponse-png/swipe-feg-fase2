@@ -45,6 +45,8 @@ export default async (req) => {
     segments,
     words,
     language: String(input.language || "").slice(0, 20),
+    translation: String(input.translation || "").trim().slice(0, 2_000_000),
+    translationLanguage: String(input.translationLanguage || "").slice(0, 20),
     duration: Math.max(0, +input.duration || 0),
     fileName: String(input.fileName || "transcricao").slice(0, 240),
     createdAt: new Date().toISOString(),

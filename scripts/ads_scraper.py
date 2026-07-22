@@ -44,6 +44,7 @@ MAX_OFFERS = max(1, int(os.environ.get("MAX_OFFERS", "200")))
 MAX_ATTEMPTS = max(1, int(os.environ.get("MAX_ANALYSIS_ATTEMPTS", "6")))
 LOCK_MINUTES = max(10, int(os.environ.get("ANALYSIS_LOCK_MINUTES", "90")))
 ANALYSIS_VERSION = os.environ.get("ANALYSIS_VERSION", "1")
+FORCE_REVIEW = os.environ.get("FORCE_REVIEW", "1").lower() in ("1", "true", "yes")
 RUN_ID = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
 
 
@@ -132,12 +133,15 @@ def eligible(row):
     attempts = max(0, int(d.get("analysisAttempts") or 0))
     now = datetime.now(timezone.utc)
     next_retry = parse_iso(d.get("analysisNextRetryAt"))
-    if next_retry and next_retry > now:
+    if not FORCE_REVIEW and next_retry and next_retry > now:
         return None
     started = parse_iso(d.get("analysisStartedAt"))
     if status == "processing" and started and started > now - timedelta(minutes=LOCK_MINUTES):
         return None
-    if status == "failed" and attempts >= MAX_ATTEMPTS:
+    # Uma falha antiga nunca pode retirar um card das duas leituras diárias.
+    # O limite continua protegendo retentativas dentro do ciclo, mas o próximo
+    # ciclo programado sempre tenta novamente.
+    if not FORCE_REVIEW and status == "failed" and attempts >= MAX_ATTEMPTS:
         return None
     return links
 
@@ -204,7 +208,7 @@ def update_history(data, total, now):
 def main():
     run_started = time.monotonic()
     now = datetime.now(timezone.utc)
-    log("library_analysis_run_started", dry_run=DRY_RUN, version=ANALYSIS_VERSION)
+    log("library_analysis_run_started", dry_run=DRY_RUN, version=ANALYSIS_VERSION, force_review=FORCE_REVIEW)
 
     if not DRY_RUN and not (BOT_EMAIL and BOT_PASSWORD):
         print("ERRO: defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD (ou DRY_RUN=1).", file=sys.stderr)
@@ -242,7 +246,7 @@ def main():
         for i, (row, links) in enumerate(targets, 1):
             data = row["data"]
             nome = data.get("nomeOferta", "?")
-            attempts = 1 if str(data.get("analysisStatus") or "") == "completed" else max(0, int(data.get("analysisAttempts") or 0)) + 1
+            attempts = 1 if FORCE_REVIEW or str(data.get("analysisStatus") or "") == "completed" else max(0, int(data.get("analysisAttempts") or 0)) + 1
             data["analysisStatus"] = "processing"
             data["analysisAttempts"] = attempts
             data["analysisStartedAt"] = iso_now()
