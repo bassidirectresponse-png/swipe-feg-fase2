@@ -5,7 +5,9 @@ const PROJECT_ID = "grupofeg-lakehouse";
 const VIEW = "grupofeg-lakehouse.gold_feg.vw_ads_criativo_diario";
 const STORE_NAME = "fegsys-megabrain";
 const STORE_KEY = "daily-v4";
+const AGGREGATE_KEY_PREFIX = "aggregate-v4";
 const MAX_AGE_MS = 75 * 60 * 1000;
+const PRECOMPUTED_PERIODS = ["today", "yesterday", "7d", "14d", "30d", "90d"];
 /* O maior filtro do painel é 90 dias. Uma margem de dez dias cobre diferenças
    de fuso sem consultar um ano inteiro a cada atualização. */
 const QUERY_DAYS = 100;
@@ -318,8 +320,37 @@ export async function refreshSnapshot() {
     sourceStatus: result.sourceStatus,
     rows
   };
-  await getStore({ name: STORE_NAME, consistency: "strong" }).setJSON(STORE_KEY, snapshot);
+  const store = getStore({ name: STORE_NAME, consistency: "strong" });
+  const aggregates = PRECOMPUTED_PERIODS.map(preset => {
+    const range = resolveRange(new URLSearchParams({ period: preset }));
+    return {
+      key: `${AGGREGATE_KEY_PREFIX}-${preset}`,
+      value: {
+        version: snapshot.version,
+        syncedAt: snapshot.syncedAt,
+        oldestDate: snapshot.oldestDate,
+        newestDate: snapshot.newestDate,
+        sourceStatus: snapshot.sourceStatus,
+        range,
+        ...aggregateSnapshot(snapshot, range)
+      }
+    };
+  });
+  /* A função web lê o agregado pronto. Assim, abrir o painel não precisa
+     baixar e processar dezenas de milhares de linhas do snapshot diário. */
+  await Promise.all([
+    store.setJSON(STORE_KEY, snapshot),
+    ...aggregates.map(item => store.setJSON(item.key, item.value))
+  ]);
   return snapshot;
+}
+
+export async function getPrecomputedAggregate(range) {
+  if (!range || !PRECOMPUTED_PERIODS.includes(range.preset)) return null;
+  const store = getStore({ name: STORE_NAME, consistency: "strong" });
+  const aggregate = await store.get(`${AGGREGATE_KEY_PREFIX}-${range.preset}`, { type: "json" }).catch(() => null);
+  if (!aggregate || aggregate.range?.from !== range.from || aggregate.range?.to !== range.to) return null;
+  return aggregate;
 }
 
 export async function getSnapshot({ refresh = false, allowStale = false } = {}) {

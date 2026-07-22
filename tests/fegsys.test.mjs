@@ -33,6 +33,9 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_JSON_B64/);
   assert.match(coreFn, /GOOGLE_SERVICE_ACCOUNT_EXPECTED_KEY_ID/);
   assert.match(coreFn, /if \(cachedCredential\) return cachedCredential/);
+  assert.match(coreFn, /PRECOMPUTED_PERIODS/);
+  assert.match(coreFn, /getPrecomputedAggregate/);
+  assert.match(apiFn, /getPrecomputedAggregate\(range\)/);
   assert.match(coreFn, /não foi aprovada após rotação/);
   assert.doesNotMatch([html, syncFn, apiFn, coreFn, securityFn].join("\n"), /BEGIN PRIVATE KEY/);
   assert.match(driveFn, /drive\.readonly/);

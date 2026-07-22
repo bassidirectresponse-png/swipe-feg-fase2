@@ -1,4 +1,4 @@
-import { aggregateSnapshot, getSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
+import { aggregateSnapshot, getPrecomputedAggregate, getSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
 import { enrichFegsysCards } from "./_fegsys-drive.mjs";
 import { authenticate, isAdmin, json, rateLimit } from "./_security.mjs";
 
@@ -15,16 +15,29 @@ export default async req => {
 
   const url = new URL(req.url);
   const range = resolveRange(url.searchParams);
-  let snapshot;
+  let snapshot, result, syncedAt, coverage, sourceStatus;
   try {
-    /* A atualização completa pode levar mais que o limite de uma requisição
-       web. A tela sempre lê o último snapshot e a função agendada o renova. */
-    snapshot = await getSnapshot({ refresh: false, allowStale: true });
-    if (!snapshot) snapshot = await getSnapshot({ refresh: true, allowStale: false });
+    const precomputed = await getPrecomputedAggregate(range);
+    if (precomputed) {
+      result = { cards: precomputed.cards || [], totals: precomputed.totals || {} };
+      syncedAt = precomputed.syncedAt;
+      coverage = { from: precomputed.oldestDate, to: precomputed.newestDate };
+      sourceStatus = precomputed.sourceStatus || {};
+    } else {
+      /* Personalizados usam o snapshot diário; os períodos comuns chegam
+         pré-calculados pela sincronização horária. */
+      snapshot = await getSnapshot({ refresh: false, allowStale: true });
+      if (!snapshot) snapshot = await getSnapshot({ refresh: true, allowStale: false });
+      if (snapshot) {
+        result = aggregateSnapshot(snapshot, range);
+        syncedAt = snapshot.syncedAt;
+        coverage = { from: snapshot.oldestDate, to: snapshot.newestDate };
+        sourceStatus = snapshot.sourceStatus || {};
+      }
+    }
   }
   catch { return json(req, 502, { ok: false, error: "falha temporária na leitura do FEGSYS", configured: configured() }, "GET"); }
-  if (!snapshot) return json(req, 503, { ok: false, error: "integração aguardando credencial", configured: configured() }, "GET");
-  const result = aggregateSnapshot(snapshot, range);
+  if (!result) return json(req, 503, { ok: false, error: "integração aguardando credencial", configured: configured() }, "GET");
   let driveStatus;
   try {
     const drive = await enrichFegsysCards(result.cards, { refresh: false, allowStale: true });
@@ -37,9 +50,9 @@ export default async req => {
     ok: true,
     configured: configured(),
     range,
-    syncedAt: snapshot.syncedAt,
-    coverage: { from: snapshot.oldestDate, to: snapshot.newestDate },
-    sourceStatus: { ...(snapshot.sourceStatus || {}), drive: driveStatus },
+    syncedAt,
+    coverage,
+    sourceStatus: { ...sourceStatus, drive: driveStatus },
     ...result,
   }, "GET");
 };
