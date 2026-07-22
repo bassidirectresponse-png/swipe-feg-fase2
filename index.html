@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>OFERTAS — Benchmarking Grupo FEG</title>
 <link rel="icon" type="image/jpeg" href="logo-feg.jpg" />
+<meta name="color-scheme" content="dark light" />
+<script src="/assets/theme-preload.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -25,11 +27,22 @@
     --overlay:rgba(0,0,0,.93);--on-accent:#0a0a06;
     --z-sticky:50;--z-drawer:120;--z-modal-backdrop:1000;--z-modal:1100;--z-toast:5000;--z-lightbox:6000;
   }
+  :root[data-theme="light"]{
+    --bg:#f4f5f0;--bg-2:#eceee7;--surface:#ffffff;--surface-2:#f7f8f4;--surface-3:#e9ece4;
+    --fg:#171a13;--muted-fg:#5f6659;--faint:#777f70;
+    --accent:#8ba800;--accent-dim:rgba(118,145,0,.14);--accent-soft:rgba(118,145,0,.08);
+    --red:#c73737;--red-soft:rgba(199,55,55,.1);
+    --border:#dfe2d9;--border-2:#ccd1c5;--border-strong:#aeb6a5;
+    --shadow:0 12px 34px -18px rgba(36,43,29,.24);--shadow-lg:0 28px 70px -34px rgba(36,43,29,.32);
+    --overlay:rgba(242,244,238,.95);--on-accent:#111500;
+  }
   *{box-sizing:border-box;margin:0;padding:0;}
   ::selection{background:var(--accent);color:#000;}
-  html,body{background:var(--bg);color:var(--fg);font-family:"Space Grotesk","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  html,body{background:var(--bg);color:var(--fg);font-family:"Space Grotesk","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;color-scheme:dark;}
+  :root[data-theme="light"],:root[data-theme="light"] body{color-scheme:light;}
   body{min-height:100vh;overflow-x:hidden;line-height:1.45;
     background:radial-gradient(900px 500px at 85% -10%,rgba(229,255,45,.06),transparent 60%),radial-gradient(700px 500px at 0% 0%,rgba(229,255,45,.03),transparent 55%),var(--bg);background-attachment:fixed;}
+  :root[data-theme="light"] body{background:radial-gradient(900px 520px at 90% -12%,rgba(139,168,0,.09),transparent 62%),linear-gradient(180deg,#fafbf7 0,var(--bg) 420px);}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
   input,textarea,select{font-family:inherit;}
   a{color:inherit;text-decoration:none;}
@@ -47,7 +60,10 @@
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important;}}
 
   /* topbar */
-  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:16px clamp(16px,4vw,48px);background:rgba(0,0,0,.94);border-bottom:1px solid var(--border);}
+  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:16px clamp(16px,4vw,48px);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+  .theme-switch{display:inline-flex;align-items:center;padding:3px;border:1px solid var(--border-2);border-radius:11px;background:var(--surface);}
+  .theme-switch__btn{height:32px;padding:0 10px;border-radius:8px;color:var(--muted-fg);font-size:.7rem;font-weight:700;letter-spacing:.04em;}
+  .theme-switch__btn.active{background:var(--surface-3);color:var(--fg);box-shadow:inset 0 0 0 1px var(--border);}
   .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;text-transform:uppercase;}
   .brand .brand-txt{display:inline-flex;align-items:baseline;gap:2px;}
   .brand .d{color:var(--accent);}
@@ -95,10 +111,15 @@
   /* indicadores compactos das áreas autenticadas */
   .page{padding:18px clamp(16px,4vw,48px) 0;}
   .page .meta-row{margin-top:0;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .page-identity{padding:20px clamp(16px,4vw,48px) 8px;display:flex;align-items:end;justify-content:space-between;gap:24px;}
+  .page-identity__title{font-size:clamp(1.45rem,2.4vw,2.2rem);font-weight:730;letter-spacing:-.035em;line-height:1.05;color:var(--fg);}
+  .page-identity__desc{max-width:760px;margin-top:8px;color:var(--muted-fg);font-size:.92rem;line-height:1.55;}
+  .page-identity__result{flex:none;color:var(--muted-fg);font-size:.76rem;font-weight:650;letter-spacing:.08em;text-transform:uppercase;}
   .division-pill{display:inline-flex;align-items:center;gap:10px;min-height:42px;padding:7px 13px 7px 9px;border:1px solid rgba(229,255,45,.24);border-radius:12px;background:linear-gradient(135deg,rgba(229,255,45,.12),rgba(229,255,45,.025));box-shadow:inset 3px 0 0 var(--accent);}
   .division-pill__mark{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:#080904;font-size:.68rem;font-weight:800;letter-spacing:-.02em;}
   .division-pill__copy{display:flex;flex-direction:column;line-height:1.08;}
   .division-pill__name{font-size:.9rem;font-weight:750;letter-spacing:.02em;color:#f7f8f2;}
+  :root[data-theme="light"] .division-pill__name{color:var(--fg);}
   .division-pill__desc{margin-top:4px;font-size:.58rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#aeb48a;}
   .division-pill--brands{border-color:rgba(114,212,255,.3);background:linear-gradient(135deg,rgba(49,170,224,.16),rgba(49,170,224,.025));box-shadow:inset 3px 0 0 #72d4ff;}
   .division-pill--brands .division-pill__mark{background:#72d4ff;color:#031119;}
@@ -137,6 +158,27 @@
   .main{min-width:0;}
 
   .sidenav{position:sticky;top:var(--topbar-h);align-self:start;max-height:calc(100vh - var(--topbar-h));overflow-y:auto;overscroll-behavior:contain;border-right:1px solid var(--border);padding:14px 12px 44px;display:flex;flex-direction:column;gap:1px;background:linear-gradient(180deg,rgba(229,255,45,.018),transparent 220px);scrollbar-width:thin;}
+  :root[data-theme="light"] .sidenav{background:linear-gradient(180deg,rgba(139,168,0,.045),transparent 220px),var(--surface);}
+  .sort-panel{display:flex;align-items:end;gap:12px;flex-wrap:wrap;width:100%;}
+  .sort-control{display:flex;flex-direction:column;gap:6px;min-width:220px;}
+  .sort-control span{font-size:.62rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-fg);font-weight:700;}
+  .sort-control select{height:40px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);color:var(--fg);padding:0 34px 0 12px;font-weight:650;}
+  .sort-reference{color:var(--faint);font-size:.74rem;line-height:1.4;}
+  .sort-panel[aria-busy="true"]{opacity:.72;}
+  .sort-panel[aria-busy="true"] .sort-reference::before{content:"";display:inline-block;width:8px;height:8px;margin-right:7px;border:1px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  .automation-health{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .automation-health__item{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--muted-fg);font-size:.68rem;font-weight:700;}
+  .automation-health__item strong{color:var(--fg);}
+  .transcription-state{display:inline-flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted-fg);font-weight:650;}
+  .transcription-state.is-ready{color:var(--accent);}
+  .transcription-state.is-error{color:var(--red);}
+  .qbtn[disabled]{cursor:not-allowed;opacity:.48;}
+  .card{isolation:isolate;}
+  .card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;opacity:0;background:linear-gradient(115deg,transparent 28%,rgba(229,255,45,.08),transparent 72%);transition:opacity .2s var(--ease);z-index:-1;}
+  .card:hover::before,.card:focus-within::before{opacity:1;}
+  :root[data-theme="light"] .card::before{background:linear-gradient(115deg,transparent 28%,rgba(139,168,0,.08),transparent 72%);}
+  @media(max-width:760px){.theme-switch__btn{padding:0 8px}.page-identity{align-items:start;flex-direction:column;gap:8px}.sort-control{min-width:min(100%,260px)}.automation-health{margin-left:0}.sync{display:none;}}
+  @media(hover:none){.card::before{display:none;}}
   .sidenav::-webkit-scrollbar{width:8px;}
   .sidenav__head{display:none;align-items:center;gap:10px;padding:14px 10px 15px;margin-bottom:6px;border-bottom:1px solid var(--border);}
   .sidenav__head .logo-mark{width:34px;height:34px;}
@@ -1076,6 +1118,7 @@ create policy "public_all" on offers
     <div class="search"><span class="ic"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></span><input type="text" id="searchInput" placeholder="Buscar oferta, marca ou nicho..." /></div>
     <div class="spacer"></div>
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
+    <div class="theme-switch" role="group" aria-label="Aparência"><button type="button" class="theme-switch__btn" data-theme-choice="light" aria-pressed="false">Claro</button><button type="button" class="theme-switch__btn" data-theme-choice="dark" aria-pressed="true">Escuro</button></div>
     <span class="whoami" id="whoami"></span>
     <span class="ro-pill" id="roPill" hidden><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Somente leitura</span>
     <button class="icon-btn" id="logoutBtn" title="Sair" aria-label="Sair"><svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
@@ -1085,6 +1128,7 @@ create policy "public_all" on offers
     <aside class="sidenav" id="sideNav"></aside>
     <div class="sidenav-backdrop" id="sideNavBackdrop"></div>
     <main class="main">
+      <div class="page-identity" id="pageIdentity"><div><h1 class="page-identity__title" id="pageTitle">Swipe de Ofertas</h1><p class="page-identity__desc" id="pageDescription"></p></div><div class="page-identity__result" id="pageResult">0 resultados</div></div>
       <div class="page">
         <div class="meta-row"><div class="division-pill" id="divisionPill"><span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span></div><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
       </div>
@@ -1179,6 +1223,7 @@ create policy "public_all" on offers
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+<script src="/lib/swipe-metrics.js"></script>
 <script>
 /* ===== CONFIG ===== */
 const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
@@ -1187,9 +1232,9 @@ const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 const SECTIONS=[
-  {key:"oferta",label:"Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Vitrine de <b>ofertas</b> completas: bibliotecas, domínios, checkouts, criativos e inteligência de tráfego.'},
+  {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
-  {key:"criativo",label:"Swipe Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Swipe de <b>criativos vencedores</b> — vídeo, transcrição e link do anúncio, por nicho e plataforma (Meta Ads e Taboola).'},
+  {key:"criativo",label:"Swipe de Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Vídeos, transcrições e anúncios vencedores organizados por nicho e plataforma.'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
   {key:"megabrainfegsys",label:"Mega Brain - Fegsys",icon:"pulse",newLabel:"",statLabel:"Sincronizados",emptyTitle:"Nenhum criativo sincronizado",searchPlaceholder:"Buscar criativo sincronizado...",subHtml:'<b>Mega Brain - Fegsys</b>: leitura automática dos resultados de mídia, separada do acervo de criativos anexado manualmente.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
@@ -1213,7 +1258,7 @@ let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], f
 let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="spend_7d", offerDirection="desc";
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
@@ -1221,6 +1266,13 @@ let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pend
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function applyTheme(theme,persist){
+  const next=theme==="light"?"light":"dark";document.documentElement.dataset.theme=next;
+  $$('[data-theme-choice]').forEach(button=>{const active=button.dataset.themeChoice===next;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
+  if(persist){try{localStorage.setItem("feg_theme",next);}catch(_){}}
+}
+document.addEventListener("click",event=>{const button=event.target.closest("[data-theme-choice]");if(button)applyTheme(button.dataset.themeChoice,true);});
+document.addEventListener("DOMContentLoaded",()=>applyTheme(document.documentElement.dataset.theme||"dark",false),{once:true});
 /* ===== ÍCONES (Lucide) ===== */
 const ICONS={
   search:'<circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>',
@@ -1270,7 +1322,7 @@ function fixUrl(u){u=(u||"").trim();if(!u)return"";if(!/^https?:\/\//i.test(u))u
 function getAds(d){const n=parseInt(String(d.numAdsAtivos||"").replace(/\D/g,""),10);return isNaN(n)?null:n;}
 function val(id){const e=document.getElementById(id);return e?e.value.trim():"";}
 let toastTimer;
-function toast(msg,err=false){const t=$("#toast");t.textContent=msg;t.classList.toggle("err",err);t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2600);}
+function toast(msg,err=false){const t=$("#toast");t.setAttribute("role",err?"alert":"status");t.setAttribute("aria-live",err?"assertive":"polite");t.textContent=msg;t.classList.toggle("err",err);t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2600);}
 function setSync(st,txt){$("#syncPill").className="sync "+st;$("#syncTxt").textContent=txt;}
 function setSaveState(s){const e=$("#saveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 
@@ -1294,6 +1346,7 @@ function normalize(raw){
   if(!Array.isArray(d.bmPrints))d.bmPrints=d.bmPrint?[{nome:"Business Manager",img:d.bmPrint}]:[];
   if(!Array.isArray(d.brandTopAds))d.brandTopAds=[];
   if(!Array.isArray(d.bmReports))d.bmReports=[];
+  [["7d","bmSpend7d"],["14d","bmSpend14d"],["30d","bmSpend30d"]].forEach(([period,key])=>{if(!String(d[key]||"").trim()){const report=d.bmReports.find(item=>String((item&&item.key)||"").toLowerCase()===period);if(report&&report.totals&&report.totals.spend)d[key]=report.totals.spend;}});
   if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
   if(typeof d.brandSemrush3m!=="string")d.brandSemrush3m="";
   if(typeof d.adsLibraryCheckedAt!=="string")d.adsLibraryCheckedAt="";
@@ -1437,8 +1490,21 @@ function filtered(){
   }
   return list;
 }
+function offerSortMetric(o){return window.SwipeMetrics.offerMetric((o&&o.data)||{},offerSort);}
+function offerSortFn(a,b){
+  const result=window.SwipeMetrics.compareOffers(a,b,offerSort,offerDirection);if(result)return result;
+  const ad=String((a&&a.created_at)||""),bd=String((b&&b.created_at)||"");if(ad!==bd)return bd.localeCompare(ad);
+  return String(((a&&a.data)||{}).nomeOferta||"").localeCompare(String(((b&&b.data)||{}).nomeOferta||""),"pt-BR");
+}
+function offerSortReference(items){
+  const refs=(items||[]).map(offerSortMetric).map(x=>x.referenceDate).filter(Boolean).sort();return refs.length?refs[refs.length-1]:"";
+}
+function automationCounts(section){
+  const rows=offers.filter(o=>sectionOf(o)===section),count=(field,values)=>rows.filter(o=>values.includes(String(((o.data||{})[field])||""))).length;
+  return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
+}
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Ofertas",presell:"Presell",criativo:"Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
@@ -1474,6 +1540,7 @@ function qsFromState(){
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   if(activeSection==="megabrainfegsys"&&isAdmin){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);}
+  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){p.set("sort",offerSort);p.set("direction",offerDirection);}
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
@@ -1530,6 +1597,10 @@ function applyRoute(){
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";
   critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
+  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
+    const requested=r.q.get("sort")||"spend_7d";offerSort=["spend_7d","spend_14d","spend_30d","active_ads"].includes(requested)?requested:"spend_7d";
+    offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
+  }
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
     brainSort=r.q.get("ordem")||"metrica";brainAuthor=activeSection==="megabrain"?(r.q.get("autor")||""):"";
@@ -1699,7 +1770,8 @@ function cardHtml(o){
     </div>`;
   }else{
     const adsDisp=ads!=null?ads.toLocaleString("pt-BR"):"–";
-    stats=`<div class="card__stats"><div class="kpi${high?" kpi--hot":""}"><div class="kpi__l">${ic(high?"zap":"play")}Anúncios ativos</div><div class="kpi__v">${adsDisp}</div></div></div>`;
+    const metric=offerSortMetric(o),spendSort=offerSort!=="active_ads",metricLabel=offerSort==="spend_14d"?"Investimento · 14 dias":offerSort==="spend_30d"?"Investimento · 30 dias":"Investimento · 7 dias";
+    stats=`<div class="card__stats"><div class="kpi${high?" kpi--hot":""}"><div class="kpi__l">${ic(high?"zap":"play")}Anúncios ativos</div><div class="kpi__v">${adsDisp}</div></div>${spendSort?`<div class="kpi"><div class="kpi__l">${ic("dollar")}${metricLabel}</div><div class="kpi__v">${metric.value==null?"–":esc(fegsysMoney(metric.value))}</div></div>`:""}</div>`;
   }
 
   const note=multi?`<div class="cnote cnote--danger">${ic("alert")}Mais de uma oferta/checkout — abra para ver todas.</div>`:"";
@@ -1733,7 +1805,7 @@ function cardHtml(o){
   });
 }
 const BRAND_BM_METRICS=[
-  ["Gasto · 7 dias","bmSpend7d"],["Gasto · 14 dias","bmSpend14d"],["Valor médio conversão","bmAvgConversion"],["CTR","bmCtr"],
+  ["Gasto · 7 dias","bmSpend7d"],["Gasto · 14 dias","bmSpend14d"],["Gasto · 30 dias","bmSpend30d"],["Valor médio conversão","bmAvgConversion"],["CTR","bmCtr"],
   ["CPC · todos","bmCpc"],["CPC · link","bmCpcLink"],["CPM","bmCpm"],["Clique único","bmCostUnique"],
   ["Custo por IC","bmCostIc"],["ROAS","bmRoas"],["Atualização","bmUpdatedAt"]
 ];
@@ -1780,7 +1852,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,brainPeriod,brainDateFrom,brainDateTo,fegsysLoadedKey,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,brainPeriod,brainDateFrom,brainDateTo,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -1811,6 +1883,7 @@ function renderGrid(skipNav){
   const list=filtered();
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
+  const pageResult=$("#pageResult");if(pageResult)pageResult.textContent=`${list.length.toLocaleString("pt-BR")} ${list.length===1?"resultado":"resultados"}`;
   const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
@@ -1846,7 +1919,7 @@ function renderGrid(skipNav){
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
     area.innerHTML=gh+gridPager(page);
   }else{
-    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):list;
+    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection))?[...list].sort(offerSortFn):list;
     const page=pagedItems(items),visible=page.items;
     let html=visible.map(cardFor).join("");
     if(isAdmin&&cfg.newLabel)html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
@@ -1864,7 +1937,10 @@ function renderGrid(skipNav){
       c.appendChild(a);
     }
   });
-  $$(".qbtn",area).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
+  $$(".qbtn",area).forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();
+    if(b.dataset.copyTranscript!=null){const o=itemById(b.dataset.copyTranscript),text=String(((o||{}).data||{}).transcricao||"").trim();if(!text)return;try{b.disabled=true;await navigator.clipboard.writeText(text);const old=b.innerHTML,oldLabel=b.getAttribute("aria-label")||"";b.innerHTML=ic("clipboard")+"Copiado";b.setAttribute("aria-label","Transcrição copiada");toast("Transcrição copiada");setTimeout(()=>{if(b.isConnected){b.innerHTML=old;b.disabled=false;b.setAttribute("aria-label",oldLabel);}},1600);}catch(_){b.disabled=false;toast("Não foi possível copiar a transcrição.",true);}return;}
+    if(b.dataset.transcribeCard!=null){const o=itemById(b.dataset.transcribeCard),video=o&&videoOfCrv(o.data||{});if(o&&video)requestInstantTranscription(o.id,video);return;}
+    if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
   wireLightboxLinks(area);
   wireCardPreviews(area);
   wireGridPager(area);
@@ -2053,9 +2129,10 @@ function openForm(id){
         <button type="button" class="seg-btn${fBrandStage==="brandsvalidated"?" active":""}" data-action="set-brand-stage" data-stage="brandsvalidated">Ofertas Insider</button>
       </div></div>
       <div id="brandBmFields"${fBrandStage==="brandsvalidated"?"":" hidden"}>
-      <div class="row">
+      <div class="row3">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
         <div class="field"><label class="lbl">Gasto nos últimos 14 dias</label><input type="text" id="f_bmSpend14d" placeholder="Ex: R$ 91.600" value="${esc(d.bmSpend14d||"")}"></div>
+        <div class="field"><label class="lbl">Gasto nos últimos 30 dias</label><input type="text" id="f_bmSpend30d" placeholder="Ex: R$ 184.300" value="${esc(d.bmSpend30d||"")}"></div>
       </div>
       <div class="row3">
         <div class="field"><label class="lbl">CPC</label><input type="text" id="f_bmCpc" placeholder="Ex: R$ 1,42" value="${esc(d.bmCpc||"")}"></div>
@@ -2274,7 +2351,7 @@ function buildPayload(){
   if(fBrandStage==="brandsvalidated")Object.assign(payload,{
     kind:"brandsvalidated",
     adsLibraryCheckedAt:val("f_adsLibraryCheckedAt"),
-    bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
+    bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmSpend30d:val("f_bmSpend30d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
     bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
   });
   else if(fBrandStage==="brandsgeneral"){
@@ -2282,6 +2359,10 @@ function buildPayload(){
     for(const key of BRAND_BM_METRICS.map(([,key])=>key).concat(["bmNotes","bmPrints","bmReports","brandTopAds"]))delete payload[key];
   }
   else if(payload.kind==="oferta")delete payload.kind;
+  const old=editingId?((offers.find(x=>x.id===editingId)||{}).data||{}):{},libraryKey=value=>JSON.stringify((value||[]).map(item=>String(item&&item.link||"").trim()).filter(Boolean).sort());
+  if(payload.tipoTrafego==="meta"&&payload.bibliotecas.some(item=>item.link)&&(!editingId||libraryKey(payload.bibliotecas)!==libraryKey(old.bibliotecas)||!["pending","processing","completed","retry_scheduled"].includes(String(payload.analysisStatus||"")))){
+    payload.analysisStatus="pending";payload.analysisAttempts=0;payload.analysisStartedAt="";payload.analysisCompletedAt="";payload.analysisLastError="";payload.analysisNextRetryAt="";payload.analysisVersion="1";
+  }
   return payload;
 }
 function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrushOriginal);}
@@ -2580,6 +2661,7 @@ function setSectionHeader(){
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
   document.body.classList.toggle("toolmode",cc);
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
+  const identity=$("#pageIdentity");if(identity)identity.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc||!cfg.newLabel?"none":"";
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
   const sw=$(".topbar .search");if(sw)sw.style.display=cc?"none":"";
@@ -2589,6 +2671,7 @@ function setSectionHeader(){
   const lbl=$("#statLabel");if(lbl)lbl.textContent=cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;
+  const title=$("#pageTitle"),description=$("#pageDescription");if(title)title.textContent=cfg.label;if(description)description.innerHTML=cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysMoney(value,currency="BRL"){return new Intl.NumberFormat("pt-BR",{style:"currency",currency,maximumFractionDigits:2}).format(+value||0);}
@@ -2636,6 +2719,18 @@ function wireFegsysPanel(el){
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
+  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
+    el.style.display="";
+    const options=[["spend_7d","Investimento · 7 dias"],["spend_14d","Investimento · 14 dias"],["spend_30d","Investimento · 30 dias"],["active_ads","Anúncios ativos"]];
+    const sectionItems=offers.filter(o=>sectionOf(o)===activeSection),reference=offerSortReference(sectionItems),health=automationCounts(activeSection);
+    const brandNav=BRAND_SECTIONS.has(activeSection)?(()=>{const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;return `<div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div>`;})():"";
+    const healthHtml=isAdmin?`<div class="automation-health" aria-label="Situação das automações"><span class="automation-health__item">Análises na fila <strong>${health.pending}</strong></span><span class="automation-health__item">Falhas <strong>${health.failed}</strong></span></div>`:"";
+    el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label><div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}</div>`;
+    const changeSort=(key,value)=>{const panel=$(".sort-panel",el),message=$(".sort-reference",el);panel.setAttribute("aria-busy","true");if(message)message.textContent="Atualizando ordenação…";setTimeout(()=>{if(key==="sort")offerSort=value;else offerDirection=value;navigate(currentPath(),{replace:true});},0);};
+    $("#offerSort").addEventListener("change",event=>changeSort("sort",event.target.value));
+    $("#offerDirection").addEventListener("change",event=>changeSort("direction",event.target.value));
+    return;
+  }
   if(activeSection==="tiktok"){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
@@ -2667,12 +2762,6 @@ function renderSubFilter(){
     el.innerHTML=`${fegsysPanelHtml()}<div class="subfilter__row" style="margin-top:12px"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div></div>`;
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);}));
     wireFegsysPanel(el);
-    return;
-  }
-  if(BRAND_SECTIONS.has(activeSection)){
-    el.style.display="";
-    const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;
-    el.innerHTML=`<div class="subfilter__row"><div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div></div>`;
     return;
   }
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
@@ -3542,8 +3631,10 @@ function criativoCard(o){
   const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
   const hasVid=!!va&&!tab;
-  const copy=brainCopyText(d),copyLink=(d.copyLink||"").trim();
-  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
+  const copy=brainCopyText(d),transcript=String(d.transcricao||"").trim(),copyLink=(d.copyLink||"").trim();
+  const canonical=String(d.transcriptionStatus||d.transcricaoStatus||"").toLowerCase(),transcriptState=transcript?"ready":canonical==="failed"||canonical==="error"?"error":["pending","processing","working","retry_scheduled"].includes(canonical)?"pending":"missing";
+  const copyAction=transcript?`<button class="qbtn" data-copy-transcript="${o.id}" title="Copiar a transcrição" aria-label="Copiar transcrição de ${esc(d.nome||"criativo")}">${ic("clipboard")}Copiar transcrição</button>`:hasVid&&isAdmin?`<button class="qbtn" data-transcribe-card="${o.id}" title="Gerar transcrição">${ic("mic")}Transcrever</button>`:`<button class="qbtn" disabled title="Transcrição ainda não disponível">${ic("mic")}Sem transcrição</button>`;
+  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
@@ -3554,7 +3645,7 @@ function criativoCard(o){
     head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
     body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}`,
-    chips:`${chips}${fbwork}`,
+    chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}</div>`,
     actions:acts
   });
 }
@@ -3974,7 +4065,7 @@ async function requestInstantTranscription(offerId,videoUrl){
   if(!emb||emb.type!=="video"){toast("A transcrição automática funciona só para vídeo MP4.",true);return;}
   if(transcribing.has(offerId))return;
   transcribing.add(offerId);
-  o.data=o.data||{}; o.data.transcricaoStatus="working";
+  o.data=o.data||{}; o.data.transcricaoStatus="working";o.data.transcriptionStatus="processing";o.data.transcriptionStartedAt=new Date().toISOString();
   const viewOpen=()=>currentSimpleId===offerId&&$("#viewOverlay").classList.contains("open");
   if(viewOpen())openSimpleView(o,true);
   let token="";
@@ -3990,7 +4081,7 @@ async function requestInstantTranscription(offerId,videoUrl){
   if(!done){try{done=await queueBrainChunkedTranscription(offerId,videoUrl);}catch(e){console.error("transcrição fracionada falhou",e);}}
   transcribing.delete(offerId);
   const cur=offers.find(x=>x.id===offerId)||o;
-  if(!done)cur.data.transcricaoStatus="pending";          // rede de segurança: workflow horário pega depois
+  if(!done){cur.data.transcricaoStatus="pending";cur.data.transcriptionStatus="retry_scheduled";cur.data.transcriptionNextRetryAt=new Date(Date.now()+15*60*1000).toISOString();} // rede de segurança: o worker retoma
   renderGrid();writeCache();
   if(viewOpen())openSimpleView(cur,true);
   toast(done?"Transcrição pronta ✓":"Transcrevendo em segundo plano — aparece aqui em instantes.");
@@ -4591,6 +4682,10 @@ async function saveSimpleForm(){
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
   const p=Object.assign({},sItem);p.kind=sKind;
+  const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||"");
+  if((sKind==="criativo"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
+    p.transcriptionStatus="pending";p.transcriptionAttempts=0;p.transcriptionStartedAt="";p.transcriptionCompletedAt="";p.transcriptionLastError="";p.transcriptionNextRetryAt="";p.transcriptionProvider="faster-whisper";p.transcriptionVersion="1";p.transcricaoStatus="pending";
+  }
   /* Só os novos registros (ou os que já carregam a marca) recebem o aviso.
      Assim, cards antigos sem métrica não são alterados retroativamente. */
   if(sKind==="megabrain"&&(!sEditingId||p.metricaPendente===true))p.metricaPendente=!brainHasMetric(p);

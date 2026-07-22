@@ -25,7 +25,8 @@ Env:
 Uso local de teste (sem tocar no Supabase):
   python scripts/transcrever.py --file caminho/do/video.mp4
 """
-import os, sys, json, tempfile, time, urllib.request, urllib.error
+import os, sys, json, tempfile, time, urllib.request, urllib.error, uuid
+from datetime import datetime, timedelta, timezone
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ppaajtzbhjixhyfidojd.supabase.co").rstrip("/")
 ANON = os.environ.get(
@@ -45,6 +46,24 @@ TRANSCRIBE_KINDS = {
 FORCE_LANG = os.environ.get("LANG_FORCE", "") or None
 STORAGE_MARK = "/storage/v1/object/public/criativos/"
 VIDEO_EXT = (".mp4", ".webm", ".mov", ".m4v", ".ogg")
+LOCK_MINUTES = max(15, int(os.environ.get("TRANSCRIPTION_LOCK_MINUTES", "180")))
+JOB_VERSION = os.environ.get("TRANSCRIPTION_VERSION", "1")
+RUN_ID = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
+
+
+def iso_now():
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def parse_iso(value):
+    try:
+        return datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def log(event, **fields):
+    print(json.dumps({"event": event, "at": iso_now(), "run_id": RUN_ID, **fields}, ensure_ascii=False), flush=True)
 
 
 # =============================== Supabase (REST) ============================
@@ -88,11 +107,23 @@ def fetch_pending(token):
         v = (d.get("video") or "").strip()
         if STORAGE_MARK not in v or not v.lower().split("?")[0].endswith(VIDEO_EXT):
             continue
-        # Texto pronto e vídeo sem fala já concluído não voltam para a fila.
-        if (d.get("transcricao") or "").strip() or d.get("transcricaoStatus") == "done":
+        # Texto válido e vídeo sem fala já concluído não voltam para a fila.
+        canonical = str(d.get("transcriptionStatus") or d.get("transcricaoStatus") or "").lower()
+        text_ready = bool((d.get("transcricao") or "").strip())
+        invalid = bool(d.get("transcriptionInvalid") or d.get("transcriptionIncomplete")) or canonical in ("invalid", "incomplete")
+        stored_version = str(d.get("transcriptionVersion") or "")
+        outdated = bool(stored_version and stored_version != JOB_VERSION)
+        if (text_ready or canonical in ("completed", "done")) and not invalid and not outdated:
             continue
-        attempts = max(0, int(d.get("transcricaoTentativas") or 0))
-        if d.get("transcricaoStatus") == "error" and attempts >= MAX_RETRIES:
+        attempts = max(0, int(d.get("transcriptionAttempts") or d.get("transcricaoTentativas") or 0))
+        if canonical in ("failed", "error") and attempts >= MAX_RETRIES:
+            continue
+        now = datetime.now(timezone.utc)
+        retry_at = parse_iso(d.get("transcriptionNextRetryAt"))
+        if retry_at and retry_at > now:
+            continue
+        started_at = parse_iso(d.get("transcriptionStartedAt"))
+        if canonical in ("processing", "working") and started_at and started_at > now - timedelta(minutes=LOCK_MINUTES):
             continue
         out.append((attempts, row.get("created_at") or "", row["id"], d, v))
     # Um arquivo que falhou não bloqueia os demais. Novos/nunca tentados vêm primeiro.
@@ -145,6 +176,7 @@ def transcribe(model, path):
 
 # =============================== main ======================================
 def main():
+    run_started = time.monotonic()
     # modo local de teste: --file video.mp4
     if len(sys.argv) >= 3 and sys.argv[1] == "--file":
         model = load_model()
@@ -159,9 +191,9 @@ def main():
 
     token = bot_login()
     pending = fetch_pending(token)
-    print(f"vídeos aguardando transcrição: {len(pending)}")
+    log("transcription_scan", eligible=len(pending), kinds=sorted(TRANSCRIBE_KINDS), max_videos=MAX_VIDEOS, provider="faster-whisper")
     if not pending:
-        print("nada a fazer.")
+        log("transcription_run_completed", completed=0, failed=0, deferred=0, duration_ms=round((time.monotonic() - run_started) * 1000))
         return
 
     pending = pending[:MAX_VIDEOS]
@@ -174,15 +206,23 @@ def main():
             print(f"\nlimite seguro alcançado; {deferred} vídeo(s) ficam para a próxima execução")
             break
         nome = data.get("nome", "?")
-        print(f"\n[{i}/{len(pending)}] {nome[:44]}")
-        attempts = max(0, int(data.get("transcricaoTentativas") or 0)) + 1
+        log("transcription_job_started", creative_id=oid, position=i, total=len(pending), name=nome[:80], attempt=_attempts + 1)
+        attempts = max(0, int(data.get("transcriptionAttempts") or data.get("transcricaoTentativas") or 0)) + 1
         data["transcricaoStatus"] = "processing"
         data["transcricaoTentativas"] = attempts
-        data["transcricaoUltimaTentativa"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        data["transcricaoUltimaTentativa"] = iso_now()
+        data["transcriptionStatus"] = "processing"
+        data["transcriptionAttempts"] = attempts
+        data["transcriptionStartedAt"] = iso_now()
+        data["transcriptionCompletedAt"] = ""
+        data["transcriptionLastError"] = ""
+        data["transcriptionNextRetryAt"] = ""
+        data["transcriptionProvider"] = "faster-whisper"
+        data["transcriptionVersion"] = JOB_VERSION
         status, resp = patch_data(token, oid, data)
         if status not in (200, 204):
             fail += 1
-            print(f"   ERRO ao reservar: HTTP {status} {resp[:160]}", file=sys.stderr)
+            log("transcription_reservation_failed", creative_id=oid, http_status=status)
             continue
         try:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=True) as tmp:
@@ -197,23 +237,33 @@ def main():
             data["transcricaoSegments"] = segments
             data["transcricaoWords"] = words
             data["transcricaoError"] = ""
-            data["transcricaoConcluidaEm"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            data["transcricaoConcluidaEm"] = iso_now()
+            data["transcriptionStatus"] = "completed"
+            data["transcriptionCompletedAt"] = iso_now()
+            data["transcriptionLastError"] = ""
+            data["transcriptionNextRetryAt"] = ""
+            data["transcriptionInvalid"] = False
+            data["transcriptionIncomplete"] = False
             status, resp = patch_data(token, oid, data)
             if status in (200, 204):
                 ok += 1
-                print(f"   ✓ gravado ({len(text)} caracteres, {len(words)} palavras, idioma {lang})")
+                log("transcription_job_completed", creative_id=oid, attempts=attempts, characters=len(text), words=len(words), language=lang or "")
             else:
                 fail += 1
-                print(f"   ERRO ao gravar: HTTP {status} {resp[:160]}", file=sys.stderr)
+                log("transcription_save_failed", creative_id=oid, http_status=status)
         except Exception as e:
             fail += 1
-            message = str(e)[:300]
-            data["transcricaoStatus"] = "error" if attempts >= MAX_RETRIES else "pending"
-            data["transcricaoError"] = message
+            final = attempts >= MAX_RETRIES
+            delay_minutes = min(12 * 60, 15 * (2 ** max(0, attempts - 1)))
+            data["transcricaoStatus"] = "error" if final else "pending"
+            data["transcricaoError"] = "Falha temporária; nova tentativa será feita automaticamente." if not final else "Não foi possível concluir após várias tentativas."
+            data["transcriptionStatus"] = "failed" if final else "retry_scheduled"
+            data["transcriptionLastError"] = "transcription_provider_error"
+            data["transcriptionNextRetryAt"] = "" if final else (datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)).isoformat().replace("+00:00", "Z")
             patch_data(token, oid, data)
-            print(f"   FALHA ({attempts}/{MAX_RETRIES}): {message[:200]}", file=sys.stderr)
+            log("transcription_job_failed", creative_id=oid, attempts=attempts, final=final, retry_in_minutes=0 if final else delay_minutes, error_type=type(e).__name__)
 
-    print(f"\nFim: {ok} transcritos, {fail} falhas, {deferred} adiados")
+    log("transcription_run_completed", completed=ok, failed=fail, deferred=deferred, duration_ms=round((time.monotonic() - run_started) * 1000))
     if fail and not ok:
         sys.exit(1)
 

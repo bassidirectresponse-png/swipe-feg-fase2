@@ -3,7 +3,7 @@ name: Transcrição automática de vídeos
 # Sempre que houver um MP4 novo (subido pelo app) sem transcrição, baixa,
 # roda o Whisper (local, sem API key) e grava a transcrição de volta — ela
 # aparece automaticamente ao lado do vídeo no app.
-# Roda de hora em hora (pega vídeos novos) + botão manual para forçar na hora.
+# Varredura completa às 06:00 e 18:00 de São Paulo + botão manual.
 
 on:
   push:
@@ -13,7 +13,8 @@ on:
       - "scripts/requirements-transcricao.txt"
       - ".github/workflows/transcrever-videos.yml"
   schedule:
-    - cron: "0 * * * *"     # de hora em hora
+    - cron: "0 9 * * *"     # 06:00 America/Sao_Paulo (UTC-3)
+    - cron: "0 21 * * *"    # 18:00 America/Sao_Paulo (UTC-3)
   workflow_dispatch: {}
 
 permissions:
@@ -59,5 +60,7 @@ jobs:
           MAX_VIDEOS: "200"
           MAX_RUN_MINUTES: "300"
           MAX_RETRIES: "8"
+          TRANSCRIPTION_LOCK_MINUTES: "180"
+          TRANSCRIPTION_VERSION: "1"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py

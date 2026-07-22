@@ -26,8 +26,8 @@ Env:
   DRY_RUN=1        (não grava; só mostra o que leria)
   HISTORY_DAYS=60  (quantos pontos de histórico manter por oferta)
 """
-import os, sys, re, json, time, urllib.request, urllib.error
-from datetime import datetime, timezone
+import os, sys, re, json, time, urllib.request, urllib.error, uuid
+from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import sync_playwright
 
@@ -40,6 +40,26 @@ BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
 HISTORY_DAYS = int(os.environ.get("HISTORY_DAYS", "60"))
+MAX_OFFERS = max(1, int(os.environ.get("MAX_OFFERS", "200")))
+MAX_ATTEMPTS = max(1, int(os.environ.get("MAX_ANALYSIS_ATTEMPTS", "6")))
+LOCK_MINUTES = max(10, int(os.environ.get("ANALYSIS_LOCK_MINUTES", "90")))
+ANALYSIS_VERSION = os.environ.get("ANALYSIS_VERSION", "1")
+RUN_ID = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
+
+
+def iso_now():
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def parse_iso(value):
+    try:
+        return datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def log(event, **fields):
+    print(json.dumps({"event": event, "at": iso_now(), "run_id": RUN_ID, **fields}, ensure_ascii=False), flush=True)
 
 # regex do contador (PT/FR/EN/ES/DE/IT) — portado do repo de referência
 COUNT_PATTERNS = [
@@ -108,6 +128,17 @@ def eligible(row):
     links = [l for l in links if l]
     if not links:
         return None
+    status = str(d.get("analysisStatus") or "").lower()
+    attempts = max(0, int(d.get("analysisAttempts") or 0))
+    now = datetime.now(timezone.utc)
+    next_retry = parse_iso(d.get("analysisNextRetryAt"))
+    if next_retry and next_retry > now:
+        return None
+    started = parse_iso(d.get("analysisStartedAt"))
+    if status == "processing" and started and started > now - timedelta(minutes=LOCK_MINUTES):
+        return None
+    if status == "failed" and attempts >= MAX_ATTEMPTS:
+        return None
     return links
 
 
@@ -171,8 +202,9 @@ def update_history(data, total, now):
 
 # =============================== main ======================================
 def main():
+    run_started = time.monotonic()
     now = datetime.now(timezone.utc)
-    print(f"== Ads ativos · {now.isoformat()} ==")
+    log("library_analysis_run_started", dry_run=DRY_RUN, version=ANALYSIS_VERSION)
 
     if not DRY_RUN and not (BOT_EMAIL and BOT_PASSWORD):
         print("ERRO: defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD (ou DRY_RUN=1).", file=sys.stderr)
@@ -192,7 +224,8 @@ def main():
         links = eligible(row)
         if links:
             targets.append((row, links))
-    print(f"{len(rows)} linhas no banco · {len(targets)} ofertas Meta com biblioteca para checar\n")
+    targets = targets[:MAX_OFFERS]
+    log("library_analysis_scan", rows=len(rows), eligible=len(targets), max_offers=MAX_OFFERS)
 
     ok = fail = skipped = 0
     with sync_playwright() as pw:
@@ -209,7 +242,21 @@ def main():
         for i, (row, links) in enumerate(targets, 1):
             data = row["data"]
             nome = data.get("nomeOferta", "?")
-            print(f"[{i}/{len(targets)}] {nome[:44]}  ({len(links)} biblioteca(s))")
+            attempts = 1 if str(data.get("analysisStatus") or "") == "completed" else max(0, int(data.get("analysisAttempts") or 0)) + 1
+            data["analysisStatus"] = "processing"
+            data["analysisAttempts"] = attempts
+            data["analysisStartedAt"] = iso_now()
+            data["analysisCompletedAt"] = ""
+            data["analysisLastError"] = ""
+            data["analysisNextRetryAt"] = ""
+            data["analysisVersion"] = ANALYSIS_VERSION
+            if not DRY_RUN:
+                reserve_status, _ = sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                if reserve_status not in (200, 204):
+                    fail += 1
+                    log("library_analysis_reservation_failed", offer_id=row["id"], http_status=reserve_status)
+                    continue
+            log("library_analysis_job_started", offer_id=row["id"], position=i, total=len(targets), name=nome[:80], libraries=len(links), attempt=attempts)
             counts, any_ok = [], False
             for j, link in enumerate(links, 1):
                 c = scrape_one(page, link)
@@ -220,7 +267,14 @@ def main():
                     counts.append(c)
                     print(f"   lib {j}: {c} ads")
             if not any_ok:
-                print("   -> todas as bibliotecas falharam; mantendo valor anterior")
+                final = attempts >= MAX_ATTEMPTS
+                delay_minutes = min(12 * 60, 20 * (2 ** max(0, attempts - 1)))
+                data["analysisStatus"] = "failed" if final else "retry_scheduled"
+                data["analysisLastError"] = "library_unavailable"
+                data["analysisNextRetryAt"] = "" if final else (now + timedelta(minutes=delay_minutes)).isoformat().replace("+00:00", "Z")
+                if not DRY_RUN:
+                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                log("library_analysis_job_failed", offer_id=row["id"], attempt=attempts, final=final, retry_in_minutes=0 if final else delay_minutes)
                 fail += 1
                 continue
 
@@ -229,6 +283,10 @@ def main():
             data["numAdsAtivos"] = str(total)
             data["adsUpdatedAt"] = now.isoformat()
             data["adsHistory"] = update_history(data, total, now)
+            data["analysisStatus"] = "completed"
+            data["analysisCompletedAt"] = iso_now()
+            data["analysisLastError"] = ""
+            data["analysisNextRetryAt"] = ""
             if data.get("kind") in ("brandsgeneral", "brandsvalidated"):
                 data["adsLibraryCheckedAt"] = now.strftime("%d/%m/%Y")
                 data["adsLibraryApprox"] = False
@@ -241,13 +299,14 @@ def main():
                              token=token, body={"data": data}, prefer="return=minimal")
             if status in (200, 204):
                 ok += 1
+                log("library_analysis_job_completed", offer_id=row["id"], active_ads=total, libraries_succeeded=len(counts), attempts=attempts)
             else:
                 print(f"   ERRO ao gravar: HTTP {status} {txt[:160]}", file=sys.stderr)
                 fail += 1
 
         browser.close()
 
-    print(f"\nFim: {ok} atualizadas, {fail} falhas, {skipped} (dry-run)")
+    log("library_analysis_run_completed", completed=ok, failed=fail, dry_run=skipped, duration_ms=round((time.monotonic() - run_started) * 1000))
     if targets and fail / len(targets) > 0.5:
         sys.exit(1)
 

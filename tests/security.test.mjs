@@ -61,7 +61,7 @@ test("CSP remove script inline genérico e dependências externas usam SRI", () 
   assert.doesNotMatch(policy.match(/script-src[^;]+/)?.[0] || "", /unsafe-inline/);
   assert.match(policy, /sha256-/);
   assert.match(policy, /upgrade-insecure-requests/);
-  const externalScripts = [...html.matchAll(/<script\s+[^>]*src="[^"]+"[^>]*>/g)].map(match => match[0]);
+  const externalScripts = [...html.matchAll(/<script\s+[^>]*src="https?:\/\/[^"]+"[^>]*>/g)].map(match => match[0]);
   assert.ok(externalScripts.length >= 2);
   for (const script of externalScripts) {
     assert.match(script, /integrity="sha384-/);

@@ -50,5 +50,9 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          MAX_OFFERS: "200"
+          MAX_ANALYSIS_ATTEMPTS: "6"
+          ANALYSIS_LOCK_MINUTES: "90"
+          ANALYSIS_VERSION: "1"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/ads_scraper.py
