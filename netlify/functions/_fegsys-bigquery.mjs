@@ -3,11 +3,12 @@ import { getStore } from "@netlify/blobs";
 
 const PROJECT_ID = "grupofeg-lakehouse";
 const VIEW = "grupofeg-lakehouse.gold_feg.vw_ads_criativo_diario";
-const META_PERFORMANCE = "grupofeg-lakehouse.gold_feg.fct_meta_ads_performance";
 const STORE_NAME = "fegsys-megabrain";
 const STORE_KEY = "daily-v4";
 const MAX_AGE_MS = 75 * 60 * 1000;
-const QUERY_DAYS = 365;
+/* O maior filtro do painel é 90 dias. Uma margem de dez dias cobre diferenças
+   de fuso sem consultar um ano inteiro a cada atualização. */
+const QUERY_DAYS = 100;
 const cachedTokens = new Map();
 
 function base64url(value) {
@@ -144,51 +145,6 @@ GROUP BY 1, 2
 ORDER BY data DESC, spend_brl DESC` };
 }
 
-function metaPerformanceQuery() {
-  return `
-WITH daily AS (
-  SELECT
-    DATE(ref_date) AS data,
-    COALESCE(NULLIF(TRIM(campaign_name), ''), NULLIF(TRIM(creative_name), ''), NULLIF(TRIM(ad_name), '')) AS criativo,
-    ANY_VALUE(NULLIF(TRIM(creative_id), '')) AS creative_id,
-    ANY_VALUE(NULLIF(TRIM(ad_id), '')) AS ad_id,
-    SUM(COALESCE(spend, 0)) AS meta_spend,
-    SUM(COALESCE(impressions, 0)) AS meta_impressions,
-    SUM(COALESCE(reach, 0)) AS meta_reach,
-    SUM(COALESCE(unique_clicks, 0)) AS meta_unique_clicks,
-    SUM(COALESCE(link_clicks, 0)) AS meta_link_clicks,
-    SUM(COALESCE(outbound_clicks, 0)) AS meta_outbound_clicks,
-    SUM(COALESCE(landing_page_views, 0)) AS meta_landing_page_views,
-    SUM(COALESCE(video_plays, 0)) AS meta_video_plays,
-    SUM(COALESCE(initiate_checkout, 0)) AS meta_initiate_checkout,
-    SUM(COALESCE(purchases, 0)) AS meta_purchases,
-    SUM(COALESCE(revenue, 0)) AS meta_revenue,
-    SAFE_DIVIDE(SUM(COALESCE(hook_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_hook_rate,
-    SAFE_DIVIDE(SUM(COALESCE(midpoint_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_midpoint_rate,
-    SAFE_DIVIDE(SUM(COALESCE(hold_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_hold_rate,
-    SAFE_DIVIDE(SUM(COALESCE(p95_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_p95_rate,
-    SAFE_DIVIDE(SUM(COALESCE(completion_rate, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_completion_rate,
-    SAFE_DIVIDE(SUM(COALESCE(avg_watch_time_seconds, 0) * COALESCE(video_plays, 0)), NULLIF(SUM(COALESCE(video_plays, 0)), 0)) AS meta_avg_watch_time_seconds
-  FROM \`${META_PERFORMANCE}\`
-  WHERE DATE(ref_date) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
-    AND COALESCE(NULLIF(TRIM(campaign_name), ''), NULLIF(TRIM(creative_name), ''), NULLIF(TRIM(ad_name), '')) IS NOT NULL
-  GROUP BY 1, 2
-)
-SELECT
-  *,
-  SAFE_DIVIDE(meta_impressions, NULLIF(meta_reach, 0)) AS meta_frequency,
-  SAFE_DIVIDE(meta_link_clicks * 100, NULLIF(meta_impressions, 0)) AS meta_ctr,
-  SAFE_DIVIDE(meta_spend, NULLIF(meta_link_clicks, 0)) AS meta_cpc,
-  SAFE_DIVIDE(meta_spend * 1000, NULLIF(meta_impressions, 0)) AS meta_cpm,
-  SAFE_DIVIDE(meta_spend, NULLIF(meta_landing_page_views, 0)) AS meta_cplpv,
-  SAFE_DIVIDE(meta_spend, NULLIF(meta_initiate_checkout, 0)) AS meta_cpi,
-  SAFE_DIVIDE(meta_spend, NULLIF(meta_purchases, 0)) AS meta_cpa,
-  SAFE_DIVIDE(meta_revenue, NULLIF(meta_spend, 0)) AS meta_roas,
-  SAFE_DIVIDE(meta_revenue, NULLIF(meta_purchases, 0)) AS meta_aov
-FROM daily
-ORDER BY data DESC, meta_spend DESC`;
-}
-
 function rowsFromResult(schema, rows) {
   const fields = (schema && schema.fields || []).map(field => field.name);
   return (rows || []).map(row => Object.fromEntries(fields.map((name, index) => [name, row.f && row.f[index] ? row.f[index].v : null])));
@@ -314,12 +270,6 @@ async function queryBigQuery(credential) {
   if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
   const viewPlan = buildQuery(metadata.schema && metadata.schema.fields);
   const baseRaw = await runBigQueryQuery(headers, viewPlan.query, "vw_ads_criativo_diario");
-  const optional = async (query, label) => {
-    try { return { rows: await runBigQueryQuery(headers, query, label), available: true, error: "" }; }
-    catch (error) { return { rows: [], available: false, error: String(error && error.message || error) }; }
-  };
-  const metaResult = await optional(metaPerformanceQuery(), "performance Meta");
-  const metaRaw = metaResult.rows;
   const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "orders", "official_revenue_brl", "official_revenue_usd", "google_conversions", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
@@ -342,13 +292,12 @@ async function queryBigQuery(credential) {
     copy_text: String(row.copy_text || "").trim(),
     copy_url: String(row.copy_url || "").trim()
   })).filter(row => row.data && row.criativo);
-  const metaNumeric = ["meta_spend", "meta_impressions", "meta_reach", "meta_unique_clicks", "meta_link_clicks", "meta_outbound_clicks", "meta_landing_page_views", "meta_video_plays", "meta_initiate_checkout", "meta_purchases", "meta_revenue", "meta_hook_rate", "meta_midpoint_rate", "meta_hold_rate", "meta_p95_rate", "meta_completion_rate", "meta_avg_watch_time_seconds", "meta_frequency", "meta_ctr", "meta_cpc", "meta_cpm", "meta_cplpv", "meta_cpi", "meta_cpa", "meta_roas", "meta_aov"];
   return {
-    rows: mergeFegsysSources(baseRows, [], numericRows(metaRaw, metaNumeric)).filter(row => row.data && row.criativo),
+    rows: mergeFegsysSources(baseRows, [], []).filter(row => row.data && row.criativo),
     sourceStatus: {
       media: { available: true, error: "" },
       sales: { available: viewPlan.salesAvailable, error: viewPlan.salesError },
-      meta: { available: metaResult.available, error: metaResult.error }
+      meta: { available: true, error: "" }
     }
   };
 }

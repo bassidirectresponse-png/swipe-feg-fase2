@@ -81,7 +81,8 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.doesNotMatch(coreFn, /marts_feg\.mart_criativos_diario/);
   assert.match(coreFn, /quantidade_pedidos/);
   assert.match(coreFn, /faturamento_liquido_front/);
-  assert.match(coreFn, /gold_feg\.fct_meta_ads_performance/);
+  assert.doesNotMatch(coreFn, /gold_feg\.fct_meta_ads_performance/);
+  assert.match(coreFn, /const QUERY_DAYS = 100/);
 });
 
 test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa o card", () => {
