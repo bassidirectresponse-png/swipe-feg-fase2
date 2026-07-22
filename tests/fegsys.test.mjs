@@ -36,6 +36,8 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(coreFn, /PRECOMPUTED_PERIODS/);
   assert.match(coreFn, /getPrecomputedAggregate/);
   assert.match(apiFn, /getPrecomputedAggregate\(range\)/);
+  assert.match(apiFn, /new URL\(req\.url\)\.origin/);
+  assert.match(apiFn, /startsWith\("\/"\) \? `\$\{origin\}\$\{card\.video_url\}`/);
   assert.match(coreFn, /não foi aprovada após rotação/);
   assert.doesNotMatch([html, syncFn, apiFn, coreFn, securityFn].join("\n"), /BEGIN PRIVATE KEY/);
   assert.match(driveFn, /drive\.readonly/);

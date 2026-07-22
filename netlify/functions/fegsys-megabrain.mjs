@@ -41,7 +41,12 @@ export default async req => {
   let driveStatus;
   try {
     const drive = await enrichFegsysCards(result.cards, { refresh: false, allowStale: true });
-    result.cards = drive.cards;
+    const origin = new URL(req.url).origin;
+    result.cards = drive.cards.map(card => ({
+      ...card,
+      video_url: String(card.video_url || "").startsWith("/") ? `${origin}${card.video_url}` : card.video_url,
+      thumbnail_url: String(card.thumbnail_url || "").startsWith("/") ? `${origin}${card.thumbnail_url}` : card.thumbnail_url,
+    }));
     driveStatus = drive.status;
   } catch (error) {
     driveStatus = { available: false, error: String(error && error.message || "Drive indisponível") };
