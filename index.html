@@ -3893,6 +3893,7 @@ function videoEmbedUrl(url){
   if(m)return{type:"iframe",src:"https://player.vimeo.com/video/"+m[1]};
   m=url.match(/drive\.google\.com\/file\/d\/([\w-]+)/i)||url.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]+)/i);
   if(m)return{type:"iframe",src:"https://drive.google.com/file/d/"+m[1]+"/preview"};
+  if(/\/\.netlify\/functions\/fegsys-drive-media(?:\?|$)/i.test(url))return{type:"video",src:fixUrl(url)};
   if(/\.(mp4|webm|ogg|ogv|m4v)(\?.*)?$/i.test(url))return{type:"video",src:fixUrl(url)};
   return null;
 }

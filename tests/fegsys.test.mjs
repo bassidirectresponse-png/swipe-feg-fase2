@@ -73,6 +73,7 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /const o=itemById\(id\);if\(!o\)return;/);
   assert.match(html, /Ver e copiar a copy/);
   assert.match(html, /isFegsys&&embed/);
+  assert.match(html, /fegsys-drive-media\(\?:\\\?\|\$\)/);
   assert.match(html, /Abrir no Drive/);
   assert.match(html, /Abrir mídia/);
   assert.match(html, /Abrir documento/);
