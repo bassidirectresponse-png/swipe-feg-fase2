@@ -1318,7 +1318,7 @@ const ICONS={
 };
 function ic(name,cls){return `<svg class="ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;}
 function validUrl(u){return u&&/^https?:\/\//i.test(u.trim());}
-function fixUrl(u){u=(u||"").trim();if(!u)return"";if(u.startsWith("/"))return u;if(!/^https?:\/\//i.test(u))u="https://"+u;return u;}
+function fixUrl(u){u=(u||"").trim();if(!u)return"";if(u.startsWith("/"))return location.origin+u;if(!/^https?:\/\//i.test(u))u="https://"+u;return u;}
 function getAds(d){const n=parseInt(String(d.numAdsAtivos||"").replace(/\D/g,""),10);return isNaN(n)?null:n;}
 function val(id){const e=document.getElementById(id);return e?e.value.trim():"";}
 let toastTimer;
