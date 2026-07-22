@@ -165,12 +165,17 @@ async function listDriveFiles(creativeNames = []) {
   const { token } = await driveToken();
   const rootIds = configuredRootIds(), roots = await Promise.all(rootIds.map(id => inspectRoot(token, id)));
   const batches = creativeBatches(creativeNames);
+  const requested = new Set(creativeNames.map(normalizeDriveName).filter(Boolean));
   const pages = await mapLimit(batches, 6, batch => listDrivePage(token, batch));
   const byId = new Map();
   for (const listed of pages) {
     for (const raw of listed.files) {
       const file = usableDriveFile(raw);
-      if (file) byId.set(file.id, file);
+      if (!file) continue;
+      const exact = VIDEO_RE.test(file.mimeType || "")
+        ? requested.has(normalizeDriveName(file.name))
+        : requested.has(normalizeDriveName(file.name)) || requested.has(copyCore(file.name));
+      if (exact) byId.set(file.id, file);
     }
   }
   return {
@@ -208,7 +213,7 @@ export async function getDriveIndex({ refresh = false, allowStale = false, creat
   if (!refresh && allowStale && (cached || globalCached)) return cached || globalCached;
   if (!refresh && !stale) return cached;
   const index = await listDriveFiles(creativeNames);
-  const globalIndex = mergeDriveIndexes(globalCached, index);
+  const globalIndex = refresh ? index : mergeDriveIndexes(globalCached, index);
   await Promise.all([store.setJSON(cacheKey, index), store.setJSON(GLOBAL_INDEX_KEY, globalIndex)]);
   return index;
 }

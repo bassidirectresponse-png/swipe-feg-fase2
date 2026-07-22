@@ -150,6 +150,8 @@ test("Drive busca somente os nomes retornados pelo FEGSYS sem percorrer cada sub
   assert.match(driveFn, /includeCopyText = false/);
   assert.match(driveFn, /name contains/);
   assert.match(driveFn, /creativeBatches/);
+  assert.match(driveFn, /const requested = new Set\(creativeNames\.map\(normalizeDriveName\)/);
+  assert.match(driveFn, /if \(exact\) byId\.set\(file\.id, file\)/);
   assert.match(driveFn, /creativeNames: cards\.map\(card => card\.nome\)/);
   assert.match(driveFn, /const lookup = driveLookup\(index\.files \|\| \[\]\)/);
   assert.match(driveFn, /matchDriveFiles\(card\.nome, index\.files \|\| \[\], lookup\)/);
