@@ -10,12 +10,14 @@ const MAX_AGE_MS = 75 * 60 * 1000;
    de fuso sem consultar um ano inteiro a cada atualização. */
 const QUERY_DAYS = 100;
 const cachedTokens = new Map();
+let cachedCredential;
 
 function base64url(value) {
   return Buffer.from(value).toString("base64url");
 }
 
 export function readCredential() {
+  if (cachedCredential) return cachedCredential;
   const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64 || "";
   const plain = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "";
   if (encoded.length > 32_000 || plain.length > 24_000) throw new Error("credencial de conta de serviço inválida");
@@ -37,7 +39,8 @@ export function readCredential() {
   }
   if (credential.token_uri !== "https://oauth2.googleapis.com/token") throw new Error("endpoint OAuth da credencial não autorizado");
   try { createPrivateKey(credential.private_key); } catch { throw new Error("chave privada da conta de serviço inválida"); }
-  return credential;
+  cachedCredential = credential;
+  return cachedCredential;
 }
 
 export async function googleAccessToken(credential, scopes = ["https://www.googleapis.com/auth/bigquery.readonly"]) {

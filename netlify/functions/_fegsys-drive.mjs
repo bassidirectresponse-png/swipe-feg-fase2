@@ -19,6 +19,7 @@ const DEFAULT_ROOT_IDS = [
   "1O1HoupHFxPPqHLLuAthkZzY6pb-6q2YO",
   "1BVtaUOgSdpWFgU3TFZArlVuSB6FI-DF_"
 ];
+let cachedMediaSecret;
 const COPY_MIMES = new Set([
   GOOGLE_DOC,
   "text/plain",
@@ -213,7 +214,8 @@ export async function getDriveIndex({ refresh = false, allowStale = false, creat
 }
 
 function mediaSecret(credential) {
-  return createHash("sha256").update(credential.private_key).update("fegsys-drive-media-v1").digest();
+  if (!cachedMediaSecret) cachedMediaSecret = createHash("sha256").update(credential.private_key).update("fegsys-drive-media-v1").digest();
+  return cachedMediaSecret;
 }
 
 function mediaPayload(fileId, expiresAt) { return `${fileId}.${expiresAt}`; }
