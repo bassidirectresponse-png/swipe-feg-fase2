@@ -3128,6 +3128,7 @@ async function furRun(){
 const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
+const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_STALL_MS=30000;
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
 let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="";
 const TR_STORE="feg_transcricoes_v1";
@@ -3173,10 +3174,9 @@ function trFrame(){if(!trAudio)return;const duration=trAudio.duration||trDur||1,
 function trRenderPlayer(){const host=$("#trPlayer");if(!host||!trAudioUrl)return;cancelAnimationFrame(trRaf);host.innerHTML=`<div class="trplayer"><audio id="trAudio" src="${esc(trAudioUrl)}" preload="metadata"></audio><div class="trplayer__row"><button type="button" class="trplayer__play" id="trPlay" aria-label="Reproduzir">${ic("play")}</button><label class="trplayer__track" aria-label="Posição do áudio"><span class="trplayer__rail"><span class="trplayer__fill" id="trFill"></span></span><input class="trplayer__range" id="trRange" type="range" min="0" max="1000" value="0"></label><span class="trplayer__time" id="trPlayerTime">0:00 / ${trTime(trDur)}</span><select class="trplayer__speed" id="trSpeed" aria-label="Velocidade"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></div></div>`;
   trAudio=$("#trAudio");const play=$("#trPlay");play.addEventListener("click",()=>trAudio.paused?trAudio.play():trAudio.pause());trAudio.addEventListener("play",()=>{play.textContent="❚❚";play.setAttribute("aria-label","Pausar");cancelAnimationFrame(trRaf);trRaf=requestAnimationFrame(trFrame);});trAudio.addEventListener("pause",()=>{play.innerHTML=ic("play");play.setAttribute("aria-label","Reproduzir");cancelAnimationFrame(trRaf);});trAudio.addEventListener("loadedmetadata",()=>{if(!trDur)trDur=trAudio.duration||0;trFrame();});$("#trRange").addEventListener("input",e=>{trAudio.currentTime=(trAudio.duration||trDur||0)*(+e.target.value/1000);trSyncWord(trAudio.currentTime);trFrame();});$("#trSpeed").addEventListener("change",e=>trAudio.playbackRate=+e.target.value||1);
 }
-// extrai o áudio no navegador → mono 16kHz (Float32). Sem Storage, sem limite de tamanho.
-async function trDecodeMono16k(file){
-  let arr;
-  try{arr=await file.arrayBuffer();}catch(_){throw new Error("o navegador perdeu o acesso ao arquivo; selecione o vídeo novamente");}
+// Arquivos normais são decodificados de uma vez. Arquivos grandes usam o
+// caminho progressivo abaixo e nunca são copiados inteiros para a memória.
+async function trDecodeArrayMono16k(arr){
   const AC=window.AudioContext||window.webkitAudioContext;
   let ctx; try{ctx=new AC({sampleRate:16000});}catch(e){ctx=new AC();}
   let buf;
@@ -3189,12 +3189,123 @@ async function trDecodeMono16k(file){
   if(rate!==16000)mono=await trResample(mono,rate,16000);
   return mono;
 }
+async function trDecodeMono16k(file){
+  let arr;
+  try{arr=await file.arrayBuffer();}catch(error){const e=new Error("não foi possível ler o arquivo completo na memória");e.cause=error;throw e;}
+  return trDecodeArrayMono16k(arr);
+}
 async function trResample(data,from,to){
   const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
   const off=new OAC(1,Math.max(1,Math.ceil(data.length*to/from)),to);
   const b=off.createBuffer(1,data.length,from);b.copyToChannel(data,0);
   const s=off.createBufferSource();s.buffer=b;s.connect(off.destination);s.start();
   const r=await off.startRendering();return r.getChannelData(0);
+}
+function trAbortError(){try{return new DOMException("Processamento cancelado","AbortError");}catch(_){const e=new Error("Processamento cancelado");e.name="AbortError";return e;}}
+function trWaitMedia(el,event,timeout=20000,signal){
+  return new Promise((resolve,reject)=>{
+    let timer;
+    const clean=()=>{clearTimeout(timer);el.removeEventListener(event,ok);el.removeEventListener("error",bad);if(signal)signal.removeEventListener("abort",cancel);};
+    const ok=()=>{clean();resolve();};
+    const bad=()=>{clean();reject(new Error("não consegui abrir o áudio ou vídeo"));};
+    const cancel=()=>{clean();reject(trAbortError());};
+    if(signal&&signal.aborted)return cancel();
+    el.addEventListener(event,ok,{once:true});el.addEventListener("error",bad,{once:true});
+    if(signal)signal.addEventListener("abort",cancel,{once:true});
+    timer=setTimeout(bad,timeout);
+  });
+}
+async function trProbeMedia(file,signal){
+  const url=URL.createObjectURL(file),media=document.createElement(file.type.startsWith("video/")?"video":"audio");
+  media.preload="metadata";media.src=url;
+  try{await trWaitMedia(media,"loadedmetadata",20000,signal);return{duration:isFinite(media.duration)?media.duration:0};}
+  finally{media.removeAttribute("src");try{media.load();}catch(_){}URL.revokeObjectURL(url);}
+}
+function trRecorderMime(){
+  if(typeof MediaRecorder==="undefined")return"";
+  return["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"].find(type=>!MediaRecorder.isTypeSupported||MediaRecorder.isTypeSupported(type))||"";
+}
+async function trStopRecorder(recorder,chunks){
+  if(recorder.state==="inactive")return new Blob(chunks,{type:recorder.mimeType||"audio/webm"});
+  return new Promise((resolve,reject)=>{
+    const done=()=>resolve(new Blob(chunks,{type:recorder.mimeType||"audio/webm"}));
+    recorder.addEventListener("stop",done,{once:true});
+    recorder.addEventListener("error",()=>reject(new Error("falha ao preparar uma parte do áudio")),{once:true});
+    try{recorder.stop();}catch(error){reject(error);}
+  });
+}
+async function trSeekMedia(media,time,signal){
+  const target=Math.max(0,Math.min(Math.max(0,(media.duration||0)-.05),time));
+  if(Math.abs((media.currentTime||0)-target)<.08&&media.readyState>=2)return;
+  const waiting=trWaitMedia(media,"seeked",20000,signal);media.currentTime=target;await waiting;
+}
+async function trCaptureLargeFile(file,chunkSec,options){
+  const {startChunk=0,signal,onPlan,onChunk,onStatus}=options||{},mime=trRecorderMime();
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!mime||!AC)throw new Error("este navegador não oferece o processamento progressivo necessário para este arquivo");
+  const url=URL.createObjectURL(file),media=document.createElement(file.type.startsWith("video/")?"video":"audio");
+  media.preload="auto";media.playsInline=true;media.src=url;media.style.cssText="position:fixed;width:1px;height:1px;opacity:.001;pointer-events:none;left:-10px;bottom:0";document.body.appendChild(media);
+  let ctx=null,source=null,destination=null,silent=null,wakeLock=null,recorder=null;
+  try{
+    await trWaitMedia(media,"loadedmetadata",30000,signal);
+    const duration=isFinite(media.duration)?media.duration:0;if(!duration)throw new Error("não consegui identificar a duração do arquivo");
+    const totalChunks=Math.max(1,Math.ceil(duration/chunkSec));if(onPlan)await onPlan({duration,totalChunks,mode:"stream"});
+    try{if(navigator.wakeLock)wakeLock=await navigator.wakeLock.request("screen");}catch(_){}
+    try{ctx=new AC({sampleRate:48000});}catch(_){ctx=new AC();}
+    if(ctx.state==="suspended")await ctx.resume();
+    source=ctx.createMediaElementSource(media);destination=ctx.createMediaStreamDestination();silent=ctx.createGain();silent.gain.value=0;
+    source.connect(destination);source.connect(silent);silent.connect(ctx.destination);
+    media.preservesPitch=true;media.playbackRate=TR_STREAM_PLAYBACK_RATE;
+    for(let index=Math.max(0,startChunk);index<totalChunks;index++){
+      if(signal&&signal.aborted)throw trAbortError();
+      const expectedStart=index*chunkSec,end=Math.min(duration,(index+1)*chunkSec);await trSeekMedia(media,expectedStart,signal);
+      const actualStart=media.currentTime||expectedStart,chunks=[];
+      recorder=new MediaRecorder(destination.stream,{mimeType:mime,audioBitsPerSecond:64000});
+      recorder.addEventListener("dataavailable",event=>{if(event.data&&event.data.size)chunks.push(event.data);});
+      recorder.start(1000);
+      try{await media.play();}catch(_){throw new Error("o navegador bloqueou a leitura progressiva; clique novamente em iniciar");}
+      let lastTime=media.currentTime,lastAdvance=Date.now();
+      while(!media.ended&&media.currentTime<end-.04){
+        if(signal&&signal.aborted)throw trAbortError();
+        await trDelay(250);
+        if(media.currentTime>lastTime+.01){lastTime=media.currentTime;lastAdvance=Date.now();}
+        else if(Date.now()-lastAdvance>TR_STREAM_STALL_MS)throw new Error("a leitura do arquivo ficou parada; mantenha a aba aberta e tente continuar");
+        if(onStatus)onStatus({index,totalChunks,current:media.currentTime,end});
+      }
+      media.pause();const blob=await trStopRecorder(recorder,chunks);recorder=null;
+      if(!blob.size)throw new Error("não consegui extrair o áudio desta parte");
+      const samples=await trDecodeArrayMono16k(await blob.arrayBuffer()),captured=Math.max(.1,(media.currentTime||end)-actualStart),pcmDuration=Math.max(.1,samples.length/16000);
+      if(onChunk)await onChunk({samples,rate:16000,offset:actualStart,timeScale:captured/pcmDuration,index,totalChunks,duration});
+    }
+  }finally{
+    try{media.pause();}catch(_){}
+    if(recorder&&recorder.state!=="inactive")try{recorder.stop();}catch(_){}
+    try{source&&source.disconnect();silent&&silent.disconnect();destination&&destination.stream.getTracks().forEach(track=>track.stop());}catch(_){}
+    try{ctx&&await ctx.close();}catch(_){}
+    try{wakeLock&&await wakeLock.release();}catch(_){}
+    media.removeAttribute("src");try{media.load();}catch(_){}media.remove();URL.revokeObjectURL(url);
+  }
+}
+async function trForEachAudioChunk(file,chunkSec,options={}){
+  let probe={duration:0};try{probe=await trProbeMedia(file,options.signal);}catch(error){if(error&&error.name==="AbortError")throw error;}
+  const useStream=file.size>TR_MEMORY_MAX_BYTES||(probe.duration&&probe.duration>TR_MEMORY_MAX_SEC);
+  if(useStream){
+    if(options.onStatus)options.onStatus({preparing:true,message:"Arquivo grande: leitura segura por partes. Mantenha esta aba aberta durante a transcrição…"});
+    return trCaptureLargeFile(file,chunkSec,options);
+  }
+  let mono;
+  try{mono=await trDecodeMono16k(file);}
+  catch(error){
+    if(options.onStatus)options.onStatus({preparing:true,message:"Mudando para o modo progressivo para preservar a memória…"});
+    return trCaptureLargeFile(file,chunkSec,options);
+  }
+  const rate=16000,duration=mono.length/rate,totalChunks=Math.max(1,Math.ceil(duration/chunkSec)),chunkLen=chunkSec*rate;
+  if(options.onPlan)await options.onPlan({duration,totalChunks,mode:"memory"});
+  for(let index=Math.max(0,options.startChunk||0);index<totalChunks;index++){
+    if(options.signal&&options.signal.aborted)throw trAbortError();
+    const samples=mono.subarray(index*chunkLen,Math.min(mono.length,(index+1)*chunkLen));
+    if(options.onChunk)await options.onChunk({samples,rate,offset:index*chunkSec,timeScale:1,index,totalChunks,duration});
+  }
 }
 function trWav(samples,rate){
   const n=samples.length,ab=new ArrayBuffer(44+n*2),v=new DataView(ab);
@@ -3239,24 +3350,24 @@ function trRetryStatus(message){
   trSetStatus(`<span class="trerr">⚠ ${esc(message)}</span> <button type="button" class="btn btn--outline btn--sm" id="trRetryPart" style="margin-left:10px">Continuar da última parte</button>`);
   const retry=$("#trRetryPart");if(retry)retry.addEventListener("click",()=>{if(trLastFile&&!trBusy)trHandleFile(trLastFile);});
 }
-async function trPostSlice(samples,rate,token,lang,offset){
+async function trPostSlice(samples,rate,token,lang,offset,timeScale=1){
   let r,j={};
   try{
     r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate)});
     try{j=await r.json();}catch(_){}
   }catch(error){error.status=0;throw error;}
   if(!r.ok||!j.ok){const error=new Error(j.error||("HTTP "+r.status));error.status=r.status;error.retryable=j.retryable===true||r.status===429||r.status>=500;throw error;}
-  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)+offset,end:(+w.end||0)+offset})):[]};
+  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})):[]};
 }
 function trMergeSlices(a,b){return{text:[a.text,b.text].filter(Boolean).join(" "),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
-async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0){
+async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0,timeScale=1){
   const seconds=samples.length/rate;let lastError;
   for(let attempt=0;attempt<TR_TRANSIENT_RETRIES;attempt++){
-    try{return await trPostSlice(samples,rate,token,lang,offset);}catch(error){
+    try{return await trPostSlice(samples,rate,token,lang,offset,timeScale);}catch(error){
       lastError=error;const status=+error.status||0,authFailure=status===400||status===401||status===403,canSplit=seconds>TR_MIN_CHUNK_SEC*2.05;
       if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
         if(onAdapt)onAdapt(`Uma parte demorou; reduzindo ${Math.round(seconds)}s para trechos menores…`);
-        const middle=Math.floor(samples.length/2),left=await trTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,onAdapt,depth+1),right=await trTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+middle/rate,onAdapt,depth+1);
+        const middle=Math.floor(samples.length/2),left=await trTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,onAdapt,depth+1,timeScale),right=await trTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+(middle/rate)*timeScale,onAdapt,depth+1,timeScale);
         return trMergeSlices(left,right);
       }
       const transient=status===0||status===429||status===502||status===503||status===504;
@@ -3274,24 +3385,24 @@ async function trHandleFile(file){
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
-  trSetStatus(`<span class="vidup__spin"></span>Extraindo o áudio…`);
-  let mono;
-  try{mono=await trDecodeMono16k(file);}
-  catch(e){trSetStatus(`<span class="trerr">⚠ ${esc((e&&e.message)||"falha ao ler o áudio")}. Tente outro formato ou um trecho menor.</span>`);trBusy=false;if(drop)drop.classList.remove("busy");return;}
-  const rate=16000,chunkLen=TR_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen)),totalDur=mono.length/rate;
+  trSetStatus(`<span class="vidup__spin"></span>Preparando o áudio…`);
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  const saved=trReadProgress(file);let fullText=saved?String(saved.text||""):"",allSegs=saved&&Array.isArray(saved.segments)?saved.segments:[],allWords=saved&&Array.isArray(saved.words)?saved.words:[],detLang=saved?String(saved.language||""):"",startChunk=saved?Math.max(0,Math.min(nChunks,+saved.nextChunk||0)):0;
+  const saved=trReadProgress(file);let fullText=saved?String(saved.text||""):"",allSegs=saved&&Array.isArray(saved.segments)?saved.segments:[],allWords=saved&&Array.isArray(saved.words)?saved.words:[],detLang=saved?String(saved.language||""):"",startChunk=saved?Math.max(0,+saved.nextChunk||0):0,totalDur=+saved?.duration||0,currentPart=startChunk,totalParts=+saved?.totalChunks||0;
   if(saved){trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();}
-  for(let i=startChunk;i<nChunks;i++){
-    trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${nChunks>1?` parte ${i+1}/${nChunks}`:""}…`);
-    const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*TR_CHUNK_SEC;
-    try{
-      const part=await trTranscribeSlice(slice,rate,token,trLang,offset,msg=>trSetStatus(`<span class="vidup__spin"></span>${esc(msg)} <b>Parte ${i+1}/${nChunks}</b>`));
-      if(part.text)fullText+=(fullText?" ":"")+part.text;
-      allSegs.push(...part.segments);allWords.push(...part.words);if(part.language&&!detLang)detLang=part.language;
-      trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();trSaveProgress(file,i+1,nChunks);
-    }catch(e){trBusy=false;if(drop)drop.classList.remove("busy");trRetryStatus(`A parte ${i+1} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
-  }
+  try{
+    await trForEachAudioChunk(file,TR_CHUNK_SEC,{
+      startChunk,
+      onPlan:async plan=>{totalDur=plan.duration;totalParts=plan.totalChunks;startChunk=Math.min(startChunk,totalParts);trDur=totalDur;if(saved)renderTrOutput();},
+      onStatus:state=>{if(state.message)trSetStatus(`<span class="vidup__spin"></span>${esc(state.message)}`);else if(state.current!=null)trSetStatus(`<span class="vidup__spin"></span>Extraindo parte ${state.index+1}/${state.totalChunks} · ${trTime(state.current)} de ${trTime(totalDur)}…`);},
+      onChunk:async chunk=>{
+        currentPart=chunk.index;trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${chunk.totalChunks>1?` parte ${chunk.index+1}/${chunk.totalChunks}`:""}…`);
+        const part=await trTranscribeSlice(chunk.samples,chunk.rate,token,trLang,chunk.offset,msg=>trSetStatus(`<span class="vidup__spin"></span>${esc(msg)} <b>Parte ${chunk.index+1}/${chunk.totalChunks}</b>`),0,chunk.timeScale);
+        if(part.text)fullText+=(fullText?" ":"")+part.text;
+        allSegs.push(...part.segments);allWords.push(...part.words);if(part.language&&!detLang)detLang=part.language;
+        trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();trSaveProgress(file,chunk.index+1,chunk.totalChunks);
+      }
+    });
+  }catch(e){trBusy=false;if(drop)drop.classList.remove("busy");trRetryStatus(`A parte ${Math.min(currentPart+1,totalParts||currentPart+1)} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
   else{renderTrOutput();await trTranslateCurrent();trSetStatus(`<span class="vidup__spin"></span>Salvando transcrição…`);await trPersist();trClearProgress(file);trSetStatus("");toast(trTranslation?"Transcrição e tradução prontas ✓":"Transcrição pronta; a tradução pode ser tentada novamente.",!trTranslation);}
@@ -3371,7 +3482,7 @@ let vslFile=null,vslObjectUrl="",vslBusy=false,vslAbort=null,vslName="",vslNiche
 let vslRaw="",vslSegments=[],vslWords=[],vslDetectedLang="",vslDuration=0,vslSheets=[],vslTranscriptDoc="",vslAnalysisDoc="",vslActiveTab="transcript";
 let vslRenderTimer=0,vslChunkCache=new Map(),vslCacheKey="",vslJobId="",vslJobStatus="",vslRestoring=false;
 let vslTranscriptHost=null,vslAnalysisHost=null,vslRenderedTranscript=null,vslRenderedAnalysis=null;
-function vslBytes(n){n=+n||0;if(n<1024)return n+" B";if(n<1024*1024)return(n/1024).toFixed(1)+" KB";return(n/1024/1024).toFixed(1)+" MB";}
+function vslBytes(n){n=+n||0;if(n<1024)return n+" B";if(n<1024*1024)return(n/1024).toFixed(1)+" KB";if(n<1024*1024*1024)return(n/1024/1024).toFixed(1)+" MB";return(n/1024/1024/1024).toFixed(2)+" GB";}
 function vslBaseName(name){return String(name||"VSL").replace(/\.[^.]+$/," ").trim()||"VSL";}
 function vslSlug(name){return String(name||"vsl").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"vsl";}
 function vslSetStatus(step,text,pct){
@@ -3524,20 +3635,20 @@ function vslFileCacheKey(file,lang){return [file&&file.name,file&&file.size,file
 function vslAbortError(){try{return new DOMException("Processamento cancelado","AbortError");}catch(_){const e=new Error("Processamento cancelado");e.name="AbortError";return e;}}
 function vslDelay(ms,signal){return new Promise((resolve,reject)=>{if(signal&&signal.aborted)return reject(vslAbortError());const timer=setTimeout(done,ms);function done(){if(signal)signal.removeEventListener("abort",stop);resolve();}function stop(){clearTimeout(timer);reject(vslAbortError());}if(signal)signal.addEventListener("abort",stop,{once:true});});}
 function vslMergeParts(a,b){return{text:[a.text,b.text].filter(Boolean).join(" ").trim(),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
-async function vslPostAudio(samples,rate,token,lang,offset,signal){
+async function vslPostAudio(samples,rate,token,lang,offset,signal,timeScale=1){
   const r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate),signal});
   let j={};try{j=await r.json();}catch(_){}
   if(!r.ok||!j.ok){const e=new Error(j.error||("Falha na transcrição: HTTP "+r.status));e.status=r.status;throw e;}
-  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)+offset,end:(+s.end||0)+offset,text:String(s.text||"").trim()})).filter(s=>s.text):[],words:Array.isArray(j.words)?j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)+offset,end:(+w.end||0)+offset})).filter(w=>w.word):[]};
+  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:String(s.text||"").trim()})).filter(s=>s.text):[],words:Array.isArray(j.words)?j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})).filter(w=>w.word):[]};
 }
-async function vslTranscribeSlice(samples,rate,token,lang,offset,signal,onAdapt,depth=0){
+async function vslTranscribeSlice(samples,rate,token,lang,offset,signal,onAdapt,depth=0,timeScale=1){
   let lastError=null;const seconds=samples.length/rate;
   for(let attempt=0;attempt<VSL_TRANSIENT_RETRIES;attempt++){
-    try{return await vslPostAudio(samples,rate,token,lang,offset,signal);}catch(e){
+    try{return await vslPostAudio(samples,rate,token,lang,offset,signal,timeScale);}catch(e){
       if(e&&e.name==="AbortError")throw e;lastError=e;const status=+e.status||0,authFailure=/Groq HTTP (400|401|403)/i.test(e.message||""),canSplit=seconds>VSL_MIN_CHUNK_SEC*2.1;
       if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
         if(onAdapt)onAdapt(`Uma parte demorou além do limite; dividindo ${Math.round(seconds)}s em trechos menores…`);
-        const middle=Math.floor(samples.length/2),left=await vslTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,signal,onAdapt,depth+1),right=await vslTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+middle/rate,signal,onAdapt,depth+1);
+        const middle=Math.floor(samples.length/2),left=await vslTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,signal,onAdapt,depth+1,timeScale),right=await vslTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+(middle/rate)*timeScale,signal,onAdapt,depth+1,timeScale);
         return vslMergeParts(left,right);
       }
       const transient=status===0||status===429||status===502||status===503||status===504;
@@ -3555,14 +3666,21 @@ async function vslRun(){
   vslBusy=true;vslAbort=new AbortController();vslRememberJob("");vslRaw="";vslSegments=[];vslWords=[];vslDetectedLang="";vslSheets=[];vslTranscriptDoc="";vslAnalysisDoc="";vslActiveTab="transcript";vslRenderFile();vslRenderSheets();vslRenderDocs();
   const run=$("#vslRun"),cancel=$("#vslCancel");if(run)run.disabled=true;if(cancel)cancel.hidden=false;
   try{
-    vslSetStatus(1,"Extraindo o áudio em 16 kHz…",4);const mono=await trDecodeMono16k(vslFile),rate=16000,chunkLen=VSL_CHUNK_SEC*rate,nChunks=Math.max(1,Math.ceil(mono.length/chunkLen));vslDuration=mono.length/rate;
     const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
+    vslSetStatus(1,"Preparando o áudio…",4);
     const cacheKey=vslFileCacheKey(vslFile,vslLang);if(vslCacheKey!==cacheKey){vslChunkCache.clear();vslCacheKey=cacheKey;}
-    for(let i=0;i<nChunks;i++){
-      const pct=8+Math.round((i/nChunks)*48),cached=vslChunkCache.get(i);vslSetStatus(1,cached?`Retomando parte ${i+1} de ${nChunks} já concluída…`:`Transcrevendo parte ${i+1} de ${nChunks}…`,pct);
-      const slice=mono.subarray(i*chunkLen,Math.min(mono.length,(i+1)*chunkLen)),offset=i*VSL_CHUNK_SEC,part=cached||await vslTranscribeSlice(slice,rate,token,vslLang,offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${i+1} de ${nChunks}: ${msg}`,pct));
-      if(!cached)vslChunkCache.set(i,part);vslAppendPart(part);
-    }
+    let resumeAt=0;while(vslChunkCache.has(resumeAt)){vslAppendPart(vslChunkCache.get(resumeAt));resumeAt++;}
+    await trForEachAudioChunk(vslFile,VSL_CHUNK_SEC,{
+      startChunk:resumeAt,
+      signal:vslAbort.signal,
+      onPlan:async plan=>{vslDuration=plan.duration;vslRenderFile();},
+      onStatus:state=>{if(state.message)vslSetStatus(1,state.message,5);else if(state.current!=null)vslSetStatus(1,`Extraindo parte ${state.index+1} de ${state.totalChunks} · ${trTime(state.current)} de ${trTime(vslDuration)}…`,6+Math.round((state.index/state.totalChunks)*45));},
+      onChunk:async chunk=>{
+        const pct=8+Math.round((chunk.index/chunk.totalChunks)*48),cached=vslChunkCache.get(chunk.index);vslSetStatus(1,cached?`Retomando parte ${chunk.index+1} de ${chunk.totalChunks} já concluída…`:`Transcrevendo parte ${chunk.index+1} de ${chunk.totalChunks}…`,pct);
+        const part=cached||await vslTranscribeSlice(chunk.samples,chunk.rate,token,vslLang,chunk.offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${chunk.index+1} de ${chunk.totalChunks}: ${msg}`,pct),0,chunk.timeScale);
+        if(!cached)vslChunkCache.set(chunk.index,part);vslAppendPart(part);
+      }
+    });
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
     vslTranscriptDoc=vslBuildCompleteTranscript();vslRenderDocs();
     vslSetStatus(2,vslFile.type.startsWith("video/")?"Analisando as imagens do vídeo…":"Arquivo de áudio: seguindo apenas com o conteúdo falado.",58);
@@ -3593,7 +3711,7 @@ function renderVslDissector(force){
       <div class="vsldrop" id="vslDrop" tabindex="0" role="button" aria-label="Selecionar arquivo da VSL"></div>
       <input type="file" id="vslFile" accept="video/*,audio/*" hidden>
       <details class="vslextra"><summary>Adicionar roteiro original do copywriter (opcional)</summary><label class="vslfield"><span>Roteiro canônico</span><textarea id="vslCanonical" placeholder="Cole aqui a copy original aprovada. Ela será usada como fonte principal; o vídeo valida execução, ordem e diferenças.">${esc(vslCanonical)}</textarea></label></details>
-      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslRetry" hidden>Tentar novamente</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}A análise é salva por partes e continua mesmo se você fechar esta página.</span></div>
+      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslRetry" hidden>Tentar novamente</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}A transcrição é salva por partes. Depois dela, a dissecação continua mesmo se você fechar esta página.</span></div>
     </section>
     <section class="vslprogress" id="vslProgress" hidden aria-live="polite">
       <div class="vslsteps"><div class="vslstep" data-vslstep="1"><span class="vslstep__n">1</span><div class="vslstep__tx"><b>Transcrição</b><span>Texto completo no idioma original</span></div></div><div class="vslstep" data-vslstep="2"><span class="vslstep__n">2</span><div class="vslstep__tx"><b>Leitura do vídeo</b><span>Pessoas, provas, produto e oferta</span></div></div><div class="vslstep" data-vslstep="3"><span class="vslstep__n">3</span><div class="vslstep__tx"><b>Dissecação</b><span>Blocos, crenças, mecanismo e fechamento</span></div></div></div>
@@ -3605,7 +3723,7 @@ function renderVslDissector(force){
     </section>
   </div>`;
   const input=$("#vslFile"),drop=$("#vslDrop"),pick=()=>{if(!vslBusy)input.click();};
-  input.addEventListener("change",()=>{if(input.files[0])vslChooseFile(input.files[0]);input.value="";});drop.addEventListener("click",pick);drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("active");});drop.addEventListener("dragleave",()=>drop.classList.remove("active"));drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(x=>/^(video|audio)\//.test(x.type));if(f)vslChooseFile(f);else toast("Arraste um vídeo ou áudio.",true);});
+  input.addEventListener("change",async()=>{const file=input.files[0];if(!file)return;try{await vslChooseFile(file);}finally{input.value="";}});drop.addEventListener("click",pick);drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("active");});drop.addEventListener("dragleave",()=>drop.classList.remove("active"));drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(x=>/^(video|audio)\//.test(x.type));if(f)vslChooseFile(f);else toast("Arraste um vídeo ou áudio.",true);});
   $("#vslName").addEventListener("input",e=>vslName=e.target.value);$("#vslNiche").addEventListener("change",e=>vslNiche=e.target.value);$("#vslLang").addEventListener("change",e=>vslLang=e.target.value);$("#vslCanonical").addEventListener("input",e=>vslCanonical=e.target.value);
   $("#vslRun").addEventListener("click",vslRun);$("#vslCancel").addEventListener("click",()=>{if(vslAbort)vslAbort.abort();});$("#vslRetry").addEventListener("click",vslRetryLastJob);$("#vslReset").addEventListener("click",vslReset);
   $$("[data-vsltab]").forEach(b=>b.addEventListener("click",()=>{vslActiveTab=b.dataset.vsltab;vslRenderDocs();}));

@@ -176,10 +176,10 @@ test("transcritor pede timestamps reais e sincroniza por busca binária", () => 
 
 test("Transcritor retoma vídeos longos e reduz automaticamente partes lentas", () => {
   assert.match(html, /TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3/);
-  assert.match(html, /async function trTranscribeSlice\(samples,rate,token,lang,offset,onAdapt,depth=0\)/);
+  assert.match(html, /async function trTranscribeSlice\(samples,rate,token,lang,offset,onAdapt,depth=0,timeScale=1\)/);
   assert.match(html, /status===502\|\|status===503\|\|status===504/);
   assert.match(html, /reduzindo \$\{Math\.round\(seconds\)\}s para trechos menores/);
-  assert.match(html, /trSaveProgress\(file,i\+1,nChunks\)/);
+  assert.match(html, /trSaveProgress\(file,chunk\.index\+1,chunk\.totalChunks\)/);
   assert.match(html, /Continuar da última parte/);
   assert.match(html, /const saved=trReadProgress\(file\)/);
   assert.match(html, /part=await trTranscribeSlice\(slice,rate,token,"auto",i\*TR_CHUNK_SEC\)/);
@@ -330,6 +330,19 @@ test("Transcritor preserva o arquivo até a leitura e entrega original com tradu
   assert.match(transcriptFn, /translationLanguage/);
   assert.match(translateTranscriptFn, /independentemente do idioma de origem/);
   assert.match(translateTranscriptFn, /Não resuma, não omita/);
+});
+
+test("Transcritor e Dissecador processam arquivos longos sem carregar o vídeo inteiro na memória", () => {
+  assert.match(html, /TR_MEMORY_MAX_BYTES=192\*1024\*1024/);
+  assert.match(html, /TR_MEMORY_MAX_SEC=30\*60/);
+  assert.match(html, /async function trCaptureLargeFile\(file,chunkSec,options\)/);
+  assert.match(html, /new MediaRecorder\(destination\.stream/);
+  assert.match(html, /Arquivo grande: leitura segura por partes/);
+  assert.match(html, /await trForEachAudioChunk\(file,TR_CHUNK_SEC/);
+  assert.match(html, /await trForEachAudioChunk\(vslFile,VSL_CHUNK_SEC/);
+  assert.match(html, /input\.addEventListener\("change",async\(\)=>\{const file=input\.files\[0\]/);
+  assert.match(html, /startChunk:resumeAt/);
+  assert.match(html, /timeScale:captured\/pcmDuration/);
 });
 
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
