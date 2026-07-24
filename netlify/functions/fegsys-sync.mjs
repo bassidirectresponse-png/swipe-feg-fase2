@@ -1,4 +1,4 @@
-import { aggregateSnapshot, refreshSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
+import { aggregateSnapshot, getSnapshot, refreshSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
 import { getDriveIndex } from "./_fegsys-drive.mjs";
 
 export const config = { schedule: "13 * * * *" };
@@ -12,8 +12,18 @@ function safeSyncError(error) {
   return "sincronização do FEGSYS indisponível";
 }
 
-export default async () => {
+export default async request => {
   try {
+    const url = new URL(request.url);
+    if (url.searchParams.get("status") === "1") {
+      const snapshot = await getSnapshot({ allowStale: true });
+      return Response.json({
+        ok: true,
+        syncedAt: snapshot.syncedAt,
+        salesAggregationProbe: snapshot.sourceStatus?.media?.salesAggregationProbe || null,
+        detectedSalesFields: snapshot.sourceStatus?.media?.detectedSalesFields || null
+      }, { headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'; frame-ancestors 'none'", "x-content-type-options": "nosniff" } });
+    }
     const snapshot = await refreshSnapshot();
     let drive;
     try {
