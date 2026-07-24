@@ -1159,6 +1159,156 @@
   @media(hover:none),(prefers-reduced-motion:reduce){
     .card::before,.chat__icard::before,.ccttcard::before{display:none;}
   }
+
+  /* 21st.dev — acabamento premium leve, adaptado à identidade FEG */
+  .topbar{
+    min-height:var(--topbar-h);
+    padding-block:14px;
+    background:color-mix(in srgb,var(--bg) 91%,transparent);
+    border-bottom-color:color-mix(in srgb,var(--border-2) 72%,transparent);
+    box-shadow:0 1px 0 rgba(255,255,255,.018);
+  }
+  .topbar::after{
+    content:"";
+    position:absolute;
+    inset:auto 0 -1px;
+    height:1px;
+    pointer-events:none;
+    background:linear-gradient(90deg,transparent 4%,color-mix(in srgb,var(--accent) 22%,transparent) 28%,var(--border-2) 55%,transparent 96%);
+    opacity:.72;
+  }
+  .topbar .logo-mark{border-color:color-mix(in srgb,var(--accent) 18%,var(--border-2));}
+  .topbar .search{
+    height:44px;
+    background:color-mix(in srgb,var(--surface-2) 86%,var(--bg));
+    border-color:var(--border);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.018);
+  }
+  .topbar .search:hover{border-color:var(--border-2);}
+  .topbar .search:focus-within{
+    border-color:color-mix(in srgb,var(--accent) 48%,var(--border-2));
+    box-shadow:var(--ring),inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  .sync{padding:7px 9px;border:1px solid transparent;border-radius:8px;background:color-mix(in srgb,var(--surface) 68%,transparent);}
+  .whoami{color:color-mix(in srgb,var(--fg) 66%,var(--muted-fg));}
+
+  .sidenav{
+    padding:12px 10px 44px;
+    gap:2px;
+    border-right-color:color-mix(in srgb,var(--border-2) 70%,transparent);
+    background:
+      linear-gradient(180deg,color-mix(in srgb,var(--accent) 2.4%,transparent),transparent 260px),
+      color-mix(in srgb,var(--bg-2) 94%,var(--surface));
+  }
+  .snav__group{
+    min-height:40px;
+    margin:14px 2px 8px;
+    padding:9px 11px;
+    border-color:color-mix(in srgb,var(--accent) 22%,var(--border));
+    background:linear-gradient(105deg,color-mix(in srgb,var(--accent) 11%,var(--surface)),var(--surface) 82%);
+    box-shadow:none;
+  }
+  .snav__group--brands{
+    border-color:color-mix(in srgb,#72d4ff 26%,var(--border));
+    background:linear-gradient(105deg,color-mix(in srgb,#72d4ff 12%,var(--surface)),var(--surface) 82%);
+  }
+  .snav__group--ai{border-color:var(--border);background:var(--surface);}
+  .snav__sec{
+    min-height:43px;
+    padding:10px 12px;
+    border-radius:10px;
+    font-size:.9rem;
+  }
+  .snav__sec:hover{background:color-mix(in srgb,var(--surface-2) 88%,var(--accent) 2%);}
+  .snav__sec.active{
+    background:linear-gradient(100deg,var(--accent-dim),color-mix(in srgb,var(--surface) 92%,var(--accent)));
+    border-color:color-mix(in srgb,var(--accent) 34%,var(--border));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  .snav__niches{border-left-color:color-mix(in srgb,var(--border-strong) 60%,transparent);}
+  .snav__niche{min-height:34px;}
+
+  .page-identity{
+    position:relative;
+    padding-top:26px;
+    padding-bottom:15px;
+    border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent);
+  }
+  .page-identity::after{
+    content:"";
+    position:absolute;
+    left:clamp(16px,4vw,48px);
+    bottom:-1px;
+    width:min(116px,24vw);
+    height:1px;
+    background:linear-gradient(90deg,var(--accent),transparent);
+  }
+  .page-identity__title{font-weight:700;letter-spacing:-.04em;}
+  .page-identity__desc{color:color-mix(in srgb,var(--muted-fg) 92%,var(--fg));}
+  .page-identity__result{
+    padding:7px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface);
+    font-variant-numeric:tabular-nums;
+  }
+  .division-pill{
+    border-color:color-mix(in srgb,var(--accent) 26%,var(--border));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+  }
+  .division-pill--brands{border-color:color-mix(in srgb,#72d4ff 30%,var(--border));}
+
+  .grid-wrap{padding-top:28px;}
+  .grid{gap:20px;}
+  .card{
+    border-color:color-mix(in srgb,var(--border-2) 82%,transparent);
+    background:
+      linear-gradient(145deg,rgba(255,255,255,.022),transparent 34%),
+      linear-gradient(180deg,var(--surface-2),var(--surface));
+    box-shadow:0 14px 32px -30px rgba(0,0,0,.95);
+    transition:transform .18s var(--ease),border-color .18s,background-color .18s,box-shadow .18s;
+  }
+  .card:hover,.card:focus-within{
+    transform:translateY(-2px);
+    border-color:color-mix(in srgb,var(--accent) 26%,var(--border-strong));
+    box-shadow:0 20px 42px -34px rgba(0,0,0,.96);
+  }
+  .card__head{padding-bottom:3px;border-bottom:1px solid color-mix(in srgb,var(--border) 68%,transparent);}
+  .card__body{padding-top:2px;}
+  .card__thumb{border-color:color-mix(in srgb,var(--border-strong) 64%,transparent);box-shadow:none;}
+  .card__brand{color:color-mix(in srgb,var(--muted-fg) 88%,var(--fg));font-weight:650;}
+  .card__title{letter-spacing:-.025em;}
+  .brand-metrics,.bm-report,.vslstage,.vslprogress,.vsloutputs{
+    border-color:color-mix(in srgb,var(--border-2) 82%,transparent);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.018);
+  }
+  .qbtn,.btn--outline,.icon-btn{
+    background:color-mix(in srgb,var(--surface-2) 90%,var(--bg));
+    border-color:color-mix(in srgb,var(--border-2) 88%,transparent);
+  }
+  .qbtn:hover,.btn--outline:hover,.icon-btn:hover{border-color:color-mix(in srgb,var(--accent) 28%,var(--border-strong));}
+  .gridpager{
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:color-mix(in srgb,var(--surface) 80%,transparent);
+  }
+
+  :root[data-theme="light"] .topbar{box-shadow:0 1px 0 rgba(20,30,12,.04);}
+  :root[data-theme="light"] .sidenav{background:linear-gradient(180deg,rgba(139,168,0,.045),transparent 260px),var(--surface);}
+  :root[data-theme="light"] .card{box-shadow:0 14px 34px -30px rgba(36,43,29,.42);}
+  :root[data-theme="light"] .card:hover,:root[data-theme="light"] .card:focus-within{box-shadow:0 20px 42px -32px rgba(36,43,29,.44);}
+
+  @media(max-width:980px){
+    .sidenav{background:var(--bg-2);}
+    .page-identity{padding-top:20px;}
+  }
+  @media(max-width:600px){
+    .topbar{padding-block:11px;}
+    .page-identity{padding-bottom:12px;}
+    .grid-wrap{padding-top:20px;}
+    .grid{gap:14px;}
+    .card{border-radius:15px;}
+  }
 </style>
 </head>
 <body>

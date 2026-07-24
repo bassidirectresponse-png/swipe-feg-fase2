@@ -523,3 +523,12 @@ test("Transcritor e Dissecador têm ação de limpar consistente", () => {
   assert.match(html, /class="toolactions"/);
   assert.match(html, /Transcritor limpo — envie outro arquivo/);
 });
+
+test("acabamento premium preserva o shell leve e a identidade FEG", () => {
+  assert.match(html, /21st\.dev — acabamento premium leve, adaptado à identidade FEG/);
+  assert.match(html, /\.topbar::after\{/);
+  assert.match(html, /\.snav__sec\.active\{[\s\S]*?linear-gradient/);
+  assert.match(html, /\.card:hover,\.card:focus-within\{/);
+  assert.match(html, /@media\(max-width:600px\)\{[\s\S]*?\.card\{border-radius:15px;\}/);
+  assert.doesNotMatch(html, /framer-motion|motion\/react|@react-three/);
+});
