@@ -92,7 +92,7 @@ const FIELD_ALIASES = {
   clicks: ["clicks", "cliques", "link_clicks"],
   video_3s: ["video_3s", "video_plays_3s"],
   video_p75: ["video_p75", "video_plays_75"],
-  orders: ["quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders", "purchases"],
+  orders: ["quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders"],
   official_revenue_brl: ["faturamento_liquido_front_brl", "faturamento_liquido_brl", "faturamento_brl", "receita_liquida_brl", "receita_brl", "revenue_brl"],
   official_revenue_usd: ["faturamento_liquido_front", "faturamento_liquido_front_usd", "faturamento_liquido", "faturamento_liquido_usd", "faturamento", "faturamento_usd", "receita_liquida", "receita", "receita_usd", "revenue", "revenue_usd", "purchase_value"],
   google_conversions: ["conversions", "google_conversions", "conversions_google", "google_ads_conversions"],
@@ -160,29 +160,6 @@ WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'),
 GROUP BY 1, 2
 ORDER BY data DESC, spend_brl DESC`
   };
-}
-
-export function buildSalesAggregationProbe(fields) {
-  const f = fieldMap(fields);
-  if (!f.data || !f.criativo || !f.orders) return "";
-  return `
-SELECT
-  SUM(orders_sum) AS orders_sum,
-  SUM(orders_max) AS orders_max,
-  COUNT(*) AS creative_days
-FROM (
-  SELECT
-    DATE(${quoteField(f.data)}) AS data,
-    CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
-    SUM(${numberExpr(f.orders)}) AS orders_sum,
-    MAX(${numberExpr(f.orders)}) AS orders_max
-  FROM \`${VIEW}\`
-  WHERE DATE(${quoteField(f.data)}) BETWEEN DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 6 DAY)
-    AND CURRENT_DATE('America/Sao_Paulo')
-    AND ${quoteField(f.criativo)} IS NOT NULL
-    AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
-  GROUP BY 1, 2
-)`;
 }
 
 export function buildSalesQuery(fields) {
@@ -334,13 +311,6 @@ async function queryBigQuery(credential) {
   if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
   const viewPlan = buildQuery(metadata.schema && metadata.schema.fields);
   const baseRaw = await runBigQueryQuery(headers, viewPlan.query, "vw_ads_criativo_diario");
-  const probeQuery = buildSalesAggregationProbe(metadata.schema && metadata.schema.fields);
-  const probeRaw = probeQuery ? await runBigQueryQuery(headers, probeQuery, "diagnóstico de agregação") : [];
-  const salesAggregationProbe = probeRaw[0] ? {
-    sum: +probeRaw[0].orders_sum || 0,
-    max: +probeRaw[0].orders_max || 0,
-    creativeDays: +probeRaw[0].creative_days || 0
-  } : null;
   const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "orders", "official_revenue_brl", "official_revenue_usd", "google_conversions", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
@@ -390,10 +360,7 @@ async function queryBigQuery(credential) {
     sourceStatus: {
       media: {
         available: true,
-        error: "",
-        salesAggregationProbe,
-        detectedSalesFields: viewPlan.detectedFields,
-        availableFields: (metadata.schema?.fields || []).map(field => String(field.name || "")).filter(Boolean)
+        error: ""
       },
       sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
       meta: { available: true, error: "" }

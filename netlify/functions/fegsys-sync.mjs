@@ -1,4 +1,4 @@
-import { aggregateSnapshot, getSnapshot, refreshSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
+import { aggregateSnapshot, refreshSnapshot, resolveRange } from "./_fegsys-bigquery.mjs";
 import { getDriveIndex } from "./_fegsys-drive.mjs";
 
 export const config = { schedule: "13 * * * *" };
@@ -14,16 +14,6 @@ function safeSyncError(error) {
 
 export default async request => {
   try {
-    const url = new URL(request.url);
-    if (url.searchParams.get("status") === "1") {
-      const snapshot = await getSnapshot({ allowStale: true });
-      return Response.json({
-        ok: true,
-        syncedAt: snapshot.syncedAt,
-        salesAggregationProbe: snapshot.sourceStatus?.media?.salesAggregationProbe || null,
-        detectedSalesFields: snapshot.sourceStatus?.media?.detectedSalesFields || null
-      }, { headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'; frame-ancestors 'none'", "x-content-type-options": "nosniff" } });
-    }
     const snapshot = await refreshSnapshot();
     let drive;
     try {
@@ -45,9 +35,6 @@ export default async request => {
         salesSource: snapshot.sourceStatus?.sales?.available !== false
           ? (snapshot.sourceStatus?.sales?.source || "marts_feg.mart_criativos_diario")
           : (snapshot.sourceStatus?.sales?.fallbackAvailable === true ? "gold_feg.vw_ads_criativo_diario" : ""),
-        salesAggregationProbe: snapshot.sourceStatus?.media?.salesAggregationProbe || null,
-        detectedSalesFields: snapshot.sourceStatus?.media?.detectedSalesFields || null,
-        availableFields: snapshot.sourceStatus?.media?.availableFields || [],
         salesError: snapshot.sourceStatus?.sales?.available === false ? safeSyncError(new Error(snapshot.sourceStatus?.sales?.error || "")) : "",
         meta: snapshot.sourceStatus?.meta?.available !== false,
         drive

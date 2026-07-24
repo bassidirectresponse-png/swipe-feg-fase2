@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { aggregateSnapshot, buildQuery, buildSalesAggregationProbe, buildSalesQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
+import { aggregateSnapshot, buildQuery, buildSalesQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
 import { matchDriveFiles, normalizeDriveName } from "../netlify/functions/_fegsys-drive.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -144,12 +144,12 @@ test("esquema atual da view não confunde conversões Google com pedidos oficiai
   assert.match(plan.query, /SUM\(0\) AS orders/);
 });
 
-test("view passa a fornecer resultados oficiais automaticamente quando purchases e revenue existirem", () => {
+test("purchases da mídia não é confundido com pedidos oficiais", () => {
   const fields = ["data", "criativo", "spend_brl", "purchases", "revenue", "roas"].map(name => ({ name }));
   const plan = buildQuery(fields);
-  assert.equal(plan.salesAvailable, true);
-  assert.equal(plan.salesError, "");
-  assert.match(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
+  assert.equal(plan.salesAvailable, false);
+  assert.match(plan.salesError, /pedidos/);
+  assert.match(plan.query, /SUM\(0\) AS orders/);
   assert.match(plan.query, /SAFE_CAST\(`revenue` AS FLOAT64\)/);
   assert.match(plan.query, /AS official_revenue_usd/);
 });
@@ -160,13 +160,6 @@ test("view prioriza quantidade_pedidos oficial sobre purchases da mídia", () =>
   assert.equal(plan.detectedFields.revenueUsd, "faturamento_liquido_front");
   assert.match(plan.query, /SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\)/);
   assert.doesNotMatch(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
-});
-
-test("diagnóstico compara soma bruta com venda única por criativo e dia", () => {
-  const query = buildSalesAggregationProbe(["data", "criativo", "quantidade_pedidos"].map(name => ({ name })));
-  assert.match(query, /SUM\(orders_sum\) AS orders_sum/);
-  assert.match(query, /SUM\(orders_max\) AS orders_max/);
-  assert.match(query, /MAX\(COALESCE\(SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\), 0\)\) AS orders_max/);
 });
 
 test("período personalizado é normalizado mesmo com datas invertidas", () => {
