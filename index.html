@@ -3356,15 +3356,20 @@ async function trPostSlice(samples,rate,token,lang,offset,timeScale=1){
     r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate)});
     try{j=await r.json();}catch(_){}
   }catch(error){error.status=0;throw error;}
-  if(!r.ok||!j.ok){const error=new Error(j.error||("HTTP "+r.status));error.status=r.status;error.retryable=j.retryable===true||r.status===429||r.status>=500;throw error;}
+  if(!r.ok||!j.ok){const error=new Error(j.error||("HTTP "+r.status));error.status=r.status;error.retryable=j.retryable===true||r.status===429||r.status>=500;error.retryAfterMs=Math.max(0,(+j.retryAfter||+(r.headers.get("retry-after")||0))*1000);throw error;}
   return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})):[]};
 }
 function trMergeSlices(a,b){return{text:[a.text,b.text].filter(Boolean).join(" "),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
 async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0,timeScale=1){
-  const seconds=samples.length/rate;let lastError;
+  const seconds=samples.length/rate;let lastError,rateWaits=0;
   for(let attempt=0;attempt<TR_TRANSIENT_RETRIES;attempt++){
     try{return await trPostSlice(samples,rate,token,lang,offset,timeScale);}catch(error){
       lastError=error;const status=+error.status||0,authFailure=status===400||status===401||status===403,canSplit=seconds>TR_MIN_CHUNK_SEC*2.05;
+      if(status===429&&rateWaits<8){
+        const wait=Math.min(120000,Math.max(5000,+error.retryAfterMs||12000)*(1+rateWaits*.15));rateWaits++;
+        if(onAdapt)onAdapt(`Limite temporário atingido; aguardando ${Math.ceil(wait/1000)}s sem perder o progresso…`);
+        await trDelay(wait);attempt--;continue;
+      }
       if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
         if(onAdapt)onAdapt(`Uma parte demorou; reduzindo ${Math.round(seconds)}s para trechos menores…`);
         const middle=Math.floor(samples.length/2),left=await trTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,onAdapt,depth+1,timeScale),right=await trTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+(middle/rate)*timeScale,onAdapt,depth+1,timeScale);
@@ -3476,8 +3481,8 @@ function renderTranscritor(){
 }
 
 /* ===== DISSECADOR DE VSL ===== */
-const VSL_JOB_FN="/.netlify/functions/vsl-job",VSL_LAST_JOB_KEY="feg-vsl-last-job";
-const VSL_CHUNK_SEC=45,VSL_MIN_CHUNK_SEC=10,VSL_TRANSIENT_RETRIES=3;
+const VSL_JOB_FN="/.netlify/functions/vsl-job",VSL_LAST_JOB_KEY="feg-vsl-last-job",VSL_PROGRESS_KEY="feg-vsl-transcricao-v2";
+const VSL_CHUNK_SEC=120,VSL_MIN_CHUNK_SEC=10,VSL_TRANSIENT_RETRIES=3;
 let vslFile=null,vslObjectUrl="",vslBusy=false,vslAbort=null,vslName="",vslNiche="",vslLang="auto",vslCanonical="";
 let vslRaw="",vslSegments=[],vslWords=[],vslDetectedLang="",vslDuration=0,vslSheets=[],vslTranscriptDoc="",vslAnalysisDoc="",vslActiveTab="transcript";
 let vslRenderTimer=0,vslChunkCache=new Map(),vslCacheKey="",vslJobId="",vslJobStatus="",vslRestoring=false;
@@ -3632,20 +3637,32 @@ async function vslResumeLastJob(){
   }
 }
 function vslFileCacheKey(file,lang){return [file&&file.name,file&&file.size,file&&file.lastModified,lang||"auto"].join(":");}
+function vslLoadProgress(key){
+  try{const saved=JSON.parse(localStorage.getItem(VSL_PROGRESS_KEY)||"null");if(saved&&saved.key===key&&Array.isArray(saved.parts)){saved.parts.forEach((part,index)=>{if(part)vslChunkCache.set(index,part);});}}catch(_){}
+}
+function vslSaveProgress(key){
+  try{localStorage.setItem(VSL_PROGRESS_KEY,JSON.stringify({key,parts:Array.from(vslChunkCache.entries()).sort((a,b)=>a[0]-b[0]).map(entry=>entry[1]),savedAt:new Date().toISOString()}));}catch(_){}
+}
+function vslClearProgress(key){try{const saved=JSON.parse(localStorage.getItem(VSL_PROGRESS_KEY)||"null");if(!saved||saved.key===key)localStorage.removeItem(VSL_PROGRESS_KEY);}catch(_){}}
 function vslAbortError(){try{return new DOMException("Processamento cancelado","AbortError");}catch(_){const e=new Error("Processamento cancelado");e.name="AbortError";return e;}}
 function vslDelay(ms,signal){return new Promise((resolve,reject)=>{if(signal&&signal.aborted)return reject(vslAbortError());const timer=setTimeout(done,ms);function done(){if(signal)signal.removeEventListener("abort",stop);resolve();}function stop(){clearTimeout(timer);reject(vslAbortError());}if(signal)signal.addEventListener("abort",stop,{once:true});});}
 function vslMergeParts(a,b){return{text:[a.text,b.text].filter(Boolean).join(" ").trim(),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
 async function vslPostAudio(samples,rate,token,lang,offset,signal,timeScale=1){
   const r=await fetch(TR_FN+"?lang="+encodeURIComponent(lang),{method:"POST",headers:{"Content-Type":"audio/wav","Authorization":"Bearer "+token},body:trWav(samples,rate),signal});
   let j={};try{j=await r.json();}catch(_){}
-  if(!r.ok||!j.ok){const e=new Error(j.error||("Falha na transcrição: HTTP "+r.status));e.status=r.status;throw e;}
+  if(!r.ok||!j.ok){const e=new Error(j.error||("Falha na transcrição: HTTP "+r.status));e.status=r.status;e.retryAfterMs=Math.max(0,(+j.retryAfter||+(r.headers.get("retry-after")||0))*1000);throw e;}
   return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:String(s.text||"").trim()})).filter(s=>s.text):[],words:Array.isArray(j.words)?j.words.map(w=>({word:String(w.word||"").trim(),start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})).filter(w=>w.word):[]};
 }
 async function vslTranscribeSlice(samples,rate,token,lang,offset,signal,onAdapt,depth=0,timeScale=1){
-  let lastError=null;const seconds=samples.length/rate;
+  let lastError=null,rateWaits=0;const seconds=samples.length/rate;
   for(let attempt=0;attempt<VSL_TRANSIENT_RETRIES;attempt++){
     try{return await vslPostAudio(samples,rate,token,lang,offset,signal,timeScale);}catch(e){
-      if(e&&e.name==="AbortError")throw e;lastError=e;const status=+e.status||0,authFailure=/Groq HTTP (400|401|403)/i.test(e.message||""),canSplit=seconds>VSL_MIN_CHUNK_SEC*2.1;
+      if(e&&e.name==="AbortError")throw e;lastError=e;const status=+e.status||0,authFailure=status===400||status===401||status===403,canSplit=seconds>VSL_MIN_CHUNK_SEC*2.1;
+      if(status===429&&rateWaits<8){
+        const wait=Math.min(120000,Math.max(5000,+e.retryAfterMs||12000)*(1+rateWaits*.15));rateWaits++;
+        if(onAdapt)onAdapt(`Limite temporário atingido; aguardando ${Math.ceil(wait/1000)}s sem perder o progresso…`);
+        await vslDelay(wait,signal);attempt--;continue;
+      }
       if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
         if(onAdapt)onAdapt(`Uma parte demorou além do limite; dividindo ${Math.round(seconds)}s em trechos menores…`);
         const middle=Math.floor(samples.length/2),left=await vslTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,signal,onAdapt,depth+1,timeScale),right=await vslTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+(middle/rate)*timeScale,signal,onAdapt,depth+1,timeScale);
@@ -3668,7 +3685,7 @@ async function vslRun(){
   try{
     const token=await trToken();if(!token)throw new Error("sessão expirada — faça login novamente");
     vslSetStatus(1,"Preparando o áudio…",4);
-    const cacheKey=vslFileCacheKey(vslFile,vslLang);if(vslCacheKey!==cacheKey){vslChunkCache.clear();vslCacheKey=cacheKey;}
+    const cacheKey=vslFileCacheKey(vslFile,vslLang);if(vslCacheKey!==cacheKey){vslChunkCache.clear();vslCacheKey=cacheKey;vslLoadProgress(cacheKey);}
     let resumeAt=0;while(vslChunkCache.has(resumeAt)){vslAppendPart(vslChunkCache.get(resumeAt));resumeAt++;}
     await trForEachAudioChunk(vslFile,VSL_CHUNK_SEC,{
       startChunk:resumeAt,
@@ -3678,7 +3695,7 @@ async function vslRun(){
       onChunk:async chunk=>{
         const pct=8+Math.round((chunk.index/chunk.totalChunks)*48),cached=vslChunkCache.get(chunk.index);vslSetStatus(1,cached?`Retomando parte ${chunk.index+1} de ${chunk.totalChunks} já concluída…`:`Transcrevendo parte ${chunk.index+1} de ${chunk.totalChunks}…`,pct);
         const part=cached||await vslTranscribeSlice(chunk.samples,chunk.rate,token,vslLang,chunk.offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${chunk.index+1} de ${chunk.totalChunks}: ${msg}`,pct),0,chunk.timeScale);
-        if(!cached)vslChunkCache.set(chunk.index,part);vslAppendPart(part);
+        if(!cached){vslChunkCache.set(chunk.index,part);vslSaveProgress(cacheKey);}vslAppendPart(part);
       }
     });
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
@@ -3690,7 +3707,7 @@ async function vslRun(){
     const id=await vslCreateJob(token,payload,vslAbort.signal);if(cancel)cancel.textContent="Fechar acompanhamento";
     vslSetStatus(3,"Material salvo. A dissecação continua mesmo se você fechar esta página…",70);await vslPollJob(token,id,vslAbort.signal);
     if(!vslAnalysisDoc.trim())throw new Error("A dissecação estratégica não retornou conteúdo.");
-    vslSetStatus(3,"Transcrição completa e dissecação concluídas.",100);toast("VSL dissecada ✓");
+    vslClearProgress(cacheKey);vslSetStatus(3,"Transcrição completa e dissecação concluídas.",100);toast("VSL dissecada ✓");
   }catch(e){
     if(e&&e.name==="AbortError")vslSetStatus(vslJobId?3:1,vslJobId?"Acompanhamento fechado. A dissecação continua em segundo plano e reaparecerá quando você voltar.":"Processamento cancelado. Os resultados parciais foram preservados.",vslJobId?70:0);else{vslSetStatus(vslTranscriptDoc?3:1,(e&&e.message)||"Falha ao processar a VSL",0);toast((e&&e.message)||"Falha ao processar a VSL",true);}
   }finally{vslBusy=false;vslAbort=null;if(vslRenderTimer){clearTimeout(vslRenderTimer);vslRenderTimer=0;}vslRenderFile();vslRenderDocs();if(cancel){cancel.hidden=true;cancel.textContent="Cancelar";}if(run)run.disabled=!vslFile;}

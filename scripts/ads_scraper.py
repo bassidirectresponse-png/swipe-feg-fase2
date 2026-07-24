@@ -88,12 +88,14 @@ def parse_count(text):
 
 
 # =============================== Supabase (REST) ============================
-def sb(method, path, token=None, body=None, prefer=None):
+def sb(method, path, token=None, body=None, prefer=None, extra_headers=None):
     headers = {"apikey": ANON, "Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     if prefer:
         headers["Prefer"] = prefer
+    if extra_headers:
+        headers.update(extra_headers)
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(f"{SUPABASE_URL}{path}", data=data, headers=headers, method=method)
     try:
@@ -112,10 +114,22 @@ def bot_login():
 
 
 def fetch_offers(token):
-    status, txt = sb("GET", "/rest/v1/offers?select=id,data", token=token)
-    if status != 200:
-        raise RuntimeError(f"erro ao ler ofertas: HTTP {status} {txt[:200]}")
-    return json.loads(txt)
+    # O PostgREST entrega no máximo 1.000 registros por resposta. Como criativos,
+    # ofertas DR e Brands compartilham a tabela, uma única leitura deixava cards
+    # fora do robô dependendo da posição em que foram criados.
+    rows, page_size, start = [], 1000, 0
+    while True:
+        status, txt = sb(
+            "GET", "/rest/v1/offers?select=id,data&order=id.asc", token=token,
+            extra_headers={"Range-Unit": "items", "Range": f"{start}-{start + page_size - 1}"},
+        )
+        if status not in (200, 206):
+            raise RuntimeError(f"erro ao ler ofertas: HTTP {status} {txt[:200]}")
+        page = json.loads(txt)
+        rows.extend(page)
+        if len(page) < page_size:
+            return rows
+        start += page_size
 
 
 def library_links(data):

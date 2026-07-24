@@ -318,6 +318,8 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsScraper, /def library_links\(data\):/);
   assert.match(adsScraper, /facebook\.com\/ads\/library/);
   assert.match(adsScraper, /links = library_links\(d\)/);
+  assert.match(adsScraper, /"Range": f"\{start\}-\{start \+ page_size - 1\}"/);
+  assert.match(adsScraper, /start \+= page_size/);
 });
 
 test("Transcritor preserva o arquivo até a leitura e entrega original com tradução PT-BR", () => {
@@ -431,7 +433,9 @@ test("Ancestral Supplements, Mars Men e Ultima Peak preservam prints e mídias e
 });
 
 test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout", () => {
-  assert.match(html, /VSL_CHUNK_SEC=45/);
+  assert.match(html, /VSL_CHUNK_SEC=120/);
+  assert.match(html, /vslSaveProgress\(cacheKey\)/);
+  assert.match(html, /Limite temporário atingido; aguardando/);
   assert.match(html, /async function vslTranscribeSlice/);
   assert.match(html, /status===502\|\|status===503\|\|status===504/);
   assert.match(html, /vslChunkCache=new Map/);

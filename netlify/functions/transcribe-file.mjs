@@ -38,7 +38,10 @@ export default async (req) => {
 
   const user = await authenticate(req);
   if (!user) return json(req, 401, { ok: false, error: "sessão inválida — faça login de novo" }, METHODS);
-  const quota = await rateLimit("transcribe-file", user.id, { limit: 80, windowMs: 10 * 60_000 });
+  // Uma VSL longa pode precisar de dezenas de partes e de subdivisões quando o
+  // provedor demora. O limite continua por usuário, mas não interrompe um único
+  // trabalho legítimo no meio.
+  const quota = await rateLimit("transcribe-file", user.id, { limit: 240, windowMs: 10 * 60_000 });
   if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário de transcrição atingido", retryAfter: quota.retryAfter }, METHODS);
 
   let language = String(new URL(req.url).searchParams.get("lang") || "").toLowerCase().trim();
@@ -58,7 +61,7 @@ export default async (req) => {
   }
 
   try {
-    let lastStatus = 502, lastText = "", startedAt = Date.now();
+    let lastStatus = 502, lastText = "", retryAfter = 0, startedAt = Date.now();
     const models = [...new Set([GROQ_MODEL, GROQ_FALLBACK_MODEL].filter(Boolean))];
     for (const model of models) {
       const remaining = GROQ_BUDGET_MS - (Date.now() - startedAt);
@@ -91,9 +94,13 @@ export default async (req) => {
         return json(req, 200, { ok: true, text: String(gj.text || "").trim(), language: String(gj.language || ""), duration: +gj.duration || 0, segments, words }, METHODS);
       }
       lastStatus = g.status; lastText = gt;
+      if (g.status === 429) {
+        retryAfter = Math.max(2, Number.parseInt(g.headers.get("retry-after") || "0", 10) || 12);
+        break;
+      }
       if (g.status !== 429 && g.status < 500) break;
     }
     const status = lastStatus === 429 ? 429 : lastStatus === 504 ? 504 : 502;
-    return json(req, status, { ok: false, retryable: status === 429 || status >= 500, error: status === 429 ? "serviço temporariamente ocupado" : "a transcrição excedeu o tempo seguro" }, METHODS);
+    return json(req, status, { ok: false, retryable: status === 429 || status >= 500, retryAfter, error: status === 429 ? "serviço temporariamente ocupado" : "a transcrição excedeu o tempo seguro" }, METHODS);
   } catch { return json(req, 502, { ok: false, error: "falha temporária no serviço de transcrição" }, METHODS); }
 };
