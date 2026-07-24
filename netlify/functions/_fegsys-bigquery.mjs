@@ -92,7 +92,7 @@ const FIELD_ALIASES = {
   clicks: ["clicks", "cliques", "link_clicks"],
   video_3s: ["video_3s", "video_plays_3s"],
   video_p75: ["video_p75", "video_plays_75"],
-  orders: ["purchases", "quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders"],
+  orders: ["quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders", "purchases"],
   official_revenue_brl: ["faturamento_liquido_front_brl", "faturamento_liquido_brl", "faturamento_brl", "receita_liquida_brl", "receita_brl", "revenue_brl"],
   official_revenue_usd: ["faturamento_liquido_front", "faturamento_liquido_front_usd", "faturamento_liquido", "faturamento_liquido_usd", "faturamento", "faturamento_usd", "receita_liquida", "receita", "receita_usd", "revenue", "revenue_usd", "purchase_value"],
   google_conversions: ["conversions", "google_conversions", "conversions_google", "google_ads_conversions"],

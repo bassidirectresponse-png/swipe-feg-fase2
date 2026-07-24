@@ -154,6 +154,12 @@ test("view passa a fornecer resultados oficiais automaticamente quando purchases
   assert.match(plan.query, /AS official_revenue_usd/);
 });
 
+test("view prioriza quantidade_pedidos oficial sobre purchases da mídia", () => {
+  const plan = buildQuery(["data", "criativo", "purchases", "quantidade_pedidos", "faturamento_liquido_front"].map(name => ({ name })));
+  assert.match(plan.query, /SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\)/);
+  assert.doesNotMatch(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
+});
+
 test("diagnóstico compara soma bruta com venda única por criativo e dia", () => {
   const query = buildSalesAggregationProbe(["data", "criativo", "quantidade_pedidos"].map(name => ({ name })));
   assert.match(query, /SUM\(orders_sum\) AS orders_sum/);
