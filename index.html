@@ -996,6 +996,20 @@
   .trword{display:inline;border-radius:4px;padding:2px 1px;color:var(--muted-fg);cursor:pointer;transition:color .1s,background .1s;}
   .trword:hover,.trword:focus-visible{color:var(--fg);background:var(--surface-3);}
   .trword.is-past{color:var(--fg);}
+  #transcritor{max-width:1240px;}
+  #transcritor .cchief__composer{padding:0;overflow:hidden;border-radius:16px;background:var(--surface);box-shadow:none;}
+  #transcritor .composer__controls{margin:0;padding:18px;border-bottom:1px solid var(--border);}
+  #transcritor .trdrop{min-height:158px;margin:18px;display:grid;place-items:center;padding:24px;background:var(--surface-2);border-radius:14px;}
+  #transcritor .trstatus{margin:0 18px 15px;}
+  #transcritor .cchief__out{border-radius:16px;box-shadow:none;}
+  #transcritor .cchief__mark,.vsltool .cchief__mark{border-radius:12px;background:var(--accent);box-shadow:none;}
+  .toolactions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
+  .toolactions [hidden]{display:none!important;}
+  .toolactions .btn:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45);}
+  .toolactions__hint{margin-left:auto;font-size:.78rem;color:var(--muted-fg);display:flex;align-items:center;gap:6px;}
+  .toolactions__hint .ico{width:14px;height:14px;color:var(--accent);}
+  .vslactions [hidden]{display:none!important;}
+  .vslactions .btn:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45);}
   @media(max-width:820px){.trdocs{grid-template-columns:1fr;}.trtext{min-height:200px;max-height:52vh;}}
   .trword.is-active{color:var(--on-accent);background:var(--accent);}
   @media(max-width:640px){.trplayer__row{grid-template-columns:auto minmax(0,1fr) auto}.trplayer__speed{grid-column:2/4;justify-self:end}}
@@ -1028,11 +1042,6 @@
   .vslextra summary::before{content:"+";display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--surface-3);color:var(--accent);}
   .vslextra[open] summary::before{content:"−";}
   .vslextra .vslfield{margin-top:12px;}
-  .vslactions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
-  .vslactions [hidden]{display:none!important;}
-  .vslactions .btn:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45);}
-  .vslactions__hint{margin-left:auto;font-size:.78rem;color:var(--muted-fg);display:flex;align-items:center;gap:6px;}
-  .vslactions__hint .ico{width:14px;height:14px;color:var(--accent);}
   .vslprogress{margin-top:18px;border:1px solid var(--border-2);border-radius:14px;background:var(--surface);padding:16px 18px;}
   .vslprogress[hidden]{display:none;}
   .vslsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
@@ -1065,8 +1074,8 @@
   .vslmd h3{scroll-margin-top:16px;}
   .vslblank{display:flex;align-items:center;gap:9px;color:var(--muted-fg);padding:20px 0;font-size:.9rem;}
   .vslblank .ico{width:18px;height:18px;color:var(--accent);}
-  @media(max-width:860px){.vslmeta{grid-template-columns:1fr 1fr}.vslmeta .vslfield:first-child{grid-column:1/-1}.vslsteps{grid-template-columns:1fr}.vslstep__tx span{white-space:normal}.vslactions__hint{width:100%;margin-left:0}}
-  @media(max-width:560px){.vslmeta{grid-template-columns:1fr}.vslmeta .vslfield:first-child{grid-column:auto}.vsldrop{margin:14px;padding:20px 14px}.vslextra{margin-inline:14px}.vslactions{padding-inline:14px}.vslouttools{width:100%;margin-left:0}.vslouttools .btn{flex:1}.vslmd{font-size:.92rem}.vsltool .cchief__hero{align-items:flex-start}}
+  @media(max-width:860px){.vslmeta{grid-template-columns:1fr 1fr}.vslmeta .vslfield:first-child{grid-column:1/-1}.vslsteps{grid-template-columns:1fr}.vslstep__tx span{white-space:normal}.toolactions__hint{width:100%;margin-left:0}}
+  @media(max-width:560px){.vslmeta{grid-template-columns:1fr}.vslmeta .vslfield:first-child{grid-column:auto}.vsldrop{margin:14px;padding:20px 14px}.vslextra{margin-inline:14px}.toolactions{padding-inline:14px}.vslouttools{width:100%;margin-left:0}.vslouttools .btn{flex:1}.vslmd{font-size:.92rem}.vsltool .cchief__hero{align-items:flex-start}#transcritor .trdrop{margin:14px;padding:20px 14px}}
   @media(prefers-reduced-motion:reduce){.vslprogress__fill,.vsldrop{transition:none}}
 
   body.route-detail-full .shell{display:none;}
@@ -3381,6 +3390,23 @@ async function trTranslateCurrent({save=false}={}){
   }catch(error){trTranslationStatus="error";trTranslationError=(error&&error.message)||"Não foi possível traduzir agora.";renderTrOutput();return false;}
 }
 function trClearProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");if(!file||!p||p.key===trFileKey(file))localStorage.removeItem(TR_PROGRESS_KEY);}catch(_){}}
+function trSetBusy(busy){
+  trBusy=!!busy;
+  const drop=$("#trDrop"),reset=$("#trReset");
+  if(drop)drop.classList.toggle("busy",trBusy);
+  if(reset)reset.disabled=trBusy;
+}
+function trReset(){
+  if(trBusy)return;
+  cancelAnimationFrame(trRaf);
+  if(trAudio)trAudio.pause();
+  if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);
+  trClearProgress(trLastFile);
+  trLastFile=null;trFileName="";trText="";trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError="";trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;trAudioUrl="";trAudio=null;
+  history.replaceState(history.state,"","/transcritor");
+  renderTranscritor(true);
+  toast("Transcritor limpo — envie outro arquivo.");
+}
 function trRetryStatus(message){
   trSetStatus(`<span class="trerr">⚠ ${esc(message)}</span> <button type="button" class="btn btn--outline btn--sm" id="trRetryPart" style="margin-left:10px">Continuar da última parte</button>`);
   const retry=$("#trRetryPart");if(retry)retry.addEventListener("click",()=>{if(trLastFile&&!trBusy)trHandleFile(trLastFile);});
@@ -3421,7 +3447,7 @@ async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0,
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trBusy=true;trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError=""; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  trSetBusy(true);trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError=""; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
@@ -3452,15 +3478,15 @@ async function trHandleFile(file){
       }
     });
     await pipeline.drain();
-  }catch(e){trBusy=false;if(drop)drop.classList.remove("busy");trRetryStatus(`A parte ${Math.min(currentPart+1,totalParts||currentPart+1)} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
+  }catch(e){trSetBusy(false);trRetryStatus(`A parte ${Math.min(currentPart+1,totalParts||currentPart+1)} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
   else{renderTrOutput();await trTranslateCurrent();trSetStatus(`<span class="vidup__spin"></span>Salvando transcrição…`);await trPersist();trClearProgress(file);trSetStatus("");toast(trTranslation?"Transcrição e tradução prontas ✓":"Transcrição pronta; a tradução pode ser tentada novamente.",!trTranslation);}
-  trBusy=false;if(drop)drop.classList.remove("busy");
+  trSetBusy(false);
 }
-function renderTranscritor(){
+function renderTranscritor(force){
   const area=$("#gridArea");if(!area)return;
-  if($("#transcritor"))return;
+  if($("#transcritor")&&!force)return;
   area.innerHTML=`<div class="cchief" id="transcritor">
     <div class="cchief__hero">
       <div class="cchief__mark">${ic("mic")}</div>
@@ -3478,6 +3504,10 @@ function renderTranscritor(){
       </div>
       <div class="trstatus" id="trStatus" hidden></div>
       <input type="file" id="trFile" accept="video/*,audio/*" hidden>
+      <div class="toolactions">
+        <button class="btn btn--outline" id="trReset"${trBusy?" disabled":""}>Limpar</button>
+        <span class="toolactions__hint">${ic("info")}Limpe o material atual para iniciar uma nova transcrição.</span>
+      </div>
     </div>
     <div class="cchief__out" id="trOut" hidden>
       <div class="cchief__outbar">
@@ -3510,12 +3540,13 @@ function renderTranscritor(){
     drop.addEventListener("dragleave",()=>drop.classList.remove("active"));
     drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>/^(video|audio)\//.test(f.type));if(f)trHandleFile(f);else toast("Arraste um arquivo de vídeo.",true);});
   }
+  $("#trReset").addEventListener("click",trReset);
   $("#trTimes").addEventListener("click",()=>{trShowTimes=!trShowTimes;renderTrOutput();});
   $("#trCopyLink").addEventListener("click",()=>navigator.clipboard.writeText(location.href).then(()=>toast("Link copiado ✓")));
   $("#trText").addEventListener("click",e=>{const w=e.target.closest("[data-trword]");if(!w||!trAudio)return;trAudio.currentTime=+w.dataset.start||0;trSyncWord(trAudio.currentTime);if(trAudio.paused)trAudio.play();});
   $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
   $("#trCopyPt").addEventListener("click",()=>{if(trTranslation)navigator.clipboard.writeText(trTranslation).then(()=>toast("Tradução copiada ✓"));});
-  $("#trRetryTranslation").addEventListener("click",async()=>{if(trBusy)return;trBusy=true;const ok=await trTranslateCurrent({save:true});trSetStatus("");trBusy=false;toast(ok?"Tradução pronta ✓":"Não foi possível traduzir agora.",!ok);});
+  $("#trRetryTranslation").addEventListener("click",async()=>{if(trBusy)return;trSetBusy(true);const ok=await trTranslateCurrent({save:true});trSetStatus("");trSetBusy(false);toast(ok?"Tradução pronta ✓":"Não foi possível traduzir agora.",!ok);});
   $("#trDownload").addEventListener("click",()=>{
     const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));
     const blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");
@@ -3782,7 +3813,7 @@ function renderVslDissector(force){
       <div class="vsldrop" id="vslDrop" tabindex="0" role="button" aria-label="Selecionar arquivo da VSL"></div>
       <input type="file" id="vslFile" accept="video/*,audio/*" hidden>
       <details class="vslextra"><summary>Adicionar roteiro original do copywriter (opcional)</summary><label class="vslfield"><span>Roteiro canônico</span><textarea id="vslCanonical" placeholder="Cole aqui a copy original aprovada. Ela será usada como fonte principal; o vídeo valida execução, ordem e diferenças.">${esc(vslCanonical)}</textarea></label></details>
-      <div class="vslactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslRetry" hidden>Tentar novamente</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="vslactions__hint">${ic("info")}A transcrição é salva por partes. Depois dela, a dissecação continua mesmo se você fechar esta página.</span></div>
+      <div class="vslactions toolactions"><button class="btn btn--accent" id="vslRun" disabled>${ic("scissors")}Transcrever e dissecar</button><button class="btn btn--outline" id="vslCancel" hidden>Cancelar</button><button class="btn btn--outline" id="vslRetry" hidden>Tentar novamente</button><button class="btn btn--outline" id="vslReset">Limpar</button><span class="toolactions__hint">${ic("info")}A transcrição é salva por partes. Depois dela, a dissecação continua mesmo se você fechar esta página.</span></div>
     </section>
     <section class="vslprogress" id="vslProgress" hidden aria-live="polite">
       <div class="vslsteps"><div class="vslstep" data-vslstep="1"><span class="vslstep__n">1</span><div class="vslstep__tx"><b>Transcrição</b><span>Texto completo no idioma original</span></div></div><div class="vslstep" data-vslstep="2"><span class="vslstep__n">2</span><div class="vslstep__tx"><b>Leitura do vídeo</b><span>Pessoas, provas, produto e oferta</span></div></div><div class="vslstep" data-vslstep="3"><span class="vslstep__n">3</span><div class="vslstep__tx"><b>Dissecação</b><span>Blocos, crenças, mecanismo e fechamento</span></div></div></div>

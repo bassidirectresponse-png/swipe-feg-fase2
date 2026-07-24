@@ -499,3 +499,13 @@ test("criativos expõem copy transcrita e documento opcional do Drive", () => {
   assert.match(html, /Link da copy no Drive \(opcional\)/);
   assert.match(html, /copyLink:""/);
 });
+
+test("Transcritor e Dissecador têm ação de limpar consistente", () => {
+  assert.match(html, /function trReset\(\)/);
+  assert.match(html, /id="trReset"/);
+  assert.match(html, /history\.replaceState\(history\.state,"","\/transcritor"\)/);
+  assert.match(html, /renderTranscritor\(true\)/);
+  assert.match(html, /id="vslReset"/);
+  assert.match(html, /class="toolactions"/);
+  assert.match(html, /Transcritor limpo — envie outro arquivo/);
+});
