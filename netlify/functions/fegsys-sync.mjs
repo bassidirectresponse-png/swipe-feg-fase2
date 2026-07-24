@@ -31,6 +31,7 @@ export default async () => {
       rows: snapshot.rows.length,
       sources: {
         sales: snapshot.sourceStatus?.sales?.available !== false,
+        salesError: snapshot.sourceStatus?.sales?.available === false ? safeSyncError(new Error(snapshot.sourceStatus?.sales?.error || "")) : "",
         meta: snapshot.sourceStatus?.meta?.available !== false,
         drive
       }

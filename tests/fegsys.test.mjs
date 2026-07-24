@@ -19,6 +19,7 @@ test("JavaScript embutido do painel permanece sintaticamente válido", () => {
 
 test("integração FEGSYS é horária, somente admin e não contém chave privada", () => {
   assert.match(syncFn, /schedule: "13 \* \* \* \*"/);
+  assert.match(syncFn, /salesError:/);
   assert.match(syncFn, /safeSyncError/);
   assert.match(syncFn, /sales: snapshot\.sourceStatus/);
   assert.match(apiFn, /authenticate/);
