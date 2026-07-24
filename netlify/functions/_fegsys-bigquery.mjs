@@ -3,9 +3,10 @@ import { getStore } from "@netlify/blobs";
 
 const PROJECT_ID = "grupofeg-lakehouse";
 const VIEW = "grupofeg-lakehouse.gold_feg.vw_ads_criativo_diario";
+const SALES_VIEW = "grupofeg-lakehouse.marts_feg.mart_criativos_diario";
 const STORE_NAME = "fegsys-megabrain";
-const STORE_KEY = "daily-v4";
-const AGGREGATE_KEY_PREFIX = "aggregate-v4";
+const STORE_KEY = "daily-v5";
+const AGGREGATE_KEY_PREFIX = "aggregate-v5";
 const MAX_AGE_MS = 75 * 60 * 1000;
 const PRECOMPUTED_PERIODS = ["today", "yesterday", "7d", "14d", "30d", "90d"];
 /* O maior filtro do painel é 90 dias. Uma margem de dez dias cobre diferenças
@@ -92,14 +93,16 @@ const FIELD_ALIASES = {
   video_3s: ["video_3s", "video_plays_3s"],
   video_p75: ["video_p75", "video_plays_75"],
   orders: ["purchases", "quantidade_pedidos", "qtd_pedidos", "total_pedidos", "pedidos", "vendas", "qtd_vendas", "total_vendas", "sales", "compras", "orders"],
-  official_revenue_brl: ["revenue", "faturamento_liquido_front", "faturamento_liquido_front_brl", "faturamento_liquido", "faturamento", "faturamento_brl", "receita_liquida", "receita", "receita_brl", "revenue_brl", "purchase_value"],
-  official_revenue_usd: ["faturamento_liquido_front_usd", "faturamento_liquido_usd", "faturamento_usd", "receita_usd", "revenue_usd"],
+  official_revenue_brl: ["faturamento_liquido_front_brl", "faturamento_liquido_brl", "faturamento_brl", "receita_liquida_brl", "receita_brl", "revenue_brl"],
+  official_revenue_usd: ["faturamento_liquido_front", "faturamento_liquido_front_usd", "faturamento_liquido", "faturamento_liquido_usd", "faturamento", "faturamento_usd", "receita_liquida", "receita", "receita_usd", "revenue", "revenue_usd", "purchase_value"],
   google_conversions: ["conversions", "google_conversions", "conversions_google", "google_ads_conversions"],
   roas: ["roas", "purchase_roas", "return_on_ad_spend"],
   video_url: ["video_url", "creative_video_url", "media_url", "asset_url", "url_video"],
   thumbnail_url: ["thumbnail_url", "image_url", "creative_image_url", "thumb_url"],
   copy_text: ["copy", "copy_text", "creative_copy", "texto_copy", "ad_copy", "body"],
-  copy_url: ["copy_url", "doc_url", "document_url", "link_copy"]
+  copy_url: ["copy_url", "doc_url", "document_url", "link_copy"],
+  shops: ["loja", "lojas", "shop", "shops", "store", "stores"],
+  sales_platforms: ["plataforma_venda", "plataformas_venda", "sales_platform", "sales_platforms", "checkout", "plataforma_checkout"]
 };
 
 function quoteField(name) { return `\`${String(name).replaceAll("`", "")}\``; }
@@ -118,8 +121,8 @@ export function buildQuery(fields) {
   const sourceRoas = f.roas
     ? `SAFE_DIVIDE(SUM(${numberExpr(f.roas)} * ${numberExpr(spendWeight)}), NULLIF(SUM(${numberExpr(spendWeight)}), 0))`
     : "0";
-  const salesAvailable = !!(f.orders && f.official_revenue_brl);
-  const salesError = salesAvailable ? "" : `a vw_ads_criativo_diario não fornece ${[!f.orders ? "pedidos" : "", !f.official_revenue_brl ? "faturamento" : ""].filter(Boolean).join(" nem ")}`;
+  const salesAvailable = !!(f.orders && (f.official_revenue_usd || f.official_revenue_brl));
+  const salesError = salesAvailable ? "" : `a vw_ads_criativo_diario não fornece ${[!f.orders ? "pedidos" : "", !(f.official_revenue_usd || f.official_revenue_brl) ? "faturamento" : ""].filter(Boolean).join(" nem ")}`;
   return { salesAvailable, salesError, query: `
 SELECT
   DATE(${quoteField(f.data)}) AS data,
@@ -148,6 +151,28 @@ WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'),
   AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
 GROUP BY 1, 2
 ORDER BY data DESC, spend_brl DESC` };
+}
+
+export function buildSalesQuery(fields) {
+  const f = fieldMap(fields);
+  if (!f.data || !f.criativo || !f.orders || !(f.official_revenue_usd || f.official_revenue_brl)) {
+    throw new Error("a mart_criativos_diario precisa conter data, criativo, pedidos e faturamento");
+  }
+  return `
+SELECT
+  DATE(${quoteField(f.data)}) AS data,
+  CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
+  SUM(${numberExpr(f.orders)}) AS orders,
+  SUM(${numberExpr(f.official_revenue_brl)}) AS official_revenue_brl,
+  SUM(${numberExpr(f.official_revenue_usd)}) AS official_revenue_usd,
+  ${textSetExpr(f.shops)} AS shops,
+  ${textSetExpr(f.sales_platforms)} AS sales_platforms
+FROM \`${SALES_VIEW}\`
+WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL ${QUERY_DAYS} DAY)
+  AND ${quoteField(f.criativo)} IS NOT NULL
+  AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
+GROUP BY 1, 2
+ORDER BY data DESC, orders DESC`;
 }
 
 function rowsFromResult(schema, rows) {
@@ -254,7 +279,9 @@ export function mergeFegsysSources(baseRows = [], salesRows = [], metaRows = [])
     revenue_brl: item.official_revenue_brl,
     ticket_brl: item.orders ? item.official_revenue_brl / item.orders : 0,
     ticket_usd: item.orders ? item.official_revenue_usd / item.orders : 0,
-    source_roas: item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0,
+    source_roas: item.spend_usd && item.official_revenue_usd
+      ? item.official_revenue_usd / item.spend_usd
+      : (item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0),
     meta_frequency: item.meta_reach ? item.meta_impressions / item.meta_reach : 0,
     meta_ctr: item.meta_impressions ? item.meta_link_clicks / item.meta_impressions * 100 : 0,
     meta_cpc: item.meta_link_clicks ? item.meta_spend / item.meta_link_clicks : 0,
@@ -297,11 +324,33 @@ async function queryBigQuery(credential) {
     copy_text: String(row.copy_text || "").trim(),
     copy_url: String(row.copy_url || "").trim()
   })).filter(row => row.data && row.criativo);
+  let salesRows = [], salesStatus = { available: false, error: "mart_criativos_diario indisponível" };
+  try {
+    const salesTable = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/marts_feg/tables/mart_criativos_diario`, { headers });
+    const salesMetadata = await salesTable.json().catch(() => ({}));
+    if (!salesTable.ok) throw new Error(`não foi possível ler mart_criativos_diario (${salesTable.status})`);
+    const salesRaw = await runBigQueryQuery(headers, buildSalesQuery(salesMetadata.schema && salesMetadata.schema.fields), "mart_criativos_diario");
+    salesRows = numericRows(salesRaw, ["orders", "official_revenue_brl", "official_revenue_usd"]).map(row => ({
+      data: String(row.data || ""),
+      criativo: String(row.criativo || "").trim(),
+      orders: +row.orders || 0,
+      official_revenue_brl: +row.official_revenue_brl || 0,
+      official_revenue_usd: +row.official_revenue_usd || 0,
+      shops: String(row.shops || ""),
+      sales_platforms: String(row.sales_platforms || "")
+    })).filter(row => row.data && row.criativo);
+    salesStatus = { available: true, error: "", source: "marts_feg.mart_criativos_diario" };
+  } catch (error) {
+    salesStatus = { available: false, error: String(error && error.message || "mart_criativos_diario indisponível"), source: "marts_feg.mart_criativos_diario" };
+  }
+  const authoritativeBase = salesStatus.available
+    ? baseRows.map(row => ({ ...row, orders: 0, official_revenue_brl: 0, official_revenue_usd: 0, official_sales_available: false }))
+    : baseRows;
   return {
-    rows: mergeFegsysSources(baseRows, [], []).filter(row => row.data && row.criativo),
+    rows: mergeFegsysSources(authoritativeBase, salesRows, []).filter(row => row.data && row.criativo),
     sourceStatus: {
       media: { available: true, error: "" },
-      sales: { available: viewPlan.salesAvailable, error: viewPlan.salesError },
+      sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
       meta: { available: true, error: "" }
     }
   };
@@ -313,7 +362,7 @@ export async function refreshSnapshot() {
   const result = await queryBigQuery(credential), rows = result.rows;
   const dates = rows.map(row => row.data).sort();
   const snapshot = {
-    version: 3,
+    version: 4,
     syncedAt: new Date().toISOString(),
     oldestDate: dates[0] || "",
     newestDate: dates[dates.length - 1] || "",
@@ -431,7 +480,9 @@ export function aggregateSnapshot(snapshot, range) {
     const ctr = item.impressions ? item.clicks / item.impressions * 100 : 0;
     const cpc_brl = item.clicks ? item.spend_brl / item.clicks : 0;
     const cpm_brl = item.impressions ? item.spend_brl / item.impressions * 1000 : 0;
-    const roas = item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0;
+    const roas = item.spend_usd && item.official_revenue_usd
+      ? item.official_revenue_usd / item.spend_usd
+      : (item.spend_brl ? item.official_revenue_brl / item.spend_brl : 0);
     const conversions = item.orders;
     const revenue_brl = item.official_revenue_brl;
     const ticket_brl = item.orders ? item.official_revenue_brl / item.orders : 0;
@@ -451,7 +502,10 @@ export function aggregateSnapshot(snapshot, range) {
     return {
       ...clean,
       platforms: [...item.platforms], channels: [...item.channels], shops: [...item.shops], sales_platforms: [...item.sales_platforms], dates: [...item.dates].sort(),
-      conversions, revenue_brl, ticket_brl, ticket_usd, ctr, cpc_brl, cpm_brl, roas,
+      conversions, revenue_brl, ticket_brl, ticket_usd,
+      cpc_usd: item.clicks ? item.spend_usd / item.clicks : 0,
+      cpm_usd: item.impressions ? item.spend_usd / item.impressions * 1000 : 0,
+      ctr, cpc_brl, cpm_brl, roas,
       meta_frequency, meta_ctr, meta_cpc, meta_cpm, meta_cplpv, meta_cpi, meta_cpa, meta_roas, meta_aov, ...weighted,
       mediaAvailable: !!item.video_url, copyAvailable: !!(item.copy_text || item.copy_url)
     };
@@ -468,7 +522,11 @@ export function aggregateSnapshot(snapshot, range) {
   totals.ctr = totals.impressions ? totals.clicks / totals.impressions * 100 : 0;
   totals.cpc_brl = totals.clicks ? totals.spend_brl / totals.clicks : 0;
   totals.cpm_brl = totals.impressions ? totals.spend_brl / totals.impressions * 1000 : 0;
-  totals.roas = totals.spend_brl ? totals.official_revenue_brl / totals.spend_brl : 0;
+  totals.cpc_usd = totals.clicks ? totals.spend_usd / totals.clicks : 0;
+  totals.cpm_usd = totals.impressions ? totals.spend_usd / totals.impressions * 1000 : 0;
+  totals.roas = totals.spend_usd && totals.official_revenue_usd
+    ? totals.official_revenue_usd / totals.spend_usd
+    : (totals.spend_brl ? totals.official_revenue_brl / totals.spend_brl : 0);
   totals.meta_frequency = totals.meta_reach ? totals.meta_impressions / totals.meta_reach : 0;
   totals.meta_ctr = totals.meta_impressions ? totals.meta_link_clicks / totals.meta_impressions * 100 : 0;
   totals.meta_cpc = totals.meta_link_clicks ? totals.meta_spend / totals.meta_link_clicks : 0;

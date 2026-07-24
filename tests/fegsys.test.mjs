@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { aggregateSnapshot, buildQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
+import { aggregateSnapshot, buildQuery, buildSalesQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
 import { matchDriveFiles, normalizeDriveName } from "../netlify/functions/_fegsys-drive.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -85,11 +85,23 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /Abrir no Drive/);
   assert.match(html, /Abrir mídia/);
   assert.match(html, /Abrir documento/);
-  assert.doesNotMatch(coreFn, /marts_feg\.mart_criativos_diario/);
+  assert.match(coreFn, /marts_feg\.mart_criativos_diario/);
   assert.match(coreFn, /quantidade_pedidos/);
   assert.match(coreFn, /faturamento_liquido_front/);
   assert.doesNotMatch(coreFn, /gold_feg\.fct_meta_ads_performance/);
   assert.match(coreFn, /const QUERY_DAYS = 100/);
+});
+
+test("Swipe replica a fonte oficial de vendas usada pelo FEGSYS em USD nativo", () => {
+  const fields = ["data", "criativo", "quantidade_pedidos", "faturamento_liquido_front", "loja", "plataforma_venda"].map(name => ({ name }));
+  const query = buildSalesQuery(fields);
+  assert.match(query, /FROM `grupofeg-lakehouse\.marts_feg\.mart_criativos_diario`/);
+  assert.match(query, /SUM\(COALESCE\(SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\), 0\)\) AS orders/);
+  assert.match(query, /SUM\(COALESCE\(SAFE_CAST\(`faturamento_liquido_front` AS FLOAT64\), 0\)\) AS official_revenue_usd/);
+  assert.match(coreFn, /authoritativeBase/);
+  assert.match(coreFn, /daily-v5/);
+  assert.match(html, /totals\.official_revenue_usd\|\|0,"USD"/);
+  assert.match(html, /totals\.spend_usd\|\|0,"USD"/);
 });
 
 test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa o card", () => {
@@ -135,6 +147,7 @@ test("view passa a fornecer resultados oficiais automaticamente quando purchases
   assert.equal(plan.salesError, "");
   assert.match(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
   assert.match(plan.query, /SAFE_CAST\(`revenue` AS FLOAT64\)/);
+  assert.match(plan.query, /AS official_revenue_usd/);
 });
 
 test("período personalizado é normalizado mesmo com datas invertidas", () => {
