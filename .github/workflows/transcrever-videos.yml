@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - "scripts/transcrever.py"
+      - "scripts/traduzir_transcricoes.py"
       - "scripts/requirements-transcricao.txt"
       - ".github/workflows/transcrever-videos.yml"
   schedule:
@@ -64,3 +65,12 @@ jobs:
           TRANSCRIPTION_VERSION: "1"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py
+
+      - name: Traduzir transcrições para português
+        if: always()
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          MAX_TRANSLATIONS: "80"
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/traduzir_transcricoes.py

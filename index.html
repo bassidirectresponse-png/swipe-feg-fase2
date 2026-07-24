@@ -738,6 +738,14 @@
   .vtrans .vk .ico{width:14px;height:14px;color:var(--accent);}
   .vtrans .vbody{font-size:.98rem;line-height:1.6;white-space:pre-wrap;}
   .vtrans .vbody.empty{color:var(--faint);font-style:italic;}
+  .vtrans__tabs{display:flex;gap:4px;margin:0 0 14px;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+  .vtrans__tab{flex:1;min-height:36px;padding:7px 10px;border-radius:7px;color:var(--muted-fg);font-size:.76rem;font-weight:750;transition:background .16s,color .16s;}
+  .vtrans__tab:hover{color:var(--fg);}
+  .vtrans__tab.active{background:var(--surface-3);color:var(--accent);box-shadow:inset 0 0 0 1px var(--border-2);}
+  .vtrans__pane[hidden]{display:none;}
+  .vtrans__status{display:inline-flex;align-items:flex-start;gap:7px;color:var(--muted-fg);font-size:.86rem;line-height:1.5;}
+  .vtrans__status .ico{width:15px;height:15px;flex:none;margin-top:3px;color:var(--accent);}
+  .transcription-state__translation{color:#b8e8ff;}
   .vpending{display:inline-flex;align-items:flex-start;gap:7px;color:var(--accent);font-style:normal;font-weight:600;line-height:1.5;}
   .vpending .ico{width:14px;height:14px;flex:none;margin-top:2px;}
   .cmedia__play{position:absolute;left:8px;bottom:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;color:#fff;}
@@ -1646,7 +1654,7 @@ function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.pa
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
-  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";d.brandSemrush1m=d.brandSemrush1m?"·":"";d.brandSemrush3m=d.brandSemrush3m?"·":"";d.transcricao="";d.copy="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(Array.isArray(d.bmPrints))d.bmPrints=d.bmPrints.map(x=>Object.assign({},x,{img:""}));if(Array.isArray(d.brandTopAds))d.brandTopAds=d.brandTopAds.map(x=>Object.assign({},x,{img:""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
+  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";d.brandSemrush1m=d.brandSemrush1m?"·":"";d.brandSemrush3m=d.brandSemrush3m?"·":"";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(Array.isArray(d.bmPrints))d.bmPrints=d.bmPrints.map(x=>Object.assign({},x,{img:""}));if(Array.isArray(d.brandTopAds))d.brandTopAds=d.brandTopAds.map(x=>Object.assign({},x,{img:""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
 }
 function writeCache(){
   const version=++cacheWriteVersion,run=()=>persistLiteCache(version);
@@ -1677,7 +1685,9 @@ async function loadOffers(){
     if(!data||data.length<PAGE)break;
     from+=PAGE;
   }
-  offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();return true;
+  offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
+  if(isAdmin)setTimeout(()=>scheduleCreativeTranslations(),1200);
+  return true;
 }
 let joymodeSeedWorking=false;
 async function ensureJoymodeInsider(){
@@ -2835,6 +2845,7 @@ function openCopyPop(id){
   const o=itemById(id);if(!o)return;
   const d=o.data||{};
   const copy=brainCopyText(d);
+  const translation=String(d.transcricaoPt||"").trim();
   const copyIsTranscript=brainCopyIsTranscript(d);
   const copyLink=(d.copyLink||d.copyVslLink||d.copyCriativoLink||"").trim();
   const video=videoOfBrain(d);
@@ -2842,14 +2853,16 @@ function openCopyPop(id){
   const sub=[d.autor?"por "+d.autor:"",d.nicho||""].filter(Boolean).join(" · ");
   $("#copyPopSub").textContent=sub;
   const body=$("#copyPopText");
-  body.textContent=copy||"Sem copy disponível neste card.";
+  if(copy&&translation)body.innerHTML=`<div class="vtrans__tabs" role="tablist" aria-label="Idioma da copy"><button type="button" class="vtrans__tab active" data-copy-lang="original" aria-selected="true">Original</button><button type="button" class="vtrans__tab" data-copy-lang="pt" aria-selected="false">Português ✓</button></div><div data-copy-pane="original">${esc(copy)}</div><div data-copy-pane="pt" hidden>${esc(translation)}</div>`;
+  else body.textContent=translation||copy||"Sem copy disponível neste card.";
   body.classList.toggle("empty",!copy);
   const btns=[];
-  if(copy)btns.push(`<button class="btn btn--outline btn--sm" id="copyPopCopy">${ic("type")}Copiar texto</button>`);
+  if(copy||translation)btns.push(`<button class="btn btn--outline btn--sm" id="copyPopCopy">${ic("type")}Copiar texto exibido</button>`);
   if(video)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(video))}" target="_blank" rel="noopener">${ic("play")}Ver vídeo</a>`);
   if(copyLink)btns.push(`<a class="btn btn--outline btn--sm" href="${esc(fixUrl(copyLink))}" target="_blank" rel="noopener">${ic("file")}Abrir copy em português</a>`);
   $("#copyPopFoot").innerHTML=btns.join("");
-  const cc=$("#copyPopCopy");if(cc)cc.addEventListener("click",()=>{navigator.clipboard.writeText(copy).then(()=>toast("Copy copiada ✓")).catch(()=>toast("Não deu para copiar",true));});
+  $$("[data-copy-lang]",body).forEach(tab=>tab.addEventListener("click",()=>{const lang=tab.dataset.copyLang;$$("[data-copy-lang]",body).forEach(x=>{const active=x===tab;x.classList.toggle("active",active);x.setAttribute("aria-selected",String(active));});$$("[data-copy-pane]",body).forEach(p=>p.hidden=p.dataset.copyPane!==lang);}));
+  const cc=$("#copyPopCopy");if(cc)cc.addEventListener("click",()=>{const shown=$("[data-copy-pane]:not([hidden])",body);navigator.clipboard.writeText(shown?shown.textContent:(translation||copy)).then(()=>toast("Copy copiada ✓")).catch(()=>toast("Não deu para copiar",true));});
   openOverlay("#copyPop");
 }
 $("#copyPopClose").addEventListener("click",()=>closeOverlay("#copyPop"));
@@ -3590,10 +3603,10 @@ function trTranslationChunks(value,max=6000){
   while(cursor<text.length){let end=Math.min(text.length,cursor+max);if(end<text.length){const floor=cursor+Math.floor(max*.58),slice=text.slice(floor,end),marks=[slice.lastIndexOf("\n\n"),slice.lastIndexOf(". "),slice.lastIndexOf("! "),slice.lastIndexOf("? ")],best=Math.max(...marks);if(best>=0)end=floor+best+2;}const part=text.slice(cursor,end).trim();if(part)parts.push(part);cursor=end;}
   return parts;
 }
-async function trTranslatePart(textPart,part,total,token){
+async function trTranslatePart(textPart,part,total,token,language){
   let lastError;
   for(let attempt=0;attempt<2;attempt++){
-    try{const response=await fetch(TR_TRANSLATE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({text:textPart,language:trDetLang||trLang,part,total})}),result=await response.json().catch(()=>({}));if(!response.ok||!result.ok){const error=new Error(result.error||("HTTP "+response.status));error.retryable=result.retryable===true||response.status===429||response.status>=500;throw error;}return String(result.translation||"").trim();}
+    try{const response=await fetch(TR_TRANSLATE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({text:textPart,language:language||trDetLang||trLang,part,total})}),result=await response.json().catch(()=>({}));if(!response.ok||!result.ok){const error=new Error(result.error||("HTTP "+response.status));error.retryable=result.retryable===true||response.status===429||response.status>=500;throw error;}return String(result.translation||"").trim();}
     catch(error){lastError=error;if(!error.retryable||attempt===1)throw error;await trDelay(1200*(attempt+1));}
   }
   throw lastError||new Error("não foi possível traduzir");
@@ -3607,7 +3620,7 @@ async function trTranslateCurrent({save=false}={}){
       const chunks=trTranslationChunks(trText),token=await trToken();let completed=0;
       const translated=await trMapConcurrentOrdered(chunks,async(chunk,i)=>{
         trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português${chunks.length>1?` · ${completed}/${chunks.length} partes concluídas`:""}…`);
-        const value=await trTranslatePart(chunk,i+1,chunks.length,token);completed++;
+        const value=await trTranslatePart(chunk,i+1,chunks.length,token,trDetLang||trLang);completed++;
         trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português · ${completed}/${chunks.length} partes concluídas…`);
         return value;
       });
@@ -3615,6 +3628,56 @@ async function trTranslateCurrent({save=false}={}){
     }
     trTranslationStatus="done";renderTrOutput();if(save)await trPersist();return true;
   }catch(error){trTranslationStatus="error";trTranslationError=(error&&error.message)||"Não foi possível traduzir agora.";renderTrOutput();return false;}
+}
+
+/* Tradução bilíngue do Swipe de Criativos.
+   O original permanece intocado; a versão PT-BR é persistida em campo próprio.
+   A fila usa duas tarefas por vez para não pesar o navegador nem sobrecarregar
+   o serviço, e retoma automaticamente os itens restantes no próximo acesso. */
+const creativeTranslations=new Set();
+let creativeTranslationQueue=[],creativeTranslationActive=0;
+function creativeNeedsTranslation(o){
+  const d=(o&&o.data)||{},status=String(d.transcricaoPtStatus||"").toLowerCase();
+  const retryAt=Date.parse(d.transcricaoPtProximaTentativa||"");
+  return d.kind==="criativo"&&String(d.transcricao||"").trim()&&!String(d.transcricaoPt||"").trim()&&!["working","processing"].includes(status)&&(!Number.isFinite(retryAt)||retryAt<=Date.now());
+}
+async function persistCreativeTranslation(o,patch){
+  const {data:row,error}=await sb.from("offers").select("data").eq("id",o.id).single();if(error)throw error;
+  const data=Object.assign({},(row&&row.data)||o.data||{},patch);
+  const {error:saveError}=await sb.from("offers").update({data}).eq("id",o.id);if(saveError)throw saveError;
+  o.data=data;
+}
+async function translateCreativeCard(o){
+  if(!creativeNeedsTranslation(o)||creativeTranslations.has(o.id))return;
+  creativeTranslations.add(o.id);o.data.transcricaoPtStatus="working";renderGrid();
+  try{
+    const original=String(o.data.transcricao||"").trim(),lang=String(o.data.transcricaoLang||"");
+    let translated=original;
+    if(!/^(pt|portugu)/i.test(lang)){
+      const chunks=trTranslationChunks(original),token=await trToken(),parts=[];
+      for(let i=0;i<chunks.length;i++)parts.push(await trTranslatePart(chunks[i],i+1,chunks.length,token,lang));
+      translated=parts.filter(Boolean).join("\n\n").trim();
+    }
+    if(!translated)throw new Error("tradução vazia");
+    await persistCreativeTranslation(o,{transcricaoPt:translated,transcricaoPtLang:"pt-BR",transcricaoPtStatus:"done",transcricaoPtError:"",transcricaoPtConcluidaEm:new Date().toISOString(),transcricaoPtVersion:"1"});
+  }catch(error){
+    try{await persistCreativeTranslation(o,{transcricaoPtStatus:"retry_scheduled",transcricaoPtError:"Falha temporária; uma nova tentativa será feita automaticamente.",transcricaoPtProximaTentativa:new Date(Date.now()+30*60*1000).toISOString()});}catch(_){}
+  }finally{
+    creativeTranslations.delete(o.id);renderGrid();writeCache();
+    if(currentSimpleId===o.id&&$("#viewOverlay").classList.contains("open"))openSimpleView(o,true);
+  }
+}
+function pumpCreativeTranslations(){
+  while(creativeTranslationActive<2&&creativeTranslationQueue.length){
+    const o=creativeTranslationQueue.shift();creativeTranslationActive++;
+    translateCreativeCard(o).catch(()=>{}).finally(()=>{creativeTranslationActive--;pumpCreativeTranslations();});
+  }
+}
+function scheduleCreativeTranslations(items){
+  if(!isAdmin||!sb)return;
+  const source=Array.isArray(items)?items:offers;
+  for(const o of source)if(creativeNeedsTranslation(o)&&!creativeTranslations.has(o.id)&&!creativeTranslationQueue.some(x=>x.id===o.id))creativeTranslationQueue.push(o);
+  pumpCreativeTranslations();
 }
 function trClearProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");if(!file||!p||p.key===trFileKey(file))localStorage.removeItem(TR_PROGRESS_KEY);}catch(_){}}
 function trSetBusy(busy){
@@ -4124,25 +4187,26 @@ function presellCard(o){
 }
 function criativoCard(o){
   const d=o.data||{};
+  const collection=d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:"";
   const tab=d.plataforma==="taboola";
   const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
   const hasVid=!!va&&!tab;
   const copy=brainCopyText(d),transcript=String(d.transcricao||"").trim(),copyLink=(d.copyLink||"").trim();
   const canonical=String(d.transcriptionStatus||d.transcricaoStatus||"").toLowerCase(),transcriptState=transcript?"ready":canonical==="failed"||canonical==="error"?"error":["pending","processing","working","retry_scheduled"].includes(canonical)?"pending":"missing";
+  const translated=!!String(d.transcricaoPt||"").trim(),translationState=String(d.transcricaoPtStatus||"").toLowerCase();
   const copyAction=transcript?`<button class="qbtn" data-copy-transcript="${o.id}" title="Copiar a transcrição" aria-label="Copiar transcrição de ${esc(d.nome||"criativo")}">${ic("clipboard")}Copiar transcrição</button>`:hasVid&&isAdmin?`<button class="qbtn" data-transcribe-card="${o.id}" title="Gerar transcrição">${ic("mic")}Transcrever</button>`:`<button class="qbtn" disabled title="Transcrição ainda não disponível">${ic("mic")}Sem transcrição</button>`;
   const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
   const fbwork=st==="working"?`<div class="fbwork">${ic("download")}Baixando criativo do Facebook…</div>`:"";
-  const collection=d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:"";
   return card({
     id:o.id,variant:"kcard",
     head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
     body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}`,
-    chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}</div>`,
+    chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
     actions:acts
   });
 }
@@ -4402,6 +4466,7 @@ function videoEmbedHtml(url){
 }
 function transBox(d,alwaysShow,status,syncable){
   const txt=String((d&&d.transcricao)||"").trim();
+  const pt=String((d&&d.transcricaoPt)||"").trim(),ptStatus=String((d&&d.transcricaoPtStatus)||"").toLowerCase();
   const working=status==="working", pending=status==="pending"||working;
   if(!txt&&!alwaysShow&&!pending)return"";
   const body=txt?brainCopyMarkup(d):(working
@@ -4411,7 +4476,14 @@ function transBox(d,alwaysShow,status,syncable){
       :"Sem transcrição cadastrada.");
   const title=/^en\b/i.test(String(d&&d.transcricaoLang||""))?"Copy original em inglês":"Copy original do áudio";
   const follow=txt&&syncable?`<div class="brainstage__tools"><button type="button" class="brain-follow active" data-brain-follow aria-pressed="true">${ic("play")}Seguindo áudio</button></div>`:"";
-  return `<div class="vtrans" data-transcript-pane><div class="vk">${ic("file")}${title}</div>${follow}<div class="vbody ${txt?"":"empty"}">${body}</div></div>`;
+  const ptBody=pt
+    ?esc(pt)
+    :`<span class="vtrans__status">${ic(ptStatus==="error"?"alert":"clock")}${ptStatus==="error"?"A tradução será tentada novamente automaticamente.":"A tradução em português está sendo preparada automaticamente."}</span>`;
+  const tabs=txt?`<div class="vtrans__tabs" role="tablist" aria-label="Idioma da transcrição">
+    <button type="button" class="vtrans__tab active" role="tab" aria-selected="true" data-transcript-lang="original">Original</button>
+    <button type="button" class="vtrans__tab" role="tab" aria-selected="false" data-transcript-lang="pt">Português${pt?" ✓":""}</button>
+  </div>`:"";
+  return `<div class="vtrans" data-transcript-pane><div class="vk">${ic("file")}${title}</div>${follow}${tabs}<div class="vtrans__pane" data-transcript-pane-lang="original"><div class="vbody ${txt?"":"empty"}">${body}</div></div><div class="vtrans__pane" data-transcript-pane-lang="pt" hidden><div class="vbody ${pt?"":"empty"}">${ptBody}</div></div></div>`;
 }
 /* bloco de vídeo: embutido + transcrição ao lado + abrir em nova aba */
 function videoBlock(va,data,forceTrans,status){
@@ -4427,6 +4499,16 @@ function videoBlock(va,data,forceTrans,status){
     return `<div class="linkbtns">${linkbtn("Abrir vídeo",va,true,"play")}</div>${tb?`<div style="margin-top:14px">${tb}</div>`:""}`;
   }
   return "";
+}
+function wireTranscriptLanguageTabs(root){
+  $$(".vtrans__tabs",root||document).forEach(tabs=>{
+    tabs.addEventListener("click",event=>{
+      const button=event.target.closest("[data-transcript-lang]");if(!button)return;
+      const box=tabs.closest(".vtrans"),lang=button.dataset.transcriptLang;
+      $$("[data-transcript-lang]",tabs).forEach(tab=>{const active=tab===button;tab.classList.toggle("active",active);tab.setAttribute("aria-selected",String(active));});
+      $$("[data-transcript-pane-lang]",box).forEach(pane=>pane.hidden=pane.dataset.transcriptPaneLang!==lang);
+    });
+  });
 }
 /* garante que o 1º quadro apareça como preview (poster) e mostra fallback se falhar */
 function wireVideoPreviews(root){
@@ -4525,6 +4607,7 @@ async function pollTranscription(offerId,tries,intervalMs){
       if(!error&&d&&(d.transcricao||"").trim()){
         const o=offers.find(x=>x.id===offerId);
         if(o){o.data.transcricao=d.transcricao;o.data.transcricaoStatus="done";o.data.transcricaoLang=d.transcricaoLang||"";o.data.transcricaoWords=Array.isArray(d.transcricaoWords)?d.transcricaoWords:[];o.data.transcricaoSegments=Array.isArray(d.transcricaoSegments)?d.transcricaoSegments:[];}
+        if(o)scheduleCreativeTranslations([o]);
         return true;
       }
     }catch(e){}
@@ -4552,7 +4635,7 @@ async function transcribeBrainInChunks(offerId,videoUrl){
   const data=(row&&row.data)||o.data||{};
   data.transcricao=fullText.trim();data.transcricaoStatus="done";data.transcricaoLang=detLang;data.transcricaoWords=allWords;data.transcricaoSegments=allSegments;
   const {error:saveError}=await sb.from("offers").update({data}).eq("id",offerId);if(saveError)throw saveError;
-  o.data=data;return true;
+  o.data=data;scheduleCreativeTranslations([o]);return true;
 }
 function queueBrainChunkedTranscription(offerId,videoUrl){
   const job=brainTranscriptionQueue.catch(()=>{}).then(()=>transcribeBrainInChunks(offerId,videoUrl));
@@ -4965,6 +5048,7 @@ function openSimpleView(o,skipOpen){
   $$("[data-brainingest]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>triggerBrainIngest(b.dataset.brainingest)));
   $$("[data-copy]",$("#viewBody")).forEach(b=>b.addEventListener("click",()=>openCopyPop(b.dataset.copy)));
   wireVideoTranscripts($("#viewBody"));
+  wireTranscriptLanguageTabs($("#viewBody"));
   wireVideoPreviews($("#viewBody"));
   if(!skipOpen)openOverlay("#viewOverlay");
 }
@@ -4973,7 +5057,7 @@ function openSimpleView(o,skipOpen){
 function blankSimple(kind){
   const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
   if(kind==="presell")base.tipoTrafego="meta";
-  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:"",copyLink:""});
+  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
   if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
   if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
@@ -5097,6 +5181,7 @@ function renderSimpleForm(){
       <div class="field"><label class="lbl">${ic("film")} Link do vídeo</label><input type="url" data-sk="video" placeholder="https://... (Drive/YouTube/Vimeo/.mp4) — ou envie abaixo" value="${esc(it.video||"")}"></div>
       ${videoUpField}
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Transcrição original do áudio</label><textarea data-sk="transcricao" placeholder="Texto no idioma original do vídeo — aparece ao lado e acompanha o player.">${esc(it.transcricao||"")}</textarea></div>
+      <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("type")} Tradução em português</label><textarea data-sk="transcricaoPt" placeholder="Gerada automaticamente e mantida separada do texto original.">${esc(it.transcricaoPt||"")}</textarea><div class="fsec__hint" style="margin-top:8px">Se ficar em branco, o sistema traduz automaticamente após concluir a transcrição original.</div></div>
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Link da copy no Drive (opcional)</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/... ou https://drive.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>
     <div class="fsec">
@@ -5183,7 +5268,8 @@ async function saveSimpleForm(){
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
   const p=Object.assign({},sItem);p.kind=sKind;
-  const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||"");
+  const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||""),transcriptChanged=String(p.transcricao||"")!==String(old.transcricao||"");
+  if(sKind==="criativo"&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
   if((sKind==="criativo"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
     p.transcriptionStatus="pending";p.transcriptionAttempts=0;p.transcriptionStartedAt="";p.transcriptionCompletedAt="";p.transcriptionLastError="";p.transcriptionNextRetryAt="";p.transcriptionProvider="faster-whisper";p.transcriptionVersion="1";p.transcricaoStatus="pending";
   }
@@ -5210,6 +5296,7 @@ async function saveSimpleForm(){
   const savedId=sEditingId, saved=offers.find(o=>o.id===savedId);
   if(saved){const v=videoForOffer(saved),emb=v?videoEmbedUrl(v):null;
     if(emb&&emb.type==="video"&&!((saved.data.transcricao||"").trim()))requestInstantTranscription(savedId,v);}
+  if(saved&&saved.data.kind==="criativo"&&String(saved.data.transcricao||"").trim()&&!String(saved.data.transcricaoPt||"").trim())scheduleCreativeTranslations([saved]);
   // criativo com link do Facebook e sem vídeo ainda → baixa o criativo automaticamente
   if(saved&&saved.data.kind==="criativo"&&isFbUrl(saved.data.linkAnuncio)&&!((saved.data.video||"").trim())&&!saved.data.fbIngestStatus&&!fbIngesting.has(savedId))
     triggerFbIngest(savedId,saved.data.linkAnuncio);

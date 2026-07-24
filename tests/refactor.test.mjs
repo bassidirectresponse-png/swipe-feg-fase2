@@ -11,6 +11,8 @@ const fn = await readFile(new URL("../netlify/functions/transcribe-file.mjs", im
 const backgroundFn = await readFile(new URL("../netlify/functions/transcribe-background.mjs", import.meta.url), "utf8");
 const transcriptFn = await readFile(new URL("../netlify/functions/transcript.mjs", import.meta.url), "utf8");
 const translateTranscriptFn = await readFile(new URL("../netlify/functions/translate-transcript.mjs", import.meta.url), "utf8");
+const translateCreatives = await readFile(new URL("../scripts/traduzir_transcricoes.py", import.meta.url), "utf8");
+const transcriptionWorkflow = await readFile(new URL("../.github/workflows/transcrever-videos.yml", import.meta.url), "utf8");
 const furtadoFn = await readFile(new URL("../netlify/functions/furtado.mjs", import.meta.url), "utf8");
 const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissector.mjs", import.meta.url), "utf8");
 const vslJobFn = await readFile(new URL("../netlify/functions/vsl-job.mjs", import.meta.url), "utf8");
@@ -143,6 +145,20 @@ test("Mega Brain acompanha o vídeo grifando a copy", () => {
   assert.match(html, /transcricaoWords=allWords/);
   assert.match(backgroundFn, /timestamp_granularities\[\]", "word"/);
   assert.match(backgroundFn, /data\.transcricaoWords = result\.words/);
+});
+
+test("Swipe de Criativos preserva original e oferece tradução PT-BR automática", () => {
+  assert.match(html, /transcricaoPt/);
+  assert.match(html, /wireTranscriptLanguageTabs/);
+  assert.match(html, />Original</);
+  assert.match(html, />Português(?: ✓)?</);
+  assert.match(html, /scheduleCreativeTranslations/);
+  assert.match(html, /transcricaoPtStatus:"done"/);
+  assert.match(translateCreatives, /data\.get\("kind"\) != "criativo"/);
+  assert.match(translateCreatives, /"transcricaoPt": translated/);
+  assert.match(translateCreatives, /original = str\(data\["transcricao"\]\)/);
+  assert.match(transcriptionWorkflow, /Traduzir transcrições para português/);
+  assert.match(transcriptionWorkflow, /python -u scripts\/traduzir_transcricoes\.py/);
 });
 
 test("Mega Brain importa novos cards e atualiza existentes por manifesto", () => {
