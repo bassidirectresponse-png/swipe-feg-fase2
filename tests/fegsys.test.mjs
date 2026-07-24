@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { aggregateSnapshot, buildQuery, buildSalesQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
+import { aggregateSnapshot, buildQuery, buildSalesAggregationProbe, buildSalesQuery, mergeFegsysSources, resolveRange } from "../netlify/functions/_fegsys-bigquery.mjs";
 import { matchDriveFiles, normalizeDriveName } from "../netlify/functions/_fegsys-drive.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -152,6 +152,13 @@ test("view passa a fornecer resultados oficiais automaticamente quando purchases
   assert.match(plan.query, /SAFE_CAST\(`purchases` AS FLOAT64\)/);
   assert.match(plan.query, /SAFE_CAST\(`revenue` AS FLOAT64\)/);
   assert.match(plan.query, /AS official_revenue_usd/);
+});
+
+test("diagnóstico compara soma bruta com venda única por criativo e dia", () => {
+  const query = buildSalesAggregationProbe(["data", "criativo", "quantidade_pedidos"].map(name => ({ name })));
+  assert.match(query, /SUM\(orders_sum\) AS orders_sum/);
+  assert.match(query, /SUM\(orders_max\) AS orders_max/);
+  assert.match(query, /MAX\(COALESCE\(SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\), 0\)\) AS orders_max/);
 });
 
 test("período personalizado é normalizado mesmo com datas invertidas", () => {

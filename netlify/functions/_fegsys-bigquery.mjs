@@ -153,6 +153,29 @@ GROUP BY 1, 2
 ORDER BY data DESC, spend_brl DESC` };
 }
 
+export function buildSalesAggregationProbe(fields) {
+  const f = fieldMap(fields);
+  if (!f.data || !f.criativo || !f.orders) return "";
+  return `
+SELECT
+  SUM(orders_sum) AS orders_sum,
+  SUM(orders_max) AS orders_max,
+  COUNT(*) AS creative_days
+FROM (
+  SELECT
+    DATE(${quoteField(f.data)}) AS data,
+    CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
+    SUM(${numberExpr(f.orders)}) AS orders_sum,
+    MAX(${numberExpr(f.orders)}) AS orders_max
+  FROM \`${VIEW}\`
+  WHERE DATE(${quoteField(f.data)}) BETWEEN DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 6 DAY)
+    AND CURRENT_DATE('America/Sao_Paulo')
+    AND ${quoteField(f.criativo)} IS NOT NULL
+    AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
+  GROUP BY 1, 2
+)`;
+}
+
 export function buildSalesQuery(fields) {
   const f = fieldMap(fields);
   if (!f.data || !f.criativo || !f.orders || !(f.official_revenue_usd || f.official_revenue_brl)) {
@@ -302,6 +325,13 @@ async function queryBigQuery(credential) {
   if (!table.ok) throw new Error(`não foi possível ler a estrutura da view (${table.status})`);
   const viewPlan = buildQuery(metadata.schema && metadata.schema.fields);
   const baseRaw = await runBigQueryQuery(headers, viewPlan.query, "vw_ads_criativo_diario");
+  const probeQuery = buildSalesAggregationProbe(metadata.schema && metadata.schema.fields);
+  const probeRaw = probeQuery ? await runBigQueryQuery(headers, probeQuery, "diagnóstico de agregação") : [];
+  const salesAggregationProbe = probeRaw[0] ? {
+    sum: +probeRaw[0].orders_sum || 0,
+    max: +probeRaw[0].orders_max || 0,
+    creativeDays: +probeRaw[0].creative_days || 0
+  } : null;
   const baseRows = numericRows(baseRaw, ["spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "orders", "official_revenue_brl", "official_revenue_usd", "google_conversions", "source_roas"]).map(row => ({
     data: String(row.data || ""),
     criativo: String(row.criativo || "").trim(),
@@ -349,7 +379,7 @@ async function queryBigQuery(credential) {
   return {
     rows: mergeFegsysSources(authoritativeBase, salesRows, []).filter(row => row.data && row.criativo),
     sourceStatus: {
-      media: { available: true, error: "" },
+      media: { available: true, error: "", salesAggregationProbe },
       sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
       meta: { available: true, error: "" }
     }

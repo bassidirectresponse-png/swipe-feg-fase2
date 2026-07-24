@@ -35,6 +35,7 @@ export default async () => {
         salesSource: snapshot.sourceStatus?.sales?.available !== false
           ? (snapshot.sourceStatus?.sales?.source || "marts_feg.mart_criativos_diario")
           : (snapshot.sourceStatus?.sales?.fallbackAvailable === true ? "gold_feg.vw_ads_criativo_diario" : ""),
+        salesAggregationProbe: snapshot.sourceStatus?.media?.salesAggregationProbe || null,
         salesError: snapshot.sourceStatus?.sales?.available === false ? safeSyncError(new Error(snapshot.sourceStatus?.sales?.error || "")) : "",
         meta: snapshot.sourceStatus?.meta?.available !== false,
         drive
