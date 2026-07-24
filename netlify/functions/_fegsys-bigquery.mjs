@@ -123,7 +123,15 @@ export function buildQuery(fields) {
     : "0";
   const salesAvailable = !!(f.orders && (f.official_revenue_usd || f.official_revenue_brl));
   const salesError = salesAvailable ? "" : `a vw_ads_criativo_diario não fornece ${[!f.orders ? "pedidos" : "", !(f.official_revenue_usd || f.official_revenue_brl) ? "faturamento" : ""].filter(Boolean).join(" nem ")}`;
-  return { salesAvailable, salesError, query: `
+  return {
+    salesAvailable,
+    salesError,
+    detectedFields: {
+      orders: f.orders,
+      revenueUsd: f.official_revenue_usd,
+      revenueBrl: f.official_revenue_brl
+    },
+    query: `
 SELECT
   DATE(${quoteField(f.data)}) AS data,
   CAST(${quoteField(f.criativo)} AS STRING) AS criativo,
@@ -150,7 +158,8 @@ WHERE DATE(${quoteField(f.data)}) >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'),
   AND ${quoteField(f.criativo)} IS NOT NULL
   AND TRIM(CAST(${quoteField(f.criativo)} AS STRING)) != ''
 GROUP BY 1, 2
-ORDER BY data DESC, spend_brl DESC` };
+ORDER BY data DESC, spend_brl DESC`
+  };
 }
 
 export function buildSalesAggregationProbe(fields) {
@@ -379,7 +388,7 @@ async function queryBigQuery(credential) {
   return {
     rows: mergeFegsysSources(authoritativeBase, salesRows, []).filter(row => row.data && row.criativo),
     sourceStatus: {
-      media: { available: true, error: "", salesAggregationProbe },
+      media: { available: true, error: "", salesAggregationProbe, detectedSalesFields: viewPlan.detectedFields },
       sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
       meta: { available: true, error: "" }
     }
