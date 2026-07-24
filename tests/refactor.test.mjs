@@ -352,6 +352,16 @@ test("Transcritor e Dissecador processam arquivos longos sem carregar o vídeo i
   assert.match(html, /timeScale:captured\/pcmDuration/);
 });
 
+test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perder a ordem", () => {
+  assert.match(html, /const TR_PIPELINE_DEPTH=2/);
+  assert.match(html, /function trOrderedPipeline\(process,commit,depth=TR_PIPELINE_DEPTH\)/);
+  assert.match(html, /pending\.push\(settle\(process\(value\)\)\)/);
+  assert.match(html, /if\(pending\.length>=depth\)await consume\(\)/);
+  assert.match(html, /await pipeline\.drain\(\)/);
+  assert.match(html, /preparando a próxima em paralelo/);
+  assert.match(html, /function trMapConcurrentOrdered\(values,mapper,depth=TR_PIPELINE_DEPTH\)/);
+});
+
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
   assert.match(html, /extra:validated\?`<div class="brand-bm-state/);
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);

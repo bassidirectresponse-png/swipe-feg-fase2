@@ -3129,6 +3129,7 @@ const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/fun
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
 const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3.5,TR_STREAM_STALL_MS=30000;
+const TR_PIPELINE_DEPTH=2;
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
 let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="";
 const TR_STORE="feg_transcricoes_v1";
@@ -3319,6 +3320,29 @@ function trWav(samples,rate){
   return new Blob([ab],{type:"audio/wav"});
 }
 function trDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function trOrderedPipeline(process,commit,depth=TR_PIPELINE_DEPTH){
+  const pending=[];
+  const settle=promise=>promise.then(value=>({ok:true,value}),error=>({ok:false,error}));
+  const consume=async()=>{
+    const result=await pending.shift();
+    if(!result.ok)throw result.error;
+    await commit(result.value);
+  };
+  return{
+    async push(value){
+      pending.push(settle(process(value)));
+      if(pending.length>=depth)await consume();
+    },
+    async drain(){while(pending.length)await consume();}
+  };
+}
+async function trMapConcurrentOrdered(values,mapper,depth=TR_PIPELINE_DEPTH){
+  const output=new Array(values.length),workers=[];
+  let cursor=0;
+  const worker=async()=>{for(;;){const index=cursor++;if(index>=values.length)return;output[index]=await mapper(values[index],index);}};
+  for(let i=0;i<Math.min(depth,values.length);i++)workers.push(worker());
+  await Promise.all(workers);return output;
+}
 function trFileKey(file){return [file.name,file.size,file.lastModified||0,trLang].join(":");}
 function trReadProgress(file){try{const p=JSON.parse(localStorage.getItem(TR_PROGRESS_KEY)||"null");return p&&p.key===trFileKey(file)?p:null;}catch(_){return null;}}
 function trSaveProgress(file,nextChunk,totalChunks){
@@ -3343,7 +3367,16 @@ async function trTranslateCurrent({save=false}={}){
   trTranslation="";trTranslationError="";trTranslationStatus="translating";renderTrOutput();
   try{
     if(/^(pt|portugu)/i.test(String(trDetLang||trLang))){trTranslation=trText;}
-    else{const chunks=trTranslationChunks(trText),token=await trToken(),translated=[];for(let i=0;i<chunks.length;i++){trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português${chunks.length>1?` · parte ${i+1}/${chunks.length}`:""}…`);translated.push(await trTranslatePart(chunks[i],i+1,chunks.length,token));}trTranslation=translated.filter(Boolean).join("\n\n");}
+    else{
+      const chunks=trTranslationChunks(trText),token=await trToken();let completed=0;
+      const translated=await trMapConcurrentOrdered(chunks,async(chunk,i)=>{
+        trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português${chunks.length>1?` · ${completed}/${chunks.length} partes concluídas`:""}…`);
+        const value=await trTranslatePart(chunk,i+1,chunks.length,token);completed++;
+        trSetStatus(`<span class="vidup__spin"></span>Traduzindo para português · ${completed}/${chunks.length} partes concluídas…`);
+        return value;
+      });
+      trTranslation=translated.filter(Boolean).join("\n\n");
+    }
     trTranslationStatus="done";renderTrOutput();if(save)await trPersist();return true;
   }catch(error){trTranslationStatus="error";trTranslationError=(error&&error.message)||"Não foi possível traduzir agora.";renderTrOutput();return false;}
 }
@@ -3397,18 +3430,28 @@ async function trHandleFile(file){
   const saved=trReadProgress(file);let fullText=saved?String(saved.text||""):"",allSegs=saved&&Array.isArray(saved.segments)?saved.segments:[],allWords=saved&&Array.isArray(saved.words)?saved.words:[],detLang=saved?String(saved.language||""):"",startChunk=saved?Math.max(0,+saved.nextChunk||0):0,totalDur=+saved?.duration||0,currentPart=startChunk,totalParts=+saved?.totalChunks||0;
   if(saved){trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();}
   try{
+    const pipeline=trOrderedPipeline(
+      async chunk=>{
+        trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${chunk.totalChunks>1?` parte ${chunk.index+1}/${chunk.totalChunks}`:""} · preparando a próxima em paralelo…`);
+        const part=await trTranscribeSlice(chunk.samples,chunk.rate,token,trLang,chunk.offset,msg=>trSetStatus(`<span class="vidup__spin"></span>${esc(msg)} <b>Parte ${chunk.index+1}/${chunk.totalChunks}</b>`),0,chunk.timeScale);
+        return{chunk,part};
+      },
+      async({chunk,part})=>{
+        currentPart=chunk.index;
+        if(part.text)fullText+=(fullText?" ":"")+part.text;
+        allSegs.push(...part.segments);allWords.push(...part.words);if(part.language&&!detLang)detLang=part.language;
+        trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();trSaveProgress(file,chunk.index+1,chunk.totalChunks);
+      }
+    );
     await trForEachAudioChunk(file,TR_CHUNK_SEC,{
       startChunk,
       onPlan:async plan=>{totalDur=plan.duration;totalParts=plan.totalChunks;startChunk=Math.min(startChunk,totalParts);trDur=totalDur;if(saved)renderTrOutput();},
       onStatus:state=>{if(state.message)trSetStatus(`<span class="vidup__spin"></span>${esc(state.message)}`);else if(state.current!=null)trSetStatus(`<span class="vidup__spin"></span>Extraindo parte ${state.index+1}/${state.totalChunks} · ${trTime(state.current)} de ${trTime(totalDur)}…`);},
       onChunk:async chunk=>{
-        currentPart=chunk.index;trSetStatus(`<span class="vidup__spin"></span>Transcrevendo${chunk.totalChunks>1?` parte ${chunk.index+1}/${chunk.totalChunks}`:""}…`);
-        const part=await trTranscribeSlice(chunk.samples,chunk.rate,token,trLang,chunk.offset,msg=>trSetStatus(`<span class="vidup__spin"></span>${esc(msg)} <b>Parte ${chunk.index+1}/${chunk.totalChunks}</b>`),0,chunk.timeScale);
-        if(part.text)fullText+=(fullText?" ":"")+part.text;
-        allSegs.push(...part.segments);allWords.push(...part.words);if(part.language&&!detLang)detLang=part.language;
-        trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;renderTrOutput();trSaveProgress(file,chunk.index+1,chunk.totalChunks);
+        currentPart=chunk.index;await pipeline.push(chunk);
       }
     });
+    await pipeline.drain();
   }catch(e){trBusy=false;if(drop)drop.classList.remove("busy");trRetryStatus(`A parte ${Math.min(currentPart+1,totalParts||currentPart+1)} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
@@ -3689,17 +3732,26 @@ async function vslRun(){
     vslSetStatus(1,"Preparando o áudio…",4);
     const cacheKey=vslFileCacheKey(vslFile,vslLang);if(vslCacheKey!==cacheKey){vslChunkCache.clear();vslCacheKey=cacheKey;vslLoadProgress(cacheKey);}
     let resumeAt=0;while(vslChunkCache.has(resumeAt)){vslAppendPart(vslChunkCache.get(resumeAt));resumeAt++;}
+    const pipeline=trOrderedPipeline(
+      async chunk=>{
+        const pct=8+Math.round((chunk.index/chunk.totalChunks)*48),cached=vslChunkCache.get(chunk.index);
+        vslSetStatus(1,cached?`Retomando parte ${chunk.index+1} de ${chunk.totalChunks} já concluída…`:`Transcrevendo parte ${chunk.index+1} de ${chunk.totalChunks} · preparando a próxima em paralelo…`,pct);
+        const part=cached||await vslTranscribeSlice(chunk.samples,chunk.rate,token,vslLang,chunk.offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${chunk.index+1} de ${chunk.totalChunks}: ${msg}`,pct),0,chunk.timeScale);
+        return{chunk,part,cached};
+      },
+      async({chunk,part,cached})=>{
+        if(!cached){vslChunkCache.set(chunk.index,part);vslSaveProgress(cacheKey);}
+        vslAppendPart(part);
+      }
+    );
     await trForEachAudioChunk(vslFile,VSL_CHUNK_SEC,{
       startChunk:resumeAt,
       signal:vslAbort.signal,
       onPlan:async plan=>{vslDuration=plan.duration;vslRenderFile();},
       onStatus:state=>{if(state.message)vslSetStatus(1,state.message,5);else if(state.current!=null)vslSetStatus(1,`Extraindo parte ${state.index+1} de ${state.totalChunks} · ${trTime(state.current)} de ${trTime(vslDuration)}…`,6+Math.round((state.index/state.totalChunks)*45));},
-      onChunk:async chunk=>{
-        const pct=8+Math.round((chunk.index/chunk.totalChunks)*48),cached=vslChunkCache.get(chunk.index);vslSetStatus(1,cached?`Retomando parte ${chunk.index+1} de ${chunk.totalChunks} já concluída…`:`Transcrevendo parte ${chunk.index+1} de ${chunk.totalChunks}…`,pct);
-        const part=cached||await vslTranscribeSlice(chunk.samples,chunk.rate,token,vslLang,chunk.offset,vslAbort.signal,msg=>vslSetStatus(1,`Parte ${chunk.index+1} de ${chunk.totalChunks}: ${msg}`,pct),0,chunk.timeScale);
-        if(!cached){vslChunkCache.set(chunk.index,part);vslSaveProgress(cacheKey);}vslAppendPart(part);
-      }
+      onChunk:chunk=>pipeline.push(chunk)
     });
+    await pipeline.drain();
     if(!vslRaw.trim())throw new Error("nenhuma fala foi detectada na VSL");
     vslTranscriptDoc=vslBuildCompleteTranscript();vslRenderDocs();
     vslSetStatus(2,vslFile.type.startsWith("video/")?"Analisando as imagens do vídeo…":"Arquivo de áudio: seguindo apenas com o conteúdo falado.",58);
