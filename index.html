@@ -3128,7 +3128,7 @@ async function furRun(){
 const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
-const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_STALL_MS=30000;
+const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3.5,TR_STREAM_STALL_MS=30000;
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
 let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="";
 const TR_STORE="feg_transcricoes_v1";
@@ -3249,13 +3249,15 @@ async function trCaptureLargeFile(file,chunkSec,options){
   try{
     await trWaitMedia(media,"loadedmetadata",30000,signal);
     const duration=isFinite(media.duration)?media.duration:0;if(!duration)throw new Error("não consegui identificar a duração do arquivo");
+    const streamRate=duration>=90*60?TR_STREAM_VERY_LONG_RATE:duration>=45*60?TR_STREAM_FAST_RATE:TR_STREAM_PLAYBACK_RATE;
     const totalChunks=Math.max(1,Math.ceil(duration/chunkSec));if(onPlan)await onPlan({duration,totalChunks,mode:"stream"});
+    if(onStatus)onStatus({preparing:true,message:`Preparação acelerada em ${String(streamRate).replace(".",",")}×. O progresso é salvo a cada parte…`});
     try{if(navigator.wakeLock)wakeLock=await navigator.wakeLock.request("screen");}catch(_){}
     try{ctx=new AC({sampleRate:48000});}catch(_){ctx=new AC();}
     if(ctx.state==="suspended")await ctx.resume();
     source=ctx.createMediaElementSource(media);destination=ctx.createMediaStreamDestination();silent=ctx.createGain();silent.gain.value=0;
     source.connect(destination);source.connect(silent);silent.connect(ctx.destination);
-    media.preservesPitch=true;media.playbackRate=TR_STREAM_PLAYBACK_RATE;
+    media.preservesPitch=true;media.playbackRate=streamRate;
     for(let index=Math.max(0,startChunk);index<totalChunks;index++){
       if(signal&&signal.aborted)throw trAbortError();
       const expectedStart=index*chunkSec,end=Math.min(duration,(index+1)*chunkSec);await trSeekMedia(media,expectedStart,signal);

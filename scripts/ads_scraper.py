@@ -248,6 +248,26 @@ def update_history(data, total, now):
     return hist
 
 
+def last_stable_ads(data, now):
+    """Retorna o último total positivo anterior ao dia atual."""
+    today = now.strftime("%Y-%m-%d")
+    hist = data.get("adsHistory")
+    if isinstance(hist, list):
+        for point in reversed(hist):
+            if not isinstance(point, dict) or point.get("d") == today:
+                continue
+            try:
+                value = int(point.get("n"))
+                if value > 0:
+                    return value
+            except (TypeError, ValueError):
+                pass
+    try:
+        return max(0, int(re.sub(r"\D", "", str(data.get("numAdsAtivos") or "0")) or "0"))
+    except (TypeError, ValueError):
+        return 0
+
+
 # =============================== main ======================================
 def main():
     run_started = time.monotonic()
@@ -314,6 +334,7 @@ def main():
                     any_ok = True
                     counts.append(c)
                     print(f"   lib {j}: {c} ads")
+            stable = last_stable_ads(data, now)
             if not any_ok:
                 final = attempts >= MAX_ATTEMPTS
                 delay_minutes = min(12 * 60, 20 * (2 ** max(0, attempts - 1)))
@@ -326,8 +347,34 @@ def main():
                 fail += 1
                 continue
 
+            # Só troca o total quando todas as bibliotecas responderem.
+            if len(counts) != len(links):
+                data["numAdsAtivos"] = str(stable) if stable else str(data.get("numAdsAtivos") or "")
+                data["analysisStatus"] = "retry_scheduled"
+                data["analysisLastError"] = "partial_library_read"
+                data["analysisNextRetryAt"] = (now + timedelta(minutes=20)).isoformat().replace("+00:00", "Z")
+                if not DRY_RUN:
+                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                log("library_analysis_job_deferred", offer_id=row["id"], reason="partial_library_read", libraries_succeeded=len(counts), libraries_total=len(links), preserved=stable)
+                skipped += 1
+                continue
+
             total = sum(counts)
             prev = data.get("numAdsAtivos")
+            # Uma leitura zero só é aceita após três ciclos completos seguidos.
+            zero_reads = max(0, int(data.get("analysisZeroReads") or 0))
+            if total == 0 and stable > 0 and zero_reads < 2:
+                data["numAdsAtivos"] = str(stable)
+                data["analysisZeroReads"] = zero_reads + 1
+                data["analysisStatus"] = "retry_scheduled"
+                data["analysisLastError"] = "zero_awaiting_confirmation"
+                data["analysisNextRetryAt"] = (now + timedelta(minutes=20)).isoformat().replace("+00:00", "Z")
+                if not DRY_RUN:
+                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                log("library_analysis_job_deferred", offer_id=row["id"], reason="zero_awaiting_confirmation", zero_reads=zero_reads + 1, preserved=stable)
+                skipped += 1
+                continue
+            data["analysisZeroReads"] = zero_reads + 1 if total == 0 else 0
             data["numAdsAtivos"] = str(total)
             data["adsUpdatedAt"] = now.isoformat()
             data["adsHistory"] = update_history(data, total, now)

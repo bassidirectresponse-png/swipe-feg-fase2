@@ -320,6 +320,9 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsScraper, /links = library_links\(d\)/);
   assert.match(adsScraper, /"Range": f"\{start\}-\{start \+ page_size - 1\}"/);
   assert.match(adsScraper, /start \+= page_size/);
+  assert.match(adsScraper, /def last_stable_ads\(data, now\):/);
+  assert.match(adsScraper, /reason="partial_library_read"/);
+  assert.match(adsScraper, /reason="zero_awaiting_confirmation"/);
 });
 
 test("Transcritor preserva o arquivo até a leitura e entrega original com tradução PT-BR", () => {
@@ -337,6 +340,8 @@ test("Transcritor preserva o arquivo até a leitura e entrega original com tradu
 test("Transcritor e Dissecador processam arquivos longos sem carregar o vídeo inteiro na memória", () => {
   assert.match(html, /TR_MEMORY_MAX_BYTES=192\*1024\*1024/);
   assert.match(html, /TR_MEMORY_MAX_SEC=30\*60/);
+  assert.match(html, /TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3\.5/);
+  assert.match(html, /duration>=90\*60\?TR_STREAM_VERY_LONG_RATE:duration>=45\*60\?TR_STREAM_FAST_RATE/);
   assert.match(html, /async function trCaptureLargeFile\(file,chunkSec,options\)/);
   assert.match(html, /new MediaRecorder\(destination\.stream/);
   assert.match(html, /Arquivo grande: leitura segura por partes/);
