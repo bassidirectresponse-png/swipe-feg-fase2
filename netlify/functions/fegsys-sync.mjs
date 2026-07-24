@@ -47,6 +47,7 @@ export default async request => {
           : (snapshot.sourceStatus?.sales?.fallbackAvailable === true ? "gold_feg.vw_ads_criativo_diario" : ""),
         salesAggregationProbe: snapshot.sourceStatus?.media?.salesAggregationProbe || null,
         detectedSalesFields: snapshot.sourceStatus?.media?.detectedSalesFields || null,
+        availableFields: snapshot.sourceStatus?.media?.availableFields || [],
         salesError: snapshot.sourceStatus?.sales?.available === false ? safeSyncError(new Error(snapshot.sourceStatus?.sales?.error || "")) : "",
         meta: snapshot.sourceStatus?.meta?.available !== false,
         drive

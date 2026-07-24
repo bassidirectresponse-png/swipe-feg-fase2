@@ -388,7 +388,13 @@ async function queryBigQuery(credential) {
   return {
     rows: mergeFegsysSources(authoritativeBase, salesRows, []).filter(row => row.data && row.criativo),
     sourceStatus: {
-      media: { available: true, error: "", salesAggregationProbe, detectedSalesFields: viewPlan.detectedFields },
+      media: {
+        available: true,
+        error: "",
+        salesAggregationProbe,
+        detectedSalesFields: viewPlan.detectedFields,
+        availableFields: (metadata.schema?.fields || []).map(field => String(field.name || "")).filter(Boolean)
+      },
       sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
       meta: { available: true, error: "" }
     }
