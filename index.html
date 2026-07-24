@@ -2719,13 +2719,13 @@ async function loadFegsysBrain(force=false){
 }
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
-  const unavailable=[];if(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false)unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
+  const unavailable=[];if(!fegsysSalesReady(fegsysSourceStatus))unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
   const driveRoots=fegsysSourceStatus&&fegsysSourceStatus.drive&&Array.isArray(fegsysSourceStatus.drive.roots)?fegsysSourceStatus.drive.roots:[];
   const inaccessibleRoots=driveRoots.filter(root=>!root.available).length;if(inaccessibleRoots)unavailable.push(`${inaccessibleRoots} pasta${inaccessibleRoots>1?"s":""} do Drive aguardando compartilhamento`);
   const driveReady=fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files>0?` · ${fegsysSourceStatus.drive.matchedVideos||0} vídeos e ${fegsysSourceStatus.drive.matchedCopies||0} copies encontrados`:"";
   const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
-  const totals=fegsysTotals||{},salesReady=!(fegsysSourceStatus&&fegsysSourceStatus.sales&&fegsysSourceStatus.sales.available===false),official=value=>salesReady?value:"—";
+  const totals=fegsysTotals||{},salesReady=fegsysSalesReady(fegsysSourceStatus),official=value=>salesReady?value:"—";
   const resultLabel=salesReady?"Pedidos":"Conversões Google",resultValue=salesReady?fmtNum(totals.conversions||0):fmtNum(totals.google_conversions||0);
   return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>${resultLabel}</span><strong class="accent">${resultValue}</strong></span><span class="fegsys-summary__item"><span>Faturamento</span><strong class="accent">${official(esc(fegsysMoney(totals.official_revenue_usd||0,"USD")))}</strong></span><span class="fegsys-summary__item"><span>ROAS</span><strong>${official((+totals.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}))}</strong></span><span class="fegsys-summary__item"><span>Investimento</span><strong>${esc(fegsysMoney(totals.spend_usd||0,"USD"))}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span><span class="fegsys-summary__item"><span>CPC</span><strong>${esc(fegsysMoney(totals.cpc_usd||0,"USD"))}</strong></span></div></div></section>`;
 }
@@ -3958,11 +3958,12 @@ function wireVideoTranscripts(root){
 }
 function wireBrainTranscript(root){wireVideoTranscripts(root);}
 function fegsysRate(value){const n=+value||0;return fegsysPercent(Math.abs(n)<=1?n*100:n);}
+function fegsysSalesReady(sources){const sales=sources&&sources.sales;return !sales||sales.available!==false||sales.fallbackAvailable===true;}
 function fegsysNumber(value,decimals=0){return (+value||0).toLocaleString("pt-BR",{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
 function fegsysMetricCell(label,value,accent=false){return `<div class="fegsys-detail__metric${accent?" is-accent":""}"><span>${esc(label)}</span><strong>${esc(String(value))}</strong></div>`;}
 function fegsysDetailsSections(d,num){
   const m=d.fegsysMetrics||{};
-  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),officialValue=value=>salesReady?value:"—";
+  const salesReady=fegsysSalesReady(d.fegsysSources),officialValue=value=>salesReady?value:"—";
   const official=[
     fegsysMetricCell("Pedidos",officialValue(fmtNum(m.orders||m.conversions||0)),true),
     fegsysMetricCell("Faturamento",officialValue(fegsysMoney(m.official_revenue_usd||0,"USD")),true),
@@ -4010,7 +4011,7 @@ function fegsysDetailsSections(d,num){
 }
 function fegsysBrainCard(o){
   const d=o.data||{},m=d.fegsysMetrics||{},range=d.fegsysRange||{};
-  const salesReady=!(d.fegsysSources&&d.fegsysSources.sales&&d.fegsysSources.sales.available===false),official=value=>salesReady?value:"—";
+  const salesReady=fegsysSalesReady(d.fegsysSources),official=value=>salesReady?value:"—";
   const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
   const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
   const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});

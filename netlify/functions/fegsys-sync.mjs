@@ -31,6 +31,10 @@ export default async () => {
       rows: snapshot.rows.length,
       sources: {
         sales: snapshot.sourceStatus?.sales?.available !== false,
+        salesFallback: snapshot.sourceStatus?.sales?.fallbackAvailable === true,
+        salesSource: snapshot.sourceStatus?.sales?.available !== false
+          ? (snapshot.sourceStatus?.sales?.source || "marts_feg.mart_criativos_diario")
+          : (snapshot.sourceStatus?.sales?.fallbackAvailable === true ? "gold_feg.vw_ads_criativo_diario" : ""),
         salesError: snapshot.sourceStatus?.sales?.available === false ? safeSyncError(new Error(snapshot.sourceStatus?.sales?.error || "")) : "",
         meta: snapshot.sourceStatus?.meta?.available !== false,
         drive

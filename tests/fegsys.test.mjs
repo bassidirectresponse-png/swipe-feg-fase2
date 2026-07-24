@@ -103,6 +103,9 @@ test("Swipe replica a fonte oficial de vendas usada pelo FEGSYS em USD nativo", 
   assert.match(coreFn, /daily-v5/);
   assert.match(html, /totals\.official_revenue_usd\|\|0,"USD"/);
   assert.match(html, /totals\.spend_usd\|\|0,"USD"/);
+  assert.match(html, /sales\.fallbackAvailable===true/);
+  assert.match(syncFn, /salesFallback/);
+  assert.match(syncFn, /gold_feg\.vw_ads_criativo_diario/);
 });
 
 test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa o card", () => {
