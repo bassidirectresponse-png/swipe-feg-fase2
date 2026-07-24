@@ -880,6 +880,49 @@
   .chat__send:disabled,.chat__send.is-busy{opacity:.55;pointer-events:none;box-shadow:none;}
   .chat__send.is-busy .ico{animation:spin .8s linear infinite;}
   @media(max-width:720px){.chat{height:calc(100dvh - var(--topbar-h));padding:0 12px;}.chat--feguinho .chat__thread{padding-inline:4px;}.chat--feguinho .chat__input{min-height:56px;}.chat__intro,.chat__intro.is-4{grid-template-columns:1fr;}.chat__wtitle{font-size:1.42rem;}.chat__wsub{font-size:.95rem;}.chat__md{font-size:.98rem;}.chat__sel{max-width:46%;}}
+
+  /* Feguinho + Furtado — composer inspirado em uma conversa de IA */
+  .chat--animated{isolation:isolate;max-width:min(82rem,100%);overflow:hidden;}
+  .chat--animated::before,.chat--animated::after{content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:50%;filter:blur(88px);opacity:.12;}
+  .chat--animated::before{width:360px;height:360px;left:5%;top:8%;background:var(--accent);}
+  .chat--animated::after{width:300px;height:300px;right:6%;bottom:7%;background:color-mix(in srgb,var(--accent) 42%,#6f79ff);}
+  :root[data-theme="light"] .chat--animated::before,:root[data-theme="light"] .chat--animated::after{opacity:.055;}
+  .chat--animated .chat__top{min-height:48px;padding:10px 8px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);}
+  .chat--animated .chat__thread{padding:24px clamp(8px,3vw,46px) 32px;}
+  .chat--animated .chat__welcome{max-width:58rem;margin:auto;padding-block:32px;}
+  .chat--animated .chat__mark{width:58px;height:58px;margin-bottom:22px;border-radius:14px;background:var(--accent);box-shadow:none;}
+  .chat--animated .chat__mark .ico{width:27px;height:27px;}
+  .chat--animated .chat__wtitle{font-size:2rem;font-weight:650;letter-spacing:-.035em;line-height:1.15;text-wrap:balance;}
+  .chat--animated .chat__wsub{max-width:680px;margin-top:10px;font-size:.94rem;line-height:1.58;text-wrap:pretty;}
+  .chat--animated .chat__intro{display:flex;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:900px;margin-top:28px;gap:8px;}
+  .chat--animated .chat__icard{flex:1 1 230px;max-width:286px;min-height:118px;padding:13px 14px;border-radius:12px;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(12px);}
+  .chat--animated .chat__icard:hover{transform:translateY(-1px);box-shadow:none;background:var(--surface-2);}
+  .chat--animated .chat__composer{width:100%;max-width:68rem;margin-inline:auto;padding:8px 4px calc(env(safe-area-inset-bottom,0px) + 16px);background:linear-gradient(180deg,transparent,var(--bg) 28%);}
+  .chat--animated .chat__modes{justify-content:center;margin-bottom:9px;}
+  .chat--animated .chat__mode{min-height:34px;padding:6px 12px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);}
+  .chat--animated .chat__modehint{justify-content:center;max-width:760px;margin:0 auto 9px;text-align:center;}
+  .chat--animated .chat__box{padding:14px 16px 12px;border-radius:16px;background:color-mix(in srgb,var(--surface-2) 92%,transparent);backdrop-filter:blur(18px);box-shadow:none;}
+  .chat--animated .chat__box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .chat--animated .chat__input{min-height:58px;max-height:32dvh;padding:2px 4px;font-size:.98rem;line-height:1.55;}
+  .chat--animated .chat__boxfoot{padding-top:10px;border-top:1px solid var(--border);margin-top:8px;}
+  .chat--animated .chat__send{width:auto;min-width:92px;height:38px;padding:0 15px;display:inline-flex;gap:8px;border-radius:9px;box-shadow:none;font-size:.82rem;font-weight:750;}
+  .chat--animated .chat__send:hover{transform:none;filter:brightness(1.04);box-shadow:none;}
+  .chat--animated .chat__send span{display:inline;}
+  .chat--animated .chat__msg--user .chat__bubble{background:var(--surface-2);border-radius:14px 14px 4px 14px;}
+  .chat--animated .chat__av{border-radius:8px;background:var(--accent);}
+  @media(max-width:720px){
+    .chat--animated::before,.chat--animated::after{display:none;}
+    .chat--animated .chat__thread{padding-inline:2px;}
+    .chat--animated .chat__welcome{padding-block:20px;}
+    .chat--animated .chat__wtitle{font-size:1.55rem;}
+    .chat--animated .chat__intro{display:grid;grid-template-columns:1fr;width:100%;}
+    .chat--animated .chat__icard{max-width:none;min-height:0;}
+    .chat--animated .chat__modes{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px;}
+    .chat--animated .chat__mode{white-space:nowrap;}
+    .chat--animated .chat__modehint{justify-content:flex-start;text-align:left;}
+    .chat--animated .chat__send{min-width:42px;padding-inline:11px;}
+    .chat--animated .chat__send span{display:none;}
+  }
   .ccdot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;}
   .ccdot--on{background:var(--accent);animation:ccpulse 1s ease-in-out infinite;}
   .ccdot--done{background:var(--accent);}
@@ -2870,7 +2913,7 @@ function renderCopyChief(){
   const area=$("#gridArea");if(!area)return;
   if($("#cchief"))return; // já montado — não destrói a conversa em andamento
   const icard=k=>{const t=CC_TOOLS[k];return `<button type="button" class="chat__icard" data-setmode="${k}"><div class="chat__icard__t">${ic(t.icon)}${esc(t.label)}</div><p>${esc(t.desc)}</p><span class="chat__icard__go">${ic("wand")}Usar este modo</span></button>`;};
-  area.innerHTML=`<div class="chat chat--feguinho" id="cchief">
+  area.innerHTML=`<div class="chat chat--feguinho chat--animated" id="cchief">
     <div class="chat__top"><strong>Feguinho — Copy Chief IA</strong><span class="chat__beta">Beta</span></div>
     <div class="chat__thread" id="ccThread">
       <div class="chat__welcome">
@@ -2890,7 +2933,7 @@ function renderCopyChief(){
             <select id="ccNicho" class="chat__sel" title="Nicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select>
             <div class="chat__seg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div>
           </div>
-          <button class="chat__send" id="ccRun" aria-label="Enviar">${ic("send")}</button>
+          <button class="chat__send" id="ccRun" aria-label="Enviar">${ic("send")}<span>Enviar</span></button>
         </div>
       </div>
     </div>
@@ -2989,7 +3032,7 @@ function renderFurtado(){
   if($("#furtado"))return;
   if(!furState.nicho)furState.nicho=NICHOS[0];
   const pcard=(p,i)=>`<button type="button" class="chat__icard" data-setphase="${p.key}"><div class="chat__icard__t">${ic(p.icon)}${i+1} · ${esc(p.label)}</div><p>${esc(p.desc)}</p><span class="chat__icard__go">${ic("wand")}Ir para a fase ${i+1}</span></button>`;
-  area.innerHTML=`<div class="chat furtado" id="furtado">
+  area.innerHTML=`<div class="chat furtado chat--animated" id="furtado">
     <div class="chat__top">
       <div class="fur__docs" id="furDocs" title="Documentos desta conversa (encadeados em memória)"></div>
       <button class="fur__reset" id="furReset" title="Começar uma conversa nova (limpa Bíblia, VOC e Briefing desta sessão)">${ic("plus")}Nova conversa</button>
@@ -3010,7 +3053,7 @@ function renderFurtado(){
         <textarea id="furInput" class="chat__input" rows="1"></textarea>
         <div class="chat__boxfoot">
           <div class="chat__inline" id="furControls"></div>
-          <button class="chat__send" id="furRun" aria-label="Enviar">${ic("send")}</button>
+          <button class="chat__send" id="furRun" aria-label="Enviar">${ic("send")}<span>Enviar</span></button>
         </div>
       </div>
     </div>
