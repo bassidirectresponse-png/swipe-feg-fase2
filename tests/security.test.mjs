@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import {
   assertSafeRemoteUrl,
@@ -61,6 +62,12 @@ test("CSP remove script inline genérico e dependências externas usam SRI", () 
   assert.doesNotMatch(policy.match(/script-src[^;]+/)?.[0] || "", /unsafe-inline/);
   assert.match(policy, /sha256-/);
   assert.match(policy, /upgrade-insecure-requests/);
+  const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+  assert.ok(inlineScripts.length > 0);
+  for (const script of inlineScripts) {
+    const hash = `sha256-${createHash("sha256").update(script).digest("base64")}`;
+    assert.match(policy, new RegExp(hash.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
   const externalScripts = [...html.matchAll(/<script\s+[^>]*src="https?:\/\/[^"]+"[^>]*>/g)].map(match => match[0]);
   assert.ok(externalScripts.length >= 2);
   for (const script of externalScripts) {
