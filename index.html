@@ -1125,6 +1125,40 @@
   body.route-detail-full{overflow:auto!important;}
   body.route-detail-full #viewOverlay{position:static;display:block;background:transparent;backdrop-filter:none;padding:0;overflow:visible;}
   body.route-detail-full #viewOverlay .modal{max-width:none;border-radius:0;border-left:0;border-right:0;margin:0;box-shadow:none;}
+
+  /* Brilho direcional — realça somente superfícies clicáveis e acompanha o ponteiro */
+  .card,.chat__icard,.ccttcard{
+    --glow-x:50%;
+    --glow-y:50%;
+    --glow-alpha:0;
+    position:relative;
+    isolation:isolate;
+  }
+  .card::before,.chat__icard::before,.ccttcard::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:4;
+    padding:1px;
+    border-radius:inherit;
+    pointer-events:none;
+    opacity:var(--glow-alpha);
+    background:radial-gradient(190px circle at var(--glow-x) var(--glow-y),rgba(229,255,45,.82),rgba(229,255,45,.2) 35%,transparent 68%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    transition:opacity .2s var(--ease);
+  }
+  .card.is-pointer-glow,.chat__icard.is-pointer-glow,.ccttcard.is-pointer-glow,
+  .card:focus-within,.chat__icard:focus-visible,.ccttcard:focus-visible{--glow-alpha:1;}
+  :root[data-theme="light"] .card::before,
+  :root[data-theme="light"] .chat__icard::before,
+  :root[data-theme="light"] .ccttcard::before{
+    background:radial-gradient(190px circle at var(--glow-x) var(--glow-y),rgba(112,135,0,.88),rgba(139,168,0,.18) 38%,transparent 68%);
+  }
+  @media(hover:none),(prefers-reduced-motion:reduce){
+    .card::before,.chat__icard::before,.ccttcard::before{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -5034,6 +5068,31 @@ async function saveSimpleForm(){
 function attemptCloseSimpleForm(){if(!sFormDirty){closeOverlay("#simpleFormOverlay");return;}pendingCloseForm="simple";openOverlay("#confirmOverlay");}
 $("#simpleFormSave").addEventListener("click",async()=>{if(await saveSimpleForm())toast("Salvo");});
 $("#simpleFormClose").addEventListener("click",attemptCloseSimpleForm);
+
+/* Um único listener atende inclusive cards criados depois de filtros/paginação. */
+function initPointerGlow(){
+  if(!window.matchMedia("(hover:hover) and (pointer:fine)").matches||window.matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const selector=".card,.chat__icard,.ccttcard";
+  let active=null,lastX=0,lastY=0,raf=0;
+  const paint=()=>{
+    raf=0;
+    const next=document.elementFromPoint(lastX,lastY)?.closest(selector)||null;
+    if(next!==active){
+      if(active)active.classList.remove("is-pointer-glow");
+      active=next;
+      if(active)active.classList.add("is-pointer-glow");
+    }
+    if(!active)return;
+    const rect=active.getBoundingClientRect();
+    active.style.setProperty("--glow-x",(lastX-rect.left)+"px");
+    active.style.setProperty("--glow-y",(lastY-rect.top)+"px");
+  };
+  const schedule=()=>{if(!raf)raf=requestAnimationFrame(paint);};
+  document.addEventListener("pointermove",e=>{lastX=e.clientX;lastY=e.clientY;schedule();},{passive:true});
+  document.addEventListener("pointerleave",()=>{if(active)active.classList.remove("is-pointer-glow");active=null;});
+  window.addEventListener("scroll",schedule,{passive:true});
+}
+initPointerGlow();
 
 startAuth();
 </script>

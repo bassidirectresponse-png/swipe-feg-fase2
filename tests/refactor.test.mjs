@@ -48,6 +48,13 @@ test("Furtado compartilha o mesmo padrão visual de conversa", () => {
   assert.match(html, /id="furRun"[^>]*>[^<]*.*?<span>Enviar<\/span>/s);
 });
 
+test("cards clicáveis usam brilho direcional leve e acessível", () => {
+  assert.match(html, /\.card,.chat__icard,.ccttcard\{\s*--glow-x:50%/);
+  assert.match(html, /function initPointerGlow\(\)/);
+  assert.match(html, /requestAnimationFrame\(paint\)/);
+  assert.match(html, /@media\(hover:none\),\(prefers-reduced-motion:reduce\)/);
+});
+
 test("áreas autenticadas não repetem o hero da marca", () => {
   assert.doesNotMatch(html, /<h1 class="impact"/);
   assert.doesNotMatch(html, /id="pageSub"/);
