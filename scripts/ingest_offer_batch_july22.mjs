@@ -55,15 +55,11 @@ const cleanUrl = value => {
 };
 const sectionOf = row => row?.data?.kind || "oferta";
 const namesOf = row => [row?.data?.nomeOferta, row?.data?.nomeMarca].map(textKey).filter(Boolean);
-const domainKeysOf = row => (row?.data?.dominios || []).flatMap(item => [item.linkDominio, item.linkCheckout]).map(cleanUrl).filter(Boolean);
-
 function matches(item, row) {
   const rowSection = sectionOf(row);
   if (item.section === "brandsgeneral" ? rowSection !== "brandsgeneral" : rowSection !== "oferta") return false;
   const wantedNames = [item.name, item.brand, ...(item.aliases || [])].map(textKey);
-  if (namesOf(row).some(name => wantedNames.includes(name))) return true;
-  const wantedDomains = item.domains.flatMap(entry => [entry.offer, entry.checkout]).map(cleanUrl).filter(Boolean);
-  return domainKeysOf(row).some(key => wantedDomains.includes(key));
+  return namesOf(row).some(name => wantedNames.includes(name));
 }
 
 const uniqueBy = (current, added, field) => {
@@ -187,4 +183,3 @@ for (const plan of plans) {
 }
 
 console.log(JSON.stringify({ ok: true, total: results.length, inserted: results.filter(x => x.action === "inserted").length, updated: results.filter(x => x.action === "updated").length, duplicatesRemoved: results.reduce((sum, x) => sum + x.duplicatesRemoved, 0) }));
-

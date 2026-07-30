@@ -68,3 +68,12 @@ test("Mounjamelt não recebe VSL inventada", () => {
   assert.equal(offer.domains[0].offer, "");
   assert.match(offer.domains[0].checkout, /buygoods\.com/);
 });
+
+test("consolidação de ofertas exige identidade nominal do produto", async () => {
+  const july22 = await readFile(new URL("scripts/ingest_offer_batch_july22.mjs", root), "utf8");
+  for (const source of [batch, july22]) {
+    const matcher = source.match(/function matches\(item, row\) \{[\s\S]*?\n\}/)?.[0] || "";
+    assert.match(matcher, /return namesOf\(row\)\.some/);
+    assert.doesNotMatch(matcher, /linkDominio|linkCheckout|domainsOf|domainKeysOf/);
+  }
+});

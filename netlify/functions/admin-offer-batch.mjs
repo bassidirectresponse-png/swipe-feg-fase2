@@ -44,16 +44,10 @@ function namesOf(row) {
   return [row?.data?.nomeOferta, row?.data?.nomeMarca].map(textKey).filter(Boolean);
 }
 
-function domainsOf(row) {
-  return (row?.data?.dominios || []).flatMap(item => [item.linkDominio, item.linkCheckout]).map(canonicalUrl).filter(Boolean);
-}
-
 function matches(item, row) {
   if (sectionOf(row) !== "oferta") return false;
   const wantedNames = [item.name, item.brand, ...(item.aliases || [])].map(textKey);
-  if (namesOf(row).some(name => wantedNames.includes(name))) return true;
-  const wantedDomains = item.domains.flatMap(entry => [entry.offer, entry.checkout]).map(canonicalUrl).filter(Boolean);
-  return domainsOf(row).some(key => wantedDomains.includes(key));
+  return namesOf(row).some(name => wantedNames.includes(name));
 }
 
 function mergeRows(first, second) {
