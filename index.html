@@ -5310,15 +5310,23 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
       },mediaInfo.contentType);
     }catch(error){uploadError=error;}
     if(uploadError){failed++;firstFailure||=uploadError.message||"falha no envio";continue;}
-    const publicUrl=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
-    const originalName=sourceFile.replace(/\.[^.]+$/,"");
-    const data={
-      kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho,marca:"WL FEG",
-      plataforma:"meta",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",
-      transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
-      transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
-      importBatch:"WL FEG",sourceFile
-    };
+    let data=null;
+    try{
+      const publicResult=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath);
+      const publicUrl=publicResult&&publicResult.data&&publicResult.data.publicUrl;
+      if(!publicUrl)throw new Error("o armazenamento não retornou o link público");
+      const originalName=sourceFile.replace(/\.[^.]+$/,"");
+      data={
+        kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho:niche,marca:"WL FEG",
+        plataforma:"meta",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",
+        transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
+        transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
+        importBatch:"WL FEG",sourceFile
+      };
+    }catch(error){
+      failed++;firstFailure||=String(error&&error.message||"falha ao preparar o card");
+      continue;
+    }
     let savedRow=null,saveError=null;
     try{
       if(!uploadToken)throw new Error("sua sessão expirou; entre novamente");
