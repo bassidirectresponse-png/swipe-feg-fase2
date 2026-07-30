@@ -2924,12 +2924,16 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
 async function insertCreativeImport(data,token){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
   try{
-    const response=await fetch("/.netlify/functions/admin-creative-import",{
+    const request=fetch("/.netlify/functions/admin-creative-import",{
       method:"POST",
       headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
       body:JSON.stringify(data),
       signal:controller.signal
     });
+    const response=await Promise.race([
+      request,
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("o banco não confirmou o card no tempo esperado")),32000))
+    ]);
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.ok)throw new Error(payload.error||`Banco HTTP ${response.status}`);
     if(!payload.row||!payload.row.id)throw new Error("o banco não retornou o card criado");
@@ -5318,6 +5322,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     let savedRow=null,saveError=null;
     try{
       if(!uploadToken)throw new Error("sua sessão expirou; entre novamente");
+      if(button)button.innerHTML=ic("upload")+`Salvando card ${index+1}/${videos.length}…`;
       savedRow=await insertCreativeImport(data,uploadToken);
     }catch(error){saveError=error;}
     if(saveError||!savedRow){
