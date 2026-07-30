@@ -38,9 +38,19 @@ test("ofertas criam criativos normais e preservam Lucas Rego e Mega Brain", () =
   assert.match(html, /async function syncOfferCreatives\(offerRow\)/);
   assert.match(html, /d\.taboolaAds/);
   assert.match(html, /sourceOfferId:offerRow\.id/);
+  assert.match(html, /resumeOfferCreativeArchives\(\)/);
+  assert.match(html, /mediaArchiveRequired:facebook/);
+  assert.match(batch, /mediaArchiveRequired: true/);
   assert.match(batch, /sectionOf\(row\) === "criativo"/);
   assert.match(batch, /isLucas\(row\.data\)/);
   assert.doesNotMatch(batch, /sectionOf\(row\) === "megabrain"/);
+});
+
+test("criativos de ofertas retomam o download e exibem a mídia preservada", () => {
+  assert.match(html, /function offerCreativeNeedsArchive\(o\)/);
+  assert.match(html, /d\.sourceOfferId/);
+  assert.match(html, /String\(d\.video\|\|d\.print\|\|""\)\.trim\(\)/);
+  assert.match(html, /print:d\.print\|\|d\.img\|\|o\.data\.print/);
 });
 
 test("interface de ofertas não mostra comentários nem SEMrush", () => {

@@ -213,7 +213,7 @@ export const handler = async (event) => {
     const user = await authenticateToken(token);
     if (!user) throw new Error("sessão inválida");
     if (!canAutomate(user)) throw new Error("usuário sem permissão de escrita");
-    const quota = await rateLimit("fb-ingest", user.id, { limit: 20, windowMs: 60 * 60_000 });
+    const quota = await rateLimit("fb-ingest", user.id, { limit: 80, windowMs: 60 * 60_000 });
     if (!quota.allowed) throw new Error("limite temporário de importações atingido");
 
     if (body.batch === true) {
@@ -267,7 +267,10 @@ export const handler = async (event) => {
         data.video = media.url;
         if (!String(data.transcricao || "").trim()) data.transcricaoStatus = "pending";
       }
-      if (media?.type === "image") data.img = media.url;
+      if (media?.type === "image") {
+        data.img = media.url;
+        data.print = media.url;
+      }
       data.fbStartDate = meta.startDateUnix;
       data.fbEndDate = meta.endDateUnix;
       data.fbActive = meta.active;
@@ -277,6 +280,9 @@ export const handler = async (event) => {
       data.fbIngestStatus = status;
       data.fbIngestError = error;
       data.fbIngestAt = new Date().toISOString();
+      data.mediaArchiveRequired = true;
+      data.mediaArchiveStatus = status;
+      data.mediaArchivedAt = media ? new Date().toISOString() : "";
     });
     console.log(`fb-ingest ${id}: concluído`);
   } catch (error) {
@@ -292,6 +298,8 @@ export const handler = async (event) => {
             data.fbIngestStatus = "error";
             data.fbIngestError = message;
             data.fbIngestAt = new Date().toISOString();
+            data.mediaArchiveRequired = true;
+            data.mediaArchiveStatus = "error";
           }
         });
       } catch {}

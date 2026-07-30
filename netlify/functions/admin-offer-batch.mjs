@@ -254,6 +254,8 @@ async function runBatch({ dryRun, origin, accessToken }) {
         transcricao: "",
         transcricaoPt: "",
         fbIngestStatus: "pending",
+        mediaArchiveRequired: true,
+        mediaArchiveStatus: "pending",
         sourceOfferId: offerId,
         sourceOfferName: plan.item.name,
       };

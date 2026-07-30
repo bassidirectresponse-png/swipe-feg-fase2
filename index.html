@@ -1686,7 +1686,10 @@ async function loadOffers(){
     from+=PAGE;
   }
   offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
-  if(isAdmin)setTimeout(()=>scheduleCreativeTranslations(),1200);
+  if(isAdmin){
+    setTimeout(()=>scheduleCreativeTranslations(),1200);
+    setTimeout(()=>resumeOfferCreativeArchives(),2200);
+  }
   return true;
 }
 let joymodeSeedWorking=false;
@@ -2621,11 +2624,12 @@ async function syncOfferCreatives(offerRow){
   for(const source of items){
     const link=String(source&&source.link||"").trim(),key=canonicalCreativeUrl(link);
     if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&canonicalCreativeUrl(o.data.linkAnuncio||o.data.video||o.data.print)===key))continue;
-    const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionStatus:"",sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
+    const facebook=isFbUrl(link);
+    const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionStatus:"",fbIngestStatus:facebook?"pending":"",mediaArchiveRequired:facebook,sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
     const result=await sb.from("offers").insert({data}).select();
     const created=result.data&&result.data[0];if(!created)continue;
     offers.push(created);
-    if(isFbUrl(link))setTimeout(()=>triggerFbIngest(created.id,link),0);
+    if(facebook)setTimeout(()=>triggerFbIngest(created.id,link),0);
   }
 }
 
@@ -4852,9 +4856,57 @@ async function requestInstantTranscription(offerId,videoUrl){
 /* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (Apify → Storage) ===== */
 const FB_INGEST_FN="/.netlify/functions/fb-ingest-background";
 const fbIngesting=new Set();
+const offerArchiveQueued=new Set();
+let offerArchiveResumeWorking=false;
 function isFbUrl(u){return /facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(u||""));}
 function fbStatusOf(o){const d=(o&&o.data)||{};return fbIngesting.has(o.id)?"working":(d.fbIngestStatus||"");}
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
+function offerCreativeNeedsArchive(o){
+  const d=(o&&o.data)||{},status=String(d.fbIngestStatus||"").toLowerCase();
+  if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
+  if(String(d.video||d.print||"").trim())return false;
+  return !["working","processing"].includes(status);
+}
+async function refreshOfferArchiveRows(ids){
+  if(!ids.length)return;
+  try{
+    const {data,error}=await sb.from("offers").select("id,data").in("id",ids);
+    if(error||!Array.isArray(data))return;
+    for(const row of data){
+      const current=offers.find(item=>item.id===row.id);
+      if(current&&row.data)current.data=row.data;
+      offerArchiveQueued.delete(row.id);
+    }
+    renderGrid();writeCache();
+  }catch(e){}
+}
+/* Toda mídia oriunda de Oferta precisa existir no Storage do Swipe. Ao abrir o
+   painel admin, a fila retoma automaticamente os cards pendentes/que falharam.
+   O bloqueio local evita disparar o mesmo lote em cada atualização de página. */
+async function resumeOfferCreativeArchives(){
+  if(!isAdmin||offerArchiveResumeWorking)return;
+  let last=0;try{last=Number(localStorage.getItem("feg_offer_media_archive_v2")||0);}catch(e){}
+  if(last&&Date.now()-last<15*60*1000)return;
+  const candidates=offers.filter(offerCreativeNeedsArchive).filter(o=>!offerArchiveQueued.has(o.id)).slice(0,24);
+  if(!candidates.length)return;
+  offerArchiveResumeWorking=true;
+  try{
+    let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
+    if(!token)return;
+    try{localStorage.setItem("feg_offer_media_archive_v2",String(Date.now()));}catch(e){}
+    for(const item of candidates){
+      offerArchiveQueued.add(item.id);
+      item.data.fbIngestStatus="working";
+      fetch(FB_INGEST_FN,{
+        method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({id:item.id,adUrl:item.data.linkAnuncio})
+      }).catch(()=>offerArchiveQueued.delete(item.id));
+      await new Promise(resolve=>setTimeout(resolve,450));
+    }
+    renderGrid();writeCache();
+    setTimeout(()=>refreshOfferArchiveRows(candidates.map(item=>item.id)),45000);
+  }finally{offerArchiveResumeWorking=false;}
+}
 /* lê a linha no Supabase até a ingestão do FB terminar (a background function grava lá) */
 async function pollFbIngest(offerId,tries,intervalMs){
   for(let i=0;i<tries;i++){
@@ -4864,7 +4916,7 @@ async function pollFbIngest(offerId,tries,intervalMs){
       const d=data&&data.data;
       if(!error&&d&&d.fbIngestStatus&&d.fbIngestStatus!=="working"){
         const o=offers.find(x=>x.id===offerId);
-        if(o)Object.assign(o.data,{video:d.video||o.data.video,fbIngestStatus:d.fbIngestStatus,fbDaysActive:d.fbDaysActive,fbActive:d.fbActive,fbStartDate:d.fbStartDate,fbEndDate:d.fbEndDate,fbPageName:d.fbPageName,fbMetrics:d.fbMetrics,fbIngestError:d.fbIngestError,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
+        if(o)Object.assign(o.data,{video:d.video||o.data.video,print:d.print||d.img||o.data.print,fbIngestStatus:d.fbIngestStatus,fbDaysActive:d.fbDaysActive,fbActive:d.fbActive,fbStartDate:d.fbStartDate,fbEndDate:d.fbEndDate,fbPageName:d.fbPageName,fbMetrics:d.fbMetrics,fbIngestError:d.fbIngestError,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
         return d.fbIngestStatus;
       }
     }catch(e){}
