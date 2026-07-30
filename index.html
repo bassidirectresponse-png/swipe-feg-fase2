@@ -2893,7 +2893,7 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
     });
     if(upload.error)throw upload.error;
     onProgress(100);
-    return;
+    return token;
   }
   const safePath=path.split("/").map(encodeURIComponent).join("/");
   let signedUrl=ticket.token
@@ -2903,7 +2903,7 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
   if(!/^https?:\/\//i.test(signedUrl)){
     signedUrl=`${currentSbUrl}/storage/v1${signedUrl.startsWith("/")?"":"/"}${signedUrl}`;
   }
-  return new Promise((resolve,reject)=>{
+  await new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();let settled=false,watchdog=null;
     const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(watchdog);fn(value);};
     xhr.open("PUT",signedUrl);xhr.timeout=180000;
@@ -2919,6 +2919,7 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
     xhr.send(body);
     watchdog=setTimeout(()=>{try{xhr.abort();}catch(_){}finish(reject,new Error("o envio não foi confirmado no tempo esperado"));},190000);
   });
+  return token;
 }
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
 async function uploadBrandTopAdFile(file,dz,info){
@@ -5280,9 +5281,9 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
     const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
-    let uploadError=null;
+    let uploadError=null,uploadToken="";
     try{
-      await storageSignedUploadWithProgress(file,storagePath,percent=>{
+      uploadToken=await storageSignedUploadWithProgress(file,storagePath,percent=>{
         if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length} · ${percent}%`;
       },mediaInfo.contentType);
     }catch(error){uploadError=error;}
@@ -5298,11 +5299,10 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     };
     let savedRow=null,saveError=null;
     try{
-      const session=await sb.auth.getSession(),accessToken=session.data?.session?.access_token;
-      if(!accessToken)throw new Error("sua sessão expirou; entre novamente");
+      if(!uploadToken)throw new Error("sua sessão expirou; entre novamente");
       const saveResponse=await fetch("/.netlify/functions/admin-creative-import",{
         method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:"Bearer "+accessToken},
+        headers:{"Content-Type":"application/json",Authorization:"Bearer "+uploadToken},
         body:JSON.stringify({
           nome:data.nome,nomeOriginal:data.nomeOriginal,nicho:data.nicho,
           video:data.video,sourceFile:data.sourceFile
