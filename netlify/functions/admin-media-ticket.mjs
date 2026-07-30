@@ -52,8 +52,14 @@ export default async req => {
         error: String(payload.message || payload.error || `Storage HTTP ${response.status}`).slice(0, 180),
       }, METHODS);
     }
-    const signedUrl = String(payload.url || payload.signedURL || payload.signedUrl || "");
-    const token = String(payload.token || "");
+    const rawSignedUrl = String(payload.url || payload.signedURL || payload.signedUrl || "");
+    const signedUrl = rawSignedUrl && !/^https?:\/\//i.test(rawSignedUrl)
+      ? `${SUPABASE_URL}/storage/v1${rawSignedUrl.startsWith("/") ? "" : "/"}${rawSignedUrl}`
+      : rawSignedUrl;
+    let token = String(payload.token || "");
+    if (!token && signedUrl) {
+      try { token = new URL(signedUrl).searchParams.get("token") || ""; } catch {}
+    }
     if (!signedUrl && !token) throw new Error("o armazenamento não retornou o destino assinado");
     return json(req, 200, { ok: true, signedUrl, token }, METHODS);
   } catch (error) {

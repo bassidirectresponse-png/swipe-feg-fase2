@@ -2887,15 +2887,18 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
   const ticket=await ticketResponse.json().catch(()=>({}));
   if(!ticketResponse.ok||!ticket.ok)throw new Error(ticket.error||`HTTP ${ticketResponse.status}`);
   const safePath=path.split("/").map(encodeURIComponent).join("/");
-  let signedUrl=String(ticket.signedUrl||"");
-  if(!signedUrl&&ticket.token)signedUrl=`${currentSbUrl}/storage/v1/object/upload/sign/${VIDEO_BUCKET}/${safePath}?token=${encodeURIComponent(ticket.token)}`;
+  let signedUrl=ticket.token
+    ?`${currentSbUrl}/storage/v1/object/upload/sign/${VIDEO_BUCKET}/${safePath}?token=${encodeURIComponent(ticket.token)}`
+    :String(ticket.signedUrl||"");
   if(!signedUrl)throw new Error("o armazenamento não retornou o destino do envio");
-  signedUrl=new URL(signedUrl,currentSbUrl).toString();
+  if(!/^https?:\/\//i.test(signedUrl)){
+    signedUrl=`${currentSbUrl}/storage/v1${signedUrl.startsWith("/")?"":"/"}${signedUrl}`;
+  }
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();let settled=false,watchdog=null;
     const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(watchdog);fn(value);};
     xhr.open("PUT",signedUrl);xhr.timeout=180000;
-    xhr.setRequestHeader("Content-Type",contentType||"application/octet-stream");
+    xhr.setRequestHeader("x-upsert","false");
     xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round(event.loaded/event.total*100)));};
     xhr.onerror=()=>finish(reject,new Error("falha de rede no envio"));
     xhr.ontimeout=()=>finish(reject,new Error("o armazenamento demorou para confirmar o envio"));
@@ -2903,7 +2906,8 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
       if(xhr.status>=200&&xhr.status<300){onProgress(100);finish(resolve);}
       else{let message=`HTTP ${xhr.status}`;try{const body=JSON.parse(xhr.responseText);message=body.message||body.error||message;}catch(_){}finish(reject,new Error(message));}
     };
-    xhr.send(file);
+    const body=new FormData();body.append("cacheControl","3600");body.append("",file,file.name);
+    xhr.send(body);
     watchdog=setTimeout(()=>{try{xhr.abort();}catch(_){}finish(reject,new Error("o envio não foi confirmado no tempo esperado"));},190000);
   });
 }
@@ -5259,12 +5263,12 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
       .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
   );
   creativeBatchWorking=true;if(button)button.disabled=true;
-  let imported=0,skipped=0,failed=0;
+  let imported=0,skipped=0,failed=0,firstFailure="";
   for(let index=0;index<videos.length;index++){
     const file=videos[index],sourceFile=String(file.name||`video-${index+1}.mp4`),dedupeKey=`wl feg|${sourceFile.toLowerCase()}`;
     if(existingSources.has(dedupeKey)){skipped++;continue;}
     if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
-    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;continue;}
+    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
     const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null;
@@ -5273,7 +5277,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
         if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length} · ${percent}%`;
       },mediaInfo.contentType);
     }catch(error){uploadError=error;}
-    if(uploadError){failed++;continue;}
+    if(uploadError){failed++;firstFailure||=uploadError.message||"falha no envio";continue;}
     const publicUrl=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
     const originalName=sourceFile.replace(/\.[^.]+$/,"");
     const data={
@@ -5285,6 +5289,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     };
     let saved;try{saved=await sb.from("offers").insert({data}).select();}catch(error){saved={error};}
     if(saved.error||!saved.data?.[0]){
+      firstFailure||=String(saved.error?.message||"o banco não confirmou o novo criativo");
       failed++;try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(error){}
       continue;
     }
@@ -5293,7 +5298,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
   creativeBatchWorking=false;
   if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar vídeos";}
   renderGrid();writeCache();
-  toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}`:""}`,!!failed);
+  toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
 
 function wireVideoUpload(){
