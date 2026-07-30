@@ -2922,34 +2922,22 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
   return token;
 }
 async function insertCreativeImport(data,token){
-  return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();let settled=false,watchdog=null;
-    const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(watchdog);fn(value);};
-    xhr.open("POST",`${currentSbUrl}/rest/v1/offers?select=*`);
-    xhr.timeout=30000;
-    xhr.setRequestHeader("apikey",currentSbKey);
-    xhr.setRequestHeader("Authorization","Bearer "+token);
-    xhr.setRequestHeader("Content-Type","application/json");
-    xhr.setRequestHeader("Prefer","return=representation");
-    xhr.onerror=()=>finish(reject,new Error("falha de rede ao salvar o card"));
-    xhr.ontimeout=()=>finish(reject,new Error("o banco demorou para confirmar o card"));
-    xhr.onload=()=>{
-      let payload=null;try{payload=JSON.parse(xhr.responseText||"null");}catch(_){}
-      if(xhr.status>=200&&xhr.status<300){
-        const row=Array.isArray(payload)?payload[0]:payload;
-        if(row&&row.id)finish(resolve,row);
-        else finish(reject,new Error("o banco não retornou o card criado"));
-        return;
-      }
-      const message=Array.isArray(payload)?payload[0]?.message:payload?.message||payload?.error;
-      finish(reject,new Error(message||`Banco HTTP ${xhr.status}`));
-    };
-    xhr.send(JSON.stringify({data}));
-    watchdog=setTimeout(()=>{
-      try{xhr.abort();}catch(_){}
-      finish(reject,new Error("o banco não confirmou o card no tempo esperado"));
-    },32000);
-  });
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+  try{
+    const response=await fetch("/.netlify/functions/admin-creative-import",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+      body:JSON.stringify(data),
+      signal:controller.signal
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok||!payload.ok)throw new Error(payload.error||`Banco HTTP ${response.status}`);
+    if(!payload.row||!payload.row.id)throw new Error("o banco não retornou o card criado");
+    return payload.row;
+  }catch(error){
+    if(error&&error.name==="AbortError")throw new Error("o banco não confirmou o card no tempo esperado");
+    throw error;
+  }finally{clearTimeout(timer);}
 }
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
 async function uploadBrandTopAdFile(file,dz,info){
