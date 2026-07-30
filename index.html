@@ -2875,6 +2875,38 @@ async function storageTusUploadWithProgress(file,path,onProgress,contentType=fil
   }
   onProgress(100);
 }
+async function storageSignedUploadWithProgress(file,path,onProgress,contentType=file.type){
+  const session=await sb.auth.getSession(),token=session.data&&session.data.session&&session.data.session.access_token;
+  if(!token)throw new Error("sua sessão expirou; entre novamente");
+  const ticketResponse=await fetch("/.netlify/functions/admin-media-ticket",{
+    method:"POST",
+    headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+    body:JSON.stringify({path}),
+    signal:AbortSignal.timeout(25000)
+  });
+  const ticket=await ticketResponse.json().catch(()=>({}));
+  if(!ticketResponse.ok||!ticket.ok)throw new Error(ticket.error||`HTTP ${ticketResponse.status}`);
+  const safePath=path.split("/").map(encodeURIComponent).join("/");
+  let signedUrl=String(ticket.signedUrl||"");
+  if(!signedUrl&&ticket.token)signedUrl=`${currentSbUrl}/storage/v1/object/upload/sign/${VIDEO_BUCKET}/${safePath}?token=${encodeURIComponent(ticket.token)}`;
+  if(!signedUrl)throw new Error("o armazenamento não retornou o destino do envio");
+  signedUrl=new URL(signedUrl,currentSbUrl).toString();
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();let settled=false,watchdog=null;
+    const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(watchdog);fn(value);};
+    xhr.open("PUT",signedUrl);xhr.timeout=180000;
+    xhr.setRequestHeader("Content-Type",contentType||"application/octet-stream");
+    xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round(event.loaded/event.total*100)));};
+    xhr.onerror=()=>finish(reject,new Error("falha de rede no envio"));
+    xhr.ontimeout=()=>finish(reject,new Error("o armazenamento demorou para confirmar o envio"));
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){onProgress(100);finish(resolve);}
+      else{let message=`HTTP ${xhr.status}`;try{const body=JSON.parse(xhr.responseText);message=body.message||body.error||message;}catch(_){}finish(reject,new Error(message));}
+    };
+    xhr.send(file);
+    watchdog=setTimeout(()=>{try{xhr.abort();}catch(_){}finish(reject,new Error("o envio não foi confirmado no tempo esperado"));},190000);
+  });
+}
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
 async function uploadBrandTopAdFile(file,dz,info){
   const index=+(dz.dataset.zone.split("|")[1]),ad=fBrandTopAds[index],isVideo=info&&info.kind==="video",isImage=info&&info.kind==="image";
@@ -5237,7 +5269,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null;
     try{
-      await storageTusUploadWithProgress(file,storagePath,percent=>{
+      await storageSignedUploadWithProgress(file,storagePath,percent=>{
         if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length} · ${percent}%`;
       },mediaInfo.contentType);
     }catch(error){uploadError=error;}
