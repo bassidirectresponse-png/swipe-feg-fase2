@@ -5300,18 +5300,23 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     let savedRow=null,saveError=null;
     try{
       if(!uploadToken)throw new Error("sua sessão expirou; entre novamente");
-      const saveResponse=await fetch("/.netlify/functions/admin-creative-import",{
+      const saveResponse=await fetch(`${currentSbUrl}/rest/v1/offers?select=*`,{
         method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:"Bearer "+uploadToken},
-        body:JSON.stringify({
-          nome:data.nome,nomeOriginal:data.nomeOriginal,nicho:data.nicho,
-          video:data.video,sourceFile:data.sourceFile
-        }),
+        headers:{
+          apikey:currentSbKey,
+          Authorization:"Bearer "+uploadToken,
+          "Content-Type":"application/json",
+          Prefer:"return=representation"
+        },
+        body:JSON.stringify({data}),
         signal:AbortSignal.timeout(35000)
       });
-      const savePayload=await saveResponse.json().catch(()=>({}));
-      if(!saveResponse.ok||!savePayload.ok)throw new Error(savePayload.error||`HTTP ${saveResponse.status}`);
-      savedRow=savePayload.row;
+      const savePayload=await saveResponse.json().catch(()=>null);
+      if(!saveResponse.ok){
+        const message=Array.isArray(savePayload)?savePayload[0]?.message:savePayload?.message||savePayload?.error;
+        throw new Error(message||`HTTP ${saveResponse.status}`);
+      }
+      savedRow=Array.isArray(savePayload)?savePayload[0]:savePayload;
     }catch(error){saveError=error;}
     if(saveError||!savedRow){
       firstFailure||=String(saveError?.message||"o banco não confirmou o novo criativo");
