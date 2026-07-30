@@ -2844,8 +2844,8 @@ async function storageTusUploadWithProgress(file,path,onProgress,contentType=fil
   while(offset<file.size){
     const start=offset,end=Math.min(file.size,start+chunkSize),chunk=file.slice(start,end);
     offset=await new Promise((resolve,reject)=>{
-      const xhr=new XMLHttpRequest();let settled=false,recovering=false,confirmationTimer=null;
-      const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(confirmationTimer);fn(value);};
+      const xhr=new XMLHttpRequest();let settled=false,recovering=false,confirmationTimer=null,hardTimer=null;
+      const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(confirmationTimer);clearTimeout(hardTimer);fn(value);};
       const recover=async(reason)=>{
         if(settled||recovering)return;recovering=true;
         try{xhr.abort();}catch(_){}
@@ -2859,7 +2859,10 @@ async function storageTusUploadWithProgress(file,path,onProgress,contentType=fil
       xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);
       xhr.setRequestHeader("Tus-Resumable","1.0.0");xhr.setRequestHeader("Upload-Offset",String(start));
       xhr.setRequestHeader("Content-Type","application/offset+octet-stream");
-      xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round((start+event.loaded)/file.size*100)));};
+      xhr.upload.onprogress=event=>{
+        if(event.lengthComputable)onProgress(Math.min(99,Math.round((start+event.loaded)/file.size*100)));
+        if(event.lengthComputable&&event.loaded>=event.total&&!confirmationTimer)confirmationTimer=setTimeout(()=>recover("o armazenamento não confirmou a parte enviada"),12000);
+      };
       xhr.upload.onload=()=>{confirmationTimer=setTimeout(()=>recover("o armazenamento não confirmou a parte enviada"),12000);};
       xhr.onerror=()=>recover("falha de rede no envio em partes");
       xhr.ontimeout=()=>recover("uma parte do envio excedeu o tempo seguro");
@@ -2867,7 +2870,7 @@ async function storageTusUploadWithProgress(file,path,onProgress,contentType=fil
         if(xhr.status>=200&&xhr.status<300)finish(resolve,Number(xhr.getResponseHeader("Upload-Offset"))||end);
         else{let message=`HTTP ${xhr.status}`;try{message=JSON.parse(xhr.responseText).message||message;}catch(_){}finish(reject,new Error(message));}
       };
-      xhr.send(chunk);
+      xhr.send(chunk);hardTimer=setTimeout(()=>recover("o armazenamento não respondeu ao envio"),45000);
     });
   }
   onProgress(100);
