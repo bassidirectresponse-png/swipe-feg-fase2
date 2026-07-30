@@ -2832,18 +2832,41 @@ async function storageTusUploadWithProgress(file,path,onProgress,contentType=fil
   if(!created.ok){let message=`HTTP ${created.status}`;try{message=(await created.json()).message||message;}catch(_){}throw new Error(message);}
   const location=created.headers.get("location");if(!location)throw new Error("o armazenamento não retornou o destino do envio");
   const uploadUrl=new URL(location,endpoint).toString(),chunkSize=6*1024*1024;
+  async function remoteOffset(){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+    try{
+      const response=await fetch(uploadUrl,{method:"HEAD",headers:baseHeaders,signal:controller.signal});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      return Number(response.headers.get("Upload-Offset"))||0;
+    }finally{clearTimeout(timer);}
+  }
   let offset=0;
   while(offset<file.size){
     const start=offset,end=Math.min(file.size,start+chunkSize),chunk=file.slice(start,end);
     offset=await new Promise((resolve,reject)=>{
-      const xhr=new XMLHttpRequest();xhr.open("PATCH",uploadUrl);xhr.timeout=120000;
+      const xhr=new XMLHttpRequest();let settled=false,recovering=false,confirmationTimer=null;
+      const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(confirmationTimer);fn(value);};
+      const recover=async(reason)=>{
+        if(settled||recovering)return;recovering=true;
+        try{xhr.abort();}catch(_){}
+        try{
+          const confirmed=await remoteOffset();
+          if(confirmed>start){finish(resolve,confirmed);return;}
+        }catch(_){}
+        finish(reject,new Error(reason));
+      };
+      xhr.open("PATCH",uploadUrl);xhr.timeout=45000;
       xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);
       xhr.setRequestHeader("Tus-Resumable","1.0.0");xhr.setRequestHeader("Upload-Offset",String(start));
       xhr.setRequestHeader("Content-Type","application/offset+octet-stream");
       xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round((start+event.loaded)/file.size*100)));};
-      xhr.onerror=()=>reject(new Error("falha de rede no envio em partes"));
-      xhr.ontimeout=()=>reject(new Error("uma parte do envio excedeu o tempo seguro"));
-      xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve(Number(xhr.getResponseHeader("Upload-Offset"))||end);else{let message=`HTTP ${xhr.status}`;try{message=JSON.parse(xhr.responseText).message||message;}catch(_){}reject(new Error(message));}};
+      xhr.upload.onload=()=>{confirmationTimer=setTimeout(()=>recover("o armazenamento não confirmou a parte enviada"),12000);};
+      xhr.onerror=()=>recover("falha de rede no envio em partes");
+      xhr.ontimeout=()=>recover("uma parte do envio excedeu o tempo seguro");
+      xhr.onload=()=>{
+        if(xhr.status>=200&&xhr.status<300)finish(resolve,Number(xhr.getResponseHeader("Upload-Offset"))||end);
+        else{let message=`HTTP ${xhr.status}`;try{message=JSON.parse(xhr.responseText).message||message;}catch(_){}finish(reject,new Error(message));}
+      };
       xhr.send(chunk);
     });
   }
