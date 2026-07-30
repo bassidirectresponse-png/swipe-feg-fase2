@@ -5334,7 +5334,13 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     }catch(error){saveError=error;}
     if(saveError||!savedRow){
       firstFailure||=String(saveError?.message||"o banco não confirmou o novo criativo");
-      failed++;try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(error){}
+      failed++;
+      /* A limpeza é apenas compensatória. Nunca deixe uma falha/latência do
+         Storage prender o importador depois que o banco recusou o card. */
+      Promise.race([
+        sb.storage.from(VIDEO_BUCKET).remove([storagePath]),
+        new Promise(resolve=>setTimeout(resolve,5000))
+      ]).catch(()=>{});
       continue;
     }
     offers.push(savedRow);existingSources.add(dedupeKey);imported++;
