@@ -2886,6 +2886,15 @@ async function storageSignedUploadWithProgress(file,path,onProgress,contentType=
   });
   const ticket=await ticketResponse.json().catch(()=>({}));
   if(!ticketResponse.ok||!ticket.ok)throw new Error(ticket.error||`HTTP ${ticketResponse.status}`);
+  if(ticket.token&&sb.storage.from(VIDEO_BUCKET).uploadToSignedUrl){
+    onProgress(15);
+    const upload=await sb.storage.from(VIDEO_BUCKET).uploadToSignedUrl(path,ticket.token,file,{
+      contentType:contentType||"application/octet-stream",upsert:false,cacheControl:"3600"
+    });
+    if(upload.error)throw upload.error;
+    onProgress(100);
+    return;
+  }
   const safePath=path.split("/").map(encodeURIComponent).join("/");
   let signedUrl=ticket.token
     ?`${currentSbUrl}/storage/v1/object/upload/sign/${VIDEO_BUCKET}/${safePath}?token=${encodeURIComponent(ticket.token)}`
