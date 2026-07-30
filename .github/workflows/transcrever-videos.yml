@@ -3,7 +3,7 @@ name: Transcrição automática de vídeos
 # Sempre que houver um MP4 novo (subido pelo app) sem transcrição, baixa,
 # roda o Whisper (local, sem API key) e grava a transcrição de volta — ela
 # aparece automaticamente ao lado do vídeo no app.
-# Varredura completa às 06:00 e 18:00 de São Paulo + botão manual.
+# Rede de segurança para arquivos grandes a cada hora + botão manual.
 
 on:
   push:
@@ -14,8 +14,7 @@ on:
       - "scripts/requirements-transcricao.txt"
       - ".github/workflows/transcrever-videos.yml"
   schedule:
-    - cron: "0 9 * * *"     # 06:00 America/Sao_Paulo (UTC-3)
-    - cron: "0 21 * * *"    # 18:00 America/Sao_Paulo (UTC-3)
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 permissions:

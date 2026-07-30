@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import {
   SUPABASE_ANON_KEY as ANON,
   SUPABASE_URL,
@@ -7,13 +8,29 @@ import {
   rateLimit,
 } from "./_security.mjs";
 
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
 const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
-const MAX_BYTES = 40 * 1024 * 1024;
+const MAX_BYTES = 24 * 1024 * 1024;
 const STORAGE_ORIGIN = new URL(SUPABASE_URL).origin;
 const STORAGE_PATH = "/storage/v1/object/public/criativos/";
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+function validInternalSignature(raw, supplied) {
+  if (!SERVICE_KEY || !/^[a-f0-9]{64}$/i.test(String(supplied || ""))) return false;
+  const expected = createHmac("sha256", SERVICE_KEY).update(raw).digest();
+  const received = Buffer.from(String(supplied), "hex");
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+
+function dataHeaders(token, internal, extra = {}) {
+  return {
+    apikey: internal ? SERVICE_KEY : ANON,
+    Authorization: `Bearer ${internal ? SERVICE_KEY : token}`,
+    ...extra,
+  };
+}
 
 function storageVideoUrl(value) {
   let url;
@@ -63,6 +80,11 @@ async function groqTranscribe(buffer) {
           segments,
         };
       }
+      if (response.status === 413) {
+        const error = new Error("arquivo excede o limite remoto de transcrição");
+        error.code = "TRANSCRIPTION_FILE_TOO_LARGE";
+        throw error;
+      }
       if (response.status !== 429 && response.status < 500) throw new Error(`serviço de transcrição recusou o arquivo (${response.status})`);
       await response.body?.cancel().catch(() => {});
     }
@@ -70,66 +92,137 @@ async function groqTranscribe(buffer) {
   throw new Error("serviço de transcrição indisponível após novas tentativas");
 }
 
-async function patchOffer(id, token, mutate) {
+async function loadOffer(id, token, internal) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`, {
-    headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+    headers: dataHeaders(token, internal),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error("criativo não encontrado");
   const rows = await response.json();
   if (!Array.isArray(rows) || rows.length !== 1) throw new Error("criativo não encontrado");
-  const data = rows[0].data || {};
+  return rows[0].data || {};
+}
+
+async function patchOffer(id, token, internal, mutate) {
+  const data = await loadOffer(id, token, internal);
   mutate(data);
   const update = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    headers: dataHeaders(token, internal, { "Content-Type": "application/json", Prefer: "return=minimal" }),
     body: JSON.stringify({ data }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!update.ok) throw new Error("falha ao gravar a transcrição");
 }
 
+async function routeToFasterWhisper(id, token, internal, reason = "") {
+  await patchOffer(id, token, internal, data => {
+    data.transcriptionStatus = "pending";
+    data.transcricaoStatus = "pending";
+    data.transcriptionProvider = "faster-whisper";
+    data.transcriptionLastError = reason;
+    data.transcriptionNextRetryAt = "";
+  });
+  console.log(`transcribe-background ${id}: encaminhado ao faster-whisper`);
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 202, body: "" };
   let id = "";
   let token = "";
+  let internal = false;
+  let attempt = 1;
   try {
     if (!GROQ_KEY) throw new Error("serviço de transcrição não configurado");
+    const raw = String(event.body || "");
+    internal = validInternalSignature(raw, event.headers["x-feg-transcription-signature"]);
     token = String(event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "").trim();
-    if (Buffer.byteLength(event.body || "", "utf8") > 64 * 1024) throw new Error("requisição muito grande");
-    const body = JSON.parse(event.body || "{}");
+    if (Buffer.byteLength(raw, "utf8") > 64 * 1024) throw new Error("requisição muito grande");
+    const body = JSON.parse(raw || "{}");
     id = String(body.id || "");
-    const videoUrl = storageVideoUrl(body.videoUrl);
-    if (!token || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id) || !videoUrl) throw new Error("requisição inválida");
-    const user = await authenticateToken(token);
-    if (!user) throw new Error("sessão inválida");
-    if (!isAdmin(user)) throw new Error("não é admin");
-    const quota = await rateLimit("transcribe-background", user.id, { limit: 20, windowMs: 60 * 60_000 });
-    if (!quota.allowed) throw new Error("limite temporário de transcrições atingido");
+    attempt = Math.max(1, Number(body.attempt) || 1);
+    if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)) throw new Error("requisição inválida");
+    if (!internal) {
+      if (!token) throw new Error("requisição inválida");
+      const user = await authenticateToken(token);
+      if (!user) throw new Error("sessão inválida");
+      if (!isAdmin(user)) throw new Error("não é admin");
+      const quota = await rateLimit("transcribe-background", user.id, { limit: 20, windowMs: 60 * 60_000 });
+      if (!quota.allowed) throw new Error("limite temporário de transcrições atingido");
+    }
+    const current = await loadOffer(id, token, internal);
+    const videoUrl = storageVideoUrl(internal ? current.video : body.videoUrl);
+    if (!videoUrl || !["criativo", "megabrain"].includes(current.kind)) throw new Error("requisição inválida");
+    await patchOffer(id, token, internal, data => {
+      data.transcriptionRequired = true;
+      data.transcriptionStatus = "processing";
+      data.transcricaoStatus = "processing";
+      data.transcriptionStartedAt = new Date().toISOString();
+      data.transcriptionLastError = "";
+      data.transcriptionNextRetryAt = "";
+      data.transcriptionProvider = "groq";
+      data.transcriptionVersion = String(data.transcriptionVersion || "1");
+    });
 
     const response = await fetch(videoUrl, { redirect: "error", signal: AbortSignal.timeout(45_000) });
     if (!response.ok) throw new Error(`download indisponível (${response.status})`);
-    const buffer = await boundedBuffer(response, MAX_BYTES);
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    if (contentLength > MAX_BYTES) {
+      await response.body?.cancel().catch(() => {});
+      await routeToFasterWhisper(id, token, internal, "arquivo acima de 24 MB");
+      return { statusCode: 202, body: "" };
+    }
+    let buffer;
+    try {
+      buffer = await boundedBuffer(response, MAX_BYTES);
+    } catch (error) {
+      if (/limite|excede/i.test(String(error?.message || error))) {
+        await routeToFasterWhisper(id, token, internal, "arquivo acima de 24 MB");
+        return { statusCode: 202, body: "" };
+      }
+      throw error;
+    }
     if (!isVideo(buffer)) throw new Error("arquivo não é um vídeo suportado");
-    const result = await groqTranscribe(buffer);
-    await patchOffer(id, token, data => {
-      data.transcricao = result.text;
+    let result;
+    try {
+      result = await groqTranscribe(buffer);
+    } catch (error) {
+      if (error?.code === "TRANSCRIPTION_FILE_TOO_LARGE") {
+        await routeToFasterWhisper(id, token, internal, "limite do provedor online excedido");
+        return { statusCode: 202, body: "" };
+      }
+      throw error;
+    }
+    const text = result.text || "[Sem fala detectada no vídeo]";
+    await patchOffer(id, token, internal, data => {
+      data.transcricao = text;
       data.transcricaoStatus = "done";
       data.transcricaoLang = result.lang;
       data.transcricaoWords = result.words;
       data.transcricaoSegments = result.segments;
       data.transcricaoError = "";
+      data.transcricaoConcluidaEm = new Date().toISOString();
+      data.transcriptionStatus = "completed";
+      data.transcriptionCompletedAt = new Date().toISOString();
+      data.transcriptionLastError = "";
+      data.transcriptionNextRetryAt = "";
+      data.transcriptionInvalid = false;
+      data.transcriptionIncomplete = false;
     });
     console.log(`transcribe-background ${id}: concluído`);
   } catch (error) {
-    const internal = String(error && error.message || error).slice(0, 180);
-    const message = /sessão|admin|requisição|vídeo|arquivo|gravar|criativo/.test(internal) ? internal : "não foi possível concluir a transcrição";
+    const internalError = String(error && error.message || error).slice(0, 180);
+    const message = /sessão|admin|requisição|vídeo|arquivo|gravar|criativo/.test(internalError) ? internalError : "não foi possível concluir a transcrição";
     console.error("transcribe-background falhou:", message);
-    if (id && token) {
+    if (id && (token || internal)) {
       try {
-        await patchOffer(id, token, data => {
-          data.transcricaoStatus = "error";
-          data.transcricaoError = message;
+        await patchOffer(id, token, internal, data => {
+          const delayMinutes = Math.min(6 * 60, 15 * (2 ** Math.min(7, Math.max(0, attempt - 1))));
+          data.transcricaoStatus = "pending";
+          data.transcricaoError = "Falha temporária; uma nova tentativa será feita automaticamente.";
+          data.transcriptionStatus = "retry_scheduled";
+          data.transcriptionLastError = message;
+          data.transcriptionNextRetryAt = new Date(Date.now() + delayMinutes * 60_000).toISOString();
         });
       } catch {}
     }

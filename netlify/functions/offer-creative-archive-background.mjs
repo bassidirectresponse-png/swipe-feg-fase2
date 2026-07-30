@@ -4,10 +4,13 @@ import {
   boundedBuffer,
   safeRemoteFetch,
 } from "./_security.mjs";
+import { resolveFacebookMedia } from "./_facebook-media-resolver.mjs";
+import {
+  applyArchivedMedia,
+  hasStoredMedia,
+} from "./_creative-integrity.mjs";
 
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const APIFY_TOKEN = process.env.APIFY_TOKEN || "";
-const FB_ADS_ACTOR = process.env.FB_ADS_ACTOR || "curious_coder~facebook-ads-library-scraper";
 const MAX_BYTES = 60 * 1024 * 1024;
 const FB_MEDIA_HOSTS = ["facebook.com", "fbcdn.net", "fbsbx.com", "akamaihd.net"];
 
@@ -37,68 +40,12 @@ function isFacebookUrl(value) {
   }
 }
 
-function deepFind(value, predicate) {
-  let result = null;
-  (function walk(current) {
-    if (result) return;
-    if (Array.isArray(current)) {
-      for (const item of current) walk(item);
-      return;
-    }
-    if (!current || typeof current !== "object") return;
-    for (const [key, item] of Object.entries(current)) {
-      if (typeof item === "string" && item.startsWith("https://") && predicate(key, item)) {
-        result = item;
-        return;
-      }
-      walk(item);
-      if (result) return;
-    }
-  })(value);
-  return result;
-}
-
-function pickVideoUrl(item) {
-  return deepFind(item, key => /video_hd_url/i.test(key))
-    || deepFind(item, key => /video_sd_url/i.test(key))
-    || deepFind(item, (key, value) => /video/i.test(key) && !/thumb|image|cover|preview|poster/i.test(key) && /\.(mp4|mov|m4v)(\?|$)/i.test(value))
-    || deepFind(item, (_key, value) => /\.(mp4|mov|m4v)(\?|$)/i.test(value));
-}
-
-function pickImageUrl(item) {
-  return deepFind(item, key => /(image_snapshot_url|original_image_url|image_url|thumbnail_url)/i.test(key))
-    || deepFind(item, (key, value) => /image|thumb|cover|poster|preview/i.test(key) && /\.(jpe?g|png|webp)(\?|$)/i.test(value));
-}
-
 function detectMedia(buffer) {
   if (buffer.length > 12 && buffer.subarray(4, 8).toString("latin1") === "ftyp") return { type: "video", contentType: "video/mp4", ext: "mp4" };
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return { type: "image", contentType: "image/jpeg", ext: "jpg" };
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { type: "image", contentType: "image/png", ext: "png" };
   if (buffer.length >= 12 && buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") return { type: "image", contentType: "image/webp", ext: "webp" };
   throw new Error("mídia retornada em formato inválido");
-}
-
-async function scrapeAd(adUrl) {
-  if (!APIFY_TOKEN) throw new Error("APIFY_TOKEN não configurado");
-  if (!/^[\w.-]+~[\w.-]+$/.test(FB_ADS_ACTOR)) throw new Error("coletor inválido");
-  const response = await fetch(`https://api.apify.com/v2/acts/${FB_ADS_ACTOR}/run-sync-get-dataset-items?timeout=240`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${APIFY_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      urls: [{ url: adUrl }],
-      scrapeAdDetails: true,
-      count: 3,
-      limitPerSource: 3,
-      activeStatus: "all",
-    }),
-    signal: AbortSignal.timeout(250_000),
-  });
-  if (!response.ok) throw new Error(`coletor indisponível (HTTP ${response.status})`);
-  const items = await response.json().catch(() => null);
-  if (!Array.isArray(items) || !items.length) throw new Error("anúncio não encontrado");
-  const ad = items.find(item => pickVideoUrl(item)) || items.find(item => pickImageUrl(item));
-  if (!ad) throw new Error("anúncio sem mídia disponível");
-  return { mediaUrl: pickVideoUrl(ad) || pickImageUrl(ad) };
 }
 
 async function loadCreative(id) {
@@ -129,10 +76,10 @@ async function downloadAndStore(mediaUrl, sourceOfferId, id) {
   if (!buffer.length) throw new Error("mídia vazia");
   const media = detectMedia(buffer);
   const safeOffer = String(sourceOfferId || "sem-oferta").replace(/[^a-z0-9-]/gi, "").slice(0, 64);
-  const path = `ofertas/${safeOffer}/${id}/facebook-${Date.now()}.${media.ext}`;
+  const path = `ofertas/${safeOffer}/${id}/facebook.${media.ext}`;
   const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`, {
     method: "POST",
-    headers: serverHeaders({ "Content-Type": media.contentType, "x-upsert": "false" }),
+    headers: serverHeaders({ "Content-Type": media.contentType, "x-upsert": "true" }),
     body: buffer,
     signal: AbortSignal.timeout(90_000),
   });
@@ -164,15 +111,16 @@ export const handler = async event => {
     if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id) || !isFacebookUrl(body.adUrl)) throw new Error("requisição inválida");
 
     const current = await loadCreative(id);
-    if (current.kind !== "criativo" || !current.sourceOfferId || !current.mediaArchiveRequired || !isFacebookUrl(current.linkAnuncio)) {
+    if (current.kind !== "criativo" || !current.sourceOfferId || !isFacebookUrl(current.linkAnuncio)) {
       throw new Error("criativo não pertence a uma oferta do Facebook");
     }
-    if (String(current.video || "").trim() || String(current.print || current.img || "").trim()) {
-      current.fbIngestStatus = "done";
-      current.mediaArchiveStatus = "done";
-      current.mediaArchivedAt ||= new Date().toISOString();
-      current.mediaArchiveNextRetryAt = "";
-      await saveCreative(id, current);
+    if (hasStoredMedia(current)) {
+      const type = String(current.video || "").trim() ? "video" : "image";
+      const url = type === "video" ? current.video : (current.print || current.img);
+      await saveCreative(id, applyArchivedMedia(current, { type, url }, {
+        source: current.mediaArchiveSource || "storage-existing",
+        now: current.mediaArchivedAt || new Date().toISOString(),
+      }));
       return { statusCode: 202, body: "" };
     }
 
@@ -182,29 +130,19 @@ export const handler = async event => {
     current.mediaArchiveStartedAt = new Date().toISOString();
     await saveCreative(id, current);
 
-    const scraped = await scrapeAd(current.linkAnuncio);
+    const scraped = await resolveFacebookMedia(current.linkAnuncio);
     const media = await downloadAndStore(scraped.mediaUrl, current.sourceOfferId, id);
-    const latest = await loadCreative(id);
-    if (media.type === "video") {
-      latest.video = media.url;
-      latest.videoPoster = latest.videoPoster || "";
-      if (!String(latest.transcricao || "").trim()) latest.transcricaoStatus = "pending";
-    } else {
-      latest.img = media.url;
-      latest.print = media.url;
-    }
-    latest.fbIngestStatus = "done";
-    latest.fbIngestError = "";
-    latest.fbIngestAt = new Date().toISOString();
-    latest.mediaArchiveRequired = true;
-    latest.mediaArchiveStatus = "done";
-    latest.mediaArchivedAt = new Date().toISOString();
-    latest.mediaArchiveNextRetryAt = "";
-    latest.mediaArchiveSource = "facebook";
+    const latest = applyArchivedMedia(await loadCreative(id), media, {
+      source: scraped.source,
+      now: new Date().toISOString(),
+    });
     await saveCreative(id, latest);
     console.log(`offer archive ${id}: ${media.type} preservado`);
   } catch (error) {
-    const message = String(error?.message || error).slice(0, 180);
+    const unavailable = error?.code === "FACEBOOK_MEDIA_UNAVAILABLE";
+    const message = unavailable
+      ? "Mídia ainda não disponibilizada publicamente pelo Facebook; nova tentativa automática agendada."
+      : String(error?.message || error).slice(0, 180);
     console.error(`offer archive ${id || "unknown"}:`, message);
     if (id) {
       try {
@@ -215,7 +153,9 @@ export const handler = async event => {
         latest.mediaArchiveRequired = true;
         latest.mediaArchiveStatus = "error";
         latest.mediaArchiveError = message;
-        latest.mediaArchiveNextRetryAt = retryAt(attempt);
+        latest.mediaArchiveNextRetryAt = unavailable
+          ? new Date(Date.now() + 12 * 60 * 60_000).toISOString()
+          : retryAt(attempt);
         await saveCreative(id, latest);
       } catch {}
     }

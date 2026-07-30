@@ -95,8 +95,12 @@ test("política de upload restringe autorização, tamanho, extensão e MIME", a
   }
 });
 
-test("tokens de provedores não são enviados em query strings", async () => {
+test("ingestão do Facebook usa somente a mídia pública e não depende de coletor externo", async () => {
   const source = await readFile(new URL("netlify/functions/fb-ingest-background.mjs", root), "utf8");
-  assert.doesNotMatch(source, /[?&]token=\$\{/);
-  assert.match(source, /Authorization: `Bearer \$\{APIFY_TOKEN\}`/);
+  const resolver = await readFile(new URL("netlify/functions/_facebook-media-resolver.mjs", root), "utf8");
+  assert.match(source, /resolveFacebookMedia/);
+  assert.doesNotMatch(source, /APIFY_TOKEN|api\.apify\.com|FB_ADS_ACTOR/);
+  assert.match(resolver, /return await extractFacebookPublicMedia\(adUrl\)/);
+  assert.doesNotMatch(resolver, /APIFY_TOKEN|api\.apify\.com|FB_ADS_ACTOR|apify~/i);
+  assert.doesNotMatch(html, /APIFY_TOKEN|api\.apify\.com|FB_ADS_ACTOR/);
 });

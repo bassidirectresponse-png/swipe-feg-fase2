@@ -2625,7 +2625,7 @@ async function syncOfferCreatives(offerRow){
     const link=String(source&&source.link||"").trim(),key=canonicalCreativeUrl(link);
     if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&canonicalCreativeUrl(o.data.linkAnuncio||o.data.video||o.data.print)===key))continue;
     const facebook=isFbUrl(link);
-    const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionStatus:"",fbIngestStatus:facebook?"pending":"",mediaArchiveRequired:facebook,sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
+    const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionRequired:facebook,transcriptionStatus:facebook?"waiting_for_media":"",transcricaoStatus:facebook?"waiting_for_media":"",transcriptionAttempts:0,transcriptionProvider:"groq",transcriptionVersion:"1",fbIngestStatus:facebook?"pending":"",mediaArchiveRequired:facebook,mediaArchiveStatus:facebook?"pending":"",sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
     const result=await sb.from("offers").insert({data}).select();
     const created=result.data&&result.data[0];if(!created)continue;
     offers.push(created);
@@ -4383,7 +4383,8 @@ function criativoCard(o){
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
-  const fbwork=st==="working"?`<div class="fbwork">${ic("download")}Baixando criativo do Facebook…</div>`:"";
+  const fbwork=st==="working"||st==="queued"?`<div class="fbwork">${ic("download")}Anexando mídia ao card…</div>`
+    :st==="retry_scheduled"?`<div class="fbwork">${ic("clock")}Nova tentativa de mídia agendada</div>`:"";
   return card({
     id:o.id,variant:"kcard",
     head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
@@ -4853,19 +4854,30 @@ async function requestInstantTranscription(offerId,videoUrl){
   toast(done?"Transcrição pronta ✓":"Transcrevendo em segundo plano — aparece aqui em instantes.");
 }
 
-/* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (Apify → Storage) ===== */
+/* ===== INGESTÃO DE CRIATIVO DO FACEBOOK (player público → Storage) ===== */
 const FB_INGEST_FN="/.netlify/functions/fb-ingest-background";
 const fbIngesting=new Set();
 const offerArchiveQueued=new Set();
 let offerArchiveResumeWorking=false;
 function isFbUrl(u){return /facebook\.com|fb\.com|fb\.me|fb\.watch/i.test(String(u||""));}
-function fbStatusOf(o){const d=(o&&o.data)||{};return fbIngesting.has(o.id)?"working":(d.fbIngestStatus||"");}
+function fbArchiveIsStale(d){
+  const t=Date.parse(d.mediaArchiveQueuedAt||d.mediaArchiveStartedAt||d.fbIngestAt||"");
+  return Number.isFinite(t)&&Date.now()-t>20*60*1000;
+}
+function fbStatusOf(o){
+  const d=(o&&o.data)||{};
+  if(fbIngesting.has(o.id))return"working";
+  const status=String(d.mediaArchiveStatus||d.fbIngestStatus||"");
+  return ["queued","working","processing"].includes(status.toLowerCase())&&fbArchiveIsStale(d)?"retry_scheduled":status;
+}
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 function offerCreativeNeedsArchive(o){
-  const d=(o&&o.data)||{},status=String(d.fbIngestStatus||"").toLowerCase();
+  const d=(o&&o.data)||{},status=String(d.mediaArchiveStatus||d.fbIngestStatus||"").toLowerCase();
   if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
   if(String(d.video||d.print||"").trim())return false;
-  return !["working","processing"].includes(status);
+  if(["queued","working","processing"].includes(status))return fbArchiveIsStale(d);
+  const retryAt=Date.parse(d.mediaArchiveNextRetryAt||"");
+  return !Number.isFinite(retryAt)||retryAt<=Date.now();
 }
 async function refreshOfferArchiveRows(ids){
   if(!ids.length)return;
@@ -4916,7 +4928,7 @@ async function pollFbIngest(offerId,tries,intervalMs){
       const d=data&&data.data;
       if(!error&&d&&d.fbIngestStatus&&d.fbIngestStatus!=="working"){
         const o=offers.find(x=>x.id===offerId);
-        if(o)Object.assign(o.data,{video:d.video||o.data.video,print:d.print||d.img||o.data.print,fbIngestStatus:d.fbIngestStatus,fbDaysActive:d.fbDaysActive,fbActive:d.fbActive,fbStartDate:d.fbStartDate,fbEndDate:d.fbEndDate,fbPageName:d.fbPageName,fbMetrics:d.fbMetrics,fbIngestError:d.fbIngestError,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
+        if(o)Object.assign(o.data,{video:d.video||o.data.video,print:d.print||d.img||o.data.print,mediaType:d.mediaType||o.data.mediaType,mediaAttached:d.mediaAttached===true||o.data.mediaAttached,mediaArchiveStatus:d.mediaArchiveStatus||o.data.mediaArchiveStatus,fbIngestStatus:d.fbIngestStatus,fbDaysActive:d.fbDaysActive,fbActive:d.fbActive,fbStartDate:d.fbStartDate,fbEndDate:d.fbEndDate,fbPageName:d.fbPageName,fbMetrics:d.fbMetrics,fbIngestError:d.fbIngestError,transcriptionStatus:d.transcriptionStatus||o.data.transcriptionStatus,transcricaoStatus:d.transcricaoStatus||o.data.transcricaoStatus});
         return d.fbIngestStatus;
       }
     }catch(e){}
@@ -5216,7 +5228,12 @@ function openSimpleView(o,skipOpen){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${lbl}</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",d.print)}</div></section>`;
     }
     if(!showVideo&&!d.print){
-      sections+=`<div class="muted-empty">Nenhum criativo cadastrado. Clique em Editar para adicionar vídeo ou imagem.</div>`;
+      const mediaState=fbStatusOf(o);
+      sections+=mediaState==="working"||mediaState==="queued"
+        ?`<div class="muted-empty">${ic("download")}A mídia está sendo anexada automaticamente a este card.</div>`
+        :mediaState==="retry_scheduled"||mediaState==="pending"||d.mediaArchiveRequired===true
+          ?`<div class="muted-empty">${ic("clock")}A mídia ainda não foi anexada. A recuperação automática continuará tentando até concluir.</div>`
+          :`<div class="muted-empty">Nenhum criativo cadastrado. Clique em Editar para adicionar vídeo ou imagem.</div>`;
     }
   }
 

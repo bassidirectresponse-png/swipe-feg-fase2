@@ -6,8 +6,7 @@ const script = await readFile(new URL("../scripts/transcrever.py", import.meta.u
 const workflow = await readFile(new URL("../.github/workflows/transcrever-videos.yml", import.meta.url), "utf8");
 
 test("automação cobre o acervo normal de Criativos e retoma a fila", () => {
-  assert.match(workflow, /cron: "0 9 \* \* \*"/);
-  assert.match(workflow, /cron: "0 21 \* \* \*"/);
+  assert.match(workflow, /cron: "17 \* \* \* \*"/);
   assert.match(workflow, /TRANSCRIBE_KINDS: "criativo,megabrain"/);
   assert.match(workflow, /MAX_VIDEOS: "200"/);
   assert.match(workflow, /MAX_RUN_MINUTES: "300"/);
@@ -18,6 +17,8 @@ test("automação cobre o acervo normal de Criativos e retoma a fila", () => {
   assert.match(script, /retry_scheduled/);
   assert.match(script, /transcriptionInvalid/);
   assert.match(script, /stored_version != JOB_VERSION/);
+  assert.match(script, /if text_ready and not invalid and not outdated:/);
+  assert.doesNotMatch(script, /if \(text_ready or canonical in \("completed", "done"\)\)/);
   assert.match(script, /out\.sort\(key=lambda item: \(item\[0\], item\[1\], item\[2\]\)\)/);
 });
 
@@ -26,7 +27,7 @@ test("transcrição automática salva texto e sincronização palavra por palavr
   assert.match(script, /data\["transcricaoSegments"\] = segments/);
   assert.match(script, /data\["transcricaoWords"\] = words/);
   assert.match(script, /\[Sem fala detectada no vídeo\]/);
-  assert.match(script, /canonical in \("completed", "done"\)/);
+  assert.match(script, /transcriptionStatus"\] = "completed"/);
 });
 
 test("falha individual não bloqueia para sempre os demais criativos", () => {

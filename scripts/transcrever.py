@@ -113,7 +113,10 @@ def fetch_pending(token):
         invalid = bool(d.get("transcriptionInvalid") or d.get("transcriptionIncomplete")) or canonical in ("invalid", "incomplete")
         stored_version = str(d.get("transcriptionVersion") or "")
         outdated = bool(stored_version and stored_version != JOB_VERSION)
-        if (text_ready or canonical in ("completed", "done")) and not invalid and not outdated:
+        # Nunca confie apenas no status. Registros antigos podem ter sido
+        # marcados como "done/completed" antes de o texto ser persistido.
+        # O contrato só está completo quando a transcrição existe.
+        if text_ready and not invalid and not outdated:
             continue
         attempts = max(0, int(d.get("transcriptionAttempts") or d.get("transcricaoTentativas") or 0))
         if canonical in ("failed", "error") and attempts >= MAX_RETRIES:
