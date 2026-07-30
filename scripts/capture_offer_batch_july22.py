@@ -86,7 +86,12 @@ def product_screenshot(page, path: Path) -> bool:
                 continue
             score = min(w * h, 2_000_000) + min(rw * rh, 500_000) * 2
             if any(token in src + " " + alt for token in ("product", "bottle", "pack", "supplement", "formula", "kit", "gumm")):
+                score += 4_000_000
+            ratio = max(w, h) / max(1, min(w, h))
+            if ratio <= 1.8:
                 score += 2_000_000
+            elif ratio >= 2.8:
+                score -= 4_000_000
             if score > best_score:
                 best, best_score = loc, score
         except Exception:
@@ -150,8 +155,10 @@ def main():
             if checkout:
                 final_checkout = safe_goto(page, checkout)
                 screenshot_page(page, folder / "checkout.jpg")
-                if not product_ok:
-                    product_ok = product_screenshot(page, folder / "product.jpg")
+                # O checkout costuma ter o packshot mais limpo. Quando ele está
+                # disponível, sua imagem substitui a arte promocional da VSL.
+                checkout_product = product_screenshot(page, folder / "product.jpg")
+                product_ok = checkout_product or product_ok
             else:
                 final_checkout = ""
                 print("  checkout não localizado automaticamente", flush=True)
@@ -162,9 +169,9 @@ def main():
                 "pvFinalUrl": final_pv,
                 "checkoutFinalUrl": final_checkout,
                 "discoveredCheckout": checkout if not primary.get("checkout") else "",
-                "pv": f"/assets/offers-july22/{slug}/pv.jpg",
-                "checkout": f"/assets/offers-july22/{slug}/checkout.jpg" if checkout else "",
-                "product": f"/assets/offers-july22/{slug}/product.jpg",
+                "pv": f"/assets/{OUT.name}/{slug}/pv.jpg",
+                "checkout": f"/assets/{OUT.name}/{slug}/checkout.jpg" if checkout else "",
+                "product": f"/assets/{OUT.name}/{slug}/product.jpg",
             }
         browser.close()
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")

@@ -2015,15 +2015,8 @@ function cardHtml(o){
   if(native){if(tabs.length)chips.push(`<span class="chip accent">${tabs.length} ${tabs.length>1?"ads":"ad"} Taboola</span>`);}
   else if(bibs.length>1)chips.push(`<span class="chip accent">${bibs.length} bibliotecas</span>`);
 
-  let stats;
-  if(native){
-    const v28=d.trafego28d&&d.trafego28d.trim()?esc(d.trafego28d):"–";
-    const v3m=d.trafego3m&&d.trafego3m.trim()?esc(d.trafego3m):"–";
-    stats=`<div class="card__stats">
-      <div class="kpi"><div class="kpi__l">${ic("trending")}Últimos 28 dias</div><div class="kpi__v">${v28}</div></div>
-      <div class="kpi"><div class="kpi__l">${ic("pulse")}Últimos 3 meses</div><div class="kpi__v">${v3m}</div></div>
-    </div>`;
-  }else{
+  let stats="";
+  if(!native){
     const adsDisp=ads!=null?ads.toLocaleString("pt-BR"):"–";
     const metric=offerSortMetric(o),spendSort=offerSort!=="active_ads",metricLabel=offerSort==="spend_14d"?"Investimento · 14 dias":offerSort==="spend_30d"?"Investimento · 30 dias":"Investimento · 7 dias";
     stats=`<div class="card__stats"><div class="kpi${high?" kpi--hot":""}"><div class="kpi__l">${ic(high?"zap":"play")}Anúncios ativos</div><div class="kpi__v">${adsDisp}</div></div>${spendSort?`<div class="kpi"><div class="kpi__l">${ic("dollar")}${metricLabel}</div><div class="kpi__v">${metric.value==null?"–":esc(fegsysMoney(metric.value))}</div></div>`:""}</div>`;
@@ -2254,19 +2247,6 @@ function openView(id){
       <div class="linkbtns">${linkbtn("Ver criativo",c.link,true,"play")}${c.transcricao?linkbtn("Ver transcrição do ad",c.transcricao,false,"file"):""}</div></div>`).join(""):`<div class="muted-empty">Nenhum criativo cadastrado.</div>`;
   }
 
-  const semrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
-  const semrushThumb=d.printSemrushThumb||semrushOriginal;
-  const taShot=isBrand
-    ?((d.brandSemrush1m||d.brandSemrush3m)?`<div class="dom__shots" style="margin-top:0">${shotView("SEMrush — último mês",d.brandSemrush1m)}${shotView("SEMrush — últimos 3 meses",d.brandSemrush3m)}</div>`:`<div class="muted-empty">Sem prints do SEMrush. Os painéis de 1 e 3 meses estão prontos para anexos.</div>`)
-    :(semrushOriginal?`<div class="dom__shots" style="grid-template-columns:1fr;margin-top:0">${shotView("SEMrush — últimos 3 meses",semrushOriginal,semrushThumb)}</div>`:`<div class="muted-empty">Sem print do SEMrush.</div>`);
-  const trafficInner=`
-    <div class="ta-grid">
-      <div class="ta-metric"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>
-      <div class="ta-metric"><div class="k">Tráfego · últimos 3 meses</div><div class="v">${d.trafego3m?esc(d.trafego3m):"—"}</div></div>
-    </div>
-    <div class="ta-info">${ic("info")}<span>O SEMrush tem um atraso de <b>~28 dias</b>, portanto só é possível acompanhar dados referentes aos últimos 28 dias.</span></div>
-    ${taShot}`;
-
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
@@ -2336,16 +2316,12 @@ function openView(id){
       ${bmSection}
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${adsTitle}</span><span class="sec__line"></span></div>${adsInner}</section>
-      <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Traffic Analytics</span><span class="sec__line"></span></div>${trafficInner}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
         <div style="font-size:1.1rem;line-height:1.5;white-space:pre-wrap">${esc(d.funil)||'<span class="muted-empty">Não descrito.</span>'}</div>
         ${d.advertorialLink?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Abrir presell",d.advertorialLink,false,"newspaper")}</div>`:""}
       </section>
     </div>
-    <aside class="sidebar">
-      <div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?'':'empty'}">${d.comentario?esc(d.comentario):"Sem orientações sobre este produto."}</div></div>
-      ${drive.length?`<div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div>`:""}
-    </aside>
+    ${drive.length?`<aside class="sidebar"><div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div></aside>`:""}
   </div>`;
   wireLightboxLinks($("#viewBody"));
   openOverlay("#viewOverlay");
@@ -2463,25 +2439,14 @@ function openForm(id){
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">04</span> SEMrush${isBrand?" — último mês e últimos 3 meses":" — últimos 3 meses"}</div>
-      <div class="fsec__hint">Guarde os prints em resolução integral para acompanhar a evolução da demanda e do tráfego.</div>
-      <div class="row">
-        <div class="field"><label class="lbl">Volume — últimos 28 dias</label><input type="text" id="f_trafego28d" placeholder="Ex: 320 mil visitas/mês" value="${esc(d.trafego28d)}"></div>
-        <div class="field"><label class="lbl">Volume — últimos 3 meses</label><input type="text" id="f_trafego3m" placeholder="Ex: 1,2 mi visitas" value="${esc(d.trafego3m)}"></div>
-      </div>
-      ${isBrand?`<div class="row"><div class="field"><label class="lbl">Print SEMrush — último mês</label><div class="dz" data-zone="brandsemrush1m" tabindex="0"></div></div><div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz" data-zone="brandsemrush3m" tabindex="0"></div></div></div>`:`<div class="field"><label class="lbl">Print SEMrush — últimos 3 meses</label><div class="dz dz--storage" data-zone="semrush" tabindex="0"></div></div>`}
-    </div>
-
-    <div class="fsec">
-      <div class="fsec__title"><span class="num">05</span> Funil de vendas</div>
+      <div class="fsec__title"><span class="num">04</span> Funil de vendas</div>
       <div class="field"><label class="lbl">Caminho do usuário após o clique</label><textarea id="f_funil" placeholder="Ex: Anúncio → Advertorial → Página de Vendas → Checkout">${esc(d.funil)}</textarea></div>
       <div class="field"><label class="lbl">Link da presell / advertorial (se houver)</label><input type="url" id="f_advertorialLink" placeholder="https://... — página de pré-venda exibida antes da PV" value="${esc(d.advertorialLink)}"></div>
     </div>
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">06</span> Materiais & Comentário</div>
+      <div class="fsec__title"><span class="num">05</span> Materiais</div>
       <div class="field"><label class="lbl">Links de Drive / Docs (um por linha)</label><textarea id="f_driveLinks" placeholder="https://docs.google.com/...&#10;https://drive.google.com/...">${esc(d.driveLinks)}</textarea></div>
-      <div class="field"><label class="lbl">★ Comentário / orientação sobre a oferta</label><textarea id="f_comentario" placeholder="Observações, insights, orientações...">${esc(d.comentario)}</textarea></div>
     </div>
   `;
   $("#formBody").dataset.tipo=fTipo;
@@ -2598,10 +2563,8 @@ function buildPayload(){
     dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.views||x.printPV||x.printCheckout),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
     taboolaAds:fTaboola.filter(x=>x.nome||x.img),
-    trafego28d:val("f_trafego28d"),trafego3m:val("f_trafego3m"),
-    printSemrushOriginal:fSemrushOriginal||"",printSemrushThumb:fSemrushThumb||fSemrushOriginal||"",
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
-    driveLinks:val("f_driveLinks"),comentario:val("f_comentario")
+    driveLinks:val("f_driveLinks")
   });
   if(fBrandStage==="brandsvalidated")Object.assign(payload,{
     kind:"brandsvalidated",
@@ -2622,6 +2585,74 @@ function buildPayload(){
 }
 function hasContent(p){return !!(p.nomeOferta||p.nomeMarca||p.nicho||p.formato||p.numAdsAtivos||p.imagemProduto||p.funil||p.advertorialLink||p.driveLinks||p.comentario||p.dominios.length||p.criativos.length||p.bibliotecas.length||p.taboolaAds.length||p.trafego28d||p.trafego3m||p.printSemrushOriginal);}
 function markDirty(){formDirty=true;setSaveState("unsaved");}
+
+function canonicalCreativeUrl(value){
+  try{
+    const u=new URL(String(value||"").trim());u.hash="";
+    [...u.searchParams.keys()].forEach(k=>{if(/^(utm_|fbclid$|subid|sid|rtk|twrclid|hcid|tid$)/i.test(k))u.searchParams.delete(k);});
+    return `${u.hostname.toLowerCase()}${u.pathname.replace(/\/+$/,"")}${u.search}`;
+  }catch(e){return String(value||"").trim().toLowerCase();}
+}
+function creativeNicheCode(niche){
+  const key=String(niche||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  if(key.includes("emagrec"))return"WL";
+  if(key.includes("disfunc")||/\bed\b/.test(key))return"ED";
+  if(key.includes("memor"))return"MEMO";
+  if(key.includes("diabet")||key.includes("glic"))return"DB";
+  if(key.includes("press"))return"BP";
+  if(key.includes("vis"))return"VIS";
+  return (key.replace(/[^a-z0-9]+/g," ").trim().split(/\s+/).map(x=>x[0]).join("").slice(0,4)||"OT").toUpperCase();
+}
+function nextCreativeName(niche){
+  const code=creativeNicheCode(niche),rx=new RegExp(`^\\[ADS ${code}\\]\\[(\\d+)\\]$`,"i");
+  const max=offers.reduce((n,o)=>{if((o.data||{}).kind!=="criativo")return n;const m=String(o.data.nome||"").match(rx);return m?Math.max(n,+m[1]):n;},0);
+  return `[ADS ${code}][${String(max+1).padStart(2,"0")}]`;
+}
+async function syncOfferCreatives(offerRow){
+  const d=offerRow&&offerRow.data||{};
+  const items=[
+    ...(Array.isArray(d.criativos)?d.criativos:[]).map(item=>({
+      nome:item&&item.nome,link:item&&item.link,copyLink:item&&item.transcricao,print:""
+    })),
+    ...(Array.isArray(d.taboolaAds)?d.taboolaAds:[]).map(item=>({
+      nome:item&&item.nome,link:item&&item.link||item&&item.img,copyLink:"",print:item&&item.img
+    }))
+  ];
+  for(const source of items){
+    const link=String(source&&source.link||"").trim(),key=canonicalCreativeUrl(link);
+    if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&canonicalCreativeUrl(o.data.linkAnuncio||o.data.video||o.data.print)===key))continue;
+    const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionStatus:"",sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
+    const result=await sb.from("offers").insert({data}).select();
+    const created=result.data&&result.data[0];if(!created)continue;
+    offers.push(created);
+    if(isFbUrl(link))setTimeout(()=>triggerFbIngest(created.id,link),0);
+  }
+}
+
+async function runAdminOfferBatch(mode="audit"){
+  if(!requireAdmin())throw new Error("acesso administrativo necessário");
+  const sessionResult=await sb.auth.getSession(),token=sessionResult?.data?.session?.access_token||"";
+  if(!token)throw new Error("sessão expirada");
+  const response=await fetch("/.netlify/functions/admin-offer-batch",{
+    method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+    body:JSON.stringify({mode})
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.ok)throw new Error(result.error||"falha ao executar lote");
+  if(mode==="apply"){
+    for(const creative of result.createdCreatives||[]){
+      if(!creative?.id||!isFbUrl(creative.link))continue;
+      fetch(FB_INGEST_FN,{
+        method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({id:creative.id,adUrl:creative.link})
+      }).catch(()=>{});
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+    await loadOffers();renderAll();
+  }
+  return result;
+}
+window.runAdminOfferBatch=runAdminOfferBatch;
 
 async function saveForm(){
   if(!requireAdmin())return false;
@@ -2647,6 +2678,7 @@ async function saveForm(){
     if(!editingId){editingId=row.id;offers.push(row);}
     else{const i=offers.findIndex(o=>o.id===editingId);if(i>=0)offers[i]=row;else offers.push(row);}
   }
+  if(row)await syncOfferCreatives(row);
   formDirty=false;setSaveState("saved");setSync("ok","Salvo");renderGrid();writeCache();
   return true;
 }
@@ -3025,8 +3057,14 @@ function renderSubFilter(){
   if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
-  el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>`;
+  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar vídeos</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" multiple hidden>`:"";
+  el.innerHTML=`<div class="subfilter__row"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
   $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
+  const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
+  if(batchButton&&batchFiles){
+    batchButton.addEventListener("click",()=>batchFiles.click());
+    batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,activeNiche||"Emagrecimento");});
+  }
 }
 
 /* ===== FEGUINHO COPY CHIEF (Beta) ===== */
@@ -5105,6 +5143,49 @@ async function uploadVideoFile(file){
   sMarkDirty();
   toast("Vídeo enviado ✓");
 }
+
+let creativeBatchWorking=false;
+async function importCreativeBatch(files,niche="Emagrecimento"){
+  if(!requireAdmin()||creativeBatchWorking)return;
+  const videos=files.filter(file=>/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
+  if(!videos.length){toast("Selecione pelo menos um arquivo de vídeo.",true);return;}
+  const button=$("#creativeBatchImport"),existingSources=new Set(
+    offers.filter(row=>(row.data||{}).kind==="criativo")
+      .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
+  );
+  creativeBatchWorking=true;if(button)button.disabled=true;
+  let imported=0,skipped=0,failed=0;
+  for(let index=0;index<videos.length;index++){
+    const file=videos[index],sourceFile=String(file.name||`video-${index+1}.mp4`),dedupeKey=`wl feg|${sourceFile.toLowerCase()}`;
+    if(existingSources.has(dedupeKey)){skipped++;continue;}
+    if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
+    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;continue;}
+    const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
+    const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
+    let upload;try{upload=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:mediaInfo.contentType,upsert:false});}catch(error){upload={error};}
+    if(upload.error){failed++;continue;}
+    const publicUrl=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    const originalName=sourceFile.replace(/\.[^.]+$/,"");
+    const data={
+      kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho,marca:"WL FEG",
+      plataforma:"meta",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",
+      transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
+      transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
+      importBatch:"WL FEG",sourceFile
+    };
+    let saved;try{saved=await sb.from("offers").insert({data}).select();}catch(error){saved={error};}
+    if(saved.error||!saved.data?.[0]){
+      failed++;try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(error){}
+      continue;
+    }
+    offers.push(saved.data[0]);existingSources.add(dedupeKey);imported++;
+  }
+  creativeBatchWorking=false;
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar vídeos";}
+  renderGrid();writeCache();
+  toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}`:""}`,!!failed);
+}
+
 function wireVideoUpload(){
   const zone=$("#vidUpZone");if(!zone)return;
   const pick=()=>{const i=document.createElement("input");i.type="file";i.accept="video/mp4,video/webm,video/quicktime,video/*";i.onchange=()=>{if(i.files[0])uploadVideoFile(i.files[0]);};i.click();};
