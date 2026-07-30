@@ -2811,7 +2811,7 @@ function imageFileToWebp(file,maxW=1280,maxH=1800,quality=.78){
 async function storageUploadWithProgress(file,path,onProgress,contentType=file.type){
   const session=await sb.auth.getSession(),token=(session.data&&session.data.session&&session.data.session.access_token)||currentSbKey;
   const safePath=path.split("/").map(encodeURIComponent).join("/");
-  return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",contentType);xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
+  return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.timeout=240000;xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",contentType);xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.ontimeout=()=>reject(new Error("o envio excedeu o tempo seguro"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
 }
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
 async function uploadBrandTopAdFile(file,dz,info){
@@ -5173,8 +5173,13 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
     const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
-    let upload;try{upload=await sb.storage.from(VIDEO_BUCKET).upload(storagePath,file,{contentType:mediaInfo.contentType,upsert:false});}catch(error){upload={error};}
-    if(upload.error){failed++;continue;}
+    let uploadError=null;
+    try{
+      await storageUploadWithProgress(file,storagePath,percent=>{
+        if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length} · ${percent}%`;
+      },mediaInfo.contentType);
+    }catch(error){uploadError=error;}
+    if(uploadError){failed++;continue;}
     const publicUrl=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath).data.publicUrl;
     const originalName=sourceFile.replace(/\.[^.]+$/,"");
     const data={
