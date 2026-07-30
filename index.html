@@ -5296,13 +5296,29 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
       transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
       importBatch:"WL FEG",sourceFile
     };
-    let saved;try{saved=await sb.from("offers").insert({data}).select();}catch(error){saved={error};}
-    if(saved.error||!saved.data?.[0]){
-      firstFailure||=String(saved.error?.message||"o banco não confirmou o novo criativo");
+    let savedRow=null,saveError=null;
+    try{
+      const session=await sb.auth.getSession(),accessToken=session.data?.session?.access_token;
+      if(!accessToken)throw new Error("sua sessão expirou; entre novamente");
+      const saveResponse=await fetch("/.netlify/functions/admin-creative-import",{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:"Bearer "+accessToken},
+        body:JSON.stringify({
+          nome:data.nome,nomeOriginal:data.nomeOriginal,nicho:data.nicho,
+          video:data.video,sourceFile:data.sourceFile
+        }),
+        signal:AbortSignal.timeout(35000)
+      });
+      const savePayload=await saveResponse.json().catch(()=>({}));
+      if(!saveResponse.ok||!savePayload.ok)throw new Error(savePayload.error||`HTTP ${saveResponse.status}`);
+      savedRow=savePayload.row;
+    }catch(error){saveError=error;}
+    if(saveError||!savedRow){
+      firstFailure||=String(saveError?.message||"o banco não confirmou o novo criativo");
       failed++;try{await sb.storage.from(VIDEO_BUCKET).remove([storagePath]);}catch(error){}
       continue;
     }
-    offers.push(saved.data[0]);existingSources.add(dedupeKey);imported++;
+    offers.push(savedRow);existingSources.add(dedupeKey);imported++;
   }
   creativeBatchWorking=false;
   if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar vídeos";}
