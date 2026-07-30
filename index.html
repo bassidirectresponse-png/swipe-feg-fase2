@@ -3015,10 +3015,21 @@ function renderSubFilter(){
     const sectionItems=offers.filter(o=>sectionOf(o)===activeSection),reference=offerSortReference(sectionItems),health=automationCounts(activeSection);
     const brandNav=BRAND_SECTIONS.has(activeSection)?(()=>{const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;return `<div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div>`;})():"";
     const healthHtml=isAdmin?`<div class="automation-health" aria-label="Situação das automações"><span class="automation-health__item">Análises na fila <strong>${health.pending}</strong></span><span class="automation-health__item">Falhas <strong>${health.failed}</strong></span></div>`:"";
-    el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label><div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}</div>`;
+    const migrationButton=isAdmin&&activeSection==="oferta"&&new URLSearchParams(location.search).get("migration")==="offer-batch-july29"
+      ?`<button type="button" class="btn btn--outline btn--sm" id="offerBatchApply">${ic("pulse")}Aplicar lote consolidado</button>`:"";
+    el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label><div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}${migrationButton}</div>`;
     const changeSort=(key,value)=>{const panel=$(".sort-panel",el),message=$(".sort-reference",el);panel.setAttribute("aria-busy","true");if(message)message.textContent="Atualizando ordenação…";setTimeout(()=>{if(key==="sort")offerSort=value;else offerDirection=value;navigate(currentPath(),{replace:true});},0);};
     $("#offerSort").addEventListener("change",event=>changeSort("sort",event.target.value));
     $("#offerDirection").addEventListener("change",event=>changeSort("direction",event.target.value));
+    const batchApply=$("#offerBatchApply");
+    if(batchApply)batchApply.addEventListener("click",async()=>{
+      batchApply.disabled=true;batchApply.innerHTML=ic("pulse")+"Consolidando…";
+      try{
+        const result=await runAdminOfferBatch("apply");
+        toast(`${result.summary?.offersCreated||0} ofertas criadas · ${result.summary?.offersUpdated||0} atualizadas · ${result.summary?.duplicateOffersRemoved||0} duplicadas removidas`);
+      }catch(error){toast(String(error&&error.message||error),true);}
+      finally{batchApply.disabled=false;batchApply.innerHTML=ic("pulse")+"Lote consolidado aplicado";}
+    });
     return;
   }
   if(activeSection==="tiktok"){
