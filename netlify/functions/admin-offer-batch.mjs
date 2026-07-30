@@ -1,6 +1,8 @@
 import {
   SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   authenticate,
+  bearerToken,
   isAdmin,
   json,
   preflight,
@@ -11,7 +13,6 @@ import {
 import { offers as catalog } from "../../scripts/offer_batch_july29_catalog.mjs";
 
 const METHODS = "POST, OPTIONS";
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || "";
 const textKey = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const sectionOf = row => row?.data?.kind || "oferta";
 
@@ -85,14 +86,14 @@ function isLucas(data) {
   return /lucas\s+rego/i.test(marker);
 }
 
-function restHeaders() {
-  return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+function restHeaders(accessToken) {
+  return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
 }
 
-async function rest(path, options = {}) {
+async function rest(path, options = {}, accessToken) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
-    headers: { ...restHeaders(), ...(options.headers || {}) },
+    headers: { ...restHeaders(accessToken), ...(options.headers || {}) },
     signal: AbortSignal.timeout(25_000),
   });
   const text = await response.text();
@@ -152,7 +153,7 @@ function nextName(niche, counters) {
   return `[ADS ${code}][${String(counters.get(code)).padStart(2, "0")}]`;
 }
 
-async function applyRename(rows, dryRun) {
+async function applyRename(rows, dryRun, accessToken) {
   const normal = rows.filter(row => sectionOf(row) === "criativo" && !isLucas(row.data));
   const grouped = new Map();
   for (const row of normal) {
@@ -173,7 +174,7 @@ async function applyRename(rows, dryRun) {
           method: "PATCH",
           headers: { Prefer: "return=minimal" },
           body: JSON.stringify({ data }),
-        });
+        }, accessToken);
         row.data = data;
       }
     }
@@ -181,9 +182,9 @@ async function applyRename(rows, dryRun) {
   return changes;
 }
 
-async function runBatch({ dryRun, origin }) {
-  const rows = await rest("offers?select=id,created_at,data&order=created_at.asc");
-  const renameChanges = await applyRename(rows, dryRun);
+async function runBatch({ dryRun, origin, accessToken }) {
+  const rows = await rest("offers?select=id,created_at,data&order=created_at.asc", {}, accessToken);
+  const renameChanges = await applyRename(rows, dryRun, accessToken);
   const plans = catalog.map(item => {
     const found = rows.filter(row => matches(item, row));
     return { item, keep: found[0] || null, duplicates: found.slice(1) };
@@ -225,17 +226,17 @@ async function runBatch({ dryRun, origin }) {
         method: "PATCH",
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({ data }),
-      });
+      }, accessToken);
     } else {
       saved = await rest("offers?select=id,data", {
         method: "POST",
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({ data }),
-      });
+      }, accessToken);
     }
     const offerId = saved?.[0]?.id || plan.keep?.id;
     for (const duplicate of plan.duplicates) {
-      await rest(`offers?id=eq.${encodeURIComponent(duplicate.id)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+      await rest(`offers?id=eq.${encodeURIComponent(duplicate.id)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }, accessToken);
     }
     for (const creative of plan.item.creatives) {
       const key = canonicalUrl(creative.link);
@@ -260,13 +261,24 @@ async function runBatch({ dryRun, origin }) {
         method: "POST",
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({ data: creativeData }),
-      });
+      }, accessToken);
       creativeKeys.add(key);
       createdCreatives.push({ id: inserted?.[0]?.id, name: creativeData.nome, link: creative.link });
     }
     results.push({ name: plan.item.name, action: plan.keep ? "updated" : "inserted", duplicatesRemoved: plan.duplicates.length, id: offerId });
   }
-  return { dryRun: false, renames: renameChanges.length, offers: results, createdCreatives };
+  return {
+    dryRun: false,
+    renames: renameChanges.length,
+    offers: results,
+    createdCreatives,
+    summary: {
+      offersCreated: results.filter(item => item.action === "inserted").length,
+      offersUpdated: results.filter(item => item.action === "updated").length,
+      duplicateOffersRemoved: results.reduce((total, item) => total + item.duplicatesRemoved, 0),
+      creativesCreated: createdCreatives.length,
+    },
+  };
 }
 
 export default async req => {
@@ -275,15 +287,15 @@ export default async req => {
   if (req.method !== "POST") return json(req, 405, { ok: false, error: "método não permitido" }, METHODS);
   if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
   try {
-    if (!SERVICE_KEY) throw new Error("credencial interna indisponível");
     const user = await authenticate(req);
     if (!isAdmin(user)) return json(req, 403, { ok: false, error: "somente o administrador pode executar este lote" }, METHODS);
+    const accessToken = bearerToken(req);
     const quota = await rateLimit("admin-offer-batch", user.id, { limit: 4, windowMs: 60 * 60_000 });
     if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário atingido" }, METHODS);
     const body = await readJson(req, { maxBytes: 8 * 1024 });
     const dryRun = body.mode !== "apply";
     const origin = String(process.env.URL || new URL(req.url).origin).replace(/\/+$/, "");
-    const result = await runBatch({ dryRun, origin });
+    const result = await runBatch({ dryRun, origin, accessToken });
     return json(req, 200, { ok: true, ...result }, METHODS);
   } catch (error) {
     console.error("admin-offer-batch:", String(error?.message || error).slice(0, 220));
