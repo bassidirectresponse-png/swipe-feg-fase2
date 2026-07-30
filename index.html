@@ -2813,6 +2813,42 @@ async function storageUploadWithProgress(file,path,onProgress,contentType=file.t
   const safePath=path.split("/").map(encodeURIComponent).join("/");
   return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST",`${currentSbUrl}/storage/v1/object/criativos/${safePath}`);xhr.timeout=240000;xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);xhr.setRequestHeader("Content-Type",contentType);xhr.setRequestHeader("x-upsert","false");xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>reject(new Error("falha de rede no upload"));xhr.ontimeout=()=>reject(new Error("o envio excedeu o tempo seguro"));xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else{let msg="HTTP "+xhr.status;try{msg=JSON.parse(xhr.responseText).message||msg;}catch(_){}reject(new Error(msg));}};xhr.send(file);});
 }
+function utf8Base64(value){
+  const bytes=new TextEncoder().encode(String(value)),step=0x8000;
+  let binary="";for(let index=0;index<bytes.length;index+=step)binary+=String.fromCharCode(...bytes.subarray(index,index+step));
+  return btoa(binary);
+}
+async function storageTusUploadWithProgress(file,path,onProgress,contentType=file.type){
+  const session=await sb.auth.getSession(),token=(session.data&&session.data.session&&session.data.session.access_token)||currentSbKey;
+  const projectUrl=new URL(currentSbUrl),directHost=projectUrl.hostname.replace(/\.supabase\.co$/,".storage.supabase.co");
+  const endpoint=`${projectUrl.protocol}//${directHost}/storage/v1/upload/resumable`;
+  const baseHeaders={apikey:currentSbKey,Authorization:"Bearer "+token,"Tus-Resumable":"1.0.0"};
+  const created=await fetch(endpoint,{method:"POST",headers:{...baseHeaders,"Upload-Length":String(file.size),"Upload-Metadata":[
+    `bucketName ${utf8Base64(VIDEO_BUCKET)}`,
+    `objectName ${utf8Base64(path)}`,
+    `contentType ${utf8Base64(contentType||"application/octet-stream")}`,
+    `cacheControl ${utf8Base64("3600")}`
+  ].join(","),"x-upsert":"false"}});
+  if(!created.ok){let message=`HTTP ${created.status}`;try{message=(await created.json()).message||message;}catch(_){}throw new Error(message);}
+  const location=created.headers.get("location");if(!location)throw new Error("o armazenamento não retornou o destino do envio");
+  const uploadUrl=new URL(location,endpoint).toString(),chunkSize=6*1024*1024;
+  let offset=0;
+  while(offset<file.size){
+    const start=offset,end=Math.min(file.size,start+chunkSize),chunk=file.slice(start,end);
+    offset=await new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();xhr.open("PATCH",uploadUrl);xhr.timeout=120000;
+      xhr.setRequestHeader("apikey",currentSbKey);xhr.setRequestHeader("Authorization","Bearer "+token);
+      xhr.setRequestHeader("Tus-Resumable","1.0.0");xhr.setRequestHeader("Upload-Offset",String(start));
+      xhr.setRequestHeader("Content-Type","application/offset+octet-stream");
+      xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round((start+event.loaded)/file.size*100)));};
+      xhr.onerror=()=>reject(new Error("falha de rede no envio em partes"));
+      xhr.ontimeout=()=>reject(new Error("uma parte do envio excedeu o tempo seguro"));
+      xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve(Number(xhr.getResponseHeader("Upload-Offset"))||end);else{let message=`HTTP ${xhr.status}`;try{message=JSON.parse(xhr.responseText).message||message;}catch(_){}reject(new Error(message));}};
+      xhr.send(chunk);
+    });
+  }
+  onProgress(100);
+}
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
 async function uploadBrandTopAdFile(file,dz,info){
   const index=+(dz.dataset.zone.split("|")[1]),ad=fBrandTopAds[index],isVideo=info&&info.kind==="video",isImage=info&&info.kind==="image";
@@ -5175,7 +5211,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null;
     try{
-      await storageUploadWithProgress(file,storagePath,percent=>{
+      await storageTusUploadWithProgress(file,storagePath,percent=>{
         if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length} · ${percent}%`;
       },mediaInfo.contentType);
     }catch(error){uploadError=error;}
