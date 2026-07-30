@@ -28,6 +28,8 @@ const extraBrandsScript = fileURLToPath(extraBrandsScriptUrl);
 const ancestralSeed = JSON.parse(execFileSync(process.execPath, [extraBrandsScript, "ancestral-supplements", "--emit-seed"], { encoding: "utf8" }));
 const marsSeed = JSON.parse(execFileSync(process.execPath, [extraBrandsScript, "mars-men", "--emit-seed"], { encoding: "utf8" }));
 const ultimaPeakSeed = JSON.parse(execFileSync(process.execPath, [extraBrandsScript, "ultima-peak", "--emit-seed"], { encoding: "utf8" }));
+const adminOfferBatch = await readFile(new URL("../netlify/functions/admin-offer-batch.mjs", import.meta.url), "utf8");
+const offerBatchIngest = await readFile(new URL("../scripts/ingest_offer_batch_july22.mjs", import.meta.url), "utf8");
 
 test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /height:calc\(100dvh - var\(--topbar-h\)\)/);
@@ -351,8 +353,17 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsScraper, /"Range": f"\{start\}-\{start \+ page_size - 1\}"/);
   assert.match(adsScraper, /start \+= page_size/);
   assert.match(adsScraper, /def last_stable_ads\(data, now\):/);
+  assert.match(adsScraper, /def normalize_history\(points\):/);
+  assert.match(adsScraper, /by_date\[today\] = \{"d": today, "n": total\}/);
   assert.match(adsScraper, /reason="partial_library_read"/);
   assert.match(adsScraper, /reason="zero_awaiting_confirmation"/);
+});
+
+test("consolidação de ofertas preserva e ordena o histórico de anúncios", () => {
+  assert.match(adminOfferBatch, /function mergeAdsHistory\(first, second\)/);
+  assert.match(adminOfferBatch, /adsHistory: mergeAdsHistory\(first\?\.adsHistory, second\?\.adsHistory\)/);
+  assert.match(offerBatchIngest, /const mergeAdsHistory = \(first, second\) =>/);
+  assert.match(offerBatchIngest, /adsHistory: mergeAdsHistory\(duplicate\.data\?\.adsHistory, previous\.adsHistory\)/);
 });
 
 test("Transcritor preserva o arquivo até a leitura e entrega original com tradução PT-BR", () => {

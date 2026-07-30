@@ -223,12 +223,34 @@ def scrape_one(page, url, retries=2):
 
 
 # =============================== histórico =================================
+def normalize_history(points):
+    """Mantém a invariável de um único ponto válido por data, em ordem crescente.
+
+    Em cards antigos, consolidações incorretas chegaram a concatenar séries que
+    voltavam no calendário. A automação nunca deve propagar essa estrutura.
+    Em uma mesma data, a leitura mais recente vence.
+    """
+    by_date = {}
+    for point in points if isinstance(points, list) else []:
+        if not isinstance(point, dict):
+            continue
+        date = str(point.get("d") or "")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            continue
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+            value = int(point.get("n"))
+        except (TypeError, ValueError):
+            continue
+        if value < 0:
+            continue
+        by_date[date] = {"d": date, "n": value}
+    return [by_date[date] for date in sorted(by_date)]
+
+
 def update_history(data, total, now):
     today = now.strftime("%Y-%m-%d")
-    hist = data.get("adsHistory")
-    if not isinstance(hist, list):
-        hist = []
-    hist = [h for h in hist if isinstance(h, dict) and h.get("d")]
+    hist = normalize_history(data.get("adsHistory"))
     # Cards de Brands anteriores à automação já têm total/data conferidos à mão.
     # Preserva essa leitura como ponto inicial para o gráfico não perder contexto.
     if not hist and data.get("adsLibraryCheckedAt") and data.get("numAdsAtivos") is not None:
@@ -239,10 +261,9 @@ def update_history(data, total, now):
                 hist.append({"d": checked, "n": previous})
         except (TypeError, ValueError):
             pass
-    if hist and hist[-1].get("d") == today:
-        hist[-1]["n"] = total            # mesma data -> atualiza o ponto do dia
-    else:
-        hist.append({"d": today, "n": total})
+    by_date = {point["d"]: point for point in hist}
+    by_date[today] = {"d": today, "n": total}
+    hist = [by_date[date] for date in sorted(by_date)]
     if len(hist) > HISTORY_DAYS:
         hist = hist[-HISTORY_DAYS:]
     return hist
@@ -251,8 +272,8 @@ def update_history(data, total, now):
 def last_stable_ads(data, now):
     """Retorna o último total positivo anterior ao dia atual."""
     today = now.strftime("%Y-%m-%d")
-    hist = data.get("adsHistory")
-    if isinstance(hist, list):
+    hist = normalize_history(data.get("adsHistory"))
+    if hist:
         for point in reversed(hist):
             if not isinstance(point, dict) or point.get("d") == today:
                 continue

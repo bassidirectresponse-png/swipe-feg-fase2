@@ -157,6 +157,25 @@ for (const row of offerRows) {
 }
 
 const dryRun = !process.argv.includes("--apply");
+const dumpHistory = process.argv.includes("--dump-history");
+const dumpAllHistory = process.argv.includes("--dump-all-history");
+const listTables = process.argv.includes("--list-tables");
+const applyHistoryRepair = process.argv.includes("--apply-history-repair");
+const inspectHistoryRepair = process.argv.includes("--repair-history") || applyHistoryRepair;
+if (listTables) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+    headers: { ...headers, Accept: "application/openapi+json" },
+    signal: AbortSignal.timeout(30_000),
+  });
+  const schema = await response.json();
+  const tables = Object.keys(schema?.paths || {})
+    .map(path => path.replace(/^\//, ""))
+    .filter(Boolean)
+    .filter(name => /(offer|audit|histor|backup|version|event|log)/i.test(name))
+    .sort();
+  console.log(JSON.stringify({ tables }, null, 2));
+  process.exit(0);
+}
 const missingTargets = [...new Set(
   findings
     .flatMap(finding => finding.expectedOwners)
@@ -174,9 +193,31 @@ console.log(JSON.stringify({
     })),
   missingTargets,
   findings,
+  ...(dumpHistory ? {
+    historySnapshot: offerRows
+      .filter(row => ["glyco-reset", "jellyfill", "glpro"].includes(exactProductFor(row)?.slug))
+      .map(row => ({
+        id: row.id,
+        slug: exactProductFor(row)?.slug,
+        name: row.data?.nomeOferta || "",
+        numAdsAtivos: row.data?.numAdsAtivos ?? null,
+        adsHistory: Array.isArray(row.data?.adsHistory) ? row.data.adsHistory : [],
+        libraries: Array.isArray(row.data?.bibliotecas)
+          ? row.data.bibliotecas.map(entry => ({ nome: entry?.nome || "", link: entry?.link || "" }))
+          : [],
+        createdAt: row.created_at,
+        updatedAt: row.data?.adsUpdatedAt || row.data?.analysisCompletedAt || "",
+      })),
+  } : {}),
+  ...(dumpAllHistory ? {
+    allHistorySnapshot: offerRows.map(row => ({
+      id: row.id,
+      name: row.data?.nomeOferta || "",
+      numAdsAtivos: row.data?.numAdsAtivos ?? null,
+      adsHistory: Array.isArray(row.data?.adsHistory) ? row.data.adsHistory : [],
+    })),
+  } : {}),
 }, null, 2));
-
-if (dryRun || findings.length === 0) process.exit(0);
 
 const publicObject = path => `${SUPABASE_URL}/storage/v1/object/public/criativos/${path}`;
 const uniqueCatalogEntries = (product, field, linkField) => {
@@ -194,7 +235,7 @@ const uniqueCatalogEntries = (product, field, linkField) => {
 };
 
 function restoredData(product) {
-  const item = product.items[0];
+  const item = product.items.at(-1);
   const base = `offers/2026-07-22/${product.slug}`;
   const domains = uniqueCatalogEntries(product, "domains", "offer").map((entry, index) => ({
     nome: entry.name,
@@ -232,9 +273,147 @@ function restoredData(product) {
     analysisLastError: "",
     analysisNextRetryAt: "",
     analysisVersion: "1",
-    adsLibraryHistory: [],
+    adsHistory: [],
   };
 }
+
+function splitHistorySeries(history) {
+  const series = [];
+  for (const point of Array.isArray(history) ? history : []) {
+    const date = String(point?.d || "");
+    const value = Number(point?.n);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value) || value < 0) continue;
+    const current = series.at(-1);
+    const scaleRestart = current
+      && Math.max(...current.map(entry => entry.n)) <= 1_000
+      && value >= 90_000;
+    if (!current || date <= current.at(-1).d || scaleRestart) series.push([]);
+    series.at(-1).push({ d: date, n: Math.round(value) });
+  }
+  return series.filter(Boolean);
+}
+
+function normalizedHistory(history) {
+  const byDate = new Map();
+  for (const point of Array.isArray(history) ? history : []) {
+    const date = String(point?.d || "");
+    const value = Number(point?.n);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value) || value < 0) continue;
+    byDate.set(date, { d: date, n: Math.round(value) });
+  }
+  return [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
+}
+
+function historyStats(series) {
+  const values = series.map(point => point.n);
+  return {
+    from: series[0]?.d || "",
+    to: series.at(-1)?.d || "",
+    points: series.length,
+    min: values.length ? Math.min(...values) : 0,
+    max: values.length ? Math.max(...values) : 0,
+  };
+}
+
+async function repairMixedOfferHistory(apply) {
+  const glyco = offerRows.find(row => exactProductFor(row)?.slug === "glyco-reset");
+  const jelly = offerRows.find(row => exactProductFor(row)?.slug === "jellyfill");
+  if (!glyco || !jelly) throw new Error("Cards Glyco Reset e JellyFill são obrigatórios para restaurar o histórico");
+
+  const sourceHistory = Array.isArray(glyco.data?.adsHistory) ? glyco.data.adsHistory : [];
+  const series = splitHistorySeries(sourceHistory);
+  const jellySeries = series.filter(points => historyStats(points).max >= 90_000);
+  const archivedSeries = series
+    .filter(points => historyStats(points).max < 90_000)
+    .map(points => {
+      const stats = historyStats(points);
+      const owner = stats.max >= 10_000
+        ? "[GELATIN TRICK] [MELT DROPS]"
+        : stats.max <= 1_000
+          ? "[MEMOPENZIL]"
+          : "origem a confirmar";
+      return { owner, points, ...stats };
+    });
+  const recovered = normalizedHistory(jellySeries.flat());
+  const alreadyApplied = series.length <= 1 && normalizedHistory(jelly.data?.adsHistory).length >= 20;
+  const plan = {
+    alreadyApplied,
+    source: { id: glyco.id, name: glyco.data?.nomeOferta || "", series: series.map(historyStats) },
+    target: { id: jelly.id, name: jelly.data?.nomeOferta || "" },
+    jellyHistory: historyStats(recovered),
+    archivedSeries: archivedSeries.map(({ points, ...entry }) => entry),
+  };
+  if (!apply || alreadyApplied) return plan;
+  if (series.length !== 4 || jellySeries.length !== 2 || recovered.length !== 24) {
+    throw new Error(`Pré-condição recusada: esperado 4 séries, 2 do Jelly e 24 pontos; recebido ${series.length}/${jellySeries.length}/${recovered.length}`);
+  }
+  if (recovered[0]?.d !== "2026-07-06" || recovered.at(-1)?.d !== "2026-07-30") {
+    throw new Error("Pré-condição recusada: intervalo histórico do JellyFill não confere");
+  }
+
+  const repairedAt = new Date().toISOString();
+  const recovery = {
+    repairedAt,
+    reason: "históricos de cards distintos foram concatenados durante uma consolidação incorreta",
+    evidence: "GitHub Actions ads-ativos: JellyFill/Horse Boost/Horse Wood, Gelatin Trick/Melt Drops e Memopenzil",
+    sourceRowId: glyco.id,
+    archivedSeries,
+  };
+  const jellyData = {
+    ...jelly.data,
+    numAdsAtivos: String(recovered.at(-1).n),
+    adsHistory: recovered,
+    adsUpdatedAt: glyco.data?.adsUpdatedAt || jelly.data?.adsUpdatedAt || repairedAt,
+    analysisZeroReads: 0,
+    adsHistoryRecovery: recovery,
+  };
+  const latestGlycoCount = [...(productCatalog.get("glyco-reset")?.items || [])]
+    .reverse()
+    .find(item => item.ads != null)?.ads;
+  const glycoData = {
+    ...glyco.data,
+    numAdsAtivos: String(latestGlycoCount ?? ""),
+    adsHistory: [],
+    adsUpdatedAt: "",
+    analysisStatus: "pending",
+    analysisAttempts: 0,
+    analysisStartedAt: "",
+    analysisCompletedAt: "",
+    analysisLastError: "",
+    analysisNextRetryAt: "",
+    analysisZeroReads: 0,
+    adsHistoryRecovery: recovery,
+  };
+
+  const backupPath = `/tmp/offer-history-before-repair-${Date.now()}.json`;
+  await fs.writeFile(backupPath, JSON.stringify({
+    createdAt: repairedAt,
+    rows: [
+      { id: glyco.id, data: glyco.data },
+      { id: jelly.id, data: jelly.data },
+    ],
+  }, null, 2));
+
+  for (const row of [{ id: glyco.id, data: glycoData }, { id: jelly.id, data: jellyData }]) {
+    await request(`offers?id=eq.${encodeURIComponent(row.id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ data: row.data }),
+    });
+  }
+  return { ...plan, applied: true, backupPath };
+}
+
+if (inspectHistoryRepair) {
+  console.log(JSON.stringify({
+    ok: true,
+    dryRun: !applyHistoryRepair,
+    historyRepair: await repairMixedOfferHistory(applyHistoryRepair),
+  }, null, 2));
+  process.exit(0);
+}
+
+if (dryRun || findings.length === 0) process.exit(0);
 
 for (const slug of missingTargets) {
   const product = productCatalog.get(slug);

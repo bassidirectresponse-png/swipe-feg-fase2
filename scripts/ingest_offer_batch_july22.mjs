@@ -72,6 +72,16 @@ const uniqueBy = (current, added, field) => {
   }
   return out;
 };
+const mergeAdsHistory = (first, second) => {
+  const byDate = new Map();
+  for (const point of [...(Array.isArray(first) ? first : []), ...(Array.isArray(second) ? second : [])]) {
+    const date = String(point?.d || "");
+    const value = Number(point?.n);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value) || value < 0) continue;
+    byDate.set(date, { d: date, n: Math.round(value) });
+  }
+  return [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
+};
 
 const manifest = JSON.parse(await fs.readFile(new URL("assets/offers-july22/manifest.json", ROOT), "utf8"));
 const publicObject = path => `${SUPABASE_URL}/storage/v1/object/public/criativos/${path}`;
@@ -163,6 +173,7 @@ for (const plan of plans) {
       dominios: uniqueBy(duplicate.data?.dominios, previous.dominios || [], "linkDominio"),
       bibliotecas: uniqueBy(duplicate.data?.bibliotecas, previous.bibliotecas || [], "link"),
       criativos: uniqueBy(duplicate.data?.criativos, previous.criativos || [], "link"),
+      adsHistory: mergeAdsHistory(duplicate.data?.adsHistory, previous.adsHistory),
     };
   }
   const data = buildData(item, previous, media);

@@ -40,6 +40,17 @@ function uniqueBy(current, added, field) {
   return result;
 }
 
+function mergeAdsHistory(first, second) {
+  const byDate = new Map();
+  for (const point of [...(Array.isArray(first) ? first : []), ...(Array.isArray(second) ? second : [])]) {
+    const date = String(point?.d || "");
+    const value = Number(point?.n);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value) || value < 0) continue;
+    byDate.set(date, { d: date, n: Math.round(value) });
+  }
+  return [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
+}
+
 function namesOf(row) {
   return [row?.data?.nomeOferta, row?.data?.nomeMarca].map(textKey).filter(Boolean);
 }
@@ -58,6 +69,7 @@ function mergeRows(first, second) {
     bibliotecas: uniqueBy(first?.bibliotecas, second?.bibliotecas, "link"),
     criativos: uniqueBy(first?.criativos, second?.criativos, "link"),
     advertorials: [...new Set([...(first?.advertorials || []), first?.advertorialLink, ...(second?.advertorials || []), second?.advertorialLink].filter(Boolean).map(String))],
+    adsHistory: mergeAdsHistory(first?.adsHistory, second?.adsHistory),
   };
 }
 
