@@ -11,6 +11,7 @@ test("automação cobre o acervo normal de Criativos e retoma a fila", () => {
   assert.match(workflow, /MAX_VIDEOS: "200"/);
   assert.match(workflow, /MAX_RUN_MINUTES: "300"/);
   assert.match(workflow, /MAX_RETRIES: "8"/);
+  assert.match(workflow, /TRANSCRIPTION_LOCK_MINUTES: "45"/);
   assert.match(script, /transcricaoTentativas/);
   assert.match(script, /transcricaoUltimaTentativa/);
   assert.match(script, /transcriptionStatus/);

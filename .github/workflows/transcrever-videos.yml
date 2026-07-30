@@ -60,7 +60,10 @@ jobs:
           MAX_VIDEOS: "200"
           MAX_RUN_MINUTES: "300"
           MAX_RETRIES: "8"
-          TRANSCRIPTION_LOCK_MINUTES: "180"
+          # Um worker interrompido não pode deixar o card preso por horas.
+          # Como a rede de segurança roda de hora em hora, 45 min recupera
+          # o item já no ciclo seguinte sem disputar com uma execução ativa.
+          TRANSCRIPTION_LOCK_MINUTES: "45"
           TRANSCRIPTION_VERSION: "1"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py
