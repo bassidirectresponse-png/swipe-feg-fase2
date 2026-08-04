@@ -34,7 +34,15 @@ function scan(text, location, scope, findings) {
     pattern.lastIndex = 0;
     for (const match of text.matchAll(pattern)) {
       const value = type === "credential-assignment" ? match[1] : match[0];
-      if (!value || /^\$\{\{|^process\.env\b|^secrets\./i.test(value) || isPublicSupabaseAnon(value)) continue;
+      if (
+        !value
+        || /^\$\{\{/.test(value)
+        || /^\$\(/.test(value)
+        || /^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$/.test(value)
+        || /^process\.env\b/i.test(value)
+        || /^secrets\./i.test(value)
+        || isPublicSupabaseAnon(value)
+      ) continue;
       const line = text.slice(0, match.index).split("\n").length;
       findings.push({ type, location: `${location}:${line}`, scope, fingerprint: fingerprint(value) });
     }
