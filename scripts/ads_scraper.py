@@ -35,6 +35,7 @@ from runtime_config import supabase_public_config
 SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
 HISTORY_DAYS = int(os.environ.get("HISTORY_DAYS", "60"))
 MAX_OFFERS = max(1, int(os.environ.get("MAX_OFFERS", "200")))
@@ -103,6 +104,8 @@ def sb(method, path, token=None, body=None, prefer=None, extra_headers=None):
 
 
 def bot_login():
+    if BOT_ACCESS_TOKEN:
+        return BOT_ACCESS_TOKEN
     status, txt = sb("POST", "/auth/v1/token?grant_type=password",
                      body={"email": BOT_EMAIL, "password": BOT_PASSWORD})
     if status != 200:
@@ -333,8 +336,7 @@ def main():
     missing = [name for name, value in (
         ("SUPABASE_URL", SUPABASE_URL),
         ("SUPABASE_ANON_KEY", ANON),
-        ("SUPABASE_BOT_EMAIL", BOT_EMAIL),
-        ("SUPABASE_BOT_PASSWORD", BOT_PASSWORD),
+        ("AUTENTICAÇÃO_DO_BOT", BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD)),
     ) if not value]
     if missing:
         print(f"ERRO: variáveis obrigatórias ausentes: {', '.join(missing)}.", file=sys.stderr)
@@ -343,7 +345,7 @@ def main():
     token = bot_login() if not DRY_RUN else None
     if DRY_RUN:
         # em dry-run ainda precisamos ler; login opcional se as credenciais existirem
-        token = bot_login() if (BOT_EMAIL and BOT_PASSWORD) else None
+        token = bot_login() if (BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD)) else None
         if token is None:
             print("DRY_RUN sem credenciais: não consigo ler ofertas (RLS). Defina SUPABASE_BOT_* mesmo em dry-run.", file=sys.stderr)
             sys.exit(2)

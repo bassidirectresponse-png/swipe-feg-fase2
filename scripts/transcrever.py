@@ -32,6 +32,7 @@ from runtime_config import supabase_public_config
 SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 APP_URL = os.environ.get("APP_URL", "https://benchmarkinggrupofeg.site").strip().rstrip("/")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
 MAX_VIDEOS = max(1, int(os.environ.get("MAX_VIDEOS", "200")))
@@ -151,6 +152,8 @@ def sb(method, path, token=None, body=None, prefer=None, extra_headers=None):
 
 
 def bot_login():
+    if BOT_ACCESS_TOKEN:
+        return BOT_ACCESS_TOKEN
     status, txt = sb("POST", "/auth/v1/token?grant_type=password",
                      body={"email": BOT_EMAIL, "password": BOT_PASSWORD})
     if status != 200:
@@ -286,8 +289,7 @@ def main():
     missing = [name for name, value in (
         ("SUPABASE_URL", SUPABASE_URL),
         ("SUPABASE_ANON_KEY", ANON),
-        ("SUPABASE_BOT_EMAIL", BOT_EMAIL),
-        ("SUPABASE_BOT_PASSWORD", BOT_PASSWORD),
+        ("AUTENTICAÇÃO_DO_BOT", BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD)),
     ) if not value]
     if missing:
         print(f"ERRO: variáveis obrigatórias ausentes: {', '.join(missing)}.", file=sys.stderr)

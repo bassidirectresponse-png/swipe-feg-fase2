@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: ads-ativos
@@ -47,21 +48,22 @@ jobs:
           python -m pip install playwright==1.61.0
           python -m playwright install chromium --with-deps
 
-      - name: Validar configuração da automação
-        env:
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+      - name: Criar sessão temporária de baixo privilégio
+        shell: bash
         run: |
-          test -n "$SUPABASE_BOT_EMAIL"
-          test -n "$SUPABASE_BOT_PASSWORD"
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
+          test -n "$ACCESS_TOKEN"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
           python -c "import sys; sys.path.insert(0, 'scripts'); from runtime_config import supabase_public_config; u, k = supabase_public_config(); assert u and k; print('Configuração pública do Supabase validada')"
 
       - name: Atualizar anúncios ativos
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
           MAX_OFFERS: "500"
           MAX_ANALYSIS_ATTEMPTS: "6"
           ANALYSIS_LOCK_MINUTES: "90"

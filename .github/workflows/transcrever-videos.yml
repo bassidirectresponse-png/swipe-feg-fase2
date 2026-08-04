@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: transcrever
@@ -56,23 +57,26 @@ jobs:
           path: ~/.cache/huggingface
           key: whisper-${{ env.WHISPER_MODEL }}
 
-      - name: Validar configuração da automação
-        env:
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+      - name: Criar sessão temporária de baixo privilégio
+        shell: bash
         run: |
-          test -n "$SUPABASE_BOT_EMAIL"
-          test -n "$SUPABASE_BOT_PASSWORD"
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
+          test -n "$ACCESS_TOKEN"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
           python -c "import sys; sys.path.insert(0, 'scripts'); from runtime_config import supabase_public_config; u, k = supabase_public_config(); assert u and k; print('Configuração pública do Supabase validada')"
 
       - name: Transcrever vídeos pendentes
         env:
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
           APP_URL: "https://benchmarkinggrupofeg.site"
           TRANSCRIBE_KINDS: "criativo,megabrain"
           MAX_VIDEOS: "200"
-          MAX_RUN_MINUTES: "300"
+          # O token OIDC dura uma hora. O worker encerra antes disso e retoma
+          # automaticamente no próximo ciclo, sem deixar vídeo pela metade.
+          MAX_RUN_MINUTES: "45"
           MAX_RETRIES: "8"
           # Um worker interrompido não pode deixar o card preso por horas.
           # Como a rede de segurança roda de hora em hora, 45 min recupera
@@ -82,22 +86,42 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/transcrever.py
 
+      - name: Renovar sessão para tradução
+        if: always()
+        shell: bash
+        run: |
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
+          test -n "$ACCESS_TOKEN"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
       - name: Traduzir transcrições para português
         if: always()
         env:
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
           TRANSLATE_KINDS: "criativo,megabrain"
           TRANSLATION_LOCK_MINUTES: "45"
           MAX_TRANSLATIONS: "80"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/traduzir_transcricoes.py
 
+      - name: Renovar sessão para dissecação
+        if: always()
+        shell: bash
+        run: |
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
+          test -n "$ACCESS_TOKEN"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
       - name: Dissecar anúncios curtos já transcritos
         if: always()
         env:
-          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
-          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
           APP_URL: "https://benchmarkinggrupofeg.site"
           AD_ANALYSIS_KINDS: "criativo,megabrain"
           MAX_AD_ANALYSES: "20"

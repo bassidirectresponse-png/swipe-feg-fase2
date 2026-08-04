@@ -18,6 +18,7 @@ from runtime_config import supabase_public_config
 SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 TRANSLATE_URL = os.environ.get("TRANSLATE_URL", "https://benchmarkinggrupofeg.site/.netlify/functions/translate-transcript")
 MAX_TRANSLATIONS = max(1, int(os.environ.get("MAX_TRANSLATIONS", "80")))
 TRANSLATE_KINDS = {
@@ -55,6 +56,8 @@ def request(method, url, body=None, token=None, timeout=60, extra_headers=None):
 
 
 def login():
+    if BOT_ACCESS_TOKEN:
+        return BOT_ACCESS_TOKEN
     status, raw = request("POST", f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
                           {"email": BOT_EMAIL, "password": BOT_PASSWORD})
     if status != 200:
@@ -160,8 +163,7 @@ def main():
     missing = [name for name, value in (
         ("SUPABASE_URL", SUPABASE_URL),
         ("SUPABASE_ANON_KEY", ANON),
-        ("SUPABASE_BOT_EMAIL", BOT_EMAIL),
-        ("SUPABASE_BOT_PASSWORD", BOT_PASSWORD),
+        ("AUTENTICAÇÃO_DO_BOT", BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD)),
     ) if not value]
     if missing:
         raise RuntimeError(f"variáveis obrigatórias ausentes: {', '.join(missing)}")

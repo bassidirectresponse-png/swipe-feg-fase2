@@ -23,6 +23,7 @@ from runtime_config import supabase_public_config
 SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "").strip()
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 APP_URL = os.environ.get("APP_URL", "https://benchmarkinggrupofeg.site").strip().rstrip("/")
 ANALYSIS_URL = os.environ.get("AD_ANALYSIS_URL", f"{APP_URL}/.netlify/functions/ad-analysis-job")
 KINDS = {value.strip() for value in os.environ.get("AD_ANALYSIS_KINDS", "criativo,megabrain").split(",") if value.strip()}
@@ -61,6 +62,8 @@ def request(method, url, body=None, token=None, timeout=90, extra_headers=None):
 
 
 def login():
+    if BOT_ACCESS_TOKEN:
+        return BOT_ACCESS_TOKEN
     status, raw = request("POST", f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
                           {"email": BOT_EMAIL, "password": BOT_PASSWORD})
     if status != 200:
@@ -224,7 +227,7 @@ def enqueue(token, card, duration, sheets):
 
 def main():
     missing = [name for name, value in (("SUPABASE_URL", SUPABASE_URL), ("SUPABASE_ANON_KEY", ANON),
-                                        ("SUPABASE_BOT_EMAIL", BOT_EMAIL), ("SUPABASE_BOT_PASSWORD", BOT_PASSWORD)) if not value]
+                                        ("AUTENTICAÇÃO_DO_BOT", BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD))) if not value]
     if missing:
         raise RuntimeError(f"variáveis obrigatórias ausentes: {', '.join(missing)}")
     token = login()
