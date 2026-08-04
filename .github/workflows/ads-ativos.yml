@@ -11,6 +11,7 @@ on:
     branches: [main]
     paths:
       - "scripts/ads_scraper.py"
+      - "scripts/runtime_config.py"
       - "scripts/ingest_offer_batch_july22.mjs"
       - "scripts/offer_batch_july22_catalog.mjs"
       - ".github/workflows/ads-ativos.yml"
@@ -45,6 +46,15 @@ jobs:
         run: |
           python -m pip install playwright==1.61.0
           python -m playwright install chromium --with-deps
+
+      - name: Validar configuração da automação
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: |
+          test -n "$SUPABASE_BOT_EMAIL"
+          test -n "$SUPABASE_BOT_PASSWORD"
+          python -c "import sys; sys.path.insert(0, 'scripts'); from runtime_config import supabase_public_config; u, k = supabase_public_config(); assert u and k; print('Configuração pública do Supabase validada')"
 
       - name: Atualizar anúncios ativos
         env:

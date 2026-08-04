@@ -11,6 +11,8 @@ on:
     paths:
       - "scripts/transcrever.py"
       - "scripts/traduzir_transcricoes.py"
+      - "scripts/analisar_anuncios.py"
+      - "scripts/runtime_config.py"
       - "scripts/requirements-transcricao.txt"
       - ".github/workflows/transcrever-videos.yml"
   schedule:
@@ -53,6 +55,15 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: whisper-${{ env.WHISPER_MODEL }}
+
+      - name: Validar configuração da automação
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+        run: |
+          test -n "$SUPABASE_BOT_EMAIL"
+          test -n "$SUPABASE_BOT_PASSWORD"
+          python -c "import sys; sys.path.insert(0, 'scripts'); from runtime_config import supabase_public_config; u, k = supabase_public_config(); assert u and k; print('Configuração pública do Supabase validada')"
 
       - name: Transcrever vídeos pendentes
         env:

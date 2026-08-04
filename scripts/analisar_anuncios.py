@@ -18,9 +18,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from runtime_config import supabase_public_config
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-ANON = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "").strip()
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 APP_URL = os.environ.get("APP_URL", "https://benchmarkinggrupofeg.site").strip().rstrip("/")

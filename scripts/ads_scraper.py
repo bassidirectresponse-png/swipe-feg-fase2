@@ -30,9 +30,9 @@ import copy, os, sys, re, json, time, urllib.request, urllib.error, uuid
 from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import sync_playwright
+from runtime_config import supabase_public_config
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-ANON = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_URL, ANON = supabase_public_config()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
