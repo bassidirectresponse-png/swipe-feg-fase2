@@ -7,8 +7,8 @@ import {
   isAdmin,
   rateLimit,
 } from "./_security.mjs";
+import { automationSigningSecret, supabaseAdminHeaders } from "./_supabase-admin.mjs";
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
 const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
@@ -18,18 +18,16 @@ const STORAGE_PATH = "/storage/v1/object/public/criativos/";
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 function validInternalSignature(raw, supplied) {
-  if (!SERVICE_KEY || !/^[a-f0-9]{64}$/i.test(String(supplied || ""))) return false;
-  const expected = createHmac("sha256", SERVICE_KEY).update(raw).digest();
+  const secret = automationSigningSecret();
+  if (!secret || !/^[a-f0-9]{64}$/i.test(String(supplied || ""))) return false;
+  const expected = createHmac("sha256", secret).update(raw).digest();
   const received = Buffer.from(String(supplied), "hex");
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
-function dataHeaders(token, internal, extra = {}) {
-  return {
-    apikey: internal ? SERVICE_KEY : ANON,
-    Authorization: `Bearer ${internal ? SERVICE_KEY : token}`,
-    ...extra,
-  };
+async function dataHeaders(token, internal, extra = {}) {
+  if (internal) return supabaseAdminHeaders(extra);
+  return { apikey: ANON, Authorization: `Bearer ${token}`, ...extra };
 }
 
 function storageVideoUrl(value) {
@@ -94,7 +92,7 @@ async function groqTranscribe(buffer) {
 
 async function loadOffer(id, token, internal) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`, {
-    headers: dataHeaders(token, internal),
+    headers: await dataHeaders(token, internal),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error("criativo não encontrado");
@@ -103,12 +101,34 @@ async function loadOffer(id, token, internal) {
   return rows[0].data || {};
 }
 
+function shallowPatch(before, after) {
+  const patch = {};
+  for (const key of new Set([...Object.keys(before || {}), ...Object.keys(after || {})])) {
+    const previous = Object.prototype.hasOwnProperty.call(before || {}, key) ? before[key] : null;
+    const next = Object.prototype.hasOwnProperty.call(after || {}, key) ? after[key] : null;
+    if (JSON.stringify(previous) !== JSON.stringify(next)) patch[key] = next;
+  }
+  return patch;
+}
+
 async function patchOffer(id, token, internal, mutate) {
-  const data = await loadOffer(id, token, internal);
+  const before = await loadOffer(id, token, internal);
+  const data = structuredClone(before);
   mutate(data);
+  const headers = await dataHeaders(token, internal, { "Content-Type": "application/json", Prefer: "return=minimal" });
+  const rpc = await fetch(`${SUPABASE_URL}/rest/v1/rpc/swipe_merge_offer_data`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ p_id: id, p_patch: shallowPatch(before, data) }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (rpc.ok) return;
+  if (![400, 404].includes(rpc.status)) throw new Error("falha ao gravar a transcrição");
+
+  // Compatibilidade temporária enquanto a função atômica é publicada no banco.
   const update = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: dataHeaders(token, internal, { "Content-Type": "application/json", Prefer: "return=minimal" }),
+    headers,
     body: JSON.stringify({ data }),
     signal: AbortSignal.timeout(10_000),
   });

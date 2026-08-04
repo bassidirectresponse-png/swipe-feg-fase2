@@ -10,7 +10,7 @@ anúncios ativos de todas as bibliotecas da oferta. Grava de volta no Supabase:
 
   data.numAdsAtivos   -> total atual (string, compatível com o app)
   data.adsUpdatedAt   -> timestamp ISO da última atualização
-  data.adsHistory     -> [{d:"AAAA-MM-DD", n:<int>}, ...] 1 ponto/dia (p/ o gráfico)
+  data.adsHistory     -> [{d:"AAAA-MM-DD", at:<ISO>, n:<int>}, ...] sem perder leituras
 
 Regras de segurança:
   - só faz UPDATE do próprio campo de ads (lê o data inteiro e reescreve);
@@ -21,21 +21,18 @@ Regras de segurança:
 Só depende de Playwright; o resto é biblioteca padrão.
 
 Env:
-  SUPABASE_URL, SUPABASE_ANON_KEY (têm default)
+  SUPABASE_URL, SUPABASE_ANON_KEY (obrigatórias)
   SUPABASE_BOT_EMAIL, SUPABASE_BOT_PASSWORD (obrigatórias p/ gravar)
   DRY_RUN=1        (não grava; só mostra o que leria)
   HISTORY_DAYS=60  (quantos pontos de histórico manter por oferta)
 """
-import os, sys, re, json, time, urllib.request, urllib.error, uuid
+import copy, os, sys, re, json, time, urllib.request, urllib.error, uuid
 from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import sync_playwright
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ppaajtzbhjixhyfidojd.supabase.co").rstrip("/")
-ANON = os.environ.get(
-    "SUPABASE_ANON_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc",
-)
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+ANON = os.environ.get("SUPABASE_ANON_KEY", "").strip()
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
@@ -111,6 +108,24 @@ def bot_login():
     if status != 200:
         raise RuntimeError(f"login do bot falhou: HTTP {status} {txt[:200]}")
     return json.loads(txt)["access_token"]
+
+
+def merge_offer_data(token, offer_id, before, data):
+    patch = {
+        key: data.get(key) if key in data else None
+        for key in set(before) | set(data)
+        if before.get(key) != data.get(key)
+    }
+    status, text = sb(
+        "POST", "/rest/v1/rpc/swipe_merge_offer_data", token=token,
+        body={"p_id": offer_id, "p_patch": patch}, prefer="return=minimal",
+    )
+    if status in (200, 204):
+        return status, text
+    if status not in (400, 404):
+        return status, text
+    return sb("PATCH", f"/rest/v1/offers?id=eq.{offer_id}", token=token,
+              body={"data": data}, prefer="return=minimal")
 
 
 def fetch_offers(token):
@@ -224,13 +239,13 @@ def scrape_one(page, url, retries=2):
 
 # =============================== histórico =================================
 def normalize_history(points):
-    """Mantém a invariável de um único ponto válido por data, em ordem crescente.
+    """Normaliza a série sem apagar a segunda leitura do mesmo dia.
 
-    Em cards antigos, consolidações incorretas chegaram a concatenar séries que
-    voltavam no calendário. A automação nunca deve propagar essa estrutura.
-    Em uma mesma data, a leitura mais recente vence.
+    Pontos novos possuem ``at`` com o instante real. Pontos legados, que só
+    possuem ``d``, continuam preservados (um por data) para não perder o
+    histórico existente durante a migração.
     """
-    by_date = {}
+    normalized = {}
     for point in points if isinstance(points, list) else []:
         if not isinstance(point, dict):
             continue
@@ -244,8 +259,14 @@ def normalize_history(points):
             continue
         if value < 0:
             continue
-        by_date[date] = {"d": date, "n": value}
-    return [by_date[date] for date in sorted(by_date)]
+        at = str(point.get("at") or "").strip()
+        parsed_at = parse_iso(at) if at else None
+        key = f"at:{parsed_at.isoformat()}" if parsed_at else f"legacy:{date}"
+        item = {"d": date, "n": value}
+        if parsed_at:
+            item["at"] = parsed_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        normalized[key] = item
+    return sorted(normalized.values(), key=lambda point: (point.get("at") or f"{point['d']}T00:00:00Z", point["d"]))
 
 
 def update_history(data, total, now):
@@ -261,12 +282,26 @@ def update_history(data, total, now):
                 hist.append({"d": checked, "n": previous})
         except (TypeError, ValueError):
             pass
-    by_date = {point["d"]: point for point in hist}
-    by_date[today] = {"d": today, "n": total}
-    hist = [by_date[date] for date in sorted(by_date)]
-    if len(hist) > HISTORY_DAYS:
-        hist = hist[-HISTORY_DAYS:]
-    return hist
+    hist.append({"d": today, "at": now.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"), "n": total})
+    hist = normalize_history(hist)
+    cutoff = (now - timedelta(days=max(1, HISTORY_DAYS) - 1)).strftime("%Y-%m-%d")
+    return [point for point in hist if point["d"] >= cutoff][-HISTORY_DAYS * 4:]
+
+
+def round_robin_targets(targets, limit):
+    """Seleciona os menos recentemente visitados usando checkpoint por card.
+
+    ``analysisCursorAt`` é atualizado assim que o card é reservado. Dessa
+    forma uma falha ou timeout não prende sempre o mesmo prefixo de IDs e os
+    cards além de ``MAX_OFFERS`` entram naturalmente nos ciclos seguintes.
+    """
+    def key(item):
+        row, _links = item
+        data = row.get("data") or {}
+        checkpoint = parse_iso(data.get("analysisCursorAt"))
+        return (checkpoint or datetime.min.replace(tzinfo=timezone.utc), str(row.get("id") or ""))
+
+    return sorted(targets, key=key)[:limit]
 
 
 def last_stable_ads(data, now):
@@ -295,8 +330,14 @@ def main():
     now = datetime.now(timezone.utc)
     log("library_analysis_run_started", dry_run=DRY_RUN, version=ANALYSIS_VERSION, force_review=FORCE_REVIEW)
 
-    if not DRY_RUN and not (BOT_EMAIL and BOT_PASSWORD):
-        print("ERRO: defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD (ou DRY_RUN=1).", file=sys.stderr)
+    missing = [name for name, value in (
+        ("SUPABASE_URL", SUPABASE_URL),
+        ("SUPABASE_ANON_KEY", ANON),
+        ("SUPABASE_BOT_EMAIL", BOT_EMAIL),
+        ("SUPABASE_BOT_PASSWORD", BOT_PASSWORD),
+    ) if not value]
+    if missing:
+        print(f"ERRO: variáveis obrigatórias ausentes: {', '.join(missing)}.", file=sys.stderr)
         sys.exit(2)
 
     token = bot_login() if not DRY_RUN else None
@@ -313,8 +354,9 @@ def main():
         links = eligible(row)
         if links:
             targets.append((row, links))
-    targets = targets[:MAX_OFFERS]
-    log("library_analysis_scan", rows=len(rows), eligible=len(targets), max_offers=MAX_OFFERS)
+    eligible_count = len(targets)
+    targets = round_robin_targets(targets, MAX_OFFERS)
+    log("library_analysis_scan", rows=len(rows), eligible=eligible_count, selected=len(targets), max_offers=MAX_OFFERS)
 
     ok = fail = skipped = 0
     with sync_playwright() as pw:
@@ -332,7 +374,9 @@ def main():
             data = row["data"]
             nome = data.get("nomeOferta", "?")
             attempts = 1 if FORCE_REVIEW or str(data.get("analysisStatus") or "") == "completed" else max(0, int(data.get("analysisAttempts") or 0)) + 1
+            before_processing = copy.deepcopy(data)
             data["analysisStatus"] = "processing"
+            data["analysisCursorAt"] = iso_now()
             data["analysisAttempts"] = attempts
             data["analysisStartedAt"] = iso_now()
             data["analysisCompletedAt"] = ""
@@ -340,7 +384,7 @@ def main():
             data["analysisNextRetryAt"] = ""
             data["analysisVersion"] = ANALYSIS_VERSION
             if not DRY_RUN:
-                reserve_status, _ = sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                reserve_status, _ = merge_offer_data(token, row["id"], before_processing, data)
                 if reserve_status not in (200, 204):
                     fail += 1
                     log("library_analysis_reservation_failed", offer_id=row["id"], http_status=reserve_status)
@@ -359,23 +403,25 @@ def main():
             if not any_ok:
                 final = attempts >= MAX_ATTEMPTS
                 delay_minutes = min(12 * 60, 20 * (2 ** max(0, attempts - 1)))
+                before_failure = copy.deepcopy(data)
                 data["analysisStatus"] = "failed" if final else "retry_scheduled"
                 data["analysisLastError"] = "library_unavailable"
                 data["analysisNextRetryAt"] = "" if final else (now + timedelta(minutes=delay_minutes)).isoformat().replace("+00:00", "Z")
                 if not DRY_RUN:
-                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                    merge_offer_data(token, row["id"], before_failure, data)
                 log("library_analysis_job_failed", offer_id=row["id"], attempt=attempts, final=final, retry_in_minutes=0 if final else delay_minutes)
                 fail += 1
                 continue
 
             # Só troca o total quando todas as bibliotecas responderem.
             if len(counts) != len(links):
+                before_partial = copy.deepcopy(data)
                 data["numAdsAtivos"] = str(stable) if stable else str(data.get("numAdsAtivos") or "")
                 data["analysisStatus"] = "retry_scheduled"
                 data["analysisLastError"] = "partial_library_read"
                 data["analysisNextRetryAt"] = (now + timedelta(minutes=20)).isoformat().replace("+00:00", "Z")
                 if not DRY_RUN:
-                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                    merge_offer_data(token, row["id"], before_partial, data)
                 log("library_analysis_job_deferred", offer_id=row["id"], reason="partial_library_read", libraries_succeeded=len(counts), libraries_total=len(links), preserved=stable)
                 skipped += 1
                 continue
@@ -385,16 +431,18 @@ def main():
             # Uma leitura zero só é aceita após três ciclos completos seguidos.
             zero_reads = max(0, int(data.get("analysisZeroReads") or 0))
             if total == 0 and stable > 0 and zero_reads < 2:
+                before_zero = copy.deepcopy(data)
                 data["numAdsAtivos"] = str(stable)
                 data["analysisZeroReads"] = zero_reads + 1
                 data["analysisStatus"] = "retry_scheduled"
                 data["analysisLastError"] = "zero_awaiting_confirmation"
                 data["analysisNextRetryAt"] = (now + timedelta(minutes=20)).isoformat().replace("+00:00", "Z")
                 if not DRY_RUN:
-                    sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}", token=token, body={"data": data}, prefer="return=minimal")
+                    merge_offer_data(token, row["id"], before_zero, data)
                 log("library_analysis_job_deferred", offer_id=row["id"], reason="zero_awaiting_confirmation", zero_reads=zero_reads + 1, preserved=stable)
                 skipped += 1
                 continue
+            before_completed = copy.deepcopy(data)
             data["analysisZeroReads"] = zero_reads + 1 if total == 0 else 0
             data["numAdsAtivos"] = str(total)
             data["adsUpdatedAt"] = now.isoformat()
@@ -411,8 +459,7 @@ def main():
             if DRY_RUN:
                 skipped += 1
                 continue
-            status, txt = sb("PATCH", f"/rest/v1/offers?id=eq.{row['id']}",
-                             token=token, body={"data": data}, prefer="return=minimal")
+            status, txt = merge_offer_data(token, row["id"], before_completed, data)
             if status in (200, 204):
                 ok += 1
                 log("library_analysis_job_completed", offer_id=row["id"], active_ads=total, libraries_succeeded=len(counts), attempts=attempts)

@@ -1,28 +1,34 @@
 import { createHmac } from "node:crypto";
 import { SUPABASE_URL } from "./_security.mjs";
+import { acquireAutomationLock, releaseAutomationLock } from "./_automation-lock.mjs";
+import {
+  automationSigningSecret,
+  mergeSupabaseOfferData,
+  shallowDataPatch,
+  supabaseAdminHeaders,
+} from "./_supabase-admin.mjs";
 import {
   mediaArchiveDue,
   queueMediaArchive,
 } from "./_creative-integrity.mjs";
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const MAX_DISPATCHES = 8;
 const PAGE_SIZE = 1000;
 
-function serverHeaders(extra = {}) {
-  return {
-    apikey: SERVICE_KEY,
-    Authorization: `Bearer ${SERVICE_KEY}`,
-    ...extra,
-  };
-}
+const serverHeaders = supabaseAdminHeaders;
 
 async function listPending() {
   const rows = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const params = new URLSearchParams({ select: "id,data", limit: String(PAGE_SIZE), offset: String(offset) });
+    const params = new URLSearchParams({
+      select: "id,data",
+      "data->>kind": "eq.criativo",
+      "data->>sourceOfferId": "not.is.null",
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+    });
     const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?${params}`, {
-      headers: serverHeaders({ accept: "application/json" }),
+      headers: await serverHeaders({ accept: "application/json" }),
       signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error(`não foi possível consultar os criativos (HTTP ${response.status})`);
@@ -41,13 +47,7 @@ async function listPending() {
 async function markQueued(row) {
   const now = new Date().toISOString();
   const data = queueMediaArchive(row.data || {}, now);
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(row.id)}`, {
-    method: "PATCH",
-    headers: serverHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-    body: JSON.stringify({ data }),
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) throw new Error(`não foi possível reservar o criativo ${row.id}`);
+  await mergeSupabaseOfferData(row.id, shallowDataPatch(row.data || {}, data), data);
   return data;
 }
 
@@ -61,13 +61,8 @@ async function markDispatchFailure(row, data) {
     mediaArchiveError: "não foi possível iniciar o worker",
     mediaArchiveNextRetryAt: new Date(Date.now() + delayMinutes * 60_000).toISOString(),
   };
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(row.id)}`, {
-    method: "PATCH",
-    headers: serverHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-    body: JSON.stringify({ data: next }),
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) console.error(`offer archive: falha ao liberar ${row.id}`);
+  await mergeSupabaseOfferData(row.id, shallowDataPatch(data, next), next)
+    .catch(() => console.error(`offer archive: falha ao liberar ${row.id}`));
 }
 
 async function dispatch(row, data) {
@@ -77,7 +72,7 @@ async function dispatch(row, data) {
     adUrl: data.linkAnuncio,
     attempt: data.mediaArchiveAttempts,
   });
-  const signature = createHmac("sha256", SERVICE_KEY).update(body).digest("hex");
+  const signature = createHmac("sha256", automationSigningSecret()).update(body).digest("hex");
   const origin = String(process.env.URL || process.env.DEPLOY_PRIME_URL || "https://benchmarkinggrupofeg.site").replace(/\/+$/, "");
   const response = await fetch(`${origin}/.netlify/functions/offer-creative-archive-background`, {
     method: "POST",
@@ -89,10 +84,8 @@ async function dispatch(row, data) {
 }
 
 export default async () => {
-  if (!SERVICE_KEY) {
-    console.error("offer archive: SUPABASE_SERVICE_ROLE_KEY não configurada");
-    return Response.json({ ok: false, error: "automação não configurada" }, { status: 500 });
-  }
+  const lock = await acquireAutomationLock("offer-creative-archive", 9 * 60_000);
+  if (!lock) return Response.json({ ok: true, skipped: "already_running" });
   try {
     const pending = await listPending();
     let dispatched = 0;
@@ -112,5 +105,7 @@ export default async () => {
   } catch (error) {
     console.error("offer archive scheduled:", String(error?.message || error));
     return Response.json({ ok: false, error: "não foi possível executar a automação" }, { status: 500 });
+  } finally {
+    await releaseAutomationLock(lock);
   }
 };

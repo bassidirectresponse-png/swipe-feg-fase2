@@ -6,8 +6,14 @@ const root = new URL("../", import.meta.url);
 
 test("a automação de mídia tem n8n e agendamento idempotente de segurança", async () => {
   const source = await readFile(new URL("netlify/functions/_offer-creative-archive-dispatch.mjs", root), "utf8");
+  const adminAuth = await readFile(new URL("netlify/functions/_supabase-admin.mjs", root), "utf8");
   const scheduled = await readFile(new URL("netlify/functions/offer-creative-archive-scheduled.mjs", root), "utf8");
-  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(source, /supabaseAdminHeaders/);
+  assert.match(source, /acquireAutomationLock/);
+  assert.match(source, /mergeSupabaseOfferData/);
+  assert.match(adminAuth, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(adminAuth, /SUPABASE_BOT_EMAIL/);
+  assert.match(adminAuth, /swipe_merge_offer_data/);
   assert.match(source, /sourceOfferId/);
   assert.match(source, /mediaArchiveDue/);
   assert.match(source, /queueMediaArchive/);
@@ -52,7 +58,8 @@ test("cada vídeo anexado entra automaticamente na fila de transcrição", async
   assert.match(dispatch, /queueTranscription/);
   assert.match(dispatch, /PAGE_SIZE = 1000/);
   assert.match(dispatch, /x-feg-transcription-signature/);
-  assert.match(scheduled, /schedule:\s*"\*\/10 \* \* \* \*"/);
+  assert.doesNotMatch(scheduled, /schedule:\s*"\*\/10 \* \* \* \*"/);
+  assert.match(scheduled, /Invocação manual/);
   assert.match(worker, /validInternalSignature/);
   assert.match(worker, /transcriptionStatus = "completed"/);
   assert.match(worker, /\[Sem fala detectada no vídeo\]/);

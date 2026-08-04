@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 330
     env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       WHISPER_MODEL: small     # tiny/base/small/medium/large-v3 (maior = + preciso, + lento)
     steps:
       - name: Checkout
@@ -56,6 +58,7 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          APP_URL: "https://benchmarkinggrupofeg.site"
           TRANSCRIBE_KINDS: "criativo,megabrain"
           MAX_VIDEOS: "200"
           MAX_RUN_MINUTES: "300"
@@ -73,6 +76,20 @@ jobs:
         env:
           SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
           SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          TRANSLATE_KINDS: "criativo,megabrain"
+          TRANSLATION_LOCK_MINUTES: "45"
           MAX_TRANSLATIONS: "80"
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/traduzir_transcricoes.py
+
+      - name: Dissecar anúncios curtos já transcritos
+        if: always()
+        env:
+          SUPABASE_BOT_EMAIL: ${{ secrets.SUPABASE_BOT_EMAIL }}
+          SUPABASE_BOT_PASSWORD: ${{ secrets.SUPABASE_BOT_PASSWORD }}
+          APP_URL: "https://benchmarkinggrupofeg.site"
+          AD_ANALYSIS_KINDS: "criativo,megabrain"
+          MAX_AD_ANALYSES: "20"
+          AD_ANALYSIS_LOCK_MINUTES: "45"
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/analisar_anuncios.py

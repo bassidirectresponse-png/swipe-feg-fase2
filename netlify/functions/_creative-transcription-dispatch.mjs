@@ -1,28 +1,33 @@
 import { createHmac } from "node:crypto";
 import { SUPABASE_URL } from "./_security.mjs";
+import { acquireAutomationLock, releaseAutomationLock } from "./_automation-lock.mjs";
+import {
+  automationSigningSecret,
+  mergeSupabaseOfferData,
+  shallowDataPatch,
+  supabaseAdminHeaders,
+} from "./_supabase-admin.mjs";
 import {
   queueTranscription,
   transcriptionDue,
 } from "./_creative-integrity.mjs";
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const MAX_DISPATCHES = 4;
 const PAGE_SIZE = 1000;
 
-function serverHeaders(extra = {}) {
-  return {
-    apikey: SERVICE_KEY,
-    Authorization: `Bearer ${SERVICE_KEY}`,
-    ...extra,
-  };
-}
+const serverHeaders = supabaseAdminHeaders;
 
 async function listPending() {
   const rows = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const params = new URLSearchParams({ select: "id,data", limit: String(PAGE_SIZE), offset: String(offset) });
+    const params = new URLSearchParams({
+      select: "id,data",
+      "data->>kind": "in.(criativo,megabrain)",
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+    });
     const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?${params}`, {
-      headers: serverHeaders({ accept: "application/json" }),
+      headers: await serverHeaders({ accept: "application/json" }),
       signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error(`não foi possível consultar as transcrições (HTTP ${response.status})`);
@@ -38,14 +43,8 @@ async function listPending() {
     .slice(0, MAX_DISPATCHES);
 }
 
-async function saveData(id, data) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: serverHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-    body: JSON.stringify({ data }),
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) throw new Error(`não foi possível reservar a transcrição ${id}`);
+async function saveData(id, before, data) {
+  await mergeSupabaseOfferData(id, shallowDataPatch(before, data), data);
 }
 
 async function dispatch(row, data) {
@@ -54,7 +53,7 @@ async function dispatch(row, data) {
     videoUrl: data.video,
     attempt: data.transcriptionAttempts,
   });
-  const signature = createHmac("sha256", SERVICE_KEY).update(body).digest("hex");
+  const signature = createHmac("sha256", automationSigningSecret()).update(body).digest("hex");
   const origin = String(process.env.URL || process.env.DEPLOY_PRIME_URL || "https://benchmarkinggrupofeg.site").replace(/\/+$/, "");
   const response = await fetch(`${origin}/.netlify/functions/transcribe-background`, {
     method: "POST",
@@ -68,7 +67,7 @@ async function dispatch(row, data) {
 async function release(row, data) {
   const attempts = Math.max(1, Number(data.transcriptionAttempts) || 1);
   const delayMinutes = Math.min(6 * 60, 10 * (2 ** Math.min(7, attempts - 1)));
-  await saveData(row.id, {
+  await saveData(row.id, data, {
     ...data,
     transcriptionStatus: "retry_scheduled",
     transcricaoStatus: "pending",
@@ -78,17 +77,15 @@ async function release(row, data) {
 }
 
 export default async function runCreativeTranscriptionDispatch() {
-  if (!SERVICE_KEY) {
-    console.error("creative transcription: SUPABASE_SERVICE_ROLE_KEY não configurada");
-    return Response.json({ ok: false, error: "automação não configurada" }, { status: 500 });
-  }
+  const lock = await acquireAutomationLock("creative-transcription", 9 * 60_000);
+  if (!lock) return Response.json({ ok: true, skipped: "already_running" });
   try {
     const pending = await listPending();
     let dispatched = 0;
     for (const row of pending) {
       const queued = queueTranscription(row.data || {}, new Date().toISOString());
       try {
-        await saveData(row.id, queued);
+        await saveData(row.id, row.data || {}, queued);
         await dispatch(row, queued);
         dispatched += 1;
       } catch (error) {
@@ -101,5 +98,7 @@ export default async function runCreativeTranscriptionDispatch() {
   } catch (error) {
     console.error("creative transcription scheduled:", String(error?.message || error));
     return Response.json({ ok: false, error: "não foi possível executar a automação" }, { status: 500 });
+  } finally {
+    await releaseAutomationLock(lock);
   }
 }

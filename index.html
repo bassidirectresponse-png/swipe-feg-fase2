@@ -1022,6 +1022,19 @@
   .tractions{display:flex;gap:8px;flex-wrap:wrap;}
   .trdocs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;}
   .trdoc{min-width:0;border:1px solid var(--border-2);border-radius:14px;background:var(--surface-2);overflow:hidden;}
+  .trdoc--analysis{grid-column:1/-1;}
+  .tranalysis{max-height:min(76vh,860px);min-height:180px;padding:20px;overflow:auto;color:var(--fg);font-size:.9rem;line-height:1.65;}
+  .tranalysis h3,.tranalysis h4,.tranalysis h5,.tranalysis h6{margin:22px 0 10px;color:var(--fg);line-height:1.25;}
+  .tranalysis p{margin:8px 0;}.tranalysis ul,.tranalysis ol{padding-left:22px;margin:8px 0;}
+  .tranalysis .ccmd-tblwrap{overflow:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+  .tranalysis .ccmd-tbl{min-width:760px;}
+  .tranalysis-empty{min-height:150px;display:grid;place-items:center;text-align:center;color:var(--faint);padding:28px;}
+  .ad-report{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;overflow:hidden;}
+  .ad-report__bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;}
+  .ad-report__body{max-height:min(72vh,820px);overflow:auto;padding:20px;font-size:.92rem;line-height:1.65;}
+  .ad-report__body h3,.ad-report__body h4,.ad-report__body h5,.ad-report__body h6{margin:22px 0 10px;color:var(--fg);line-height:1.25;}
+  .ad-report__body p{margin:8px 0}.ad-report__body ul,.ad-report__body ol{padding-left:22px;margin:8px 0}.ad-report__body .ccmd-tblwrap{overflow:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px}.ad-report__body .ccmd-tbl{min-width:760px}
+  .ad-report__empty{padding:28px;color:var(--muted);text-align:center;}
   .trdoc__head{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);}
   .trdoc__title{font-size:.82rem;font-weight:800;color:var(--fg);}
   .trdoc__state{font-size:.72rem;color:var(--muted-fg);display:inline-flex;align-items:center;gap:6px;text-align:right;}
@@ -1480,8 +1493,9 @@ create policy "public_all" on offers
 <script>
 /* ===== CONFIG ===== */
 const LS={url:"feg_sb_url",key:"feg_sb_key",cache:"feg_cache_v2"};
-const DEFAULT_URL="https://ppaajtzbhjixhyfidojd.supabase.co";
-const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwYWFqdHpiaGppeGh5Zmlkb2pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDkzNTcsImV4cCI6MjA5Njc4NTM1N30.uoC_3EHM_dfmkBHJYjPvlaC7DqkJziunz-tug0ItAJc";
+const DEFAULT_URL="https://pkvzwtstidtobpdngxnd.supabase.co";
+const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrdnp3dHN0aWR0b2JwZG5neG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4MTM1MTUsImV4cCI6MjEwMTM4OTUxNX0.UvV333OkHrp5Yvxn3vyxnkF_KXMBTu-82qFx-Jocc-0";
+const LEGACY_SUPABASE_REFS=["ppaajtzbhjixhyfidojd"];
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 const SECTIONS=[
@@ -1625,6 +1639,18 @@ function hideLogin(){$("#loginScreen").classList.remove("show");}
 function showWho(user){const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";applyRole(user);}
 
 async function startAuth(){
+  try{
+    const savedUrl=localStorage.getItem(LS.url)||"";
+    if(LEGACY_SUPABASE_REFS.some(ref=>savedUrl.includes(ref))){
+      localStorage.removeItem(LS.url);
+      localStorage.removeItem(LS.key);
+      localStorage.removeItem(LS.cache);
+    }
+    for(let i=localStorage.length-1;i>=0;i--){
+      const storageKey=localStorage.key(i)||"";
+      if(LEGACY_SUPABASE_REFS.some(ref=>storageKey.includes(ref)))localStorage.removeItem(storageKey);
+    }
+  }catch(e){}
   const url=localStorage.getItem(LS.url)||DEFAULT_URL, key=localStorage.getItem(LS.key)||DEFAULT_KEY;
   if(!initSupabase(url,key)){showSetup();return;}
   let session=null;
@@ -3214,7 +3240,8 @@ function renderSubFilter(){
 
 /* ===== FEGUINHO COPY CHIEF (Beta) ===== */
 const FEGUINHO_FN="/.netlify/functions/feguinho";
-let ccTool="gerar", ccFmt="anuncio", ccBusy=false;
+const CC_TIMEOUT_MS=210000;
+let ccTool="gerar", ccFmt="anuncio", ccBusy=false, ccAbort=null, ccHistory=[];
 const CC_ORDER=["gerar","dissecar","modelar"];
 const CC_TOOLS={
   gerar:{icon:"wand",label:"Gerar Ad / VSL",
@@ -3313,6 +3340,7 @@ function renderCopyChief(){
             <select id="ccNicho" class="chat__sel" title="Nicho">${NICHOS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}</select>
             <div class="chat__seg" id="ccFormato"><button type="button" class="active" data-fmt="anuncio">Anúncio</button><button type="button" data-fmt="vsl">VSL</button></div>
           </div>
+          <button type="button" class="btn btn--outline btn--sm" id="ccCancel" hidden>Cancelar</button>
           <button class="chat__send" id="ccRun" aria-label="Enviar">${ic("send")}<span>Enviar</span></button>
         </div>
       </div>
@@ -3324,6 +3352,7 @@ function renderCopyChief(){
   $$(".chat__icard",area).forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccTool=b.dataset.setmode;ccApplyTool();const t=$("#ccInput");if(t)t.focus();}));
   $$("#ccFormato button").forEach(b=>b.addEventListener("click",()=>{if(ccBusy)return;ccFmt=b.dataset.fmt;$$("#ccFormato button").forEach(x=>x.classList.toggle("active",x===b));}));
   $("#ccRun").addEventListener("click",ccRun);
+  $("#ccCancel").addEventListener("click",()=>{if(ccAbort)ccAbort.abort();});
   const ta=$("#ccInput");
   ta.addEventListener("input",()=>chatAutosize(ta));
   ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();ccRun();}});
@@ -3338,13 +3367,14 @@ async function ccRun(){
   ta.value="";chatAutosize(ta);
   const ai=chatPushAI(thread,"sparkles");const md=ai.md,status=ai.status;
   chatScroll(thread);
-  ccBusy=true;const btn=$("#ccRun");btn.disabled=true;btn.classList.add("is-busy");
+  ccBusy=true;const btn=$("#ccRun"),cancel=$("#ccCancel");btn.disabled=true;btn.classList.add("is-busy");cancel.hidden=false;
   $$("#ccModes .chat__mode").forEach(x=>x.classList.add("is-locked"));
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  let acc="",gotAny=false,errMsg="";const stream=chatBufferedMarkdown(md,ccMarkdown,thread,()=>acc);
+  let acc="",gotAny=false,errMsg="",completed=false;const stream=chatBufferedMarkdown(md,ccMarkdown,thread,()=>acc);
+  ccAbort=new AbortController();const timeout=setTimeout(()=>ccAbort&&ccAbort.abort(),CC_TIMEOUT_MS);
   try{
     const res=await fetch(FEGUINHO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-      body:JSON.stringify({tool:ccTool,nicho,formato:ccFmt,input,mega:ccMega(nicho),tiktok:ccTiktok(nicho)})});
+      signal:ccAbort.signal,body:JSON.stringify({tool:ccTool,nicho,formato:ccFmt,input,history:ccHistory.slice(-6),mega:ccMega(nicho),tiktok:ccTiktok(nicho)})});
     if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
     const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
     for(;;){const {done,value}=await reader.read();if(done)break;
@@ -3355,17 +3385,18 @@ async function ccRun(){
         else if(ev.t==="meta"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Analisando os campeões${ev.sources?` · ${(ev.sources.ads||0)} ads · ${(ev.sources.mega||0)} do brain · ${(ev.sources.tiktok||0)} TikTok`:""}…`;}
         else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Feguinho está pensando…`;}
         else if(ev.t==="error"){errMsg=ev.v||"erro";}
+        else if(ev.t==="done"){completed=ev.ok===true;}
       }
     }
-  }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
-  stream.flush();ccBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
+  }catch(e){errMsg=errMsg||(e&&e.name==="AbortError"?"operação cancelada ou tempo seguro excedido":(e.message||"falha na conexão"));}
+  clearTimeout(timeout);ccAbort=null;stream.flush();ccBusy=false;btn.disabled=false;btn.classList.remove("is-busy");cancel.hidden=true;
   $$("#ccModes .chat__mode").forEach(x=>x.classList.remove("is-locked"));
   if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"o Feguinho não respondeu — tente de novo")}</div>`;status.innerHTML="";}
-  else{status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+  else if(completed&&!errMsg){ccHistory.push({role:"user",content:input},{role:"assistant",content:acc});ccHistory=ccHistory.slice(-6);status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto`;
     ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--outline btn--sm" data-cccopy>${ic("clipboard")}Copiar</button>`;
     const cb=ai.bar.querySelector("[data-cccopy]");if(cb)cb.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
-  }
-  if(gotAny&&ccTool==="gerar"){const hooks=ccTiktok(nicho);
+  }else{status.innerHTML=`<span class="ccdot"></span>Resposta interrompida · não foi adicionada à conversa${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
+  if(completed&&!errMsg&&gotAny&&ccTool==="gerar"){const hooks=ccTiktok(nicho);
     if(hooks.length){const tt=document.createElement("div");tt.className="cchief__tt";
       tt.innerHTML=`<div class="cchief__tthead">${ic("play")}Vídeos do Radar sugeridos como hook — ${esc(nicho)}</div><div class="cchief__ttgrid">`+
         hooks.map(h=>`<a class="ccttcard" href="${esc(fixUrl(h.url))}" target="_blank" rel="noopener"><div class="ccttv">${kfmt(h.views)} views · ${(h.eng*100).toFixed(1)}% eng</div><div class="ccttc">${esc(h.cap||"—")}</div><div class="cctto">${ic("external")}Abrir no TikTok</div></a>`).join("")+`</div>`;
@@ -3377,6 +3408,7 @@ async function ccRun(){
 
 /* ===== FURTADO - Copy Chief ADS IA (Beta) ===== */
 const FURTADO_FN="/.netlify/functions/furtado";
+const FUR_TIMEOUT_MS=270000,FUR_STORE="feg_furtado_session_v2";
 const FUR_PHASES=[
   {key:"biblia",icon:"brain",label:"Bíblia do Nicho",cta:"Gerar Bíblia do Nicho",
     desc:"Cole 2 a 4 anúncios que já venderam (separe com -----) e a IA extrai o DNA do nicho — avatar, linguagem, mecanismo, promessa, provas e ângulos, enriquecido com o Mega Brain + vault.",
@@ -3393,16 +3425,19 @@ const FUR_PHASES=[
     desc:"Escolha quantos corpos e hooks por corpo serão escritos na remessa, prontos pra gravar e com lastro na Bíblia + VOC + briefing.",
     hint:"Escolha a quantidade de corpos e de hooks por corpo para escrever a remessa completa.",ph:""},
 ];
-// Estado da conversa (em memória, encadeado — NÃO salva projeto no banco).
-// É uma skill conversacional: cada envio segue a lógica da fase e alimenta a próxima.
-let furPhase="biblia", furBusy=false;
+// Estado da conversa persistido localmente por usuário; respostas parciais nunca são salvas.
+let furPhase="biblia", furBusy=false, furAbort=null, furRestoredKey="";
 let furState={nicho:"",biblia:"",voc:"",briefing:"",nCorpos:3,nHooks:3,anuncios:[]};
+function furStorageKey(){return FUR_STORE+":"+String(($("#whoami")&&$("#whoami").textContent)||"usuario").trim().toLowerCase();}
+function furPersist(){try{localStorage.setItem(furStorageKey(),JSON.stringify({version:2,phase:furPhase,state:furState,updatedAt:new Date().toISOString()}));}catch(_){}}
+function furRestore(){const key=furStorageKey();if(furRestoredKey===key)return;furRestoredKey=key;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(!saved||saved.version!==2||!saved.state)return;const s=saved.state;furPhase=FUR_PHASES.some(p=>p.key===saved.phase)?saved.phase:"biblia";furState={nicho:String(s.nicho||""),biblia:String(s.biblia||""),voc:String(s.voc||""),briefing:String(s.briefing||""),nCorpos:Math.max(1,Math.min(8,parseInt(s.nCorpos,10)||3)),nHooks:Math.max(1,Math.min(6,parseInt(s.nHooks,10)||3)),anuncios:Array.isArray(s.anuncios)?s.anuncios:[]};}catch(_){}}
 function furMarkdown(src){return ccMarkdown(src);}   // reaproveita o renderer do Feguinho
 function furHasDoc(k){if(k==="anuncios")return furState.anuncios.length>0;return !!String(furState[k]||"").trim();}
 function furReset(){
   const nicho=furState.nicho||"";
   furState={nicho,biblia:"",voc:"",briefing:"",nCorpos:3,nHooks:3,anuncios:[]};
   furPhase="biblia";
+  furPersist();
   const f=$("#furtado");if(f){f.remove();renderFurtado();}
   toast("Nova conversa ✓");
 }
@@ -3410,6 +3445,7 @@ function furReset(){
 function renderFurtado(){
   const area=$("#gridArea");if(!area)return;
   if($("#furtado"))return;
+  furRestore();
   if(!furState.nicho)furState.nicho=NICHOS[0];
   const pcard=(p,i)=>`<button type="button" class="chat__icard" data-setphase="${p.key}"><div class="chat__icard__t">${ic(p.icon)}${i+1} · ${esc(p.label)}</div><p>${esc(p.desc)}</p><span class="chat__icard__go">${ic("wand")}Ir para a fase ${i+1}</span></button>`;
   area.innerHTML=`<div class="chat furtado chat--animated" id="furtado">
@@ -3421,7 +3457,7 @@ function renderFurtado(){
       <div class="chat__welcome">
         <div class="chat__mark">${ic("wand")}</div>
         <div class="chat__wtitle">Furtado - Copy Chief ADS IA <span class="chat__beta">Beta</span></div>
-        <p class="chat__wsub">Uma skill de criação de ads em <b>4 fases encadeadas</b> — é só ir mandando: cada fase segue a lógica da skill e <b>alimenta a próxima automaticamente</b> nesta conversa. Sem projeto, sem salvar. Escolha o nicho, cole seus anúncios campeões e siga <b>1 → 2 → 3 → 4</b>.</p>
+        <p class="chat__wsub">Uma skill de criação de ads em <b>4 fases encadeadas</b> — é só ir mandando: cada fase segue a lógica da skill e <b>alimenta a próxima automaticamente</b>. O progresso fica salvo neste navegador para o seu usuário. Escolha o nicho, cole seus anúncios campeões e siga <b>1 → 2 → 3 → 4</b>.</p>
         <div class="chat__intro is-4">${FUR_PHASES.map(pcard).join("")}</div>
       </div>
     </div>
@@ -3433,6 +3469,7 @@ function renderFurtado(){
         <textarea id="furInput" class="chat__input" rows="1"></textarea>
         <div class="chat__boxfoot">
           <div class="chat__inline" id="furControls"></div>
+          <button type="button" class="btn btn--outline btn--sm" id="furCancel" hidden>Cancelar</button>
           <button class="chat__send" id="furRun" aria-label="Enviar">${ic("send")}<span>Enviar</span></button>
         </div>
       </div>
@@ -3441,10 +3478,11 @@ function renderFurtado(){
 
   chatWireFollow($("#furThread"));
   $("#furReset").addEventListener("click",furReset);
-  const furSetPhase=(k)=>{if(furBusy||!k)return;furPhase=k;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===k));furApplyPhase();const t=$("#furInput");if(t&&t.style.display!=="none")t.focus();};
+  const furSetPhase=(k)=>{if(furBusy||!k)return;furPhase=k;furPersist();$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===k));furApplyPhase();const t=$("#furInput");if(t&&t.style.display!=="none")t.focus();};
   $$("#furModes .chat__mode").forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.phase)));
   $$(".chat__icard",area).forEach(b=>b.addEventListener("click",()=>furSetPhase(b.dataset.setphase)));
   $("#furRun").addEventListener("click",furRun);
+  $("#furCancel").addEventListener("click",()=>{if(furAbort)furAbort.abort();});
   const fta=$("#furInput");
   fta.addEventListener("input",()=>chatAutosize(fta));
   fta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();furRun();}});
@@ -3483,10 +3521,10 @@ function furApplyPhase(){
     if(faltam.length){prereq.hidden=false;prereq.innerHTML=`${ic("alert")}Falta gerar: <b>${faltam.join(" · ")}</b>. Escrever sem esses documentos produz anúncio genérico.`;}
   }
   controls.innerHTML=nsel+extra;
-  const nn=$("#furNicho");if(nn)nn.addEventListener("change",()=>{furState.nicho=nn.value;});
+  const nn=$("#furNicho");if(nn)nn.addEventListener("change",()=>{furState.nicho=nn.value;furPersist();});
   const ncInput=$("#furNCorpos"),nhInput=$("#furNHooks");
-  if(ncInput)ncInput.addEventListener("change",()=>{furState.nCorpos=Math.max(1,Math.min(8,parseInt(ncInput.value,10)||3));ncInput.value=furState.nCorpos;});
-  if(nhInput)nhInput.addEventListener("change",()=>{furState.nHooks=Math.max(1,Math.min(6,parseInt(nhInput.value,10)||3));nhInput.value=furState.nHooks;});
+  if(ncInput)ncInput.addEventListener("change",()=>{furState.nCorpos=Math.max(1,Math.min(8,parseInt(ncInput.value,10)||3));ncInput.value=furState.nCorpos;furPersist();});
+  if(nhInput)nhInput.addEventListener("change",()=>{furState.nHooks=Math.max(1,Math.min(6,parseInt(nhInput.value,10)||3));nhInput.value=furState.nHooks;furPersist();});
   chatAutosize(ta);
 }
 async function furRun(){
@@ -3515,13 +3553,14 @@ async function furRun(){
   if(furPhase==="biblia"||furPhase==="remessa"){const t=$("#furInput");if(t){t.value="";chatAutosize(t);}}
   const ai=chatPushAI(thread,"wand");const md=ai.md,status=ai.status;
   chatScroll(thread);
-  furBusy=true;const btn=$("#furRun");btn.disabled=true;btn.classList.add("is-busy");
+  furBusy=true;const btn=$("#furRun"),cancel=$("#furCancel");btn.disabled=true;btn.classList.add("is-busy");cancel.hidden=false;
   $$("#furModes .chat__mode").forEach(x=>x.classList.add("is-locked"));
   let token="";try{const r=await sb.auth.getSession();token=(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(e){}
-  let acc="",gotAny=false,errMsg="";const stream=chatBufferedMarkdown(md,furMarkdown,thread,()=>acc);
+  let acc="",gotAny=false,errMsg="",completed=false;const stream=chatBufferedMarkdown(md,furMarkdown,thread,()=>acc);
+  furAbort=new AbortController();const timeout=setTimeout(()=>furAbort&&furAbort.abort(),FUR_TIMEOUT_MS);
   try{
     const res=await fetch(FURTADO_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-      body:JSON.stringify({phase:furPhase,nicho,input,biblia:furState.biblia||"",voc:furState.voc||"",briefing:furState.briefing||"",nCorpos,nHooks})});
+      signal:furAbort.signal,body:JSON.stringify({phase:furPhase,nicho,input,biblia:furState.biblia||"",voc:furState.voc||"",briefing:furState.briefing||"",nCorpos,nHooks})});
     if(!res.ok||!res.body){let j={};try{j=await res.json();}catch(e){}throw new Error(j.error||("HTTP "+res.status));}
     const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
     for(;;){const {done,value}=await reader.read();if(done)break;
@@ -3532,45 +3571,48 @@ async function furRun(){
         else if(ev.t==="status"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>${esc(ev.v||"processando…")}`;}
         else if(ev.t==="meta2"){if(!gotAny)status.innerHTML=`<span class="ccdot ccdot--on"></span>Compilando as falas${ev.searches?` · ${ev.searches} buscas`:""}…`;}
         else if(ev.t==="error"){errMsg=ev.v||"erro";}
+        else if(ev.t==="done"){completed=ev.ok===true;}
       }
     }
-  }catch(e){errMsg=errMsg||(e.message||"falha na conexão");}
-  stream.flush();furBusy=false;btn.disabled=false;btn.classList.remove("is-busy");
+  }catch(e){errMsg=errMsg||(e&&e.name==="AbortError"?"operação cancelada ou tempo seguro excedido":(e.message||"falha na conexão"));}
+  clearTimeout(timeout);furAbort=null;stream.flush();furBusy=false;btn.disabled=false;btn.classList.remove("is-busy");cancel.hidden=true;
   $$("#furModes .chat__mode").forEach(x=>x.classList.remove("is-locked"));
   if(!gotAny){md.innerHTML=`<div class="ccerr">⚠ ${esc(errMsg||"não respondeu — tente de novo")}</div>`;status.innerHTML="";}
-  else{
-    // ENCADEIA em memória (a próxima fase usa isto automaticamente)
+  else if(completed&&!errMsg){
+    // Encadeia e persiste somente quando o backend confirmou conclusão real.
     if(phaseAtRun==="biblia")furState.biblia=acc;
     else if(phaseAtRun==="voc")furState.voc=acc;
     else if(phaseAtRun==="remessa")furState.briefing=acc;
     else furState.anuncios=[{corpo:`1–${nCorpos}`,quantidade:nCorpos,texto:acc}];
+    furPersist();
     furRenderDocs();
     const nextName={biblia:"a Voz do Prospect (fase 2)",voc:"a Arquitetura da Remessa (fase 3)",remessa:"a Escrita dos Anúncios (fase 4)"}[phaseAtRun];
-    status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${nextName?` · pode seguir para <b>${nextName}</b>`:` · ${nCorpos} anúncio${nCorpos===1?"":"s"} pronto${nCorpos===1?"":"s"}`}${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;
+    status.innerHTML=`<span class="ccdot ccdot--done"></span>Pronto${nextName?` · pode seguir para <b>${nextName}</b>`:` · ${nCorpos} anúncio${nCorpos===1?"":"s"} pronto${nCorpos===1?"":"s"}`}`;
     ai.bar.hidden=false;ai.bar.innerHTML=`<button class="btn btn--outline btn--sm" data-furcopy>${ic("clipboard")}Copiar</button>`;
     const cp=ai.bar.querySelector("[data-furcopy]");if(cp)cp.addEventListener("click",()=>{navigator.clipboard.writeText(md.innerText||"").then(()=>toast("Copiado ✓"));});
     // avança a fase ativa automaticamente (o usuário pode voltar clicando no chip)
     const next={biblia:"voc",voc:"remessa",remessa:"escrita"}[phaseAtRun];
-    if(next&&furPhase===phaseAtRun){furPhase=next;$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===next));furApplyPhase();}
-  }
+    if(next&&furPhase===phaseAtRun){furPhase=next;furPersist();$$("#furModes .chat__mode").forEach(x=>x.classList.toggle("active",x.dataset.phase===next));furApplyPhase();}
+  }else{status.innerHTML=`<span class="ccdot"></span>Resposta interrompida · esta fase não foi salva nem avançada${errMsg?` · <span class="muted">${esc(errMsg)}</span>`:""}`;}
   chatScroll(thread);
 }
 
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */
-const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript";
+const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript",TR_AD_ANALYSIS_FN="/.netlify/functions/ad-analysis-job";
+const TR_AD_MAX_SEC=600,TR_AD_PROMPT_VERSION="2026-08-04.1";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
 const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3.5,TR_STREAM_STALL_MS=30000;
 const TR_PIPELINE_DEPTH=2;
 const TR_LANGS=[["auto","Detectar automaticamente"],["pt","Português"],["en","Inglês"],["es","Espanhol"],["fr","Francês"],["de","Alemão"],["it","Italiano"],["nl","Holandês"],["ja","Japonês"],["zh","Chinês"],["ru","Russo"],["ar","Árabe"],["hi","Hindi"],["ko","Coreano"]];
-let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="";
+let trBusy=false, trLang="auto", trText="", trSegs=[], trWords=[], trDetLang="", trDur=0, trShowTimes=false, trFileName="", trAudioUrl="", trAudio=null, trRaf=0, trActive=-1,trFollow=true,trLastFile=null,trTranslation="",trTranslationStatus="idle",trTranslationError="",trAdAnalysis="",trAdAnalysisStatus="idle",trAdAnalysisError="",trAdAnalysisJobId="";
 const TR_STORE="feg_transcricoes_v1";
 const TR_SAVE_FN="/.netlify/functions/transcript";
 function trStoreRead(){try{return JSON.parse(localStorage.getItem(TR_STORE)||"{}");}catch(_){return{};}}
 function trCache(entry){const all=trStoreRead();all[entry.id]=entry;const ordered=Object.values(all).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,20),next={};ordered.forEach(x=>next[x.id]=x);try{localStorage.setItem(TR_STORE,JSON.stringify(next));}catch(_){} }
-function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trTranslation=x.translation||"";trTranslationStatus=trTranslation?"done":"idle";trTranslationError="";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;trFollow=true;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
+function trLoadEntry(x){trText=x.text||"";trSegs=Array.isArray(x.segments)?x.segments:[];trWords=Array.isArray(x.words)?x.words:[];trDetLang=x.language||"";trTranslation=x.translation||"";trTranslationStatus=trTranslation?"done":"idle";trTranslationError="";trAdAnalysis=x.adVisualAnalysis||"";trAdAnalysisStatus=trAdAnalysis?"complete":(x.adAnalysisStatus||"idle");trAdAnalysisError=x.adAnalysisError||"";trAdAnalysisJobId=x.adAnalysisJobId||"";trDur=+x.duration||0;trFileName=x.fileName||"transcricao";trAudioUrl="";trAudio=null;trFollow=true;renderTrOutput();const link=$("#trCopyLink");if(link)link.hidden=false;document.title=(trFileName||"Transcrição")+" — Benchmarking FEG";}
 async function trToken(){try{const r=await sb.auth.getSession();return(r.data&&r.data.session&&r.data.session.access_token)||"";}catch(_){return"";}}
-async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,translation:trTranslation,translationLanguage:trTranslation?"pt-BR":"",duration:trDur,fileName:trFileName,createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
+async function trPersist(){const entry={text:trText,segments:trSegs,words:trWords,language:trDetLang,translation:trTranslation,translationLanguage:trTranslation?"pt-BR":"",duration:trDur,fileName:trFileName,adVisualAnalysis:trAdAnalysis,adAnalysisStatus:trAdAnalysisStatus,adAnalysisError:trAdAnalysisError,adAnalysisJobId:trAdAnalysisJobId,adAnalysisPromptVersion:trAdAnalysis?TR_AD_PROMPT_VERSION:"",createdAt:new Date().toISOString()};let id="";try{const response=await fetch(TR_SAVE_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await trToken()},body:JSON.stringify(entry)}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"falha ao salvar");id=result.id;}catch(e){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));toast("Transcrição pronta, mas o link ficou salvo apenas neste navegador.",true);}entry.id=id;trCache(entry);try{history.replaceState(history.state,"","/transcritor/"+id);}catch(_){}const link=$("#trCopyLink");if(link)link.hidden=false;return id;}
 async function loadTrRoute(id){let x=trStoreRead()[id];if(!x){trSetStatus(`<span class="vidup__spin"></span>Carregando transcrição…`);try{const response=await fetch(TR_SAVE_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+await trToken()}}),result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"não encontrada");x=result.transcript;trCache(x);}catch(_){if(parseLocation().id!==id)return;trSetStatus("");renderNotFound("Transcrição não encontrada.");return;}}if(parseLocation().id!==id)return;trSetStatus("");trLoadEntry(x);}
 function trTime(s){s=Math.max(0,Math.round(+s||0));const m=Math.floor(s/60),ss=s%60;return `${m}:${String(ss).padStart(2,"0")}`;}
 function trSetStatus(html){const el=$("#trStatus");if(!el)return;el.hidden=!html;el.innerHTML=html||"";}
@@ -3597,6 +3639,15 @@ function renderTrOutput(){
   if(retry){retry.hidden=!(trText&&!trTranslation&&trTranslationStatus!=="translating");retry.textContent=trTranslationStatus==="error"?"Tentar tradução novamente":"Traduzir para português";}
   if(copyPt)copyPt.disabled=!trTranslation;
   if(downloadPt)downloadPt.disabled=!trTranslation;
+  const analysisDoc=$("#trAdAnalysisDoc"),analysisState=$("#trAdAnalysisState"),copyAnalysis=$("#trCopyAnalysis"),downloadAnalysis=$("#trDownloadAnalysis");
+  if(analysisDoc){
+    if(trAdAnalysis)analysisDoc.innerHTML=ccMarkdown(trAdAnalysis);
+    else if(trDur>TR_AD_MAX_SEC)analysisDoc.innerHTML=`<div class="tranalysis-empty">Vídeos acima de 10 minutos permanecem somente como transcrição. Para VSLs longas, use o Dissecador de VSL.</div>`;
+    else analysisDoc.innerHTML=`<div class="tranalysis-empty">${trAdAnalysisStatus==="working"||trAdAnalysisStatus==="queued"?"Lendo as cenas, textos e cortes do anúncio…":trAdAnalysisStatus==="error"?esc(trAdAnalysisError||"A leitura visual será tentada novamente."):"A engenharia reversa visual será criada automaticamente para vídeos de até 10 minutos."}</div>`;
+  }
+  if(analysisState)analysisState.innerHTML=trAdAnalysisStatus==="complete"?`<span class="ccdot ccdot--done"></span>Concluída`:trAdAnalysisStatus==="working"||trAdAnalysisStatus==="queued"?`<span class="vidup__spin"></span>Processando…`:trDur>TR_AD_MAX_SEC?"Não aplicável":trAdAnalysisStatus==="error"?`<span class="trerr">Interrompida</span>`:"Aguardando transcrição";
+  if(copyAnalysis)copyAnalysis.disabled=!trAdAnalysis;
+  if(downloadAnalysis)downloadAnalysis.disabled=!trAdAnalysis;
   body.onwheel=()=>{trFollow=false;};body.ontouchstart=()=>{trFollow=false;};body.onpointerdown=()=>{trFollow=false;};
   trActive=-1;if(trAudio&&!trAudio.paused)trSyncWord(trAudio.currentTime||0);
   const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
@@ -3813,6 +3864,52 @@ async function trTranslateCurrent({save=false}={}){
   }catch(error){trTranslationStatus="error";trTranslationError=(error&&error.message)||"Não foi possível traduzir agora.";renderTrOutput();return false;}
 }
 
+/* Engenharia reversa visual exclusiva para anúncios curtos.
+   A duração é verificada antes de qualquer chamada: VSLs acima de 10 minutos
+   nunca entram neste fluxo e continuam reservadas ao Dissecador de VSL. */
+async function trBuildAdContactSheets(file,duration,onProgress){
+  if(!file||!file.type.startsWith("video/")||!(duration>0&&duration<=TR_AD_MAX_SEC))return[];
+  const objectUrl=URL.createObjectURL(file),video=document.createElement("video");video.preload="auto";video.muted=true;video.playsInline=true;video.src=objectUrl;
+  const ranges=[[0,duration/3],[duration/3,duration*2/3],[duration*2/3,duration]],result=[];
+  try{
+    await vslWait(video,"loadedmetadata",15000);
+    let captured=0;
+    for(let r=0;r<ranges.length;r++){
+      const [start,end]=ranges[r],times=Array.from({length:12},(_,i)=>Math.max(.05,Math.min(duration-.08,start+(Math.max(.1,end-start)*i/11))));
+      const cols=4,fw=240,fh=135,labelH=23,canvas=document.createElement("canvas");canvas.width=cols*fw;canvas.height=3*(fh+labelH);const ctx=canvas.getContext("2d");ctx.fillStyle="#080808";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font="600 12px system-ui";ctx.textBaseline="middle";
+      for(let i=0;i<times.length;i++){
+        await vslSeek(video,times[i]);const x=(i%cols)*fw,y=Math.floor(i/cols)*(fh+labelH);vslDrawCover(ctx,video,x,y,fw,fh);ctx.fillStyle="#111";ctx.fillRect(x,y+fh,fw,labelH);ctx.fillStyle="#e5ff2d";ctx.fillText(trTime(times[i]),x+8,y+fh+labelH/2);captured++;if(onProgress)onProgress(captured,36);
+      }
+      const encoded=canvas.toDataURL("image/jpeg",.72).split(",")[1];result.push({mediaType:"image/jpeg",data:encoded,label:`Linha do tempo visual ${r+1}/3`});
+    }
+  }finally{video.removeAttribute("src");try{video.load();}catch(_){}URL.revokeObjectURL(objectUrl);}
+  return result;
+}
+async function trPollAdAnalysis(token,id){
+  for(let attempt=0;attempt<600;attempt++){
+    const response=await fetch(TR_AD_ANALYSIS_FN+"?id="+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+token},cache:"no-store"}),result=await response.json().catch(()=>({}));
+    if(!response.ok||!result.ok)throw new Error(result.error||("HTTP "+response.status));
+    const job=result.job||{};trAdAnalysisStatus=job.status||"working";trAdAnalysisError=job.error||"";if(job.report)trAdAnalysis=job.report;renderTrOutput();
+    if(job.status==="complete")return job;
+    if(job.status==="error")throw new Error(job.error||job.message||"a leitura visual foi interrompida");
+    await trDelay(2500);
+  }
+  throw new Error("a leitura visual continua em segundo plano; abra esta transcrição novamente em alguns minutos");
+}
+async function trRunAdAnalysis(file,token){
+  if(!file||!file.type.startsWith("video/")||!trText||!(trDur>0&&trDur<=TR_AD_MAX_SEC))return false;
+  trAdAnalysis="";trAdAnalysisError="";trAdAnalysisStatus="working";renderTrOutput();
+  trSetStatus(`<span class="vidup__spin"></span>Preparando a leitura visual do anúncio…`);
+  try{
+    const sheets=await trBuildAdContactSheets(file,trDur,(done,total)=>trSetStatus(`<span class="vidup__spin"></span>Lendo cenas do anúncio · ${done}/${total} quadros…`));
+    if(!sheets.length)throw new Error("não foi possível extrair os quadros do anúncio");
+    const response=await fetch(TR_AD_ANALYSIS_FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({name:trFileName||"NÃO INFORMADO",niche:"NÃO INFORMADO",country:"NÃO INFORMADO",language:trDetLang||trLang||"NÃO INFORMADO",platform:"NÃO INFORMADO",duration:trDur,transcript:trText,segments:trSegs,contactSheets:sheets})}),result=await response.json().catch(()=>({}));
+    if(response.status!==202||!result.ok||!result.id)throw new Error(result.error||("HTTP "+response.status));
+    trAdAnalysisJobId=result.id;trAdAnalysisStatus="queued";renderTrOutput();trSetStatus(`<span class="vidup__spin"></span>Catalogando cenas, textos, cortes e personagens…`);
+    const job=await trPollAdAnalysis(token,result.id);trAdAnalysis=job.report||trAdAnalysis;trAdAnalysisStatus="complete";trAdAnalysisError="";renderTrOutput();return true;
+  }catch(error){trAdAnalysisStatus="error";trAdAnalysisError=(error&&error.message)||"Não foi possível concluir a leitura visual.";renderTrOutput();return false;}
+}
+
 /* Tradução bilíngue do Swipe de Criativos.
    O original permanece intocado; a versão PT-BR é persistida em campo próprio.
    A fila usa duas tarefas por vez para não pesar o navegador nem sobrecarregar
@@ -3875,7 +3972,7 @@ function trReset(){
   if(trAudio)trAudio.pause();
   if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);
   trClearProgress(trLastFile);
-  trLastFile=null;trFileName="";trText="";trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError="";trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;trAudioUrl="";trAudio=null;
+  trLastFile=null;trFileName="";trText="";trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError="";trAdAnalysis="";trAdAnalysisStatus="idle";trAdAnalysisError="";trAdAnalysisJobId="";trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;trAudioUrl="";trAudio=null;
   history.replaceState(history.state,"","/transcritor");
   renderTranscritor(true);
   toast("Transcritor limpo — envie outro arquivo.");
@@ -3920,7 +4017,7 @@ async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0,
 async function trHandleFile(file){
   if(!file||trBusy)return;
   if(!/^(video|audio)\//.test(file.type||"")){toast("Envie um arquivo de vídeo ou áudio.",true);return;}
-  trSetBusy(true);trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError=""; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
+  trSetBusy(true);trLastFile=file; trFileName=file.name; trText=""; trSegs=[];trWords=[];trTranslation="";trTranslationStatus="idle";trTranslationError="";trAdAnalysis="";trAdAnalysisStatus="idle";trAdAnalysisError="";trAdAnalysisJobId=""; trShowTimes=false;trDetLang="";trDur=0;trActive=-1;trFollow=true;const oldLink=$("#trCopyLink");if(oldLink)oldLink.hidden=true;
   cancelAnimationFrame(trRaf);if(trAudioUrl)URL.revokeObjectURL(trAudioUrl);trAudioUrl=URL.createObjectURL(file);trAudio=null;renderTrOutput();trRenderPlayer();
   const out=$("#trOut");if(out)out.hidden=true;
   const drop=$("#trDrop");if(drop)drop.classList.add("busy");
@@ -3954,7 +4051,14 @@ async function trHandleFile(file){
   }catch(e){trSetBusy(false);trRetryStatus(`A parte ${Math.min(currentPart+1,totalParts||currentPart+1)} foi interrompida: ${(e&&e.message)||"erro"}. O progresso anterior foi preservado.`);return;}
   trText=fullText;trSegs=allSegs;trWords=allWords;trDetLang=detLang;trDur=totalDur;
   if(!trText&&!trSegs.length)trSetStatus(`<span class="trerr">⚠ Não captei fala nesse arquivo.</span>`);
-  else{renderTrOutput();await trTranslateCurrent();trSetStatus(`<span class="vidup__spin"></span>Salvando transcrição…`);await trPersist();trClearProgress(file);trSetStatus("");toast(trTranslation?"Transcrição e tradução prontas ✓":"Transcrição pronta; a tradução pode ser tentada novamente.",!trTranslation);}
+  else{
+    renderTrOutput();await trTranslateCurrent();
+    if(file.type.startsWith("video/")&&trDur>0&&trDur<=TR_AD_MAX_SEC)await trRunAdAnalysis(file,token);
+    else if(trDur>TR_AD_MAX_SEC){trAdAnalysisStatus="not_applicable";trAdAnalysisError="";renderTrOutput();}
+    trSetStatus(`<span class="vidup__spin"></span>Salvando transcrição…`);await trPersist();trClearProgress(file);trSetStatus("");
+    const hasAnalysis=!!trAdAnalysis,hasTranslation=!!trTranslation;
+    toast(hasAnalysis?"Transcrição, tradução e engenharia reversa prontas ✓":hasTranslation?"Transcrição e tradução prontas ✓":"Transcrição pronta; itens pendentes serão tentados novamente.",!hasTranslation);
+  }
   trSetBusy(false);
 }
 function renderTranscritor(force){
@@ -3999,6 +4103,7 @@ function renderTranscritor(force){
       <div class="trdocs">
         <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Transcrição original</span><span class="trdoc__state">Idioma detectado</span></div><div class="trtext" id="trText"></div></section>
         <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Tradução em português</span><span class="trdoc__state" id="trTranslationState"></span></div><div class="trtext trtext--translation" id="trTranslation"></div></section>
+        <section class="trdoc trdoc--analysis"><div class="trdoc__head"><span class="trdoc__title">Engenharia reversa visual do anúncio</span><span class="trdoc__state" id="trAdAnalysisState"></span><div class="tractions"><button class="btn btn--outline btn--sm" id="trCopyAnalysis" disabled>${ic("clipboard")}Copiar relatório</button><button class="btn btn--outline btn--sm" id="trDownloadAnalysis" disabled>${ic("download")}Relatório .md</button></div></div><div class="tranalysis" id="trAdAnalysisDoc"></div></section>
       </div>
     </div>
   </div>`;
@@ -4019,6 +4124,7 @@ function renderTranscritor(force){
   $("#trText").addEventListener("click",e=>{const w=e.target.closest("[data-trword]");if(!w||!trAudio)return;trAudio.currentTime=+w.dataset.start||0;trSyncWord(trAudio.currentTime);if(trAudio.paused)trAudio.play();});
   $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
   $("#trCopyPt").addEventListener("click",()=>{if(trTranslation)navigator.clipboard.writeText(trTranslation).then(()=>toast("Tradução copiada ✓"));});
+  $("#trCopyAnalysis").addEventListener("click",()=>{if(trAdAnalysis)navigator.clipboard.writeText(trAdAnalysis).then(()=>toast("Relatório copiado ✓"));});
   $("#trRetryTranslation").addEventListener("click",async()=>{if(trBusy)return;trSetBusy(true);const ok=await trTranslateCurrent({save:true});trSetStatus("");trSetBusy(false);toast(ok?"Tradução pronta ✓":"Não foi possível traduzir agora.",!ok);});
   $("#trDownload").addEventListener("click",()=>{
     const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));
@@ -4026,6 +4132,7 @@ function renderTranscritor(force){
     a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,""):"transcricao")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   });
   $("#trDownloadPt").addEventListener("click",()=>{if(!trTranslation)return;const blob=new Blob([trTranslation],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,"_"):"transcricao_")+"pt-BR.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);});
+  $("#trDownloadAnalysis").addEventListener("click",()=>{if(!trAdAnalysis)return;const blob=new Blob([trAdAnalysis],{type:"text/markdown;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(trFileName?trFileName.replace(/\.[^.]+$/,"_"):"anuncio_")+"engenharia-reversa.md";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);});
   if(trText||trSegs.length||trAudioUrl){renderTrOutput();trRenderPlayer();}
 }
 
@@ -4684,6 +4791,20 @@ function videoBlock(va,data,forceTrans,status){
   }
   return "";
 }
+function adAnalysisSection(d,num){
+  const report=String((d&&d.adVisualAnalysis)||"").trim(),status=String((d&&d.adAnalysisStatus)||"").toLowerCase();
+  const duration=Number((d&&d.adAnalysisDuration)||(d&&d.transcriptionDurationSeconds)||0);
+  if(status==="not_applicable"||duration>TR_AD_MAX_SEC)return"";
+  const hasTranscript=!!String((d&&d.transcricao)||"").trim(),hasVideo=!!videoOfCrv(d)||!!videoOfBrain(d);
+  const active=["queued","working","retry_scheduled","error"].includes(status);
+  if(!report&&!active&&!(hasTranscript&&hasVideo))return"";
+  const state=report?`<span class="ccdot ccdot--done"></span>Concluída`
+    :status==="queued"||status==="working"?`<span class="vidup__spin"></span>Processando`
+    :status==="error"?`<span class="trerr">Nova tentativa programada</span>`
+    :`<span class="ccdot"></span>Na fila automática`;
+  const body=report?ccMarkdown(report):`<div class="ad-report__empty">${status==="queued"||status==="working"?"O vídeo, a fala, os textos e os cortes estão sendo catalogados.":"A engenharia reversa será executada automaticamente na próxima varredura horária."}</div>`;
+  return `<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Engenharia reversa visual do anúncio</span><span class="sec__line"></span></div><div class="ad-report"><div class="ad-report__bar"><span>Relatório operacional</span><span>${state}</span></div><div class="ad-report__body">${body}</div></div></section>`;
+}
 function wireTranscriptLanguageTabs(root){
   $$(".vtrans__tabs",root||document).forEach(tabs=>{
     tabs.addEventListener("click",event=>{
@@ -5260,6 +5381,8 @@ function openSimpleView(o,skipOpen){
       sections+=`<div class="muted-empty">Nenhum material cadastrado ainda. Clique em Editar para adicionar copy ou criativo.</div>`;
     }
   }
+
+  if(kind==="criativo"||kind==="megabrain")sections+=adAnalysisSection(d,num);
 
   /* notícia: resumo */
   if(kind==="noticia"&&d.resumo){

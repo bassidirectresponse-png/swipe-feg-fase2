@@ -156,7 +156,7 @@ test("Swipe de Criativos preserva original e oferece tradução PT-BR automátic
   assert.match(html, />Português(?: ✓)?</);
   assert.match(html, /scheduleCreativeTranslations/);
   assert.match(html, /transcricaoPtStatus:"done"/);
-  assert.match(translateCreatives, /data\.get\("kind"\) != "criativo"/);
+  assert.match(translateCreatives, /data\.get\("kind"\) not in TRANSLATE_KINDS/);
   assert.match(translateCreatives, /"transcricaoPt": translated/);
   assert.match(translateCreatives, /original = str\(data\["transcricao"\]\)/);
   assert.match(transcriptionWorkflow, /Traduzir transcrições para português/);
@@ -334,7 +334,7 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /Período das views/);
 });
 
-test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histórico diário", () => {
+test("automação de anúncios ativos inclui FEG DR e FEG Brands e preserva as duas leituras diárias", () => {
   assert.match(adsScraper, /\("oferta", "brandsgeneral", "brandsvalidated"\)/);
   assert.match(adsScraper, /data\["adsHistory"\] = update_history/);
   assert.match(adsScraper, /data\["adsLibraryCheckedAt"\]/);
@@ -354,7 +354,8 @@ test("automação de anúncios ativos inclui FEG DR e FEG Brands e guarda histó
   assert.match(adsScraper, /start \+= page_size/);
   assert.match(adsScraper, /def last_stable_ads\(data, now\):/);
   assert.match(adsScraper, /def normalize_history\(points\):/);
-  assert.match(adsScraper, /by_date\[today\] = \{"d": today, "n": total\}/);
+  assert.match(adsScraper, /"at": now\.astimezone\(timezone\.utc\)\.isoformat/);
+  assert.match(adsScraper, /round_robin_targets\(targets, MAX_OFFERS\)/);
   assert.match(adsScraper, /reason="partial_library_read"/);
   assert.match(adsScraper, /reason="zero_awaiting_confirmation"/);
 });
@@ -496,7 +497,8 @@ test("Dissecador retoma partes concluídas e subdivide trechos que dão timeout"
   assert.match(html, /status===502\|\|status===503\|\|status===504/);
   assert.match(html, /vslChunkCache=new Map/);
   assert.match(html, /Retomando parte/);
-  assert.match(fn, /GROQ_BUDGET_MS = 7000/);
+  assert.match(fn, /GROQ_BUDGET_MS = 24_000/);
+  assert.match(fn, /GROQ_ATTEMPT_MS = 11_500/);
   assert.match(fn, /timedFetch/);
   assert.match(fn, /lastStatus === 504 \? 504/);
 });

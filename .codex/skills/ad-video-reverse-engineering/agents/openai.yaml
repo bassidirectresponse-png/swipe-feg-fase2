@@ -1,0 +1,5 @@
+interface:
+  display_name: "Engenharia Reversa de Video Ads"
+  short_description: "Disseca visualmente anúncios curtos com timestamps"
+  brand_color: "#DFFF00"
+  default_prompt: "Use $ad-video-reverse-engineering para catalogar um video ad curto sem interpretar performance."

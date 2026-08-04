@@ -13,6 +13,7 @@ import {
 import { offers as catalog } from "../../scripts/offer_batch_july29_catalog.mjs";
 
 const METHODS = "POST, OPTIONS";
+const PAGE_SIZE = 500;
 const textKey = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const sectionOf = row => row?.data?.kind || "oferta";
 
@@ -107,6 +108,21 @@ async function rest(path, options = {}, accessToken) {
   return text ? JSON.parse(text) : null;
 }
 
+async function restAll(path, accessToken) {
+  const rows = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const page = await rest(path, {
+      headers: {
+        "Range-Unit": "items",
+        Range: `${offset}-${offset + PAGE_SIZE - 1}`,
+      },
+    }, accessToken);
+    if (!Array.isArray(page)) throw new Error("banco retornou uma listagem inválida");
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
 function mediaUrls(origin, slug) {
   const base = `${origin}/assets/offers-july29/${slug}`;
   return { pv: `${base}/pv.jpg`, checkout: `${base}/checkout.jpg`, product: `${base}/product.jpg` };
@@ -189,7 +205,7 @@ async function applyRename(rows, dryRun, accessToken) {
 }
 
 async function runBatch({ dryRun, origin, accessToken }) {
-  const rows = await rest("offers?select=id,created_at,data&order=created_at.asc", {}, accessToken);
+  const rows = await restAll("offers?select=id,created_at,data&order=created_at.asc", accessToken);
   const renameChanges = await applyRename(rows, dryRun, accessToken);
   const plans = catalog.map(item => {
     const found = rows.filter(row => matches(item, row));

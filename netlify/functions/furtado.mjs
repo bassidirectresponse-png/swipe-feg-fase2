@@ -32,6 +32,8 @@ const WEB_MAX_USES = 6;   // teto de buscas na Fase 2 (equilíbrio entre profund
 // narrar as tentativas. A básica é previsível e suficiente para coletar falas.
 const WEB_TOOL = process.env.FURTADO_WEB_TOOL || "web_search_20250305";
 const WEB_COUNTRY = process.env.FURTADO_WEB_COUNTRY || "US";   // busca no mercado dos EUA (inglês)
+const ANTHROPIC_TIMEOUT_MS = 240_000;
+const SUPABASE_TIMEOUT_MS = 8_000;
 
 const METHODS = "POST, GET, OPTIONS";
 
@@ -49,18 +51,26 @@ const clip = (s, n) => {
 const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const clampInt = (v, lo, hi, d) => { const n = parseInt(v, 10); return isNaN(n) ? d : Math.max(lo, Math.min(hi, n)); };
 
-async function sbGet(path, token) {
+function deadlineSignal(parent, timeoutMs) {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return parent ? AbortSignal.any([parent, timeout]) : timeout;
+}
+
+async function sbGet(path, token, signal) {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+      signal: deadlineSignal(signal, SUPABASE_TIMEOUT_MS),
+    });
     return r.ok ? await r.json() : [];
   } catch { return []; }
 }
 // enriquecimento da Fase 1 com a base interna (ads validados + análise-master do nicho)
-async function vaultCtx(nichoSlug, token) {
+async function vaultCtx(nichoSlug, token, signal) {
   const nz = encodeURIComponent(nichoSlug);
   const [ads, master] = await Promise.all([
-    sbGet(`conhecimento?select=titulo,vendas,conteudo&tipo=eq.ads-validado&nicho=eq.${nz}&order=vendas.desc.nullslast&limit=5`, token),
-    sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.analise-master&nicho=eq.${nz}`, token),
+    sbGet(`conhecimento?select=titulo,vendas,conteudo&tipo=eq.ads-validado&nicho=eq.${nz}&order=vendas.desc.nullslast&limit=5`, token, signal),
+    sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.analise-master&nicho=eq.${nz}`, token, signal),
   ]);
   return { ads: ads || [], master: master || [] };
 }
@@ -267,18 +277,19 @@ async function streamAnthropic(payload, send, opts = {}) {
       method: "POST",
       headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify(body),
+      signal: deadlineSignal(opts.signal, ANTHROPIC_TIMEOUT_MS),
     });
-  } catch {
-    if (!opts.soft) send({ t: "error", v: "falha de conexão com o Claude" });
-    return { gotText: false, searches: 0 };
+  } catch (error) {
+    if (!opts.soft) send({ t: "error", v: error && error.name === "AbortError" ? "operação cancelada ou tempo seguro excedido" : "falha de conexão com o Claude" });
+    return { gotText: false, searches: 0, completed: false, stopReason: error && error.name === "AbortError" ? "aborted" : "error" };
   }
   if (!up.ok || !up.body) {
     const t = await up.text().catch(() => "");
     if (!opts.soft) send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(t, 200)}` });
-    return { gotText: false, searches: 0, httpErr: up.status };
+    return { gotText: false, searches: 0, completed: false, stopReason: "http_error", httpErr: up.status };
   }
   const reader = up.body.getReader(); const dec = new TextDecoder();
-  let buf = "", lastStatus = 0, gotText = false, searches = 0;
+  let buf = "", lastStatus = 0, gotText = false, searches = 0, messageStopped = false, stopReason = "", providerError = false;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -303,30 +314,27 @@ async function streamAnthropic(payload, send, opts = {}) {
         if (d.type === "text_delta" && d.text) { gotText = true; send({ t: "text", v: d.text }); }
         else if (d.type === "thinking_delta") { const now = Date.now(); if (now - lastStatus > 1200) { lastStatus = now; send({ t: "status", v: "pensando" }); } }
       } else if (ev.type === "error") {
+        providerError = true;
         if (!opts.soft) send({ t: "error", v: (ev.error && ev.error.message) || "erro do modelo" });
+      } else if (ev.type === "message_delta") {
+        stopReason = String((ev.delta && ev.delta.stop_reason) || stopReason || "");
+      } else if (ev.type === "message_stop") {
+        messageStopped = true;
       }
     }
   }
-  if (!gotText && !opts.soft) send({ t: "error", v: "o modelo não retornou texto — tente de novo em instantes" });
-  return { gotText, searches };
+  const completed = isCompletedMessage({ gotText, messageStopped, stopReason, providerError });
+  if (!completed && !opts.soft) {
+    const reason = stopReason === "max_tokens"
+      ? "a resposta atingiu o limite antes de terminar — tente novamente"
+      : "a resposta foi interrompida antes de terminar — tente novamente";
+    send({ t: "error", v: reason });
+  }
+  return { gotText, searches, completed, stopReason: stopReason || "interrupted" };
 }
 
-// Fallback do VOC quando a web não está disponível/estourou: compõe a partir do
-// conhecimento do público + Bíblia (sempre entrega algo útil — nenhuma fase fica vazia).
-function vocFallbackUser(nicho, biblia) {
-  return `TASK — Build the VOICE OF CUSTOMER (VOC) for the "${nicho}" niche (US market). The web search did not return this round, so compose from your deep knowledge of how this US/English-speaking audience really talks. On the FIRST line, in italics, warn (in Portuguese): "_Falas representativas do padrão do público dos EUA (a busca web não retornou nesta rodada) — rode de novo para tentar coletar citações reais._". Then deliver the SAME structure: 5 categories with 5 lines each, quotes in ENGLISH (natural, raw, real), each with a short Portuguese gloss in parentheses; section titles and the Síntese in Portuguese. Do not narrate your process or mention tools/limits.
-
-# Voz do Prospect — ${nicho}
-
-## Dores e Frustrações Reais
-## Desejos e Sonhos Reais
-## Crenças e Opiniões sobre o Tema
-## Ceticismo e Objeções
-## Falsas Crenças sobre Como o Problema Funciona
-## Síntese (em português)
-
-=== BÍBLIA DO NICHO ===
-${clip(biblia, 9000) || "(no Bible provided — use the niche above)"}`;
+export function isCompletedMessage({ gotText, messageStopped, stopReason, providerError = false }) {
+  return Boolean(gotText && messageStopped && stopReason === "end_turn" && !providerError);
 }
 
 // ---------- handler (Netlify Functions v2, streaming NDJSON) ----------
@@ -359,15 +367,18 @@ export default async (req) => {
   if (phase === "biblia") {
     const ads = String(body.input || "").trim();
     if (!ads) return json(req, 400, { ok: false, error: "cole 2 a 4 anúncios validados para gerar a Bíblia" }, METHODS);
-    const ctx = await vaultCtx(slug(nicho), token);
+    const ctx = await vaultCtx(slug(nicho), token, req.signal);
     built = { ...bibliaPrompt(nicho, ads, ctx), model: MODEL };
   } else if (phase === "voc") {
+    if (!biblia.trim()) return json(req, 400, { ok: false, error: "gere a Bíblia do Nicho antes de pesquisar o VOC" }, METHODS);
     built = { ...vocPrompt(nicho, biblia), model: MODEL };
   } else if (phase === "remessa") {
+    if (!biblia.trim()) return json(req, 400, { ok: false, error: "gere a Bíblia do Nicho antes de montar o briefing" }, METHODS);
     const oferta = String(body.input || "").trim();
     if (!oferta) return json(req, 400, { ok: false, error: "informe os dados da oferta (expert, mecanismos, nome chiclete, promessa)" }, METHODS);
     built = { ...remessaPrompt(nicho, biblia, oferta, nCorpos, nHooks), model: MODEL };
   } else {
+    if (!biblia.trim() || !voc.trim() || !briefing.trim()) return json(req, 400, { ok: false, error: "conclua Bíblia, VOC e Briefing antes de escrever a remessa" }, METHODS);
     built = { ...escritaPrompt(nicho, biblia, voc, briefing, nCorpos, nHooks), model: MODEL };
   }
 
@@ -378,6 +389,7 @@ export default async (req) => {
       const send = (obj) => { if (closed) return; try { controller.enqueue(enc.encode(JSON.stringify(obj) + "\n")); } catch {} };
       send({ t: "meta", phase, model: MODEL, nicho });
       let hb = null;
+      let runOk = false, stopReason = "interrupted";
       try {
         if (phase === "voc") {
           // STREAMING com web_search: o texto flui token a token (conexão viva) e,
@@ -387,22 +399,22 @@ export default async (req) => {
           hb = setInterval(() => send({ t: "status", v: `pesquisando na web… ${Math.round((Date.now() - t0) / 1000)}s` }), 3000);
           const vp = { system: built.system, user: built.user, model: built.model, max_tokens: built.max_tokens,
             tools: [{ type: WEB_TOOL, name: "web_search", max_uses: WEB_MAX_USES, user_location: { type: "approximate", country: WEB_COUNTRY } }] };
-          const r = await streamAnthropic(vp, send, { soft: true, searchStatus: true });
+          const r = await streamAnthropic(vp, send, { soft: true, searchStatus: true, signal: req.signal });
           if (hb) { clearInterval(hb); hb = null; }
           if (r.searches) send({ t: "meta2", searches: r.searches });
-          if (!r.gotText) {
-            // web indisponível/limite/timeout da busca → garante o VOC pelo conhecimento do público
-            send({ t: "status", v: "web indisponível — compilando pelo conhecimento do público…" });
-            await streamAnthropic({ system: built.system, user: vocFallbackUser(nicho, biblia), model: built.model, max_tokens: built.max_tokens }, send);
-          }
+          runOk = r.completed;
+          stopReason = r.stopReason;
+          if (!runOk) send({ t: "error", v: "a pesquisa de VOC não terminou; nenhuma citação simulada foi salva — tente novamente" });
         } else {
-          await streamAnthropic({ model: built.model, max_tokens: built.max_tokens, system: built.system, user: built.user }, send);
+          const r = await streamAnthropic({ model: built.model, max_tokens: built.max_tokens, system: built.system, user: built.user }, send, { signal: req.signal });
+          runOk = r.completed;
+          stopReason = r.stopReason;
         }
       } catch (e) {
         send({ t: "error", v: "falha: " + clip(e && e.message ? e.message : e, 160) });
       } finally {
         if (hb) clearInterval(hb);
-        send({ t: "done" });
+        send({ t: "done", ok: runOk, stopReason });
         closed = true;
         try { controller.close(); } catch {}
       }

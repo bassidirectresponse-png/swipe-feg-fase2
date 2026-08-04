@@ -16,8 +16,10 @@ const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
 const GROQ_FALLBACK_MODEL = process.env.GROQ_FALLBACK_MODEL || "whisper-large-v3";
 const MAX_BYTES = 12 * 1024 * 1024; // cada pedaço é pequeno; guarda de segurança
-const GROQ_BUDGET_MS = 7000; // responde antes do limite síncrono da Netlify; o cliente subdivide se necessário
-const GROQ_ATTEMPT_MS = 5500;
+// Mantém margem para a resposta da função, mas não aborta blocos saudáveis
+// durante picos normais do provedor. Dois modelos ainda cabem no orçamento.
+const GROQ_BUDGET_MS = 24_000;
+const GROQ_ATTEMPT_MS = 11_500;
 const LANGS_OK = new Set(["pt", "en", "es", "fr", "de", "it", "nl", "ja", "zh", "ru", "ar", "hi", "ko", "pl", "tr", "id", "uk", "sv", "cs", "ro"]);
 const METHODS = "POST, GET, OPTIONS";
 async function timedFetch(url, options, timeoutMs) {

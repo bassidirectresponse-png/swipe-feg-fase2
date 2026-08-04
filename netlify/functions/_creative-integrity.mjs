@@ -4,6 +4,9 @@ const VIDEO_EXTENSIONS = /\.(?:mp4|webm|mov|m4v|ogg)(?:\?|$)/i;
 
 export const MEDIA_STALE_MS = 20 * 60_000;
 export const TRANSCRIPTION_STALE_MS = 3 * 60 * 60_000;
+export const TRANSCRIPTION_VERSION = String(process.env.TRANSCRIPTION_VERSION || "1");
+export const TRANSCRIPTION_MIN_COVERAGE = 0.97;
+export const TRANSCRIPTION_MAX_TAIL_GAP_SECONDS = 5;
 
 export function isFacebookUrl(value) {
   try {
@@ -34,6 +37,24 @@ export function hasTranscript(data = {}) {
   return Boolean(String(data.transcricao || "").trim());
 }
 
+function finiteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function transcriptionComplete(data = {}) {
+  const status = String(data.transcriptionStatus || data.transcricaoStatus || "").toLowerCase();
+  if (!["completed", "done"].includes(status)) return false;
+  if (String(data.transcriptionVersion || "") !== TRANSCRIPTION_VERSION) return false;
+  if (data.transcriptionContractComplete !== true || !hasTranscript(data)) return false;
+  const duration = finiteNumber(data.transcriptionDurationSeconds);
+  if (duration <= 0) return false;
+  if (data.transcriptionNoSpeech === true) return true;
+  const lastEnd = finiteNumber(data.transcriptionLastSegmentEndSeconds);
+  const coverage = finiteNumber(data.transcriptionCoverageRatio);
+  return lastEnd > 0 && (coverage >= TRANSCRIPTION_MIN_COVERAGE || duration - lastEnd <= TRANSCRIPTION_MAX_TAIL_GAP_SECONDS);
+}
+
 function timestamp(value) {
   const parsed = Date.parse(String(value || ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -56,8 +77,7 @@ export function mediaArchiveDue(data = {}, now = Date.now()) {
 }
 
 export function transcriptionDue(data = {}, now = Date.now()) {
-  if (!["criativo", "megabrain"].includes(data.kind) || !isStorageVideo(data.video) || hasTranscript(data)) return false;
-  if (String(data.transcriptionProvider || "").toLowerCase() === "faster-whisper") return false;
+  if (!["criativo", "megabrain"].includes(data.kind) || !isStorageVideo(data.video) || transcriptionComplete(data)) return false;
   const retryAt = timestamp(data.transcriptionNextRetryAt);
   if (retryAt && retryAt > now) return false;
   const status = String(data.transcriptionStatus || data.transcricaoStatus || "").toLowerCase();
@@ -93,7 +113,8 @@ export function queueTranscription(data = {}, now = new Date().toISOString()) {
     transcriptionNextRetryAt: "",
     transcriptionAttempts: Math.max(0, Number(data.transcriptionAttempts || data.transcricaoTentativas) || 0) + 1,
     transcriptionProvider: "groq",
-    transcriptionVersion: String(data.transcriptionVersion || "1"),
+    transcriptionVersion: TRANSCRIPTION_VERSION,
+    transcriptionContractComplete: false,
   };
 }
 
@@ -118,7 +139,7 @@ export function applyArchivedMedia(data = {}, media, {
   if (media.type === "video") {
     next.video = media.url;
     next.videoPoster ||= "";
-    if (hasTranscript(next)) {
+    if (transcriptionComplete(next)) {
       next.transcriptionRequired = true;
       next.transcriptionStatus = "completed";
       next.transcricaoStatus = "done";
@@ -132,7 +153,8 @@ export function applyArchivedMedia(data = {}, media, {
       next.transcriptionLastError = "";
       next.transcriptionNextRetryAt = "";
       next.transcriptionProvider = "groq";
-      next.transcriptionVersion = String(next.transcriptionVersion || "1");
+      next.transcriptionVersion = TRANSCRIPTION_VERSION;
+      next.transcriptionContractComplete = false;
     }
   } else {
     next.img = media.url;

@@ -17,8 +17,8 @@ test("automação cobre o acervo normal de Criativos e retoma a fila", () => {
   assert.match(script, /transcriptionStatus/);
   assert.match(script, /retry_scheduled/);
   assert.match(script, /transcriptionInvalid/);
-  assert.match(script, /stored_version != JOB_VERSION/);
-  assert.match(script, /if text_ready and not invalid and not outdated:/);
+  assert.match(script, /transcription_contract_complete\(d\)/);
+  assert.match(script, /transcriptionContractComplete/);
   assert.doesNotMatch(script, /if \(text_ready or canonical in \("completed", "done"\)\)/);
   assert.match(script, /out\.sort\(key=lambda item: \(item\[0\], item\[1\], item\[2\]\)\)/);
 });
@@ -29,6 +29,22 @@ test("transcrição automática salva texto e sincronização palavra por palavr
   assert.match(script, /data\["transcricaoWords"\] = words/);
   assert.match(script, /\[Sem fala detectada no vídeo\]/);
   assert.match(script, /transcriptionStatus"\] = "completed"/);
+  assert.match(script, /transcriptionDurationSeconds/);
+  assert.match(script, /transcriptionLastSegmentEndSeconds/);
+  assert.match(script, /transcriptionCoverageRatio/);
+  assert.match(script, /coverage_validation_failed/);
+});
+
+test("agendamento concorrente da Netlify foi removido", async () => {
+  const scheduled = await readFile(new URL("../netlify/functions/creative-transcription-scheduled.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(scheduled, /export const config\s*=\s*\{\s*schedule/);
+  assert.match(scheduled, /Invocação manual/);
+});
+
+test("endpoint de partes usa janela segura para picos do provedor", async () => {
+  const endpoint = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
+  assert.match(endpoint, /GROQ_BUDGET_MS = 24_000/);
+  assert.match(endpoint, /GROQ_ATTEMPT_MS = 11_500/);
 });
 
 test("falha individual não bloqueia para sempre os demais criativos", () => {

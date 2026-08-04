@@ -5,6 +5,7 @@ import {
   applyArchivedMedia,
   mediaArchiveDue,
   queueTranscription,
+  transcriptionComplete,
   transcriptionDue,
 } from "../netlify/functions/_creative-integrity.mjs";
 
@@ -50,6 +51,45 @@ test("status completed sem texto volta para a fila", () => {
   }, Date.parse("2026-07-30T12:00:00.000Z")), true);
 });
 
+test("texto legado sem contrato versionado volta para a fila", () => {
+  const legacy = {
+    kind: "criativo",
+    video: storedVideo,
+    transcricao: "texto parcial antigo",
+    transcriptionStatus: "completed",
+    transcriptionVersion: "1",
+  };
+  assert.equal(transcriptionComplete(legacy), false);
+  assert.equal(transcriptionDue(legacy), true);
+});
+
+test("somente cobertura versionada e validada conclui a transcrição", () => {
+  const complete = {
+    kind: "megabrain",
+    video: storedVideo,
+    transcricao: "fala completa",
+    transcriptionStatus: "completed",
+    transcriptionVersion: "1",
+    transcriptionContractComplete: true,
+    transcriptionDurationSeconds: 120,
+    transcriptionLastSegmentEndSeconds: 118,
+    transcriptionCoverageRatio: 0.983333,
+  };
+  assert.equal(transcriptionComplete(complete), true);
+  assert.equal(transcriptionDue(complete), false);
+  assert.equal(transcriptionComplete({ ...complete, transcriptionCoverageRatio: 0.5, transcriptionLastSegmentEndSeconds: 60 }), false);
+});
+
+test("faster-whisper incompleto não é excluído da recuperação", () => {
+  assert.equal(transcriptionDue({
+    kind: "criativo",
+    video: storedVideo,
+    transcricao: "parcial",
+    transcriptionStatus: "pending",
+    transcriptionProvider: "faster-whisper",
+  }), true);
+});
+
 test("trabalho recente não duplica e trabalho travado é retomado", () => {
   const base = {
     kind: "criativo",
@@ -73,6 +113,7 @@ test("reserva de transcrição mantém contrato canônico completo", () => {
   assert.equal(queued.transcriptionAttempts, 3);
   assert.equal(queued.transcriptionProvider, "groq");
   assert.equal(queued.transcriptionRequired, true);
+  assert.equal(queued.transcriptionContractComplete, false);
 });
 
 test("migration recupera mídia ausente e transcrição ausente do acervo", async () => {

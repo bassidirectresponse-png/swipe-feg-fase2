@@ -4,27 +4,27 @@ import {
   boundedBuffer,
   safeRemoteFetch,
 } from "./_security.mjs";
+import {
+  automationSigningSecret,
+  mergeSupabaseOfferData,
+  shallowDataPatch,
+  supabaseAdminHeaders,
+} from "./_supabase-admin.mjs";
 import { resolveFacebookMedia } from "./_facebook-media-resolver.mjs";
 import {
   applyArchivedMedia,
   hasStoredMedia,
 } from "./_creative-integrity.mjs";
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const MAX_BYTES = 60 * 1024 * 1024;
 const FB_MEDIA_HOSTS = ["facebook.com", "fbcdn.net", "fbsbx.com", "akamaihd.net"];
 
-function serverHeaders(extra = {}) {
-  return {
-    apikey: SERVICE_KEY,
-    Authorization: `Bearer ${SERVICE_KEY}`,
-    ...extra,
-  };
-}
+const serverHeaders = supabaseAdminHeaders;
 
 function validSignature(raw, supplied) {
-  if (!SERVICE_KEY || !/^[a-f0-9]{64}$/i.test(String(supplied || ""))) return false;
-  const expected = createHmac("sha256", SERVICE_KEY).update(raw).digest();
+  const secret = automationSigningSecret();
+  if (!secret || !/^[a-f0-9]{64}$/i.test(String(supplied || ""))) return false;
+  const expected = createHmac("sha256", secret).update(raw).digest();
   const received = Buffer.from(String(supplied), "hex");
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
@@ -50,7 +50,7 @@ function detectMedia(buffer) {
 
 async function loadCreative(id) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`, {
-    headers: serverHeaders({ accept: "application/json" }),
+    headers: await serverHeaders({ accept: "application/json" }),
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error("criativo não encontrado");
@@ -59,14 +59,8 @@ async function loadCreative(id) {
   return rows[0].data || {};
 }
 
-async function saveCreative(id, data) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: serverHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-    body: JSON.stringify({ data }),
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) throw new Error(`não foi possível atualizar o criativo (HTTP ${response.status})`);
+async function saveCreative(id, before, data) {
+  await mergeSupabaseOfferData(id, shallowDataPatch(before, data), data);
 }
 
 async function downloadAndStore(mediaUrl, sourceOfferId, id) {
@@ -79,7 +73,7 @@ async function downloadAndStore(mediaUrl, sourceOfferId, id) {
   const path = `ofertas/${safeOffer}/${id}/facebook.${media.ext}`;
   const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`, {
     method: "POST",
-    headers: serverHeaders({ "Content-Type": media.contentType, "x-upsert": "true" }),
+    headers: await serverHeaders({ "Content-Type": media.contentType, "x-upsert": "true" }),
     body: buffer,
     signal: AbortSignal.timeout(90_000),
   });
@@ -117,7 +111,7 @@ export const handler = async event => {
     if (hasStoredMedia(current)) {
       const type = String(current.video || "").trim() ? "video" : "image";
       const url = type === "video" ? current.video : (current.print || current.img);
-      await saveCreative(id, applyArchivedMedia(current, { type, url }, {
+      await saveCreative(id, current, applyArchivedMedia(current, { type, url }, {
         source: current.mediaArchiveSource || "storage-existing",
         now: current.mediaArchivedAt || new Date().toISOString(),
       }));
@@ -128,15 +122,17 @@ export const handler = async event => {
     current.mediaArchiveStatus = "working";
     current.fbIngestError = "";
     current.mediaArchiveStartedAt = new Date().toISOString();
-    await saveCreative(id, current);
+    const beforeWorking = { ...current };
+    await saveCreative(id, beforeWorking, current);
 
     const scraped = await resolveFacebookMedia(current.linkAnuncio);
     const media = await downloadAndStore(scraped.mediaUrl, current.sourceOfferId, id);
-    const latest = applyArchivedMedia(await loadCreative(id), media, {
+    const beforeArchived = await loadCreative(id);
+    const latest = applyArchivedMedia(beforeArchived, media, {
       source: scraped.source,
       now: new Date().toISOString(),
     });
-    await saveCreative(id, latest);
+    await saveCreative(id, beforeArchived, latest);
     console.log(`offer archive ${id}: ${media.type} preservado`);
   } catch (error) {
     const unavailable = error?.code === "FACEBOOK_MEDIA_UNAVAILABLE";
@@ -146,7 +142,8 @@ export const handler = async event => {
     console.error(`offer archive ${id || "unknown"}:`, message);
     if (id) {
       try {
-        const latest = await loadCreative(id);
+        const beforeFailure = await loadCreative(id);
+        const latest = { ...beforeFailure };
         latest.fbIngestStatus = "error";
         latest.fbIngestError = message;
         latest.fbIngestAt = new Date().toISOString();
@@ -156,7 +153,7 @@ export const handler = async event => {
         latest.mediaArchiveNextRetryAt = unavailable
           ? new Date(Date.now() + 12 * 60 * 60_000).toISOString()
           : retryAt(attempt);
-        await saveCreative(id, latest);
+        await saveCreative(id, beforeFailure, latest);
       } catch {}
     }
   }

@@ -30,6 +30,8 @@ const MODELS = {
   modelar:  process.env.FEGUINHO_MODEL_MODELAR  || "claude-sonnet-5",
 };
 const MAX_TOKENS = { gerar: 5000, dissecar: 4800, modelar: 5000 };
+const ANTHROPIC_TIMEOUT_MS = 180_000;
+const SUPABASE_TIMEOUT_MS = 8_000;
 
 const METHODS = "POST, GET, OPTIONS";
 
@@ -50,28 +52,55 @@ const clip = (s, n) => {
 const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const esc = (s) => String(s == null ? "" : s);
 
-async function sbGet(path, token) {
+function deadlineSignal(parent, timeoutMs) {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return parent ? AbortSignal.any([parent, timeout]) : timeout;
+}
+
+async function sbGet(path, token, signal) {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+      signal: deadlineSignal(signal, SUPABASE_TIMEOUT_MS),
+    });
     return r.ok ? await r.json() : [];
   } catch { return []; }
 }
 
 // Contexto do VAULT (buscado no servidor com o token do usuário logado)
-async function vaultCtx(tool, nichoSlug, formato, token) {
+async function vaultCtx(tool, nichoSlug, formato, token, signal) {
   const nz = encodeURIComponent(nichoSlug);
   const jobs = [
-    sbGet(`conhecimento?select=titulo,vendas,conteudo&tipo=eq.ads-validado&nicho=eq.${nz}&order=vendas.desc.nullslast&limit=6`, token),
-    sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.analise-master&nicho=eq.${nz}`, token),
+    sbGet(`conhecimento?select=titulo,vendas,conteudo&tipo=eq.ads-validado&nicho=eq.${nz}&order=vendas.desc.nullslast&limit=6`, token, signal),
+    sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.analise-master&nicho=eq.${nz}`, token, signal),
   ];
   if (tool === "dissecar") {
     const which = formato === "vsl" ? "vsl" : "ads";
-    jobs.push(sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.skill-dissecador&fonte=like.*${which}*`, token));
+    jobs.push(sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.skill-dissecador&fonte=like.*${which}*`, token, signal));
   } else {
-    jobs.push(sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.framework&limit=2`, token));
+    jobs.push(sbGet(`conhecimento?select=titulo,conteudo&tipo=eq.framework&limit=2`, token, signal));
   }
   const [ads, master, extra] = await Promise.all(jobs);
   return { ads: ads || [], master: master || [], extra: extra || [] };
+}
+
+export function normalizeHistory(value) {
+  if (!Array.isArray(value)) return [];
+  const normalized = [];
+  for (const item of value.slice(-8)) {
+    const role = item && item.role === "assistant" ? "assistant" : item && item.role === "user" ? "user" : "";
+    const content = clip(item && item.content, 3_000).trim();
+    if (!role || !content) continue;
+    const previous = normalized[normalized.length - 1];
+    if (previous && previous.role === role) previous.content = clip(`${previous.content}\n\n${content}`, 3_000);
+    else normalized.push({ role, content });
+  }
+  while (normalized[0] && normalized[0].role !== "user") normalized.shift();
+  return normalized.slice(-6);
+}
+
+export function isCompletedMessage({ gotText, messageStopped, stopReason }) {
+  return Boolean(gotText && messageStopped && stopReason === "end_turn");
 }
 
 // ---------- montagem dos prompts ----------
@@ -186,8 +215,9 @@ export default async (req) => {
   if (!input) return json(req, 400, { ok: false, error: "escreva algo para o Feguinho trabalhar" }, METHODS);
   const mega = Array.isArray(body.mega) ? body.mega.slice(0, 8) : [];
   const tiktok = Array.isArray(body.tiktok) ? body.tiktok.slice(0, 8) : [];
+  const history = normalizeHistory(body.history);
 
-  const ctx = await vaultCtx(tool, slug(nicho), formato, token);
+  const ctx = await vaultCtx(tool, slug(nicho), formato, token, req.signal);
   const { system, user, model, max_tokens } = build(tool, nicho, formato, input, ctx, mega, tiktok);
 
   const enc = new TextEncoder();
@@ -196,7 +226,10 @@ export default async (req) => {
   // o texto começa em ~1,5s — essencial pro streaming não estourar o timeout da Netlify.
   // A análise dos campeões continua acontecendo no TEXTO (o prompt força a tabela de padrões).
   // clean() final: garante que NENHUM surrogate órfão chegue ao JSON.stringify → Claude
-  const payload = { model, max_tokens, system: clean(system), stream: true, thinking: { type: "disabled" }, messages: [{ role: "user", content: clean(user) }] };
+  const payload = {
+    model, max_tokens, system: clean(system), stream: true, thinking: { type: "disabled" },
+    messages: [...history, { role: "user", content: clean(user) }],
+  };
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -207,15 +240,16 @@ export default async (req) => {
           method: "POST",
           headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
           body: JSON.stringify(payload),
+          signal: deadlineSignal(req.signal, ANTHROPIC_TIMEOUT_MS),
         });
         if (!up.ok || !up.body) {
           const t = await up.text().catch(() => "");
           send({ t: "error", v: `Claude HTTP ${up.status}: ${clip(t, 200)}` });
-          send({ t: "done" }); controller.close(); return;
+          send({ t: "done", ok: false }); controller.close(); return;
         }
         const reader = up.body.getReader();
         const dec = new TextDecoder();
-        let buf = "", lastStatus = 0, gotText = false;
+        let buf = "", lastStatus = 0, gotText = false, messageStopped = false, stopReason = "";
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -233,15 +267,26 @@ export default async (req) => {
               else if (d.type === "thinking_delta") { const now = Date.now(); if (now - lastStatus > 1200) { lastStatus = now; send({ t: "status", v: "pensando" }); } }
             } else if (ev.type === "error") {
               send({ t: "error", v: esc((ev.error && ev.error.message) || "erro do modelo") });
+            } else if (ev.type === "message_delta") {
+              stopReason = String((ev.delta && ev.delta.stop_reason) || stopReason || "");
+            } else if (ev.type === "message_stop") {
+              messageStopped = true;
             }
           }
         }
-        if (!gotText) send({ t: "error", v: "o modelo não retornou texto — tente de novo em instantes" });
-        send({ t: "done" });
+        const completed = isCompletedMessage({ gotText, messageStopped, stopReason });
+        if (!completed) {
+          const reason = stopReason === "max_tokens"
+            ? "a resposta atingiu o limite antes de terminar — tente novamente"
+            : "a resposta foi interrompida antes de terminar — tente novamente";
+          send({ t: "error", v: reason });
+        }
+        send({ t: "done", ok: completed, stopReason: stopReason || "interrupted" });
         controller.close();
       } catch (e) {
-        send({ t: "error", v: "falha no streaming: " + clip(e && e.message ? e.message : e, 160) });
-        send({ t: "done" });
+        const aborted = e && e.name === "AbortError";
+        send({ t: "error", v: aborted ? "operação cancelada ou tempo seguro excedido" : "falha na conexão com o modelo" });
+        send({ t: "done", ok: false, stopReason: aborted ? "aborted" : "error" });
         controller.close();
       }
     },

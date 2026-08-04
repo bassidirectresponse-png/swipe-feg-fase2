@@ -1,7 +1,6 @@
 import runCreativeTranscriptionDispatch from "./_creative-transcription-dispatch.mjs";
 
-// Complementa o faster-whisper do GitHub: vídeos novos e menores são
-// transcritos em minutos; arquivos grandes continuam na fila local dedicada.
-export const config = { schedule: "*/10 * * * *" };
-
+// Invocação manual/de contingência. O agendamento automático pertence
+// exclusivamente ao workflow horário do faster-whisper, evitando dois workers
+// reservarem ou sobrescreverem o mesmo card.
 export default async () => runCreativeTranscriptionDispatch();
