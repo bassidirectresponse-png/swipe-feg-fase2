@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ingestão Manual do Swipe"
+  short_description: "Valida e importa ofertas e anúncios enviados manualmente."
+  default_prompt: "Organize os materiais enviados, valide duplicidades e gere o manifesto seguro para importar no Swipe."

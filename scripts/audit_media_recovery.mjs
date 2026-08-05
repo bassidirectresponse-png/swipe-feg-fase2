@@ -1,24 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { productionAdminAuth, authHeaders } from "./_supabase-auth.mjs";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname);
 const html = await fs.readFile(path.join(root, "index.html"), "utf8");
-const supabaseUrl = process.env.SUPABASE_URL || html.match(/const DEFAULT_URL="([^"]+)"/)?.[1];
-const anonKey = process.env.SUPABASE_ANON_KEY || html.match(/const DEFAULT_KEY="([^"]+)"/)?.[1];
-const email = process.env.SUPABASE_BOT_EMAIL;
-const password = process.env.SUPABASE_BOT_PASSWORD;
+const verifyRemote = process.argv.includes("--verify");
 
-if (!supabaseUrl || !anonKey) throw new Error("Configuração do Supabase não encontrada");
-if (!email || !password) throw new Error("Defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD");
-
-const login = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-  method: "POST",
-  headers: { apikey: anonKey, "Content-Type": "application/json" },
-  body: JSON.stringify({ email, password }),
-});
-if (!login.ok) throw new Error(`Login falhou: HTTP ${login.status}`);
-const accessToken = (await login.json()).access_token;
-const headers = { apikey: anonKey, Authorization: `Bearer ${accessToken}` };
+const auth = await productionAdminAuth();
+const supabaseUrl = auth.url;
+const headers = authHeaders(auth);
 
 const rows = [];
 for (let offset = 0; ; offset += 500) {
@@ -59,6 +49,37 @@ for (const file of localFiles) {
 const storagePattern = /^https:\/\/([a-z0-9-]+)\.supabase\.co\/storage\/v1\/object\/public\/criativos\/(.+)$/i;
 const mediaExtension = /\.(?:avif|gif|jpe?g|m4a|mov|mp3|mp4|mpeg|png|svg|webm|webp|wav)(?:\?|#|$)/i;
 const references = [];
+const mediaSlots = [];
+
+function slotState(value) {
+  const text = String(value == null ? "" : value).trim();
+  if (!text) return "missing";
+  if (["·", "-", "—", "null", "undefined"].includes(text.toLowerCase())) return "placeholder";
+  if (/^(?:https?:\/\/|\/assets\/|assets\/|data:)/i.test(text)) return "usable";
+  return "invalid";
+}
+
+function addSlot(row, field, value) {
+  mediaSlots.push({
+    rowId: row.id,
+    kind: row.data?.kind || "oferta",
+    name: row.data?.nomeOferta || row.data?.nome || row.data?.titulo || "",
+    field,
+    state: slotState(value),
+    value: String(value == null ? "" : value).slice(0, 240),
+  });
+}
+
+for (const row of rows) {
+  const data = row.data || {};
+  if (["oferta", "brandsgeneral", "brandsvalidated"].includes(data.kind || "oferta")) {
+    addSlot(row, "imagemProduto", data.imagemProduto);
+    (Array.isArray(data.dominios) ? data.dominios : []).forEach((domain, index) => {
+      if (domain?.linkDominio) addSlot(row, `dominios[${index}].printPV`, domain.printPV);
+      if (domain?.linkCheckout) addSlot(row, `dominios[${index}].printCheckout`, domain.printCheckout);
+    });
+  }
+}
 
 function walk(value, row, jsonPath = "data") {
   if (typeof value === "string") {
@@ -125,6 +146,27 @@ for (const item of storageReferences) {
 }
 
 const unique = [...uniqueStorageObjects.values()];
+if (verifyRemote) {
+  const queue = [...unique];
+  const workers = Array.from({ length: Math.min(12, queue.length) }, async () => {
+    while (queue.length) {
+      const item = queue.shift();
+      try {
+        let response = await fetch(item.url, { method: "HEAD", signal: AbortSignal.timeout(20_000) });
+        if (response.status === 405) response = await fetch(item.url, { headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(20_000) });
+        item.remoteStatus = response.status;
+        item.remoteOk = response.ok || response.status === 206;
+        item.remoteType = response.headers.get("content-type") || "";
+        item.remoteBytes = Number(response.headers.get("content-length") || 0);
+      } catch (error) {
+        item.remoteStatus = 0;
+        item.remoteOk = false;
+        item.remoteError = String(error?.message || error).slice(0, 160);
+      }
+    }
+  });
+  await Promise.all(workers);
+}
 const summary = {
   auditedAt: new Date().toISOString(),
   rows: rows.length,
@@ -136,9 +178,15 @@ const summary = {
   uniqueStorageObjectsWithoutLocalCandidate: unique.filter(item => item.localCandidates.length === 0).length,
   projectRefs: Object.fromEntries([...new Set(storageReferences.map(item => item.projectRef))].sort().map(ref => [ref, storageReferences.filter(item => item.projectRef === ref).length])),
   kinds: Object.fromEntries([...new Set(references.map(item => item.kind))].sort().map(kind => [kind, references.filter(item => item.kind === kind).length])),
+  mediaSlots: Object.fromEntries(["usable", "missing", "placeholder", "invalid"].map(state => [state, mediaSlots.filter(item => item.state === state).length])),
+  ...(verifyRemote ? {
+    remoteOk: unique.filter(item => item.remoteOk).length,
+    remoteBroken: unique.filter(item => !item.remoteOk).length,
+    remoteStatus: Object.fromEntries([...new Set(unique.map(item => String(item.remoteStatus)))].sort().map(status => [status, unique.filter(item => String(item.remoteStatus) === status).length])),
+  } : {}),
 };
 
-const report = { summary, uniqueStorageObjects: unique, references };
+const report = { summary, mediaSlots, uniqueStorageObjects: unique, references };
 await fs.mkdir(path.join(root, ".tmp"), { recursive: true });
 await fs.writeFile(path.join(root, ".tmp", "media-recovery-audit.json"), JSON.stringify(report, null, 2));
 console.log(JSON.stringify(summary, null, 2));

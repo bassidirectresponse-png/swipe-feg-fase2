@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { suspiciousTranscript, wavSignalStats } from "../netlify/functions/transcribe-file.mjs";
 
 const script = await readFile(new URL("../scripts/transcrever.py", import.meta.url), "utf8");
 const workflow = await readFile(new URL("../.github/workflows/transcrever-videos.yml", import.meta.url), "utf8");
@@ -48,6 +49,19 @@ test("endpoint de partes usa janela segura para picos do provedor", async () => 
   const endpoint = await readFile(new URL("../netlify/functions/transcribe-file.mjs", import.meta.url), "utf8");
   assert.match(endpoint, /GROQ_BUDGET_MS = 24_000/);
   assert.match(endpoint, /GROQ_ATTEMPT_MS = 11_500/);
+  assert.match(endpoint, /a fala não foi reconhecida com confiança/);
+  assert.match(endpoint, /temperature", "0"/);
+});
+
+test("transcritor rejeita alucinações repetitivas e reconhece silêncio", () => {
+  assert.equal(suspiciousTranscript("Thank you. Thank you. Thank you. Thank you. Thank you. Thank you."), true);
+  assert.equal(suspiciousTranscript("This is a complete sentence with useful and varied spoken content."), false);
+  const wav = Buffer.alloc(44 + 3200 * 2);
+  wav.write("RIFF", 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write("WAVE", 8);
+  wav.write("fmt ", 12); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(16000, 24); wav.writeUInt32LE(32000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+  wav.write("data", 36); wav.writeUInt32LE(3200 * 2, 40);
+  assert.equal(wavSignalStats(wav).peak, 0);
 });
 
 test("falha individual não bloqueia para sempre os demais criativos", () => {

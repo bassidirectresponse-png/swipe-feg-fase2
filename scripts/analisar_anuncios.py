@@ -30,7 +30,7 @@ KINDS = {value.strip() for value in os.environ.get("AD_ANALYSIS_KINDS", "criativ
 MAX_ANALYSES = max(1, int(os.environ.get("MAX_AD_ANALYSES", "20")))
 MAX_DURATION = 600.0
 LOCK_MINUTES = max(15, int(os.environ.get("AD_ANALYSIS_LOCK_MINUTES", "45")))
-PROMPT_VERSION = "2026-08-04.1"
+PROMPT_VERSION = "2026-08-04.2"
 
 
 def now_iso():

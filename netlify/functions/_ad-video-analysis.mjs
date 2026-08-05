@@ -1,4 +1,4 @@
-export const AD_ANALYSIS_PROMPT_VERSION = "2026-08-04.1";
+export const AD_ANALYSIS_PROMPT_VERSION = "2026-08-04.2";
 export const AD_MAX_DURATION_SECONDS = 600;
 export const AD_ANALYSIS_MODEL = process.env.AD_ANALYSIS_MODEL || process.env.VSL_DISSECTOR_MODEL || process.env.FURTADO_MODEL || "claude-sonnet-5";
 export const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";

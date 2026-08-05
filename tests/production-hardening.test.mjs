@@ -15,6 +15,16 @@ test("o hardening restringe escrita e torna atualizações concorrentes atômica
   assert.doesNotMatch(sql, /to anon\b/);
 });
 
+test("usuários comuns não recebem permissão de escrita no hardening final", async () => {
+  const sql = await readFile(new URL("supabase/migrations/202608050001_restrict_human_writes_to_admin.sql", root), "utf8");
+  assert.match(sql, /adminswipefeg@swipefeg\.app/);
+  assert.match(sql, /noticias-bot@swipefeg\.app/);
+  assert.doesNotMatch(sql, /userswipefeg@swipefeg\.app/);
+  assert.match(sql, /offers for insert to authenticated\s+with check \(public\.swipe_is_admin\(\)\)/);
+  assert.match(sql, /offers for delete to authenticated\s+using \(public\.swipe_is_admin\(\)\)/);
+  assert.match(sql, /offers for update to authenticated\s+using \(public\.swipe_can_write\(\)\)/);
+});
+
 test("o importador valida a mídia e cria backup antes de alterar cards", async () => {
   const source = await readFile(new URL("scripts/ingest_angelica_honeypeak.mjs", root), "utf8");
   assert.match(source, /assertStoredObject/);

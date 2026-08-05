@@ -4,21 +4,76 @@ import { SUPABASE_URL } from "./_security.mjs";
 import { AD_ANALYSIS_MODEL, AD_ANALYSIS_PROMPT_VERSION, ANTHROPIC_URL, buildAdAnalysisPrompt, externalTranscript, finalizeAdReport, imageContent, validateAdReport, validAdDuration } from "./_ad-video-analysis.mjs";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
+const FALLBACK_MODEL = process.env.AD_ANALYSIS_FALLBACK_MODEL || "claude-sonnet-4-6";
+const MAX_OUTPUT_TOKENS = 8_192;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function callClaude(input, previous = "") {
-  const content = [{ type: "text", text: previous ? "Continue do ponto interrompido, sem repetir. Complete todas as seções e mantenha TRANSCRIPT por último." : buildAdAnalysisPrompt(input) }, ...(!previous ? imageContent(input.contactSheets) : [])];
-  const messages = previous ? [{ role: "user", content: [{ type: "text", text: buildAdAnalysisPrompt(input) }, ...imageContent(input.contactSheets)] }, { role: "assistant", content: [{ type: "text", text: previous }] }, { role: "user", content }] : [{ role: "user", content }];
+class ClaudeRequestError extends Error {
+  constructor(status, detail) {
+    super(`Claude HTTP ${status}: ${detail || "erro sem detalhes"}`);
+    this.name = "ClaudeRequestError";
+    this.status = status;
+    this.detail = detail || "";
+  }
+}
+
+function compactClaudeError(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "erro sem detalhes";
+  try {
+    const body = JSON.parse(text);
+    return String((body.error && (body.error.message || body.error.type)) || body.message || text).replace(/\s+/g, " ").slice(0, 700);
+  } catch (_) {
+    return text.replace(/\s+/g, " ").slice(0, 700);
+  }
+}
+
+export function claudeRequestBody(model, messages) {
+  // Claude Sonnet pode habilitar raciocínio adaptativo. `temperature` não é
+  // compatível com esse modo e fazia a API rejeitar a análise com HTTP 400.
+  return { model, max_tokens: MAX_OUTPUT_TOKENS, messages };
+}
+
+async function requestClaude(input, previous, model, maxImages) {
+  const sheets = imageContent(input.contactSheets).slice(0, maxImages);
+  const continuation = "Continue do ponto interrompido, sem repetir. Complete todas as seções e mantenha TRANSCRIPT por último.";
+  const content = [{ type: "text", text: previous ? continuation : buildAdAnalysisPrompt(input) }, ...(!previous ? sheets : [])];
+  const messages = previous
+    ? [{ role: "user", content: [{ type: "text", text: buildAdAnalysisPrompt(input) }, ...sheets] }, { role: "assistant", content: [{ type: "text", text: previous }] }, { role: "user", content }]
+    : [{ role: "user", content }];
   const response = await fetch(ANTHROPIC_URL, {
     method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: AD_ANALYSIS_MODEL, max_tokens: 16_000, temperature: 0, messages }),
+    body: JSON.stringify(claudeRequestBody(model, messages)),
     signal: AbortSignal.timeout(240_000),
   });
-  if (!response.ok) throw new Error(`Claude HTTP ${response.status}`);
+  if (!response.ok) throw new ClaudeRequestError(response.status, compactClaudeError(await response.text().catch(() => "")));
   const result = await response.json();
   const text = (result.content || []).filter((part) => part.type === "text").map((part) => part.text).join("").trim();
   if (!text) throw new Error("análise vazia");
   return { text, stopReason: result.stop_reason || "" };
+}
+
+async function callClaude(input, previous = "") {
+  const models = [AD_ANALYSIS_MODEL, FALLBACK_MODEL].filter((model, index, list) => model && list.indexOf(model) === index);
+  let lastError;
+  for (const model of models) {
+    for (const maxImages of [5, 3, 1]) {
+      try { return await requestClaude(input, previous, model, maxImages); }
+      catch (error) {
+        lastError = error;
+        const detail = String(error && (error.detail || error.message) || "");
+        if (!(error instanceof ClaudeRequestError)) throw error;
+        const modelError=[400,404,422].includes(error.status)&&/(model|not found|does not exist|unsupported|invalid model)/i.test(detail);
+        if (modelError) break;
+        const payloadError=[400,413,422].includes(error.status)&&/(image|request.*(large|size)|payload|context|token|too many|dimensions|megapixel)/i.test(detail);
+        if (payloadError&&maxImages>1) continue;
+        throw error;
+      }
+    }
+    const detail = String(lastError && (lastError.detail || lastError.message) || "");
+    if (!/(model|not found|does not exist|unsupported|invalid model)/i.test(detail)) throw lastError;
+  }
+  throw lastError || new Error("nenhum modelo Claude disponível");
 }
 
 async function completeReport(input) {

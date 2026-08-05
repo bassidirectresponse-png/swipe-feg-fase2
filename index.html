@@ -1313,6 +1313,27 @@
     border-radius:12px;
     background:color-mix(in srgb,var(--surface) 80%,transparent);
   }
+  .division-pill--history{border-color:color-mix(in srgb,var(--accent) 44%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,var(--surface)),var(--surface));}
+  .division-pill--history .division-pill__mark{background:transparent;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 48%,transparent);}
+  .snav__group--updates{color:color-mix(in srgb,var(--accent) 78%,var(--muted-fg));}
+  .snav__cnt--alert{background:var(--accent);color:#111;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent);}
+  .updates-feed{display:grid;gap:18px;max-width:1100px;margin:0 auto;padding-bottom:24px;}
+  .updates-day{border:1px solid var(--border);border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 2.5%,var(--surface)),var(--surface));overflow:hidden;box-shadow:0 18px 40px -38px rgba(0,0,0,.78);}
+  .updates-day__head{display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);}
+  .updates-day__head h2{font-size:16px;line-height:1.2;margin:0;color:var(--fg);letter-spacing:-.015em;}
+  .updates-day__head p{font-size:12px;margin:5px 0 0;color:var(--muted-fg);}
+  .updates-day__index{display:grid;place-items:center;min-width:38px;height:30px;padding-inline:8px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:9px;color:var(--accent);font:700 11px/1 var(--mono);letter-spacing:.08em;background:color-mix(in srgb,var(--accent) 7%,transparent);}
+  .updates-day__items{display:grid;}
+  .update-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:14px;padding:15px 20px;color:inherit;text-decoration:none;border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent);transition:background .16s ease,border-color .16s ease;}
+  .update-row:first-child{border-top:0;}
+  .update-row:hover,.update-row:focus-visible{background:color-mix(in srgb,var(--accent) 5%,transparent);outline:none;}
+  .update-row__icon{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--border);border-radius:10px;color:var(--accent);background:var(--surface-2);}
+  .update-row__icon svg{width:17px;height:17px;}
+  .update-row__copy{display:grid;gap:5px;min-width:0;}
+  .update-row__copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:680;color:var(--fg);}
+  .update-row__copy span{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.07em;}
+  .update-row__open{display:inline-flex;align-items:center;gap:7px;color:var(--muted-fg);font-size:12px;font-weight:650;}
+  .update-row__open svg{width:14px;height:14px;}
 
   :root[data-theme="light"] .topbar{box-shadow:0 1px 0 rgba(20,30,12,.04);}
   :root[data-theme="light"] .sidenav{background:linear-gradient(180deg,rgba(139,168,0,.045),transparent 260px),var(--surface);}
@@ -1329,6 +1350,11 @@
     .grid-wrap{padding-top:20px;}
     .grid{gap:14px;}
     .card{border-radius:15px;}
+    .updates-feed{gap:14px;}
+    .updates-day{border-radius:15px;}
+    .updates-day__head{padding:15px;}
+    .update-row{grid-template-columns:38px minmax(0,1fr);padding:14px 15px;gap:11px;}
+    .update-row__open{display:none;}
   }
 </style>
 </head>
@@ -1508,6 +1534,7 @@ const SECTIONS=[
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
   {key:"brandsvalidated",label:"Ofertas Insider",icon:"trending",newLabel:"Nova oferta Insider",statLabel:"Ofertas Insider",emptyTitle:"Nenhuma oferta Insider",searchPlaceholder:"Buscar produto Insider, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Insider</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
+  {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
   {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
@@ -1518,14 +1545,15 @@ function isChatSection(k){return k==="copychief"||k==="furtado";}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
-const ADMIN_SECTIONS=new Set(["megabrainfegsys"]);
+const ADMIN_SECTIONS=new Set(["megabrainfegsys","updates"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0;
 let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="spend_7d", offerDirection="desc";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
+let updates=[],updatesTotal=0;
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
@@ -1593,6 +1621,53 @@ function toast(msg,err=false){const t=$("#toast");t.setAttribute("role",err?"ale
 function setSync(st,txt){$("#syncPill").className="sync "+st;$("#syncTxt").textContent=txt;}
 function setSaveState(s){const e=$("#saveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 
+const KNOWN_OFFER_MEDIA=[
+  {names:["Vital BP"],root:"/assets/offers-july22/vital-bp",pv:"https://bloodflowsecret.com/pages/vbp-pdpfb/",ck:"https://pdp.bloodflowsecret.com/products/vitalbp-6-pack-vbp-pdpfb"},
+  {names:["Score Blue"],root:"/assets/offers-july22/score-blue",pv:"https://scoreblue.com/",ck:"https://scoreblue.com/login"},
+  {names:["Jubilance PMS","Jubilance"],root:"/assets/offers-july22/jubilance-pms",pv:"https://jubilance.com/",ck:"https://jubilance.com/cart/"},
+  {names:["ProtaFlo"],root:"/assets/offers-july22/protaflo",pv:"https://prostatediscovery.com/pages/ptf-pdpfb/",ck:"https://pdp.prostatediscovery.com/products/protaflo-6-pack-sub-ptf-pdpfb"},
+  {names:["Neuro Naturals","Neuro Naturals · Migraine MD"],root:"/assets/offers-july22/neuro-naturals",pv:"https://myneuronaturals.com/",ck:"https://myneuronaturals.com/checkouts/"},
+  {names:["GLPro"],root:"/assets/offers-july22/glpro",pv:"https://tryglpro.com/glp1",ck:"https://buygoods.com/secure/checkout.html?account_id=11606&product_codename=GLP6V1"},
+  {names:["Steel Power / Horse Fil","Steel Power / Horsefil"],root:"/assets/offers-july22/steel-power-horse-fil",product:"product-fixed.jpg",pv:"https://www.healthnewsletters.life/hfmia",ck:"https://horsefil.mycartpanda.com/checkout"},
+  {names:["Jelly Fill","Jellyfill"],root:"/assets/offers-july22/jellyfill",pv:"https://www.purehealthnest.site/ml24inst",ck:"https://buygoods.com/secure/checkout.html?account_id=12796&product_codename=PP_JFL6UNITS_AFF"},
+  {names:["Power Up"],root:"/assets/offers-july22/power-up",pv:"https://powerupmax.app/vsl-01-lead-12",ck:"https://buygoods.com/secure/checkout.html?account_id=12486&product_codename=PUP6V1"},
+  {names:["Optivell"],root:"/assets/offers-july22/optivell",product:"product-fixed.jpg",pv:"https://www.balanceyourlevels.com/hwrtl3ml2",ck:"https://cc.useoptivell.com/v2/checkout.php"},
+  {names:["Steel Power"],root:"/assets/offers-july29/steel-power",pv:"https://healthfactsdaily.store/vsl-steelpower/",ck:"https://buygoods.com/secure/checkout.html?account_id=12348&product_codename=ste6dtc"},
+  {names:["Honeyfil Male","Honey Fil Male"],root:"/assets/offers-july29/honeyfil-male",pv:"https://healthylivepro.online/hf-ed-offer01-cbclive01-cp-meta/",ck:"https://honeyfil.mycartpanda.com/checkout"},
+  {names:["Zensulin"],root:"/assets/offers-july29/zensulin",pv:"https://nationlifenews.com/zs/vsl22/l02/ml63/",ck:"https://buygoods.com/secure/checkout.html?account_id=11227&product_codename=zen6"},
+  {names:["Glyco Reset","GlycoReset"],root:"/assets/offers-july29/glyco-reset",pv:"https://usainsurance.live/glycoreset-vsl06-lead2-ml156",ck:"https://buygoods.com/secure/checkout.html?account_id=12805&product_codename=gly6"},
+  {names:["Brain Mary"],root:"/assets/offers-july29/brain-mary",pv:"https://olivehealthco.com/mg/bm-bg/vsl01-ld03/",ck:"https://buygoods.com/secure/checkout.html?account_id=12937&product_codename=bmy6"},
+  {names:["Neuro Apex"],root:"/assets/offers-july29/neuro-apex",pv:"https://healthnessdailylife.shop/rxxnomlc",ck:"https://buygoods.com/secure/checkout.html?account_id=12676&product_codename=neu2"},
+  {names:["Synaptigen"],root:"/assets/offers-july29/synaptigen",pv:"https://a1.elitehealthreviews.store/memopvsl/",ck:"https://buygoods.com/secure/checkout.html?account_id=10898&product_codename=3"},
+  {names:["Cogni Honey","Cognihoney"],root:"/assets/offers-july29/cogni-honey",pv:"https://healthy-dailytips.com/cognihoney_bg/vsl08_l5_ml182/",ck:"https://buygoods.com/secure/checkout.html?account_id=12596&product_codename=cog6"},
+  {names:["Memopryl"],root:"/assets/offers-july29/memopryl",pv:"https://healthdailyjournal.online/vsl1/",ck:"https://cc.memopryl.com/checkout.php"},
+  {names:["Alka Slim","Aka Slim"],root:"/assets/offers-july29/alka-slim",pv:"https://healthplusinsights.com/alkaslim_bg/vsl01_l9/",ck:"https://buygoods.com/secure/checkout.html?account_id=13043&product_codename=aks6"},
+  {names:["Mounjamelt"],root:"/assets/offers-july29/mounjamelt",pv:"https://twr.onlysmiles.site/",ck:"https://buygoods.com/secure/checkout.html?account_id=12888&product_codename=mouj6fnn2"},
+  {names:["Blood Pril","BloodPril"],root:"/assets/offers-july29/blood-pril",pv:"https://bloodpril.com/bdp-pv-buy-aff-gpt/",ck:"https://buygoods.com/secure/checkout.html?account_id=12425&product_codename=PP_BDP6UNITS_AFF"},
+  {names:["Soda Slim"],root:"/assets/offers-july29/soda-slim",pv:"https://www.bs-ani-ta.com/lr/bg/ml/7",ck:"https://cc.useslimsoda.com/checkout.php"},
+  {names:["IQ Honey","Iq Honey"],root:"/assets/offers-july29/iq-honey",pv:"https://visiiq.site/bg/ih/vsl/07/ld07/",ck:"https://buygoods.com/secure/checkout.html?account_id=12857&product_codename=iqh6"}
+];
+const KNOWN_BRAND_COVERS={
+  "primal viking":"/assets/primal-viking/product.jpg",
+  "ancestral supplements":"/assets/ancestral-supplements/product.png",
+  "mars men":"/assets/mars-men/product.png",
+  "ultima peak":"/assets/ultima-peak/product.png"
+};
+function mediaNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi," ").trim().toLowerCase();}
+function mediaIsMissing(value){const v=String(value==null?"":value).trim();return !v||/^(?:·|-|—|n\/a|nao informado|não informado)$/i.test(v);}
+function mediaUrlKey(value){try{const u=new URL(fixUrl(value)),host=u.hostname.replace(/^www\./,"").toLowerCase(),base=(host+u.pathname.replace(/\/+$/,"")).toLowerCase();if(host==="buygoods.com"){const account=(u.searchParams.get("account_id")||"").toLowerCase(),product=(u.searchParams.get("product_codename")||"").toLowerCase();return account&&product?base+"?account_id="+account+"&product_codename="+product:"";}return base;}catch(_){return"";}}
+function mediaUrlMatches(value,target){const current=mediaUrlKey(value),expected=mediaUrlKey(target);return !!(current&&expected&&(current===expected||current.startsWith(expected+"/")||expected.startsWith(current+"/")));}
+function applyKnownMediaFallbacks(d){
+  const name=mediaNameKey(d.nomeOferta||d.nomeMarca||d.nome),known=KNOWN_OFFER_MEDIA.find(item=>item.names.some(alias=>mediaNameKey(alias)===name));
+  if(known){
+    if(mediaIsMissing(d.imagemProduto))d.imagemProduto=known.root+"/"+(known.product||"product.jpg");
+    d.dominios.forEach(domain=>{
+      if(mediaIsMissing(domain.printPV)&&mediaUrlMatches(domain.linkDominio,known.pv))domain.printPV=known.root+"/pv.jpg";
+      if(mediaIsMissing(domain.printCheckout)&&mediaUrlMatches(domain.linkCheckout,known.ck))domain.printCheckout=known.root+"/checkout.jpg";
+    });
+  }else if(mediaIsMissing(d.imagemProduto)&&KNOWN_BRAND_COVERS[name])d.imagemProduto=KNOWN_BRAND_COVERS[name];
+  return d;
+}
 function normalize(raw){
   const d=Object.assign({},raw||{});
   if(typeof d.nicho!=="string")d.nicho="";
@@ -1617,7 +1692,7 @@ function normalize(raw){
   if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
   if(typeof d.brandSemrush3m!=="string")d.brandSemrush3m="";
   if(typeof d.adsLibraryCheckedAt!=="string")d.adsLibraryCheckedAt="";
-  return d;
+  return applyKnownMediaFallbacks(d);
 }
 
 /* ===== AUTH (Supabase Auth) ===== */
@@ -1680,11 +1755,30 @@ function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.pa
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
-  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.imagemProduto="";d.printSemrush=d.printSemrush?"·":"";d.printSemrushOriginal=d.printSemrushOriginal?"·":"";d.printSemrushThumb=d.printSemrushThumb?"·":"";d.brandSemrush1m=d.brandSemrush1m?"·":"";d.brandSemrush3m=d.brandSemrush3m?"·":"";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];if(Array.isArray(d.dominios))d.dominios=d.dominios.map(x=>Object.assign({},x,{printPV:x.printPV?"·":"",printCheckout:x.printCheckout?"·":""}));if(Array.isArray(d.taboolaAds))d.taboolaAds=d.taboolaAds.map(x=>Object.assign({},x,{img:x.img?"·":""}));if(Array.isArray(d.bmPrints))d.bmPrints=d.bmPrints.map(x=>Object.assign({},x,{img:""}));if(Array.isArray(d.brandTopAds))d.brandTopAds=d.brandTopAds.map(x=>Object.assign({},x,{img:""}));if(d.print)d.print="";return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
+  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.printSemrush="";d.printSemrushOriginal="";d.printSemrushThumb="";d.brandSemrush1m="";d.brandSemrush3m="";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
 }
 function writeCache(){
   const version=++cacheWriteVersion,run=()=>persistLiteCache(version);
   setTimeout(()=>{if(version!==cacheWriteVersion)return;if("requestIdleCallback" in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,0);},350);
+}
+
+const UPDATE_SEEN_KEY="feg_updates_seen_at";
+async function loadUpdates(){
+  if(!isAdmin||!sb)return;
+  try{
+    const result=await sb.from("swipe_updates").select("*",{count:"exact"}).order("created_at",{ascending:false}).limit(300);
+    if(result.error)throw result.error;
+    updates=Array.isArray(result.data)?result.data:[];updatesTotal=Number(result.count)||updates.length;
+  }catch(error){
+    updates=[];updatesTotal=0;
+    if(String(error&&error.code||"")!=="42P01")console.warn("Não foi possível carregar o registro de atualizações",error);
+  }
+}
+function updateSeenAt(){try{return localStorage.getItem(UPDATE_SEEN_KEY)||"";}catch(_){return"";}}
+function unreadUpdates(){const seen=updateSeenAt();return updates.filter(item=>!seen||String(item.created_at||"")>seen).length;}
+function markUpdatesSeen(){
+  const newest=updates[0]&&updates[0].created_at;if(!newest)return;
+  try{localStorage.setItem(UPDATE_SEEN_KEY,newest);}catch(_){}
 }
 
 async function boot(){
@@ -1711,7 +1805,9 @@ async function loadOffers(){
     if(!data||data.length<PAGE)break;
     from+=PAGE;
   }
-  offers=all;setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
+  offers=all;
+  if(isAdmin)await loadUpdates();else{updates=[];updatesTotal=0;}
+  setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
   if(isAdmin){
     setTimeout(()=>scheduleCreativeTranslations(),1200);
     setTimeout(()=>resumeOfferCreativeArchives(),2200);
@@ -1788,14 +1884,14 @@ function automationCounts(section){
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",updates:"Atualizações",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"mega-brain-fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"mega-brain-fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",updates:"atualizacoes",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated"]);
@@ -1878,11 +1974,12 @@ function applyRoute(){
   if(r.notFound){renderNotFound();return;}
   if(ADMIN_SECTIONS.has(r.section)&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   activeSection=r.section;
+  if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";
   critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
   if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
-    const requested=r.q.get("sort")||"spend_7d";offerSort=["spend_7d","spend_14d","spend_30d","active_ads"].includes(requested)?requested:"spend_7d";
+    const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days"].includes(requested)?requested:"active_ads";
     offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
   }
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
@@ -1929,10 +2026,11 @@ function renderSideNav(){
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
   offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});
   counts.megabrainfegsys=fegsysCards.length;
+  counts.updates=updatesTotal;
 
   /* nichos da seção ativa (só seções não-ferramenta) */
   let nicheHtml="";
-  if(!isToolSection(activeSection)&&activeSection!=="megabrainfegsys"){
+  if(!isToolSection(activeSection)&&activeSection!=="megabrainfegsys"&&activeSection!=="updates"){
     const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
     secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
@@ -1954,16 +2052,18 @@ function renderSideNav(){
   let html=`<div class="sidenav__head"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
   const navItem=s=>{
     const active=activeSection===s.key;
-    const chip=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt">${counts[s.key]||0}</span>`;
+    const updateCount=s.key==="updates"?unreadUpdates():0;
+    const chip=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
     const aiHi=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?" snav__sec--ai":"";
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</a>`;
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
   };
   html+=`<div class="snav__group snav__group--dr">FEG DR</div>`;
-  SECTIONS.filter(s=>!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)&&(!ADMIN_SECTIONS.has(s.key)||isAdmin)).forEach(s=>{html+=navItem(s);});
+  SECTIONS.filter(s=>s.key!=="updates"&&!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)&&(!ADMIN_SECTIONS.has(s.key)||isAdmin)).forEach(s=>{html+=navItem(s);});
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
+  if(isAdmin){html+=`<div class="snav__group snav__group--updates">Histórico</div>`;html+=navItem(sectionCfg("updates"));}
   html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;
   SECTIONS.filter(s=>AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
   nav.innerHTML=html;
@@ -2047,8 +2147,8 @@ function cardHtml(o){
   let stats="";
   if(!native){
     const adsDisp=ads!=null?ads.toLocaleString("pt-BR"):"–";
-    const metric=offerSortMetric(o),spendSort=offerSort!=="active_ads",metricLabel=offerSort==="spend_14d"?"Investimento · 14 dias":offerSort==="spend_30d"?"Investimento · 30 dias":"Investimento · 7 dias";
-    stats=`<div class="card__stats"><div class="kpi${high?" kpi--hot":""}"><div class="kpi__l">${ic(high?"zap":"play")}Anúncios ativos</div><div class="kpi__v">${adsDisp}</div></div>${spendSort?`<div class="kpi"><div class="kpi__l">${ic("dollar")}${metricLabel}</div><div class="kpi__v">${metric.value==null?"–":esc(fegsysMoney(metric.value))}</div></div>`:""}</div>`;
+    const daysMetric=window.SwipeMetrics.activeDays(d);
+    stats=`<div class="card__stats"><div class="kpi${high?" kpi--hot":""}"><div class="kpi__l">${ic(high?"zap":"play")}Anúncios ativos</div><div class="kpi__v">${adsDisp}</div></div><div class="kpi"><div class="kpi__l">${ic("clock")}Dias ativos</div><div class="kpi__v">${daysMetric.value==null?"–":`${esc(daysMetric.value)} dias`}</div></div></div>`;
   }
 
   const note=multi?`<div class="cnote cnote--danger">${ic("alert")}Mais de uma oferta/checkout — abra para ver todas.</div>`:"";
@@ -2147,6 +2247,26 @@ function wireGridPager(area){
   $$('[data-grid-page]',area).forEach(button=>button.addEventListener("click",()=>{const next=+button.dataset.gridPage||1;if(next===gridPage)return;gridPage=next;renderGrid(true);const top=Math.max(0,(area.getBoundingClientRect().top+window.scrollY)-110);window.scrollTo({top,behavior:"auto"});}));
   $$('[data-grid-size]',area).forEach(select=>select.addEventListener("change",()=>{const next=+select.value;if(!GRID_PAGE_OPTIONS.includes(next)||next===gridPageSize)return;gridPageSize=next;gridPage=1;try{localStorage.setItem("feg_grid_page_size",String(next));}catch(e){}renderGrid(true);}));
 }
+function updateKindLabel(kind){return {oferta:"Swipe de ofertas",brandsgeneral:"Ofertas de Brands",brandsvalidated:"Ofertas Insider",presell:"Presell",criativo:"Swipe de criativos"}[kind]||"Materiais";}
+function updateItemPath(item){
+  const target=offers.find(offer=>String(offer.id)===String(item.entity_id));
+  if(target)return offerPath(target);
+  const section=String(item.entity_kind||"oferta");
+  return listPath(SEC2PATH[section]?section:"oferta","");
+}
+function renderUpdates(){
+  const area=$("#gridArea");if(!area)return;
+  const term=searchTerm.trim().toLowerCase();
+  const visible=updates.filter(item=>!term||[item.entity_name,item.niche,updateKindLabel(item.entity_kind)].some(value=>String(value||"").toLowerCase().includes(term)));
+  $("#statTotal").textContent=updatesTotal;
+  const pageResult=$("#pageResult");if(pageResult)pageResult.textContent=`${visible.length.toLocaleString("pt-BR")} ${visible.length===1?"registro":"registros"}`;
+  const shownWrap=$("#statShownWrap");if(shownWrap)shownWrap.style.display="none";
+  if(!visible.length){area.innerHTML=`<div class="empty"><h2>${term?"Nada encontrado":"Nenhuma atualização registrada"}</h2><p>${term?"Nenhum material corresponde à busca.":"As novas ofertas, presells e peças criativas aparecerão aqui automaticamente."}</p></div>`;return;}
+  const groups=new Map();
+  visible.forEach(item=>{const date=new Date(item.created_at),key=Number.isFinite(date.getTime())?date.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"}):"Sem data";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item);});
+  const grouped=[...groups.entries()];
+  area.innerHTML=`<div class="updates-feed">${grouped.map(([date,items],index)=>`<section class="updates-day"><header class="updates-day__head"><span class="updates-day__index">${String(grouped.length-index).padStart(2,"0")}</span><div><h2>Atualização [${esc(date)}]</h2><p>${items.length} ${items.length===1?"material adicionado":"materiais adicionados"}</p></div></header><div class="updates-day__items">${items.map(item=>`<a class="update-row" data-nav href="${esc(updateItemPath(item))}"><span class="update-row__icon">${ic(item.entity_kind==="criativo"?"play":item.entity_kind==="presell"?"newspaper":"layers")}</span><span class="update-row__copy"><strong>${esc(item.entity_name||"Material sem título")}</strong><span>${esc(updateKindLabel(item.entity_kind))}${item.niche?` · ${esc(item.niche)}`:""}</span></span><span class="update-row__open">Abrir card ${ic("external")}</span></a>`).join("")}</div></section>`).join("")}</div>`;
+}
 function renderGrid(skipNav){
   if(!skipNav)renderSideNav();
   renderSubFilter();
@@ -2155,6 +2275,7 @@ function renderGrid(skipNav){
   if(activeSection==="transcritor"){renderTranscritor();return;}
   if(activeSection==="furtado"){renderFurtado();return;}
   if(activeSection==="vsldissector"){renderVslDissector();return;}
+  if(activeSection==="updates"){renderUpdates();return;}
   const cfg=sectionCfg(activeSection);
   const manualSecCount=offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
@@ -3116,8 +3237,16 @@ function setSectionHeader(){
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
   const sw=$(".topbar .search");if(sw)sw.style.display=cc?"none":"";
   if(cc)return;
-  const division=$("#divisionPill"),brands=BRAND_SECTIONS.has(activeSection);
-  if(division){division.classList.toggle("division-pill--brands",brands);division.innerHTML=brands?`<span class="division-pill__mark">BR</span><span class="division-pill__copy"><span class="division-pill__name">FEG Brands</span><span class="division-pill__desc">DTC Intelligence</span></span>`:`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;}
+  const division=$("#divisionPill"),brands=BRAND_SECTIONS.has(activeSection),history=activeSection==="updates";
+  if(division){
+    division.classList.toggle("division-pill--brands",brands);
+    division.classList.toggle("division-pill--history",history);
+    division.innerHTML=history
+      ?`<span class="division-pill__mark">UP</span><span class="division-pill__copy"><span class="division-pill__name">Atualizações</span><span class="division-pill__desc">Registro de materiais</span></span>`
+      :brands
+        ?`<span class="division-pill__mark">BR</span><span class="division-pill__copy"><span class="division-pill__name">FEG Brands</span><span class="division-pill__desc">DTC Intelligence</span></span>`
+        :`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;
+  }
   const lbl=$("#statLabel");if(lbl)lbl.textContent=cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=cfg.searchPlaceholder;
@@ -3171,7 +3300,7 @@ function renderSubFilter(){
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
     el.style.display="";
-    const options=[["spend_7d","Investimento · 7 dias"],["spend_14d","Investimento · 14 dias"],["spend_30d","Investimento · 30 dias"],["active_ads","Anúncios ativos"]];
+    const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"]];
     const sectionItems=offers.filter(o=>sectionOf(o)===activeSection),reference=offerSortReference(sectionItems),health=automationCounts(activeSection);
     const brandNav=BRAND_SECTIONS.has(activeSection)?(()=>{const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;return `<div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div>`;})():"";
     const healthHtml=isAdmin?`<div class="automation-health" aria-label="Situação das automações"><span class="automation-health__item">Análises na fila <strong>${health.pending}</strong></span><span class="automation-health__item">Falhas <strong>${health.failed}</strong></span></div>`:"";
@@ -3599,7 +3728,7 @@ async function furRun(){
 
 /* ===== TRANSCRITOR (Whisper via Groq) ===== */
 const TR_FN="/.netlify/functions/transcribe-file",TR_TRANSLATE_FN="/.netlify/functions/translate-transcript",TR_AD_ANALYSIS_FN="/.netlify/functions/ad-analysis-job";
-const TR_AD_MAX_SEC=600,TR_AD_PROMPT_VERSION="2026-08-04.1";
+const TR_AD_MAX_SEC=600,TR_AD_PROMPT_VERSION="2026-08-04.2";
 const TR_CHUNK_SEC=120;   // ~3,8MB por pedaço (WAV 16kHz mono) — abaixo do limite da função
 const TR_MIN_CHUNK_SEC=15,TR_TRANSIENT_RETRIES=3,TR_PROGRESS_KEY="feg_transcricao_em_andamento_v1";
 const TR_MEMORY_MAX_BYTES=192*1024*1024,TR_MEMORY_MAX_SEC=30*60,TR_STREAM_PLAYBACK_RATE=2,TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3.5,TR_STREAM_STALL_MS=30000;
@@ -3639,7 +3768,7 @@ function renderTrOutput(){
   if(retry){retry.hidden=!(trText&&!trTranslation&&trTranslationStatus!=="translating");retry.textContent=trTranslationStatus==="error"?"Tentar tradução novamente":"Traduzir para português";}
   if(copyPt)copyPt.disabled=!trTranslation;
   if(downloadPt)downloadPt.disabled=!trTranslation;
-  const analysisDoc=$("#trAdAnalysisDoc"),analysisState=$("#trAdAnalysisState"),copyAnalysis=$("#trCopyAnalysis"),downloadAnalysis=$("#trDownloadAnalysis");
+  const analysisDoc=$("#trAdAnalysisDoc"),analysisState=$("#trAdAnalysisState"),copyAnalysis=$("#trCopyAnalysis"),downloadAnalysis=$("#trDownloadAnalysis"),retryAnalysis=$("#trRetryAnalysis");
   if(analysisDoc){
     if(trAdAnalysis)analysisDoc.innerHTML=ccMarkdown(trAdAnalysis);
     else if(trDur>TR_AD_MAX_SEC)analysisDoc.innerHTML=`<div class="tranalysis-empty">Vídeos acima de 10 minutos permanecem somente como transcrição. Para VSLs longas, use o Dissecador de VSL.</div>`;
@@ -3648,6 +3777,7 @@ function renderTrOutput(){
   if(analysisState)analysisState.innerHTML=trAdAnalysisStatus==="complete"?`<span class="ccdot ccdot--done"></span>Concluída`:trAdAnalysisStatus==="working"||trAdAnalysisStatus==="queued"?`<span class="vidup__spin"></span>Processando…`:trDur>TR_AD_MAX_SEC?"Não aplicável":trAdAnalysisStatus==="error"?`<span class="trerr">Interrompida</span>`:"Aguardando transcrição";
   if(copyAnalysis)copyAnalysis.disabled=!trAdAnalysis;
   if(downloadAnalysis)downloadAnalysis.disabled=!trAdAnalysis;
+  if(retryAnalysis)retryAnalysis.hidden=!(trAdAnalysisStatus==="error"&&trLastFile&&trText&&trDur>0&&trDur<=TR_AD_MAX_SEC);
   body.onwheel=()=>{trFollow=false;};body.ontouchstart=()=>{trFollow=false;};body.onpointerdown=()=>{trFollow=false;};
   trActive=-1;if(trAudio&&!trAudio.paused)trSyncWord(trAudio.currentTime||0);
   const tb=$("#trTimes");if(tb)tb.textContent=trShowTimes?"Ocultar tempos":"Mostrar tempos";
@@ -3988,25 +4118,25 @@ async function trPostSlice(samples,rate,token,lang,offset,timeScale=1){
     try{j=await r.json();}catch(_){}
   }catch(error){error.status=0;throw error;}
   if(!r.ok||!j.ok){const error=new Error(j.error||("HTTP "+r.status));error.status=r.status;error.retryable=j.retryable===true||r.status===429||r.status>=500;error.retryAfterMs=Math.max(0,(+j.retryAfter||+(r.headers.get("retry-after")||0))*1000);throw error;}
-  return{text:String(j.text||"").trim(),language:String(j.language||""),segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})):[]};
+  return{text:String(j.text||"").trim(),language:String(j.language||""),noSpeech:j.noSpeech===true,segments:Array.isArray(j.segments)?j.segments.map(s=>({start:(+s.start||0)*timeScale+offset,end:(+s.end||0)*timeScale+offset,text:s.text})):[],words:Array.isArray(j.words)?j.words.map(w=>({word:w.word,start:(+w.start||0)*timeScale+offset,end:(+w.end||0)*timeScale+offset})):[]};
 }
 function trMergeSlices(a,b){return{text:[a.text,b.text].filter(Boolean).join(" "),language:a.language||b.language||"",segments:[...(a.segments||[]),...(b.segments||[])],words:[...(a.words||[]),...(b.words||[])]};}
 async function trTranscribeSlice(samples,rate,token,lang,offset,onAdapt,depth=0,timeScale=1){
   const seconds=samples.length/rate;let lastError,rateWaits=0;
   for(let attempt=0;attempt<TR_TRANSIENT_RETRIES;attempt++){
     try{return await trPostSlice(samples,rate,token,lang,offset,timeScale);}catch(error){
-      lastError=error;const status=+error.status||0,authFailure=status===400||status===401||status===403,canSplit=seconds>TR_MIN_CHUNK_SEC*2.05;
+      lastError=error;const status=+error.status||0,authFailure=status===401||status===403,canSplit=seconds>TR_MIN_CHUNK_SEC*2.05;
       if(status===429&&rateWaits<8){
         const wait=Math.min(120000,Math.max(5000,+error.retryAfterMs||12000)*(1+rateWaits*.15));rateWaits++;
         if(onAdapt)onAdapt(`Limite temporário atingido; aguardando ${Math.ceil(wait/1000)}s sem perder o progresso…`);
         await trDelay(wait);attempt--;continue;
       }
-      if(!authFailure&&canSplit&&(status===0||status===413||status===502||status===503||status===504)){
-        if(onAdapt)onAdapt(`Uma parte demorou; reduzindo ${Math.round(seconds)}s para trechos menores…`);
+      if(!authFailure&&canSplit&&(error.retryable===true||status===0||status===413||status===422||status===502||status===503||status===504)){
+        if(onAdapt)onAdapt(status===422?`A fala ficou inconsistente; recalculando ${Math.round(seconds)}s em trechos menores…`:`Uma parte demorou; reduzindo ${Math.round(seconds)}s para trechos menores…`);
         const middle=Math.floor(samples.length/2),left=await trTranscribeSlice(samples.subarray(0,middle),rate,token,lang,offset,onAdapt,depth+1,timeScale),right=await trTranscribeSlice(samples.subarray(middle),rate,token,lang,offset+(middle/rate)*timeScale,onAdapt,depth+1,timeScale);
         return trMergeSlices(left,right);
       }
-      const transient=status===0||status===429||status===502||status===503||status===504;
+      const transient=error.retryable===true||status===0||status===429||status===502||status===503||status===504;
       if(!transient||attempt===TR_TRANSIENT_RETRIES-1)throw error;
       if(onAdapt)onAdapt(`Serviço ocupado; nova tentativa ${attempt+2}/${TR_TRANSIENT_RETRIES}…`);
       await trDelay(1400*(attempt+1));
@@ -4103,7 +4233,7 @@ function renderTranscritor(force){
       <div class="trdocs">
         <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Transcrição original</span><span class="trdoc__state">Idioma detectado</span></div><div class="trtext" id="trText"></div></section>
         <section class="trdoc"><div class="trdoc__head"><span class="trdoc__title">Tradução em português</span><span class="trdoc__state" id="trTranslationState"></span></div><div class="trtext trtext--translation" id="trTranslation"></div></section>
-        <section class="trdoc trdoc--analysis"><div class="trdoc__head"><span class="trdoc__title">Engenharia reversa visual do anúncio</span><span class="trdoc__state" id="trAdAnalysisState"></span><div class="tractions"><button class="btn btn--outline btn--sm" id="trCopyAnalysis" disabled>${ic("clipboard")}Copiar relatório</button><button class="btn btn--outline btn--sm" id="trDownloadAnalysis" disabled>${ic("download")}Relatório .md</button></div></div><div class="tranalysis" id="trAdAnalysisDoc"></div></section>
+        <section class="trdoc trdoc--analysis"><div class="trdoc__head"><span class="trdoc__title">Engenharia reversa visual do anúncio</span><span class="trdoc__state" id="trAdAnalysisState"></span><div class="tractions"><button class="btn btn--outline btn--sm" id="trRetryAnalysis" hidden>Tentar novamente</button><button class="btn btn--outline btn--sm" id="trCopyAnalysis" disabled>${ic("clipboard")}Copiar relatório</button><button class="btn btn--outline btn--sm" id="trDownloadAnalysis" disabled>${ic("download")}Relatório .md</button></div></div><div class="tranalysis" id="trAdAnalysisDoc"></div></section>
       </div>
     </div>
   </div>`;
@@ -4125,6 +4255,7 @@ function renderTranscritor(force){
   $("#trCopy").addEventListener("click",()=>{navigator.clipboard.writeText(trText||trSegs.map(s=>s.text).join(" ")).then(()=>toast("Copiado ✓"));});
   $("#trCopyPt").addEventListener("click",()=>{if(trTranslation)navigator.clipboard.writeText(trTranslation).then(()=>toast("Tradução copiada ✓"));});
   $("#trCopyAnalysis").addEventListener("click",()=>{if(trAdAnalysis)navigator.clipboard.writeText(trAdAnalysis).then(()=>toast("Relatório copiado ✓"));});
+  $("#trRetryAnalysis").addEventListener("click",async()=>{if(trBusy||!trLastFile)return;trSetBusy(true);const ok=await trRunAdAnalysis(trLastFile,await trToken());trSetStatus("");trSetBusy(false);if(ok)await trPersist();toast(ok?"Engenharia reversa concluída ✓":"Não foi possível concluir agora.",!ok);});
   $("#trRetryTranslation").addEventListener("click",async()=>{if(trBusy)return;trSetBusy(true);const ok=await trTranslateCurrent({save:true});trSetStatus("");trSetBusy(false);toast(ok?"Tradução pronta ✓":"Não foi possível traduzir agora.",!ok);});
   $("#trDownload").addEventListener("click",()=>{
     const txt=trShowTimes&&trSegs.length?trSegs.map(s=>`[${trTime(s.start)}] ${s.text}`).join("\n"):(trText||trSegs.map(s=>s.text).join(" "));

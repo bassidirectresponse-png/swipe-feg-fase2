@@ -98,3 +98,21 @@ test("cards e Transcritor exibem e persistem o relatório separado", () => {
   assert.match(html, /adVisualAnalysis/);
   assert.match(html, /TR_AD_MAX_SEC=600/);
 });
+
+test("worker envia uma requisição compatível com Claude e expõe o erro real", () => {
+  assert.match(worker, /max_tokens:\s*MAX_OUTPUT_TOKENS/);
+  assert.match(worker, /const MAX_OUTPUT_TOKENS = 8_192/);
+  assert.doesNotMatch(worker, /temperature\s*:/);
+  assert.match(worker, /compactClaudeError/);
+  assert.match(worker, /Claude HTTP \$\{status\}:/);
+});
+
+test("usuário comum pode analisar, mas somente admin pode gravar a análise em card", () => {
+  assert.match(job, /import \{ authenticate, isAdmin,/);
+  assert.match(job, /cardId:\s*isAdmin\(user\)\s*&&/);
+});
+
+test("versão da análise permanece sincronizada entre fila, função e interface", () => {
+  assert.match(scanner, new RegExp(`PROMPT_VERSION = ["']${AD_ANALYSIS_PROMPT_VERSION.replaceAll(".", "\\.")}["']`));
+  assert.match(html, new RegExp(`TR_AD_PROMPT_VERSION=["']${AD_ANALYSIS_PROMPT_VERSION.replaceAll(".", "\\.")}["']`));
+});

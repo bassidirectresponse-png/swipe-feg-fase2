@@ -1,5 +1,5 @@
 import { getStore } from "@netlify/blobs";
-import { authenticate, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
+import { authenticate, isAdmin, json, preflight, rateLimit, readJson, trustedOrigin } from "./_security.mjs";
 import { AD_ANALYSIS_PROMPT_VERSION, validAdDuration } from "./_ad-video-analysis.mjs";
 
 const METHODS = "GET, POST, OPTIONS";
@@ -50,7 +50,10 @@ export default async (req) => {
     id, jobKey: `${crypto.randomUUID()}-${crypto.randomUUID()}`, owner: user.id,
     status: "queued", progress: 5, message: "Anúncio recebido para leitura visual.", error: "", report: "",
     input: {
-      cardId: /^[a-f0-9-]{20,80}$/i.test(clean(body.cardId)) ? clean(body.cardId) : "",
+      // A análise avulsa é liberada para todos os usuários autenticados. Vincular o
+      // resultado a um card, porém, é uma escrita administrativa e nunca deve ser
+      // delegada ao worker com service role para uma conta comum.
+      cardId: isAdmin(user) && /^[a-f0-9-]{20,80}$/i.test(clean(body.cardId)) ? clean(body.cardId) : "",
       name: clean(body.name).slice(0, 240), niche: clean(body.niche).slice(0, 140), country: clean(body.country).slice(0, 80),
       language: clean(body.language).slice(0, 50), platform: clean(body.platform).slice(0, 80), notes: clean(body.notes).slice(0, 600),
       duration, transcript, segments: Array.isArray(body.segments) ? body.segments.slice(0, 8_000) : [], contactSheets,
@@ -62,4 +65,3 @@ export default async (req) => {
   if (!started || !started.ok) { job.status = "error"; job.error = "Não foi possível iniciar a análise."; job.message = job.error; await store.setJSON(id, job); return json(req, 502, { ok: false, error: job.error }, METHODS); }
   return json(req, 202, { ok: true, id, status: "queued", promptVersion: AD_ANALYSIS_PROMPT_VERSION }, METHODS);
 };
-

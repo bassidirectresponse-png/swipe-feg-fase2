@@ -1,0 +1,170 @@
+{
+  "name": "Swipe — Ingestão manual",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "swipe-manual-ingestion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e16a8218-7e41-4a9a-b8ff-9a8b8ec4b0af",
+      "name": "Receber lote manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-720, 0],
+      "webhookId": "swipe-manual-ingestion"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nif (!Array.isArray(payload.items) || payload.items.length === 0) throw new Error('O lote precisa conter items.');\nif (payload.items.length > 100) throw new Error('O lote excede 100 itens.');\nreturn [{ json: { batchDate: payload.batchDate, items: payload.items, mode: 'validate' } }];"
+      },
+      "id": "38cd2c37-b72a-492c-a054-3af84479ea51",
+      "name": "Preparar lote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SWIPE_BASE_URL + '/.netlify/functions/manual-ingest-n8n'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.N8N_MANUAL_INGEST_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify($json)}}",
+        "options": { "response": { "response": { "neverError": true, "responseFormat": "json" } } }
+      },
+      "id": "db210f3f-ef65-4d27-896a-a8b607e7f2ea",
+      "name": "Validar sem gravar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-270, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "4714e3cf-d72e-49e3-8470-61e8a44462b5", "leftValue": "={{$json.ok}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "388ce57b-b37c-4501-b03e-a557446a72e9",
+      "name": "Validação aprovada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-40, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Preparar lote').first().json;\nreturn [{ json: { ...original, mode: 'apply' } }];"
+      },
+      "id": "ba896d9f-8847-4aa2-9f2b-a625449bc4af",
+      "name": "Autorizar aplicação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [190, -90]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SWIPE_BASE_URL + '/.netlify/functions/manual-ingest-n8n'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.N8N_MANUAL_INGEST_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{JSON.stringify($json)}}",
+        "options": { "response": { "response": { "neverError": true, "responseFormat": "json" } } }
+      },
+      "id": "50165fe2-d89f-4848-a562-2091afee91a7",
+      "name": "Aplicar lote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, -90]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "30f49f56-9aed-43de-98b6-8d55d3436191", "leftValue": "={{$json.ok}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "952f0403-9481-4338-bfc7-f124091c4dfc",
+      "name": "Aplicação concluída?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [650, -90]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "7674085c-c206-4c20-ac63-8d940321e375",
+      "name": "Responder sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [880, -150]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": { "responseCode": 502 }
+      },
+      "id": "70cc3594-7bd6-4591-a10d-a0fde13340bc",
+      "name": "Responder erro de aplicação",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [880, 10]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "a7fa30f5-943d-48a1-aecd-e1dce6c984f1",
+      "name": "Responder validação",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [190, 100]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receber lote manual": { "main": [[{ "node": "Preparar lote", "type": "main", "index": 0 }]] },
+    "Preparar lote": { "main": [[{ "node": "Validar sem gravar", "type": "main", "index": 0 }]] },
+    "Validar sem gravar": { "main": [[{ "node": "Validação aprovada?", "type": "main", "index": 0 }]] },
+    "Validação aprovada?": { "main": [[{ "node": "Autorizar aplicação", "type": "main", "index": 0 }], [{ "node": "Responder validação", "type": "main", "index": 0 }]] },
+    "Autorizar aplicação": { "main": [[{ "node": "Aplicar lote", "type": "main", "index": 0 }]] },
+    "Aplicar lote": { "main": [[{ "node": "Aplicação concluída?", "type": "main", "index": 0 }]] },
+    "Aplicação concluída?": { "main": [[{ "node": "Responder sucesso", "type": "main", "index": 0 }], [{ "node": "Responder erro de aplicação", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "saveDataErrorExecution": "all", "saveDataSuccessExecution": "none" },
+  "versionId": "1f609762-83f2-4cbf-a91d-c048ea693b85",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}
