@@ -50,6 +50,16 @@
     },
     {
       "parameters": {
+        "jsCode": "const input = $json;\nif (input && typeof input.ok === 'boolean') return [{ json: input }];\nlet raw = '';\nif (typeof input?.body === 'string') raw = input.body;\nconst chunks = input?._readableState?.buffer;\nif (!raw && Array.isArray(chunks)) {\n  const bytes = chunks.flatMap(chunk => Array.isArray(chunk?.data) ? chunk.data : []);\n  if (bytes.length) raw = Buffer.from(bytes).toString('utf8');\n}\nif (!raw) return [{ json: { ok: false, error: 'A API respondeu sem um corpo legível.' } }];\ntry { return [{ json: JSON.parse(raw) }]; }\ncatch { return [{ json: { ok: false, error: 'A API retornou uma resposta inválida.', details: raw.slice(0, 500) } }]; }"
+      },
+      "id": "5f663579-1992-4f94-b478-25f72f6a7e42",
+      "name": "Normalizar validação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-155, 0]
+    },
+    {
+      "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
           "conditions": [
@@ -97,6 +107,16 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [420, -90]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json;\nif (input && typeof input.ok === 'boolean') return [{ json: input }];\nlet raw = '';\nif (typeof input?.body === 'string') raw = input.body;\nconst chunks = input?._readableState?.buffer;\nif (!raw && Array.isArray(chunks)) {\n  const bytes = chunks.flatMap(chunk => Array.isArray(chunk?.data) ? chunk.data : []);\n  if (bytes.length) raw = Buffer.from(bytes).toString('utf8');\n}\nif (!raw) return [{ json: { ok: false, error: 'A API respondeu sem um corpo legível.' } }];\ntry { return [{ json: JSON.parse(raw) }]; }\ncatch { return [{ json: { ok: false, error: 'A API retornou uma resposta inválida.', details: raw.slice(0, 500) } }]; }"
+      },
+      "id": "7ba231d0-2713-44d2-adc1-e9bb90215ad5",
+      "name": "Normalizar aplicação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [535, -90]
     },
     {
       "parameters": {
@@ -156,10 +176,12 @@
   "connections": {
     "Receber lote manual": { "main": [[{ "node": "Preparar lote", "type": "main", "index": 0 }]] },
     "Preparar lote": { "main": [[{ "node": "Validar sem gravar", "type": "main", "index": 0 }]] },
-    "Validar sem gravar": { "main": [[{ "node": "Validação aprovada?", "type": "main", "index": 0 }]] },
+    "Validar sem gravar": { "main": [[{ "node": "Normalizar validação", "type": "main", "index": 0 }]] },
+    "Normalizar validação": { "main": [[{ "node": "Validação aprovada?", "type": "main", "index": 0 }]] },
     "Validação aprovada?": { "main": [[{ "node": "Autorizar aplicação", "type": "main", "index": 0 }], [{ "node": "Responder validação", "type": "main", "index": 0 }]] },
     "Autorizar aplicação": { "main": [[{ "node": "Aplicar lote", "type": "main", "index": 0 }]] },
-    "Aplicar lote": { "main": [[{ "node": "Aplicação concluída?", "type": "main", "index": 0 }]] },
+    "Aplicar lote": { "main": [[{ "node": "Normalizar aplicação", "type": "main", "index": 0 }]] },
+    "Normalizar aplicação": { "main": [[{ "node": "Aplicação concluída?", "type": "main", "index": 0 }]] },
     "Aplicação concluída?": { "main": [[{ "node": "Responder sucesso", "type": "main", "index": 0 }], [{ "node": "Responder erro de aplicação", "type": "main", "index": 0 }]] }
   },
   "active": false,
