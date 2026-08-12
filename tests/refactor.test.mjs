@@ -39,17 +39,12 @@ test("chat ocupa o viewport, preserva scroll e agrupa o streaming", () => {
   assert.match(html, /e\.key==="Enter"&&!e\.shiftKey/);
 });
 
-test("Feguinho usa a moldura ampla de conversa de IA", () => {
-  assert.match(html, /--chat-content-wide:72rem/);
-  assert.match(html, /class="chat chat--feguinho chat--animated" id="cchief"/);
-  assert.match(html, /\.chat--feguinho \.chat__input\{min-height:72px/);
-  assert.match(html, /id="ccRun"[^>]*>[^<]*.*?<span>Enviar<\/span>/s);
-});
-
-test("Furtado compartilha o mesmo padrão visual de conversa", () => {
-  assert.match(html, /class="chat furtado chat--animated" id="furtado"/);
-  assert.match(html, /\.chat--animated \.chat__box:focus-within/);
-  assert.match(html, /id="furRun"[^>]*>[^<]*.*?<span>Enviar<\/span>/s);
+test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => {
+  const sections = html.match(/const SECTIONS=\[[\s\S]*?\n\];/)?.[0] || "";
+  const routes = html.match(/const SEC2PATH=\{[^\n]+/)?.[0] || "";
+  assert.doesNotMatch(sections, /key:"copychief"|key:"furtado"/);
+  assert.doesNotMatch(routes, /copychief:|furtado:/);
+  assert.doesNotMatch(html, /activeSection==="copychief"|activeSection==="furtado"/);
 });
 
 test("cards clicáveis usam brilho direcional leve e acessível", () => {

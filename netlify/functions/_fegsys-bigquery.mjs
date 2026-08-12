@@ -82,7 +82,7 @@ export async function googleAccessToken(credential, scopes = ["https://www.googl
 }
 
 const FIELD_ALIASES = {
-  data: ["data", "ref_date", "date", "dt", "day"],
+  data: ["data", "data_referencia", "ref_date", "date", "dt", "day"],
   criativo: ["criativo", "creative", "creative_name", "nome_criativo", "ad_name"],
   ad_platform: ["ad_platform", "platform", "plataforma"],
   ad_channel_type: ["ad_channel_type", "channel_type", "canal"],
@@ -121,8 +121,8 @@ export function buildQuery(fields) {
   const sourceRoas = f.roas
     ? `SAFE_DIVIDE(SUM(${numberExpr(f.roas)} * ${numberExpr(spendWeight)}), NULLIF(SUM(${numberExpr(spendWeight)}), 0))`
     : "0";
-  const salesAvailable = !!(f.orders && (f.official_revenue_usd || f.official_revenue_brl));
-  const salesError = salesAvailable ? "" : `a vw_ads_criativo_diario não fornece ${[!f.orders ? "pedidos" : "", !(f.official_revenue_usd || f.official_revenue_brl) ? "faturamento" : ""].filter(Boolean).join(" nem ")}`;
+  const salesAvailable = !!f.orders;
+  const salesError = salesAvailable ? "" : "a vw_ads_criativo_diario não fornece o número de vendas";
   return {
     salesAvailable,
     salesError,
@@ -164,8 +164,8 @@ ORDER BY data DESC, spend_brl DESC`
 
 export function buildSalesQuery(fields) {
   const f = fieldMap(fields);
-  if (!f.data || !f.criativo || !f.orders || !(f.official_revenue_usd || f.official_revenue_brl)) {
-    throw new Error("a mart_criativos_diario precisa conter data, criativo, pedidos e faturamento");
+  if (!f.data || !f.criativo || !f.orders) {
+    throw new Error("a mart_criativos_diario precisa conter data, criativo e quantidade_pedidos");
   }
   return `
 SELECT
@@ -333,7 +333,7 @@ async function queryBigQuery(credential) {
     copy_text: String(row.copy_text || "").trim(),
     copy_url: String(row.copy_url || "").trim()
   })).filter(row => row.data && row.criativo);
-  let salesRows = [], salesStatus = { available: false, error: "mart_criativos_diario indisponível" };
+  let salesRows = [], salesStatus = { available: false, error: "mart_criativos_diario indisponível", source: "marts_feg.mart_criativos_diario" };
   try {
     const salesTable = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT_ID}/datasets/marts_feg/tables/mart_criativos_diario`, { headers });
     const salesMetadata = await salesTable.json().catch(() => ({}));
@@ -352,17 +352,23 @@ async function queryBigQuery(credential) {
   } catch (error) {
     salesStatus = { available: false, error: String(error && error.message || "mart_criativos_diario indisponível"), source: "marts_feg.mart_criativos_diario" };
   }
-  const authoritativeBase = salesStatus.available
-    ? baseRows.map(row => ({ ...row, orders: 0, official_revenue_brl: 0, official_revenue_usd: 0, official_sales_available: false }))
-    : baseRows;
+  /* O relatório oficial do FEGSYS parte da mart de vendas. Zerar os campos
+     homônimos da view evita exibir conversões de mídia como se fossem vendas. */
+  const mediaRows = baseRows.map(row => ({
+    ...row,
+    orders: 0,
+    official_revenue_brl: 0,
+    official_revenue_usd: 0,
+    official_sales_available: false
+  }));
   return {
-    rows: mergeFegsysSources(authoritativeBase, salesRows, []).filter(row => row.data && row.criativo),
+    rows: mergeFegsysSources(mediaRows, salesRows, []).filter(row => row.data && row.criativo),
     sourceStatus: {
       media: {
         available: true,
         error: ""
       },
-      sales: salesStatus.available ? salesStatus : { ...salesStatus, fallbackAvailable: viewPlan.salesAvailable, fallbackError: viewPlan.salesError },
+      sales: salesStatus,
       meta: { available: true, error: "" }
     }
   };

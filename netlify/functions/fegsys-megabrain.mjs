@@ -15,9 +15,10 @@ export default async req => {
 
   const url = new URL(req.url);
   const range = resolveRange(url.searchParams);
+  const forceRefresh = url.searchParams.get("refresh") === "1";
   let snapshot, result, syncedAt, coverage, sourceStatus;
   try {
-    const precomputed = await getPrecomputedAggregate(range);
+    const precomputed = forceRefresh ? null : await getPrecomputedAggregate(range);
     if (precomputed) {
       result = { cards: precomputed.cards || [], totals: precomputed.totals || {} };
       syncedAt = precomputed.syncedAt;
@@ -26,7 +27,7 @@ export default async req => {
     } else {
       /* Personalizados usam o snapshot diário; os períodos comuns chegam
          pré-calculados pela sincronização horária. */
-      snapshot = await getSnapshot({ refresh: false, allowStale: true });
+      snapshot = await getSnapshot({ refresh: forceRefresh, allowStale: !forceRefresh });
       if (!snapshot) snapshot = await getSnapshot({ refresh: true, allowStale: false });
       if (snapshot) {
         result = aggregateSnapshot(snapshot, range);
