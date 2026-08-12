@@ -12,7 +12,7 @@
     "security:csp": "node scripts/csp-hashes.mjs --check"
   },
   "dependencies": {
-    "@netlify/blobs": "^10.7.9"
+    "@netlify/blobs": "9.1.5"
   },
   "overrides": {
     "@opentelemetry/core": "2.9.0",
