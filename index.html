@@ -1535,13 +1535,11 @@ const SECTIONS=[
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
   {key:"brandsvalidated",label:"Ofertas Insider",icon:"trending",newLabel:"Nova oferta Insider",statLabel:"Ofertas Insider",emptyTitle:"Nenhuma oferta Insider",searchPlaceholder:"Buscar produto Insider, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Insider</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
-  {key:"copychief",label:"Feguinho — Copy Chief IA",icon:"sparkles",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Feguinho — Copy Chief IA</b> · gerador de copy que <b>modela o que já vendeu</b>: análise dupla no vault + Mega Brain e sugestão de hooks do Radar TikTok.'},
-  {key:"furtado",label:"Furtado - Copy Chief ADS IA",icon:"wand",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Furtado - Copy Chief ADS IA</b> · novo modelo de criação de ads em 4 fases: Bíblia do Nicho → Voz do Prospect (busca real na web) → Arquitetura da Remessa → Escrita dos anúncios.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'}
 ];
-function isToolSection(k){return k==="copychief"||k==="transcritor"||k==="furtado"||k==="vsldissector";}
-function isChatSection(k){return k==="copychief"||k==="furtado";}
+function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
+function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
@@ -1554,7 +1552,7 @@ let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
 let updates=[],updatesTotal=0;
-let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysDuplicates=0;
+let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -1703,7 +1701,7 @@ const ADMIN_EMAILS=["adminswipefeg@swipefeg.app"];
 let isAdmin=false;
 function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
-  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysLoadedKey="";fegsysError="";}
+  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysLoadedKey="";fegsysError="";fegsysMatches=0;}
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
 }
@@ -1884,14 +1882,14 @@ function automationCounts(section){
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",updates:"Atualizações",copychief:"Feguinho — Copy Chief IA",transcritor:"Transcritor",furtado:"Furtado - Copy Chief ADS IA",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"mega-brain-fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",updates:"atualizacoes",copychief:"chat",furtado:"furtado",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"mega-brain-fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated"]);
@@ -2016,7 +2014,7 @@ document.addEventListener("click",e=>{
   navigate(href,{state:isDetail?{modal:true}:null});
 });
 window.addEventListener("popstate",applyRoute);
-const AI_SECTIONS=new Set(["copychief","transcritor","furtado","vsldissector"]);
+const AI_SECTIONS=new Set(["transcritor","vsldissector"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
 function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
@@ -2053,8 +2051,8 @@ function renderSideNav(){
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
-    const chip=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
-    const aiHi=(s.key==="copychief"||s.key==="furtado"||s.key==="vsldissector")?" snav__sec--ai":"";
+    const chip=s.key==="vsldissector"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
+    const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</a>`;
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
@@ -2271,9 +2269,7 @@ function renderGrid(skipNav){
   if(!skipNav)renderSideNav();
   renderSubFilter();
   setSectionHeader();
-  if(activeSection==="copychief"){renderCopyChief();return;}
   if(activeSection==="transcritor"){renderTranscritor();return;}
-  if(activeSection==="furtado"){renderFurtado();return;}
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   if(activeSection==="updates"){renderUpdates();return;}
   const cfg=sectionCfg(activeSection);
@@ -3253,8 +3249,6 @@ function setSectionHeader(){
   const title=$("#pageTitle"),description=$("#pageDescription");if(title)title.textContent=cfg.label;if(description)description.innerHTML=cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
-function fegsysMoney(value,currency="BRL"){return new Intl.NumberFormat("pt-BR",{style:"currency",currency,maximumFractionDigits:2}).format(+value||0);}
-function fegsysPercent(value){return (+value||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
 function fegsysLoadKey(){return [brainPeriod,brainDateFrom,brainDateTo].join("|");}
 async function loadFegsysBrain(force=false){
@@ -3269,26 +3263,29 @@ async function loadFegsysBrain(force=false){
     let response=await request(token);
     if(response.status===401){const refreshed=await sb.auth.refreshSession();const fresh=refreshed.data&&refreshed.data.session&&refreshed.data.session.access_token;if(fresh)response=await request(fresh);}
     const result=await response.json().catch(()=>({}));if(!response.ok||!result.ok)throw new Error(result.error||"não foi possível consultar o FEGSYS");
-    const manual=new Set(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>brainNameKey((o.data||{}).nome)).filter(Boolean));
-    const incoming=(result.cards||[]).filter(card=>card&&card.nome),unique=incoming.filter(card=>!manual.has(brainNameKey(card.nome)));
-    fegsysDuplicates=incoming.length-unique.length;
+    const manual=new Map(offers.filter(o=>sectionOf(o)==="megabrain").map(o=>[brainNameKey((o.data||{}).nome),o]).filter(([key])=>key));
+    const incoming=(result.cards||[]).filter(card=>card&&card.nome);
+    fegsysMatches=incoming.filter(card=>manual.has(brainNameKey(card.nome))).length;
     if(brainPeriod==="custom"){if(!brainDateFrom)brainDateFrom=result.range&&result.range.from||"";if(!brainDateTo)brainDateTo=result.range&&result.range.to||"";}
-    fegsysCards=unique.map(card=>({id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:"FEGSYS",nicho:"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"fegsys",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video:card.video_url||"",linkDrive:card.drive_video_view_url||"",print:card.thumbnail_url||"",copy:card.copy_text||"",copyLink:card.copy_url||"",driveStatus:card.drive_status||"",driveVideoName:card.drive_video_name||"",driveCopyName:card.drive_copy_name||"",videoMissing:!card.video_url,copyMissing:!(card.copy_text||card.copy_url)}}));
+    fegsysCards=incoming.map(card=>{
+      const manualItem=manual.get(brainNameKey(card.nome)),existing=manualItem&&manualItem.data||{};
+      const video=card.video_url||existing.video||"",print=card.thumbnail_url||existing.print||"",copy=card.copy_text||existing.copy||existing.transcricao||"",copyLink=card.copy_url||existing.copyLink||existing.copyVslLink||existing.copyCriativoLink||"";
+      return{id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:existing.autor||"FEGSYS",nicho:existing.nicho||"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"vendas",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video,linkDrive:card.drive_video_view_url||existing.linkDrive||"",print,copy,copyLink,driveStatus:card.drive_status||"",driveVideoName:card.drive_video_name||"",driveCopyName:card.drive_copy_name||"",matchedManual:!!manualItem,videoMissing:!video,copyMissing:!(copy||copyLink)}};
+    });
     fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysSourceStatus=result.sourceStatus||null;fegsysLoadedKey=key;
   }catch(error){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
   finally{fegsysLoading=false;renderGrid();}
 }
 function fegsysPanelHtml(){
   if(!isAdmin)return"";
-  const unavailable=[];if(!fegsysSalesReady(fegsysSourceStatus))unavailable.push("a view ainda não fornece pedidos, faturamento e ROAS");if(fegsysSourceStatus&&fegsysSourceStatus.meta&&fegsysSourceStatus.meta.available===false)unavailable.push("detalhes da Meta aguardando autorização");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
+  const unavailable=[];if(!fegsysSalesReady(fegsysSourceStatus))unavailable.push("vendas aguardando acesso a marts_feg.mart_criativos_diario");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
   const driveRoots=fegsysSourceStatus&&fegsysSourceStatus.drive&&Array.isArray(fegsysSourceStatus.drive.roots)?fegsysSourceStatus.drive.roots:[];
   const inaccessibleRoots=driveRoots.filter(root=>!root.available).length;if(inaccessibleRoots)unavailable.push(`${inaccessibleRoots} pasta${inaccessibleRoots>1?"s":""} do Drive aguardando compartilhamento`);
   const driveReady=fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files>0?` · ${fegsysSourceStatus.drive.matchedVideos||0} vídeos e ${fegsysSourceStatus.drive.matchedCopies||0} copies encontrados`:"";
-  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysDuplicates?` · ${fegsysDuplicates} já existem no acervo manual e foram ocultados`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
+  const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysMatches?` · ${fegsysMatches} cruzados com o acervo manual`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
-  const totals=fegsysTotals||{},salesReady=fegsysSalesReady(fegsysSourceStatus),official=value=>salesReady?value:"—";
-  const resultLabel=salesReady?"Pedidos":"Conversões Google",resultValue=salesReady?fmtNum(totals.conversions||0):fmtNum(totals.google_conversions||0);
-  return `<section class="fegsys-panel" aria-label="Dados sincronizados do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>${resultLabel}</span><strong class="accent">${resultValue}</strong></span><span class="fegsys-summary__item"><span>Faturamento</span><strong class="accent">${official(esc(fegsysMoney(totals.official_revenue_usd||0,"USD")))}</strong></span><span class="fegsys-summary__item"><span>ROAS</span><strong>${official((+totals.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}))}</strong></span><span class="fegsys-summary__item"><span>Investimento</span><strong>${esc(fegsysMoney(totals.spend_usd||0,"USD"))}</strong></span><span class="fegsys-summary__item"><span>CTR</span><strong>${fegsysPercent(totals.ctr||0)}</strong></span><span class="fegsys-summary__item"><span>CPC</span><strong>${esc(fegsysMoney(totals.cpc_usd||0,"USD"))}</strong></span></div></div></section>`;
+  const totals=fegsysTotals||{},salesReady=fegsysSalesReady(fegsysSourceStatus),sales=salesReady?fmtNum(totals.conversions||0):"—";
+  return `<section class="fegsys-panel" aria-label="Vendas sincronizadas do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Vendas</span><strong class="accent">${sales}</strong></span></div></div></section>`;
 }
 function wireFegsysPanel(el){
   $$('[data-fegsys-period]',el).forEach(button=>button.addEventListener("click",()=>{brainPeriod=button.dataset.fegsysPeriod;if(brainPeriod!=="custom"){brainDateFrom="";brainDateTo="";}fegsysLoadedKey="";navigate(currentPath(),{replace:true});}));
@@ -3348,7 +3345,7 @@ function renderSubFilter(){
   }
   if(activeSection==="megabrainfegsys"){
     el.style.display="";
-    const opts=[["metrica","Maior investimento"],["recente","Recentes"],["az","A–Z"]];
+    const opts=[["metrica","Mais vendas"],["recente","Recentes"],["az","A–Z"]];
     el.innerHTML=`${fegsysPanelHtml()}<div class="subfilter__row" style="margin-top:12px"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${brainSort===v?" active":""}" data-brainsort="${v}">${l}</button>`).join("")}</div></div>`;
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{brainSort=b.dataset.brainsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);}));
     wireFegsysPanel(el);
@@ -4670,64 +4667,18 @@ function wireVideoTranscripts(root){
   });
 }
 function wireBrainTranscript(root){wireVideoTranscripts(root);}
-function fegsysRate(value){const n=+value||0;return fegsysPercent(Math.abs(n)<=1?n*100:n);}
-function fegsysSalesReady(sources){const sales=sources&&sources.sales;return !sales||sales.available!==false||sales.fallbackAvailable===true;}
-function fegsysNumber(value,decimals=0){return (+value||0).toLocaleString("pt-BR",{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
+function fegsysSalesReady(sources){const sales=sources&&sources.sales;return !!(sales&&sales.available===true);}
 function fegsysMetricCell(label,value,accent=false){return `<div class="fegsys-detail__metric${accent?" is-accent":""}"><span>${esc(label)}</span><strong>${esc(String(value))}</strong></div>`;}
 function fegsysDetailsSections(d,num){
   const m=d.fegsysMetrics||{};
-  const salesReady=fegsysSalesReady(d.fegsysSources),officialValue=value=>salesReady?value:"—";
-  const official=[
-    fegsysMetricCell("Pedidos",officialValue(fmtNum(m.orders||m.conversions||0)),true),
-    fegsysMetricCell("Faturamento",officialValue(fegsysMoney(m.official_revenue_usd||0,"USD")),true),
-    fegsysMetricCell("ROAS",officialValue(fegsysNumber(m.roas||0,2)),true),
-    fegsysMetricCell("Ticket médio",officialValue(fegsysMoney(m.ticket_brl||0))),
-    fegsysMetricCell("Faturamento USD",officialValue(fegsysMoney(m.official_revenue_usd||0,"USD")))
-  ].join("");
-  const media=[
-    fegsysMetricCell("Investimento",fegsysMoney(m.spend_usd||0,"USD")),
-    fegsysMetricCell("Impressões",fmtNum(m.impressions||0)),
-    fegsysMetricCell("Cliques",fmtNum(m.clicks||0)),
-    fegsysMetricCell("CTR",fegsysPercent(m.ctr||0)),
-    fegsysMetricCell("CPC",fegsysMoney(m.cpc_usd||0,"USD")),
-    fegsysMetricCell("CPM",fegsysMoney(m.cpm_usd||0,"USD")),
-    fegsysMetricCell("Visualizações 3s",fmtNum(m.video_3s||0)),
-    fegsysMetricCell("Visualizações 75%",fmtNum(m.video_p75||0)),
-    fegsysMetricCell("Conversões Google",fmtNum(m.google_conversions||0))
-  ].join("");
-  const meta=m.meta_available?[
-    fegsysMetricCell("Compras Meta",fmtNum(m.meta_purchases||0)),
-    fegsysMetricCell("Receita Meta",fegsysMoney(m.meta_revenue||0)),
-    fegsysMetricCell("ROAS Meta",fegsysNumber(m.meta_roas||0,2)),
-    fegsysMetricCell("CPA Meta",fegsysMoney(m.meta_cpa||0)),
-    fegsysMetricCell("Ticket Meta",fegsysMoney(m.meta_aov||0)),
-    fegsysMetricCell("Checkouts iniciados",fmtNum(m.meta_initiate_checkout||0)),
-    fegsysMetricCell("Custo por checkout",fegsysMoney(m.meta_cpi||0)),
-    fegsysMetricCell("Landing page views",fmtNum(m.meta_landing_page_views||0)),
-    fegsysMetricCell("Custo por LPV",fegsysMoney(m.meta_cplpv||0)),
-    fegsysMetricCell("Alcance",fmtNum(m.meta_reach||0)),
-    fegsysMetricCell("Frequência",fegsysNumber(m.meta_frequency||0,2)),
-    fegsysMetricCell("Cliques no link",fmtNum(m.meta_link_clicks||0)),
-    fegsysMetricCell("CTR Meta",fegsysPercent(m.meta_ctr||0)),
-    fegsysMetricCell("CPC Meta",fegsysMoney(m.meta_cpc||0)),
-    fegsysMetricCell("Reproduções",fmtNum(m.meta_video_plays||0)),
-    fegsysMetricCell("Hook rate",fegsysRate(m.meta_hook_rate||0)),
-    fegsysMetricCell("Midpoint rate",fegsysRate(m.meta_midpoint_rate||0)),
-    fegsysMetricCell("Hold rate",fegsysRate(m.meta_hold_rate||0)),
-    fegsysMetricCell("Visualização 95%",fegsysRate(m.meta_p95_rate||0)),
-    fegsysMetricCell("Conclusão",fegsysRate(m.meta_completion_rate||0)),
-    fegsysMetricCell("Tempo médio assistido",fegsysNumber(m.meta_avg_watch_time_seconds||0,1)+"s")
-  ].join(""):"";
-  const shops=(d.shops||[]).join(" · "),salesPlatforms=(d.salesPlatforms||[]).join(" · ");
-  const sourceNote=salesReady?[shops?`Lojas: ${shops}`:"",salesPlatforms?`Plataformas de venda: ${salesPlatforms}`:""].filter(Boolean).join(" · "):"Pedidos e faturamento aguardam autorização de leitura para a conta de serviço.";
-  return `<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Desempenho do período</span><span class="sec__line"></span></div><div class="fegsys-detail"><div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Resultados oficiais</h3><span class="fegsys-detail__source">FEGSYS</span></div><div class="fegsys-detail__metrics">${official}</div>${sourceNote?`<div class="fegsys-detail__note">${esc(sourceNote)}</div>`:""}</div><div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Distribuição de mídia</h3><span class="fegsys-detail__source">Consolidado</span></div><div class="fegsys-detail__metrics">${media}</div></div>${meta?`<div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Leitura complementar da campanha</h3><span class="fegsys-detail__source">Reportado pela Meta</span></div><div class="fegsys-detail__metrics">${meta}</div></div>`:""}</div></section>`;
+  const salesReady=fegsysSalesReady(d.fegsysSources),sales=salesReady?fmtNum(m.orders||m.conversions||0):"—";
+  return `<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Vendas do período</span><span class="sec__line"></span></div><div class="fegsys-detail"><div class="fegsys-detail__group"><div class="fegsys-detail__head"><h3>Vendas</h3><span class="fegsys-detail__source">marts_feg.mart_criativos_diario</span></div><div class="fegsys-detail__metrics">${fegsysMetricCell("Vendas",sales,true)}</div></div></div></section>`;
 }
 function fegsysBrainCard(o){
   const d=o.data||{},m=d.fegsysMetrics||{},range=d.fegsysRange||{};
-  const salesReady=fegsysSalesReady(d.fegsysSources),official=value=>salesReady?value:"—";
+  const salesReady=fegsysSalesReady(d.fegsysSources),sales=salesReady?fmtNum(m.conversions||m.orders||0):"—";
   const platforms=(d.platforms||[]).join(" + ")||"FEGSYS";
   const period=range.from&&range.to?`${fmtDateShort(range.from)} a ${fmtDateShort(range.to)}`:fegsysPeriodLabel();
-  const roas=(+m.roas||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
   const media=(d.video||d.print)?mediaThumb(d.print,d.nome,!!d.video,d.video||""):`<div class="cmedia cmedia--empty">${ic("film")}<span>Mídia não vinculada</span></div>`;
   const copyPreview=d.copy?`<div class="fegsys-copy"><strong>Copy</strong><p>${esc(String(d.copy).slice(0,220))}${String(d.copy).length>220?"…":""}</p></div>`:"";
   const sourceLinks=[
@@ -4741,7 +4692,7 @@ function fegsysBrainCard(o){
     id:o.id,variant:"kcard kcard--brain fegsys-card",
     head:`<span class="tbadge tbadge--brain"><span class="tdot"></span>Sincronizado</span><span class="ktag">${ic("pulse")}${esc(platforms)}</span>`,
     media,
-    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>${salesReady?"Pedidos":"Conversões Google"}</span><strong>${salesReady?fmtNum(m.conversions||0):fmtNum(m.google_conversions||0)}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>Faturamento</span><strong>${official(esc(fegsysMoney(m.official_revenue_usd||0,"USD")))}</strong></div><div class="fegsys-kpi fegsys-kpi--accent"><span>ROAS</span><strong>${official(roas)}</strong></div><div class="fegsys-kpi"><span>Investimento</span><strong>${esc(fegsysMoney(m.spend_usd||0,"USD"))}</strong></div><div class="fegsys-kpi"><span>CTR</span><strong>${fegsysPercent(m.ctr||0)}</strong></div><div class="fegsys-kpi"><span>CPC</span><strong>${esc(fegsysMoney(m.cpc_usd||0,"USD"))}</strong></div></div>`,
+    body:`${cardIdentity("FEGSYS · "+period,d.nome||"Criativo sem nome")}<div class="fegsys-kpis"><div class="fegsys-kpi fegsys-kpi--accent"><span>Vendas</span><strong>${sales}</strong></div></div>`,
     chips:`<div class="card__chips"><span class="chip accent">${esc(period)}</span>${availability}${(d.shops||[]).slice(0,2).map(shop=>`<span class="chip">${esc(shop)}</span>`).join("")}${(d.channels||[]).map(channel=>`<span class="chip">${esc(channel)}</span>`).join("")}</div>`,
     extra:copyPreview||(!d.video&&!d.copyLink?`<div class="fegsys-pending">${ic("alert")}Vídeo e copy não estão disponíveis na fonte</div>`:""),
     actions:sourceLinks||`<span class="muted-empty" style="font-size:.78rem">Dados atualizados automaticamente</span>`
@@ -4862,7 +4813,7 @@ function brainThumb(d,video){
   return `<div class="cmedia cmedia--empty">${ic("film")}<span>Sem preview — abra o card</span></div>`;
 }
 function brainTs(o){return Date.parse((o&&o.created_at)||"")||0;}
-function brainSortMetric(o){const d=(o&&o.data)||{};return d.source==="fegsys"?Number((d.fegsysMetrics||{}).spend_brl)||0:brainMetricNum(d);}
+function brainSortMetric(o){const d=(o&&o.data)||{};return d.source==="fegsys"?Number((d.fegsysMetrics||{}).conversions||(d.fegsysMetrics||{}).orders)||0:brainMetricNum(d);}
 const BRAIN_SORTS={
   metrica:(a,b)=>brainSortMetric(b)-brainSortMetric(a),
   recente:(a,b)=>brainTs(b)-brainTs(a),

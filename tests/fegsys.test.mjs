@@ -36,7 +36,8 @@ test("integração FEGSYS é horária, somente admin e não contém chave privad
   assert.match(coreFn, /if \(cachedCredential\) return cachedCredential/);
   assert.match(coreFn, /PRECOMPUTED_PERIODS/);
   assert.match(coreFn, /getPrecomputedAggregate/);
-  assert.match(apiFn, /getPrecomputedAggregate\(range\)/);
+  assert.match(apiFn, /forceRefresh \? null : await getPrecomputedAggregate\(range\)/);
+  assert.match(apiFn, /getSnapshot\(\{ refresh: forceRefresh, allowStale: !forceRefresh \}\)/);
   assert.match(apiFn, /new URL\(req\.url\)\.origin/);
   assert.match(apiFn, /startsWith\("\/"\) \? `\$\{origin\}\$\{card\.video_url\}`/);
   assert.match(coreFn, /não foi aprovada após rotação/);
@@ -68,14 +69,15 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(html, /activeSection==="megabrainfegsys"\?\[\.\.\.fegsysCards\]/);
   assert.doesNotMatch(html, /brainSource/);
   assert.match(html, /data-fegsys-period/);
-  assert.match(html, /manual\.has\(brainNameKey\(card\.nome\)\)/);
+  assert.match(html, /manual\.get\(brainNameKey\(card\.nome\)\)/);
+  assert.match(html, /matchedManual:!!manualItem/);
+  assert.doesNotMatch(html, /foram ocultados/);
   assert.match(html, /Mídia não vinculada/);
   assert.match(html, /Vídeo e copy não estão disponíveis na fonte/);
-  assert.match(html, /salesReady\?"Pedidos":"Conversões Google"/);
-  assert.match(html, /<span>Faturamento<\/span>/);
-  assert.match(html, /<span>ROAS<\/span>/);
-  assert.match(html, /<span>CPC<\/span>/);
-  assert.match(html, /Reportado pela Meta/);
+  assert.match(html, /aria-label="Vendas sincronizadas do FEGSYS"/);
+  assert.match(html, /<span>Vendas<\/span><strong class="accent">\$\{sales\}/);
+  assert.match(html, /<span>Vendas<\/span><strong>\$\{sales\}/);
+  assert.match(html, /marts_feg\.mart_criativos_diario/);
   assert.match(html, /function itemById\(id\)\{return fegsysCards\.find/);
   assert.match(html, /const o=itemById\(c\.dataset\.id\)/);
   assert.match(html, /const o=itemById\(id\);if\(!o\)return;/);
@@ -93,30 +95,33 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.match(coreFn, /const QUERY_DAYS = 100/);
 });
 
-test("Swipe replica a fonte oficial de vendas usada pelo FEGSYS em USD nativo", () => {
-  const fields = ["data", "criativo", "quantidade_pedidos", "faturamento_liquido_front", "loja", "plataforma_venda"].map(name => ({ name }));
-  const query = buildSalesQuery(fields);
-  assert.match(query, /FROM `grupofeg-lakehouse\.marts_feg\.mart_criativos_diario`/);
-  assert.match(query, /SUM\(COALESCE\(SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\), 0\)\) AS orders/);
-  assert.match(query, /SUM\(COALESCE\(SAFE_CAST\(`faturamento_liquido_front` AS FLOAT64\), 0\)\) AS official_revenue_usd/);
-  assert.match(coreFn, /authoritativeBase/);
+test("Swipe cruza as vendas oficiais da mart com o tráfego da view", () => {
+  const fields = ["data_referencia", "criativo", "quantidade_pedidos"].map(name => ({ name }));
+  const salesQuery = buildSalesQuery(fields);
+  assert.match(salesQuery, /FROM `grupofeg-lakehouse\.marts_feg\.mart_criativos_diario`/);
+  assert.match(salesQuery, /DATE\(`data_referencia`\)/);
+  assert.match(salesQuery, /SUM\(COALESCE\(SAFE_CAST\(`quantidade_pedidos` AS FLOAT64\), 0\)\) AS orders/);
+  assert.match(coreFn, /const mediaRows = baseRows\.map/);
+  assert.match(coreFn, /mergeFegsysSources\(mediaRows, salesRows, \[\]\)/);
   assert.match(coreFn, /daily-v5/);
-  assert.match(html, /totals\.official_revenue_usd\|\|0,"USD"/);
-  assert.match(html, /totals\.spend_usd\|\|0,"USD"/);
-  assert.match(html, /sales\.fallbackAvailable===true/);
-  assert.match(syncFn, /salesFallback/);
-  assert.match(syncFn, /gold_feg\.vw_ads_criativo_diario/);
+  assert.match(html, /<span>Vendas<\/span>/);
+  assert.doesNotMatch(html, /salesReady\?"Pedidos":"Conversões Google"/);
+  assert.match(syncFn, /marts_feg\.mart_criativos_diario/);
 });
 
-test("pedidos e faturamento vêm da vw_ads_criativo_diario e a Meta complementa o card", () => {
+test("vendas da mart são associadas ao criativo da view e agregadas no período", () => {
   const base = [
-    { data: "2026-07-20", criativo: "BB 238.3 GB7", ad_platform: "META", spend_brl: 66, impressions: 1200, clicks: 30, orders: 8, official_revenue_brl: 198, official_revenue_usd: 36, official_sales_available: true, video_url: "https://cdn.example/video.mp4", copy_text: "Copy original" },
-    { data: "2026-07-20", criativo: "Google A", ad_platform: "GOOGLE", spend_brl: 27, impressions: 500, clicks: 10, orders: 2, official_revenue_brl: 54, official_sales_available: true }
+    { data: "2026-07-20", criativo: "BB 238.3 GB7", ad_platform: "META", spend_brl: 66, impressions: 1200, clicks: 30, video_url: "https://cdn.example/video.mp4", copy_text: "Copy original" },
+    { data: "2026-07-20", criativo: "Google A", ad_platform: "GOOGLE", spend_brl: 27, impressions: 500, clicks: 10 }
+  ];
+  const sales = [
+    { data: "2026-07-20", criativo: "BB 238.3 GB7", orders: 8, official_revenue_brl: 198, official_revenue_usd: 36 },
+    { data: "2026-07-20", criativo: "Google A", orders: 2, official_revenue_brl: 54 }
   ];
   const meta = [
     { data: "2026-07-20", criativo: "BB 238.3 GB7", meta_spend: 60, meta_impressions: 1000, meta_reach: 800, meta_link_clicks: 25, meta_video_plays: 500, meta_initiate_checkout: 10, meta_purchases: 7, meta_revenue: 180, meta_hook_rate: .42, meta_hold_rate: .24 }
   ];
-  const rows = mergeFegsysSources(base, [], meta);
+  const rows = mergeFegsysSources(base, sales, meta);
   assert.equal(rows.find(row => row.criativo === "BB 238.3 GB7").conversions, 8);
   assert.equal(rows.find(row => row.criativo === "BB 238.3 GB7").meta_roas, 3);
   const snapshot = { rows };
@@ -139,7 +144,7 @@ test("esquema atual da view não confunde conversões Google com pedidos oficiai
   const fields = ["data", "criativo", "ad_platform", "ad_channel_type", "spend_usd", "spend_brl", "impressions", "clicks", "video_3s", "video_p75", "conversions"].map(name => ({ name }));
   const plan = buildQuery(fields);
   assert.equal(plan.salesAvailable, false);
-  assert.match(plan.salesError, /não fornece pedidos nem faturamento/);
+  assert.match(plan.salesError, /não fornece o número de vendas/);
   assert.match(plan.query, /SUM\(COALESCE\(SAFE_CAST\(`conversions` AS FLOAT64\), 0\)\) AS google_conversions/);
   assert.match(plan.query, /SUM\(0\) AS orders/);
 });
@@ -148,7 +153,7 @@ test("purchases da mídia não é confundido com pedidos oficiais", () => {
   const fields = ["data", "criativo", "spend_brl", "purchases", "revenue", "roas"].map(name => ({ name }));
   const plan = buildQuery(fields);
   assert.equal(plan.salesAvailable, false);
-  assert.match(plan.salesError, /pedidos/);
+  assert.match(plan.salesError, /número de vendas/);
   assert.match(plan.query, /SUM\(0\) AS orders/);
   assert.match(plan.query, /SAFE_CAST\(`revenue` AS FLOAT64\)/);
   assert.match(plan.query, /AS official_revenue_usd/);
@@ -193,7 +198,7 @@ test("Drive busca somente os nomes retornados pelo FEGSYS sem percorrer cada sub
 test("cards em cache aparecem sem aguardar uma nova consulta longa ao BigQuery", () => {
   assert.match(coreFn, /allowStale = false/);
   assert.match(coreFn, /if \(allowStale && snapshot && !refresh\) return snapshot/);
-  assert.match(apiFn, /getSnapshot\(\{ refresh: false, allowStale: true \}\)/);
+  assert.match(apiFn, /getSnapshot\(\{ refresh: forceRefresh, allowStale: !forceRefresh \}\)/);
   assert.match(apiFn, /enrichFegsysCards\(result\.cards, \{ refresh: false, allowStale: true \}\)/);
 });
 
