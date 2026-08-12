@@ -492,6 +492,9 @@
   .offer-vsl__label{display:flex;align-items:center;gap:8px;color:var(--muted-fg);font-size:.76rem;font-weight:700;}
   .offer-vsl__label .ico{width:16px;height:16px;color:var(--accent);}
   .offer-vsl .vplayer{width:100%;max-height:560px;}
+  .offer-vsl__preview{display:block;position:relative;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border-2);}
+  .offer-vsl__preview img{display:block;width:100%;max-height:560px;object-fit:cover;aspect-ratio:16/9;}
+  .offer-vsl__preview .cmedia__play{pointer-events:none;}
 
   .block-edit{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;margin-bottom:14px;}
   .block-edit .behead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
@@ -659,6 +662,7 @@
   .cmedia__zoom{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;color:#fff;}
   .cmedia__zoom .ico{width:15px;height:15px;}
   .cmedia--vid{cursor:pointer;background:#000;}
+  .cmedia--offer{cursor:pointer;}
   .cmedia__poster{width:100%;height:100%;object-fit:cover;display:block;background:#080808;}
   .cmedia__posterload{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint);background:linear-gradient(135deg,#12140e,#080908);font-size:.72rem;letter-spacing:.02em;}
   .cmedia__posterload .ico{width:25px;height:25px;opacity:.52;}
@@ -2188,7 +2192,7 @@ function cardHtml(o){
     id:o.id,
     variant:high?"card--hot":"",
     head:`${tbadge}${hot}`,
-    media:mediaThumb(d.imagemProduto,d.nomeOferta||"Oferta"),
+    media:offerCardPreview(d,d.nomeOferta||"Oferta"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Sem marca",d.nomeOferta||"Oferta sem nome")}</div>`,
     chips:chips.length?`<div class="card__chips">${chips.join("")}</div>`:"",
     extra:`${stats}${adsExtra}${note}`,
@@ -2394,7 +2398,7 @@ function openView(id){
     <div class="dom">
       <div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(dm.nome||"Domínio "+(i+1))}</span>${dm.views?`<span class="chip accent">${esc(dm.views)} views${dm.viewsPeriod?` · ${esc(dm.viewsPeriod)}`:""}</span>`:""}</div>
       <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true,"globe")}${linkbtn("Abrir checkout",dm.linkCheckout,false,"cart")}${linkbtn("Back redirect",dm.backRedirect,false,"back")}${linkbtn("Abrir VSL",dm.vslVideo||dm.vslLink,false,"play")}</div>
-      ${(dm.vslVideo||dm.vslLink)&&videoEmbedHtml(dm.vslVideo||dm.vslLink)?`<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}VSL vinculada</div>${videoEmbedHtml(dm.vslVideo||dm.vslLink)}</div>`:""}
+      ${offerVslDetailPreview(dm,d)}
     </div>`).join(""):`<div class="muted-empty">Nenhum domínio cadastrado.</div>`;
 
   let adsTitle,adsInner;
@@ -2487,6 +2491,7 @@ function openView(id){
     ${drive.length?`<aside class="sidebar"><div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div></aside>`:""}
   </div>`;
   wireLightboxLinks($("#viewBody"));
+  wireCardPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
 }
 $("#viewClose").addEventListener("click",()=>closeView());
@@ -4589,6 +4594,26 @@ function renderVslDissector(force){
 
 /* ===== CARDS DOS NOVOS SWIPES ===== */
 const cardPosterCache=new Map();
+function staticCardPreview(src,alt,play=false,fallback=""){
+  if(!src)return `<div class="cmedia cmedia--empty">${ic("image")}<span>Prévia indisponível</span></div>`;
+  return `<div class="cmedia cmedia--offer${play?" cmedia--vid":""}" title="Abra o card para ver a oferta"><img loading="lazy" decoding="async" fetchpriority="low" width="640" height="400" src="${esc(src)}" alt="${esc(alt||"Prévia da oferta")}"${fallback?` data-offer-preview-fallback="${esc(fallback)}"`:""}>${play?`<span class="cmedia__play">${ic("play")}</span>`:""}</div>`;
+}
+function offerCardPreview(d,alt){
+  const domains=Array.isArray(d&&d.dominios)?d.dominios:[],withVsl=domains.find(x=>x&&(x.vslVideo||x.vslLink))||{},pageShot=(domains.find(x=>x&&x.printPV)||{}).printPV||"",fallback=pageShot||d.imagemProduto||"",video=String(withVsl.vslVideo||withVsl.vslLink||"").trim();
+  if(video){
+    const emb=videoEmbedUrl(video);
+    if(emb&&emb.type==="video")return mediaThumb("",alt,true,video);
+    const thumb=driveThumbUrl(video,1000);
+    if(thumb)return staticCardPreview(thumb,`Primeiro frame de ${alt}`,true,fallback);
+  }
+  return staticCardPreview(pageShot||d.imagemProduto||"",pageShot?`Página de vendas de ${alt}`:alt,false);
+}
+function offerVslDetailPreview(domain,offer){
+  const url=String((domain&&domain.vslVideo)||(domain&&domain.vslLink)||"").trim();if(!url)return"";
+  const fallback=String((domain&&domain.printPV)||(offer&&offer.imagemProduto)||"").trim(),driveThumb=driveThumbUrl(url,1400),embed=videoEmbedHtml(url);
+  if(driveThumb)return `<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}Prévia da VSL</div><a class="offer-vsl__preview" href="${esc(fixUrl(url))}" target="_blank" rel="noopener"><img src="${esc(driveThumb)}" alt="Primeiro frame da VSL"${fallback?` data-offer-preview-fallback="${esc(fallback)}"`:""}><span class="cmedia__play">${ic("play")}</span></a></div>`;
+  return embed?`<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}VSL vinculada</div>${embed}</div>`:"";
+}
 function mediaThumb(img,alt,hasVideo,videoUrl){
   const play=hasVideo?`<span class="cmedia__play">${ic("play")}</span>`:"";
   if(img)return `<a class="cmedia" href="${esc(img)}" data-lightbox="${esc(img)}"><img loading="lazy" decoding="async" fetchpriority="low" width="640" height="400" src="${esc(img)}" alt="${esc(alt||"")}"><span class="cmedia__zoom">${ic("maximize")}</span>${play}</a>`;
@@ -4981,6 +5006,15 @@ function wireVideoPreviews(root){
    cards visíveis. O <video> é temporário, fica fora do card e é destruído
    assim que a imagem foi capturada. */
 function wireCardPreviews(root){
+  (root||document).querySelectorAll("img[data-offer-preview-fallback]").forEach(img=>{
+    if(img.dataset.offerPreviewWired)return;img.dataset.offerPreviewWired="1";
+    const fail=()=>{
+      const fallback=img.dataset.offerPreviewFallback;
+      if(fallback){delete img.dataset.offerPreviewFallback;img.src=fallback;return;}
+      const box=img.closest(".cmedia,.offer-vsl__preview");if(box){box.classList.add("cmedia--empty");box.innerHTML=ic("image")+"<span>Prévia indisponível</span>";}
+    };
+    img.addEventListener("error",fail);if(img.complete&&img.naturalWidth===0)fail();
+  });
   /* thumbnails do Drive: 1º tenta drive.google.com/thumbnail; se falhar, tenta o
      espelho lh3.googleusercontent.com (mais estável p/ arquivos públicos); só então
      cai para o placeholder. Isso faz o preview voltar assim que o arquivo é
