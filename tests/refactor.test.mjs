@@ -190,9 +190,19 @@ test("Swipe de Ofertas vincula VSL por MP4 ou Drive e não exibe prints de PV e 
   assert.match(html, /data-zone="dom\|\$\{i\}\|vsl"/);
   assert.match(html, /async function uploadOfferVslFile\(file,dz,info\)/);
   assert.match(html, /offers\/vsl\/\$\{new Date\(\)\.toISOString\(\)\.slice\(0,10\)\}/);
-  assert.match(html, /videoEmbedHtml\(dm\.vslVideo\|\|dm\.vslLink\)/);
+  assert.match(html, /offerVslDetailPreview\(dm,d\)/);
   assert.doesNotMatch(html, /Print — Página de vendas|Print — Checkout|prints da PV e do checkout/);
   assert.doesNotMatch(html, /data-zone="dom\|\$\{i\}\|(?:pv|co)"/);
+});
+
+test("cards de ofertas priorizam a VSL ou a página de vendas sem abrir o pote", () => {
+  assert.match(html, /function offerCardPreview\(d,alt\)/);
+  assert.match(html, /media:offerCardPreview\(d,d\.nomeOferta\|\|"Oferta"\)/);
+  assert.match(html, /const thumb=driveThumbUrl\(video,1000\)/);
+  assert.match(html, /pageShot\?`Página de vendas de \$\{alt\}`/);
+  assert.match(html, /function offerVslDetailPreview\(domain,offer\)/);
+  assert.match(html, /class="offer-vsl__preview"/);
+  assert.doesNotMatch(html, /media:mediaThumb\(d\.imagemProduto,d\.nomeOferta\|\|"Oferta"\)/);
 });
 
 test("lightbox mantém links nativos e oferece teclado, zoom e pan", () => {
