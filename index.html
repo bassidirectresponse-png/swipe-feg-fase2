@@ -5626,7 +5626,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
       const originalName=sourceFile.replace(/\.[^.]+$/,"");
       const isVideo=mediaInfo.kind==="video";
       data=brandMode?{
-        kind:"criativo",division:"fegbrands",brandSlug:"balls-n-brains",collectionLabel:"Balls n Brains",nome:originalName,nomeOriginal:originalName,nicho:"",marca:"Balls n Brains",
+        kind:"criativo",division:"fegbrands",brandSlug:"balls-n-brains",collectionLabel:"Balls n Brains",nome:nextCreativeName("Balls n Brains"),nomeOriginal:originalName,nicho:"",marca:"Balls n Brains",
         plataforma:"meta",linkAnuncio:"",video:isVideo?publicUrl:"",print:isVideo?"":publicUrl,copyLink:"",transcricao:"",transcricaoPt:"",
         transcriptionStatus:isVideo?"pending":"",transcricaoStatus:isVideo?"pending":"",transcriptionAttempts:0,transcriptionProvider:isVideo?"faster-whisper":"",transcriptionVersion:isVideo?"1":"",
         importBatch:batchName,sourceKey:`balls-n-brains/${sourceFile.toLowerCase()}`,sourceFile
