@@ -488,6 +488,10 @@
   .dz__progress{height:7px;border-radius:999px;background:var(--border-strong);overflow:hidden;}
   .dz__progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .12s linear;}
   .dz__status{font-size:.76rem;color:var(--muted-fg);font-variant-numeric:tabular-nums;}
+  .offer-vsl{margin-top:16px;display:grid;gap:12px;}
+  .offer-vsl__label{display:flex;align-items:center;gap:8px;color:var(--muted-fg);font-size:.76rem;font-weight:700;}
+  .offer-vsl__label .ico{width:16px;height:16px;color:var(--accent);}
+  .offer-vsl .vplayer{width:100%;max-height:560px;}
 
   .block-edit{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;padding:18px;margin-bottom:14px;}
   .block-edit .behead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
@@ -1554,7 +1558,7 @@ const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeNiche="", editingId=null;
-let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0;
+let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0,offerVslUploading=0;
 let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
 let formDirty=false, saving=false;
@@ -1684,7 +1688,7 @@ function normalize(raw){
   if(!Array.isArray(d.criativos)){d.criativos=[];if(d.linkCriativos)d.criativos.push({nome:"",link:d.linkCriativos,transcricao:""});}
   if(!Array.isArray(d.bibliotecas)){d.bibliotecas=[];if(d.linkBiblioteca)d.bibliotecas.push({nome:"",link:d.linkBiblioteca});}
   if(d.tipoTrafego!=="native"&&d.tipoTrafego!=="meta")d.tipoTrafego="meta";
-  d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";if(typeof x.views!=="string")x.views="";if(typeof x.viewsPeriod!=="string")x.viewsPeriod="";});
+  d.dominios.forEach(x=>{if(typeof x.backRedirect!=="string")x.backRedirect="";if(typeof x.views!=="string")x.views="";if(typeof x.viewsPeriod!=="string")x.viewsPeriod="";if(typeof x.vslLink!=="string")x.vslLink="";if(typeof x.vslVideo!=="string")x.vslVideo="";});
   if(!Array.isArray(d.taboolaAds))d.taboolaAds=[];
   if(typeof d.trafego28d!=="string")d.trafego28d="";
   if(typeof d.trafego3m!=="string")d.trafego3m="";
@@ -2385,12 +2389,12 @@ function openView(id){
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
-  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.backRedirect||x.printPV||x.printCheckout||x.nome||x.views);
+  const domsAll=d.dominios.filter(x=>x.linkDominio||x.linkCheckout||x.backRedirect||x.vslLink||x.vslVideo||x.nome||x.views);
   const domsHtml=domsAll.length?domsAll.map((dm,i)=>`
     <div class="dom">
       <div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(dm.nome||"Domínio "+(i+1))}</span>${dm.views?`<span class="chip accent">${esc(dm.views)} views${dm.viewsPeriod?` · ${esc(dm.viewsPeriod)}`:""}</span>`:""}</div>
-      <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true,"globe")}${linkbtn("Abrir checkout",dm.linkCheckout,false,"cart")}${linkbtn("Back redirect",dm.backRedirect,false,"back")}</div>
-      <div class="dom__shots">${shotView("Página de vendas",dm.printPV)}${shotView("Checkout",dm.printCheckout)}</div>
+      <div class="linkbtns">${linkbtn("Abrir domínio",dm.linkDominio,true,"globe")}${linkbtn("Abrir checkout",dm.linkCheckout,false,"cart")}${linkbtn("Back redirect",dm.backRedirect,false,"back")}${linkbtn("Abrir VSL",dm.vslVideo||dm.vslLink,false,"play")}</div>
+      ${(dm.vslVideo||dm.vslLink)&&videoEmbedHtml(dm.vslVideo||dm.vslLink)?`<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}VSL vinculada</div>${videoEmbedHtml(dm.vslVideo||dm.vslLink)}</div>`:""}
     </div>`).join(""):`<div class="muted-empty">Nenhum domínio cadastrado.</div>`;
 
   let adsTitle,adsInner;
@@ -2498,7 +2502,7 @@ function openForm(id){
   fTipo=d.tipoTrafego==="native"?"native":"meta";
   fSemrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
   fSemrushThumb=d.printSemrushThumb||fSemrushOriginal;
-  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",printPV:"",printCheckout:""}];
+  fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",vslLink:"",vslVideo:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
   fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
@@ -2577,8 +2581,8 @@ function openForm(id){
     ${brandForm}
 
     <div class="fsec">
-      <div class="fsec__title"><span class="num">02</span> Domínios, Checkouts & Prints</div>
-      <div class="fsec__hint">Adicione quantas ofertas/domínios quiser. Cada um leva seu checkout, o back redirect (se houver) e os prints da PV e do checkout — tudo vinculado.</div>
+      <div class="fsec__title"><span class="num">02</span> Domínios, Checkouts & VSL</div>
+      <div class="fsec__hint">Adicione quantas ofertas/domínios quiser. Em cada uma, vincule a VSL por um arquivo MP4 ou por um link do Google Drive.</div>
       <div id="domWrap"></div>
       <button type="button" class="add-block" data-action="add-dom">+ Adicionar oferta / domínio</button>
     </div>
@@ -2629,10 +2633,8 @@ function renderDominios(){
         <div class="field" style="margin-bottom:0"><label class="lbl">Período das views</label><input type="text" data-dom="${i}" data-k="viewsPeriod" placeholder="Ex: 3 meses" value="${esc(dm.viewsPeriod||"")}"></div>
       </div>
       <div class="field" style="margin-top:18px;margin-bottom:0"><label class="lbl">Link de back redirect (se houver)</label><input type="url" data-dom="${i}" data-k="backRedirect" placeholder="https://... — página exibida ao tentar sair" value="${esc(dm.backRedirect)}"></div>
-      <div class="row" style="margin-top:18px">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Print — Página de vendas</label><div class="dz" data-zone="dom|${i}|pv" tabindex="0"></div></div>
-        <div class="field" style="margin-bottom:0"><label class="lbl">Print — Checkout</label><div class="dz" data-zone="dom|${i}|co" tabindex="0"></div></div>
-      </div>
+      <div class="field" style="margin-top:18px"><label class="lbl">Link da VSL (Google Drive ou URL do vídeo)</label><input type="url" data-dom="${i}" data-k="vslLink" placeholder="https://drive.google.com/..." value="${esc(dm.vslLink||"")}"><div class="fsec__hint">Use um link com permissão de visualização para qualquer pessoa que tenha o link.</div></div>
+      <div class="field" style="margin-bottom:0"><label class="lbl">Ou envie o arquivo MP4 da VSL</label><div class="dz" data-zone="dom|${i}|vsl" tabindex="0" aria-label="Enviar arquivo MP4 da VSL"></div></div>
     </div>`).join("");
   wireZones($("#domWrap"));
 }
@@ -2692,7 +2694,7 @@ $("#formBody").addEventListener("change",e=>{onFieldChange(e.target);markDirty()
 $("#formBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action;
-  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",printPV:"",printCheckout:""});renderDominios();}
+  if(a==="add-dom"){fDominios.push({nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",vslLink:"",vslVideo:""});renderDominios();}
   else if(a==="rm-dom"){fDominios.splice(+b.dataset.i,1);renderDominios();}
   else if(a==="add-crv"){fCriativos.push({nome:"",link:"",transcricao:""});renderCriativos();}
   else if(a==="rm-crv"){fCriativos.splice(+b.dataset.i,1);renderCriativos();}
@@ -2719,7 +2721,7 @@ function buildPayload(){
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
     bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
-    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.views||x.printPV||x.printCheckout),
+    dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.views||x.vslLink||x.vslVideo),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
     taboolaAds:fTaboola.filter(x=>x.nome||x.img),
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
@@ -2818,6 +2820,7 @@ async function saveForm(){
   if(!requireAdmin())return false;
   if(semrushUploading){toast("Aguarde o upload do SEMrush terminar.",true);return false;}
   if(brandMediaUploading){toast("Aguarde o arquivo do top ad terminar de salvar.",true);return false;}
+  if(offerVslUploading){toast("Aguarde a VSL terminar de salvar.",true);return false;}
   if(saving)return false;
   saving=true;setSaveState("saving");setSync("load","Salvando");
   await compressStateImages();
@@ -2880,7 +2883,7 @@ function getZone(key){
   if(key==="brandsemrush3m")return fBrandSemrush3m;
   if(key.slice(0,2)==="s|")return sItem[key.slice(2)]||"";
   const p=key.split("|");
-  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";return (fDominios[i]||{})[f]||"";}
+  if(p[0]==="dom"){const i=+p[1];return p[2]==="vsl"?((fDominios[i]||{}).vslVideo||""):"";}
   if(p[0]==="taboola"){const i=+p[1];return (fTaboola[i]||{}).img||"";}
   if(p[0]==="bm"){const i=+p[1];return (fBmPrints[i]||{}).img||"";}
   if(p[0]==="brandad"){const i=+p[1];return (fBrandTopAds[i]||{}).img||"";}
@@ -2893,24 +2896,24 @@ function setZone(key,v){
   if(key==="brandsemrush3m"){fBrandSemrush3m=v;return;}
   if(key.slice(0,2)==="s|"){sItem[key.slice(2)]=v;return;}
   const p=key.split("|");
-  if(p[0]==="dom"){const i=+p[1];const f=p[2]==="pv"?"printPV":"printCheckout";if(fDominios[i])fDominios[i][f]=v;return;}
+  if(p[0]==="dom"){const i=+p[1];if(fDominios[i]&&p[2]==="vsl"){fDominios[i].vslVideo=v;if(!v)fDominios[i].vslStoragePath="";}return;}
   if(p[0]==="taboola"){const i=+p[1];if(fTaboola[i])fTaboola[i].img=v;return;}
   if(p[0]==="bm"){const i=+p[1];if(fBmPrints[i])fBmPrints[i].img=v;return;}
   if(p[0]==="brandad"){const i=+p[1];if(fBrandTopAds[i]){fBrandTopAds[i].img=v;if(!v){fBrandTopAds[i].video="";fBrandTopAds[i].storagePath="";fBrandTopAds[i].ingestStatus="link_only";}}return;}
 }
 function paintZone(dz){
-  const key=dz.dataset.zone,p=key.split("|"),brandAd=p[0]==="brandad"?(fBrandTopAds[+p[1]]||null):null,media=brandAd?(brandAd.video||brandAd.img||""):getZone(key),isVideo=!!(brandAd&&brandAd.video);
+  const key=dz.dataset.zone,p=key.split("|"),brandAd=p[0]==="brandad"?(fBrandTopAds[+p[1]]||null):null,isOfferVsl=p[0]==="dom"&&p[2]==="vsl",media=brandAd?(brandAd.video||brandAd.img||""):getZone(key),isVideo=isOfferVsl||!!(brandAd&&brandAd.video);
   if(media){dz.classList.add("has");dz.innerHTML=`<button type="button" class="rm">✕ Remover</button>${isVideo?`<video src="${esc(media)}" controls preload="metadata" playsinline></video>`:`<img src="${esc(media)}" alt="">`}`;$(".rm",dz).addEventListener("click",ev=>{ev.stopPropagation();setZone(key,"");paintZone(dz);markDirty();});}
-  else{dz.classList.remove("has");dz.innerHTML=`<div class="hint">${brandAd?"Clique ou arraste um <b>vídeo ou imagem</b><br>Vídeos de até 50 MB":"Clique e <b>cole (Ctrl/⌘+V)</b><br>ou arraste / selecione"}</div>`;}
+  else{dz.classList.remove("has");dz.innerHTML=`<div class="hint">${isOfferVsl?"Clique ou arraste a <b>VSL em MP4</b><br>Arquivo de até 500 MB":brandAd?"Clique ou arraste um <b>vídeo ou imagem</b><br>Vídeos de até 50 MB":"Clique e <b>cole (Ctrl/⌘+V)</b><br>ou arraste / selecione"}</div>`;}
 }
 function wireZones(scope){
   $$(".dz",scope).forEach(dz=>{
     paintZone(dz);
-    dz.addEventListener("click",e=>{if(e.target.classList.contains("rm")||e.target.closest("video")||semrushUploading||dz.dataset.busy)return;setActiveZone(dz);const inp=document.createElement("input"),brand=dz.dataset.zone.startsWith("brandad|");inp.type="file";inp.accept=brand?"video/mp4,video/webm,video/quicktime,video/*,image/jpeg,image/png,image/webp":"image/jpeg,image/png,image/webp";inp.onchange=()=>{if(inp.files[0])handleZoneFile(inp.files[0],dz);};inp.click();});
+    dz.addEventListener("click",e=>{if(e.target.classList.contains("rm")||e.target.closest("video")||semrushUploading||dz.dataset.busy)return;setActiveZone(dz);const inp=document.createElement("input"),brand=dz.dataset.zone.startsWith("brandad|"),offerVsl=/^dom\|\d+\|vsl$/.test(dz.dataset.zone);inp.type="file";inp.accept=offerVsl?"video/mp4,.mp4":brand?"video/mp4,video/webm,video/quicktime,video/*,image/jpeg,image/png,image/webp":"image/jpeg,image/png,image/webp";inp.onchange=()=>{if(inp.files[0])handleZoneFile(inp.files[0],dz);};inp.click();});
     dz.addEventListener("focus",()=>setActiveZone(dz));
     dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("active");});
     dz.addEventListener("dragleave",()=>dz.classList.remove("active"));
-    dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("active");const brand=dz.dataset.zone.startsWith("brandad|"),f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/")||(brand&&f.type.startsWith("video/")));if(f)handleZoneFile(f,dz);else if(brand)toast("Use um arquivo de vídeo ou imagem.",true);});
+    dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("active");const brand=dz.dataset.zone.startsWith("brandad|"),offerVsl=/^dom\|\d+\|vsl$/.test(dz.dataset.zone),f=[...e.dataTransfer.files].find(f=>offerVsl?f.type==="video/mp4":f.type.startsWith("image/")||(brand&&f.type.startsWith("video/")));if(f)handleZoneFile(f,dz);else if(offerVsl)toast("Use um arquivo MP4.",true);else if(brand)toast("Use um arquivo de vídeo ou imagem.",true);});
   });
 }
 function setActiveZone(dz){$$(".dz").forEach(z=>z.classList.remove("active"));dz.classList.add("active");activeZone=dz.dataset.zone;}
@@ -2958,9 +2961,9 @@ function fileToImage(file,dz){
 }
 const SEMRUSH_MAX_BYTES=12*1024*1024;
 async function handleZoneFile(file,dz){
-  const brand=dz.dataset.zone.startsWith("brandad|"),max=brand?(file.type.startsWith("video/")?50:15)*1024*1024:15*1024*1024;
-  let info;try{info=await inspectUploadFile(file,brand?["image","video"]:["image"],max);}catch(e){toast((e&&e.message)||"Arquivo inválido.",true);return;}
-  return brand?uploadBrandTopAdFile(file,dz,info):dz.dataset.zone==="semrush"?uploadSemrushFile(file,dz,info):fileToImage(file,dz);
+  const brand=dz.dataset.zone.startsWith("brandad|"),offerVsl=/^dom\|\d+\|vsl$/.test(dz.dataset.zone),max=offerVsl?500*1024*1024:brand?(file.type.startsWith("video/")?50:15)*1024*1024:15*1024*1024;
+  let info;try{info=await inspectUploadFile(file,offerVsl?["video"]:brand?["image","video"]:["image"],max);if(offerVsl&&info.ext!=="mp4")throw new Error("a VSL deve estar em formato MP4");}catch(e){toast((e&&e.message)||"Arquivo inválido.",true);return;}
+  return offerVsl?uploadOfferVslFile(file,dz,info):brand?uploadBrandTopAdFile(file,dz,info):dz.dataset.zone==="semrush"?uploadSemrushFile(file,dz,info):fileToImage(file,dz);
 }
 function imageFileToWebp(file,maxW=1280,maxH=1800,quality=.78){
   return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();
@@ -3104,6 +3107,27 @@ async function insertCreativeImport(data,token){
   }finally{clearTimeout(timer);}
 }
 const BRAND_VIDEO_MAX_BYTES=50*1024*1024,BRAND_IMAGE_MAX_BYTES=15*1024*1024;
+const OFFER_VSL_MAX_BYTES=500*1024*1024;
+async function uploadOfferVslFile(file,dz,info){
+  const index=+(dz.dataset.zone.split("|")[1]),domain=fDominios[index];
+  if(!domain||!info||info.kind!=="video"||info.ext!=="mp4"){toast("Use uma VSL em formato MP4.",true);return;}
+  if(file.size>OFFER_VSL_MAX_BYTES){toast("A VSL deve ter no máximo 500 MB.",true);return;}
+  if(!sb||!currentSbUrl){toast("Conexão com o Storage indisponível.",true);return;}
+  if(dz.dataset.busy)return;
+  dz.dataset.busy="1";offerVslUploading++;
+  const uid=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2));
+  const path=`offers/vsl/${new Date().toISOString().slice(0,10)}/${uid}.mp4`;
+  dz.classList.remove("has");
+  dz.innerHTML=`<div class="dz__upload"><strong>${esc(file.name||"VSL.mp4")}</strong><div class="dz__progress"><span></span></div><div class="dz__status">Salvando VSL no Swipe… 0%</div></div>`;
+  const bar=$(".dz__progress span",dz),status=$(".dz__status",dz);
+  try{
+    await storageTusUploadWithProgress(file,path,percent=>{if(bar)bar.style.width=percent+"%";if(status)status.textContent=`Salvando VSL no Swipe… ${percent}%`;},info.contentType);
+    domain.vslVideo=sb.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+    domain.vslStoragePath=path;domain.vslStoredAt=new Date().toISOString();
+    markDirty();if(status)status.textContent="VSL salva no Swipe";setTimeout(()=>paintZone(dz),300);toast("VSL salva ✓");
+  }catch(error){paintZone(dz);toast("Falha ao salvar a VSL: "+((error&&error.message)||error),true);}
+  finally{delete dz.dataset.busy;offerVslUploading=Math.max(0,offerVslUploading-1);}
+}
 async function uploadBrandTopAdFile(file,dz,info){
   const index=+(dz.dataset.zone.split("|")[1]),ad=fBrandTopAds[index],isVideo=info&&info.kind==="video",isImage=info&&info.kind==="image";
   if(!ad||(!isVideo&&!isImage)){toast("Use um arquivo de vídeo ou imagem.",true);return;}
