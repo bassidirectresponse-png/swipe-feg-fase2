@@ -585,6 +585,9 @@
   .fegsys-panel__mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--on-accent);flex:none;}
   .fegsys-panel__mark .ico{width:17px;height:17px;}
   .fegsys-panel__title{font-size:.94rem;font-weight:700;color:var(--fg);}
+  .live-state{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#75df8a;vertical-align:middle;}
+  .live-dot{position:relative;width:8px;height:8px;border-radius:50%;background:#54d86d;box-shadow:0 0 0 0 rgba(84,216,109,.55);animation:livePulse 1.6s ease-out infinite;}
+  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(84,216,109,.55)}70%{box-shadow:0 0 0 7px rgba(84,216,109,0)}100%{box-shadow:0 0 0 0 rgba(84,216,109,0)}}
   .fegsys-panel__status{margin-top:3px;font-size:.78rem;color:var(--muted-fg);text-wrap:pretty;}
   .fegsys-panel__status.is-error{color:#ff9b9b;}
   .fegsys-periods{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
@@ -593,6 +596,9 @@
   .fegsys-period.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
   .fegsys-panel__body{display:flex;align-items:end;justify-content:space-between;gap:14px;padding:13px 18px;flex-wrap:wrap;}
   .fegsys-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;}
+  .fegsys-filter{display:flex;flex-direction:column;gap:4px;font-size:.7rem;font-weight:650;color:var(--muted-fg);}
+  .fegsys-filter input{height:36px;min-width:140px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);color:var(--fg);padding:0 10px;}
+  .fegsys-filter--name input{min-width:min(280px,70vw);}
   .fegsys-custom{display:flex;align-items:end;gap:8px;}
   .fegsys-date{display:flex;flex-direction:column;gap:4px;font-size:.7rem;font-weight:650;color:var(--muted-fg);}
   .fegsys-date input{height:36px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);color:var(--fg);padding:0 10px;color-scheme:dark;}
@@ -1529,11 +1535,12 @@ const SECTIONS=[
   {key:"criativo",label:"Swipe de Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Vídeos, transcrições e anúncios vencedores organizados por nicho e plataforma.'},
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
-  {key:"megabrainfegsys",label:"Mega Brain - Fegsys",icon:"pulse",newLabel:"",statLabel:"Criativos encontrados",emptyTitle:"Nenhum criativo sincronizado",searchPlaceholder:"Buscar criativo sincronizado...",subHtml:'<b>Mega Brain - Fegsys</b>: leitura automática dos resultados de mídia, separada do acervo de criativos anexado manualmente.'},
+  {key:"megabrainfegsys",label:"Fegsys",icon:"pulse",newLabel:"",statLabel:"Criativos encontrados",emptyTitle:"Nenhum criativo sincronizado",searchPlaceholder:"Buscar criativo no Fegsys...",subHtml:'<b>Fegsys</b>: resultados de vendas e mídia sincronizados automaticamente.'},
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
   {key:"brandsvalidated",label:"Ofertas Insider",icon:"trending",newLabel:"Nova oferta Insider",statLabel:"Ofertas Insider",emptyTitle:"Nenhuma oferta Insider",searchPlaceholder:"Buscar produto Insider, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Insider</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
+  {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Criativos",emptyTitle:"Nenhum criativo de Brands",searchPlaceholder:"Buscar criativo ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — acervo de anúncios organizado por marca.'},
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'}
@@ -1541,9 +1548,10 @@ const SECTIONS=[
 function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
 function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
-const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
-const ADMIN_SECTIONS=new Set(["megabrainfegsys","updates"]);
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
+const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
+const ADMIN_SECTIONS=new Set(["updates"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], searchTerm="", activeNiche="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0;
@@ -1552,7 +1560,7 @@ let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
 let updates=[],updatesTotal=0;
-let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
+let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysSalesMin="",fegsysSalesMax="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
 
 /* ===== HELPERS ===== */
@@ -1701,7 +1709,6 @@ const ADMIN_EMAILS=["adminswipefeg@swipefeg.app"];
 let isAdmin=false;
 function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
-  if(!isAdmin){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysLoadedKey="";fegsysError="";fegsysMatches=0;}
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
 }
@@ -1787,7 +1794,7 @@ async function boot(){
   else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
   const ok=await loadOffers();
   if(ok!==false&&isAdmin)ensureJoymodeInsider();
-  if(ok!==false&&isAdmin&&activeSection==="megabrainfegsys")loadFegsysBrain();
+  if(ok!==false&&activeSection==="megabrainfegsys")loadFegsysBrain();
   if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
 }
 async function loadOffers(){
@@ -1857,7 +1864,11 @@ const NO_NICHE="__none__";
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
 function filtered(){
   let list=activeSection==="megabrainfegsys"?[...fegsysCards]:offers.filter(o=>sectionOf(o)===activeSection);
-  if(activeSection==="criativo"&&critPlatform!=="all")list=list.filter(o=>((o.data||{}).plataforma||"meta")===critPlatform);
+  if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")list=list.filter(o=>((o.data||{}).plataforma||"meta")===critPlatform);
+  if(activeSection==="megabrainfegsys"){
+    const min=fegsysSalesMin===""?null:Number(fegsysSalesMin),max=fegsysSalesMax===""?null:Number(fegsysSalesMax);
+    list=list.filter(o=>{const metrics=(o.data||{}).fegsysMetrics||{},sales=Number(metrics.conversions||metrics.orders||0);return(min==null||sales>=min)&&(max==null||sales<=max);});
+  }
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
@@ -1882,17 +1893,18 @@ function automationCounts(section){
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Mega Brain - Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"mega-brain-fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
+PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
-const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated"]);
+const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated","brandcreative"]);
 let routeReady=false;
 function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
 function nicheRouteKey(niche){return niche===NO_NICHE?NO_NICHE:routeSlug(niche);}
@@ -1913,12 +1925,12 @@ function nicheFromSlug(section,slug){
 function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
-  if(activeSection==="criativo"&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
+  if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
-  if(activeSection==="megabrainfegsys"&&isAdmin){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);}
-  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){p.set("sort",offerSort);p.set("direction",offerDirection);}
+  if(activeSection==="megabrainfegsys"){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);if(fegsysSalesMin!=="")p.set("vendas_min",fegsysSalesMin);if(fegsysSalesMax!=="")p.set("vendas_max",fegsysSalesMax);}
+  if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){p.set("sort",offerSort);p.set("direction",offerDirection);}
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
@@ -1975,15 +1987,15 @@ function applyRoute(){
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";
-  critPlatform=activeSection==="criativo"?(r.q.get("plataforma")||"all"):"all";
-  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
+  critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?(r.q.get("plataforma")||"all"):"all";
+  if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days"].includes(requested)?requested:"active_ads";
     offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
   }
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
     brainSort=r.q.get("ordem")||"metrica";brainAuthor=activeSection==="megabrain"?(r.q.get("autor")||""):"";
-    if(isAdmin&&activeSection==="megabrainfegsys"){brainPeriod=["today","yesterday","7d","14d","30d","90d","custom"].includes(r.q.get("periodo"))?r.q.get("periodo"):"7d";brainDateFrom=r.q.get("de")||"";brainDateTo=r.q.get("ate")||"";}
+    if(activeSection==="megabrainfegsys"){brainPeriod=["today","yesterday","7d","14d","30d","90d","custom"].includes(r.q.get("periodo"))?r.q.get("periodo"):"7d";brainDateFrom=r.q.get("de")||"";brainDateTo=r.q.get("ate")||"";fegsysSalesMin=r.q.get("vendas_min")||"";fegsysSalesMax=r.q.get("vendas_max")||"";}
   }else brainAuthor="";
   // canoniza URL "nua" de seção com nicho -> /base/todos (ex.: /ofertas -> /ofertas/todos)
   if(NICHE_SECTIONS.has(activeSection)&&!r.id&&location.pathname!=="/"){
@@ -1994,7 +2006,7 @@ function applyRoute(){
   setDocTitle();
   document.body.classList.toggle("route-detail-full",!!r.id&&!isToolSection(activeSection)&&!(history.state&&history.state.modal));
   renderGrid();
-  if(activeSection==="megabrainfegsys"&&isAdmin)setTimeout(()=>loadFegsysBrain(),0);
+  if(activeSection==="megabrainfegsys")setTimeout(()=>loadFegsysBrain(),0);
   if(isMobileNav())closeSideNav();
   if(r.id&&activeSection==="transcritor")loadTrRoute(r.id);
   else if(r.id)maybeOpenView(r.id);
@@ -2216,6 +2228,7 @@ function brandCard(o){
 function cardFor(o){
   switch(sectionOf(o)){
     case "brandsgeneral":case "brandsvalidated":return brandCard(o);
+    case "brandcreative":return brandCreativeCard(o);
     case "presell":return presellCard(o);
     case "criativo":return criativoCard(o);
     case "megabrain":case "megabrainfegsys":return megabrainCard(o);
@@ -2227,7 +2240,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,brainPeriod,brainDateFrom,brainDateTo,fegsysLoadedKey,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -2278,7 +2291,7 @@ function renderGrid(skipNav){
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
   const pageResult=$("#pageResult");if(pageResult)pageResult.textContent=`${list.length.toLocaleString("pt-BR")} ${list.length===1?"resultado":"resultados"}`;
-  const filtering=!!(activeNiche||searchTerm||(activeSection==="criativo"&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor));
+  const filtering=!!(activeNiche||searchTerm||((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor)||(activeSection==="megabrainfegsys"&&(fegsysSalesMin!==""||fegsysSalesMax!=="")));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
@@ -2288,7 +2301,7 @@ function renderGrid(skipNav){
   }
   if(list.length===0){
     area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhum item corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
-    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";brainAuthor="";searchTerm="";navigate(listPath(activeSection,""));});
+    const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";brainAuthor="";fegsysSalesMin="";fegsysSalesMax="";searchTerm="";navigate(listPath(activeSection,""));});
     return;
   }
   if(activeSection==="tiktok"){
@@ -2313,7 +2326,7 @@ function renderGrid(skipNav){
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
     area.innerHTML=gh+gridPager(page);
   }else{
-    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection))?[...list].sort(offerSortFn):list;
+    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection))?[...list].sort(offerSortFn):list;
     const page=pagedItems(items),visible=page.items;
     let html=visible.map(cardFor).join("");
     if(isAdmin&&cfg.newLabel)html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
@@ -2349,7 +2362,7 @@ function renderGrid(skipNav){
 }
 $("#searchInput").addEventListener("input",e=>{searchTerm=e.target.value;try{history.replaceState(null,"",currentPath());}catch(_){}clearTimeout(gridSearchTimer);gridSearchTimer=setTimeout(()=>renderGrid(true),140);});
 $("#newBtn").addEventListener("click",openNewForActiveSection);
-function openNewForActiveSection(){if(!requireAdmin()||ADMIN_SECTIONS.has(activeSection))return;if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection))openForm(null);else openSimpleForm(activeSection,null);}
+function openNewForActiveSection(){if(!requireAdmin()||ADMIN_SECTIONS.has(activeSection))return;if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection))openForm(null);else openSimpleForm(activeSection,null);}
 $("#nicheToggle").addEventListener("click",()=>{const n=$("#sideNav");if(n&&n.classList.contains("open"))closeSideNav();else openSideNav();});
 $("#sideNavBackdrop").addEventListener("click",closeSideNav);
 
@@ -2361,7 +2374,7 @@ function shotView(label,img,thumb){
 }
 function openView(id){
   const o=itemById(id);if(!o)return;
-  const section=itemSection(o),isBrand=BRAND_SECTIONS.has(section);
+  const section=itemSection(o),isBrand=BRAND_OFFER_SECTIONS.has(section);
   if(section!=="oferta"&&!isBrand){openSimpleView(o);return;}
   const d=normalize(o.data);
   const native=d.tipoTrafego==="native";
@@ -2489,7 +2502,7 @@ function openForm(id){
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
   fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
-  const sourceSection=id?sectionOf(offers.find(x=>x.id===id)):activeSection,isBrand=BRAND_SECTIONS.has(sourceSection);
+  const sourceSection=id?sectionOf(offers.find(x=>x.id===id)):activeSection,isBrand=BRAND_OFFER_SECTIONS.has(sourceSection);
   $("#formTag").textContent=isBrand?(id?"Editar oferta · FEG Brands":"Nova oferta · FEG Brands"):(id?"Editar oferta":"Nova oferta");
   fBrandStage=isBrand?sourceSection:"oferta";
   fBmPrints=d.bmPrints.length?JSON.parse(JSON.stringify(d.bmPrints)):[{nome:"Business Manager",img:""}];
@@ -2691,7 +2704,7 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-bm-print"){fBmPrints.splice(+b.dataset.i,1);renderBmPrints();}
   else if(a==="add-brand-ad"){fBrandTopAds.push({nome:"",link:"",img:""});renderBrandTopAds();}
   else if(a==="rm-brand-ad"){fBrandTopAds.splice(+b.dataset.i,1);renderBrandTopAds();}
-  else if(a==="set-brand-stage"){if(!BRAND_SECTIONS.has(b.dataset.stage)||fBrandStage===b.dataset.stage)return;fBrandStage=b.dataset.stage;$$("#brandStageSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.stage===fBrandStage));const bm=$("#brandBmFields");if(bm)bm.hidden=fBrandStage!=="brandsvalidated";}
+  else if(a==="set-brand-stage"){if(!BRAND_OFFER_SECTIONS.has(b.dataset.stage)||fBrandStage===b.dataset.stage)return;fBrandStage=b.dataset.stage;$$("#brandStageSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.stage===fBrandStage));const bm=$("#brandBmFields");if(bm)bm.hidden=fBrandStage!=="brandsvalidated";}
   else if(a==="set-tipo"){if(fTipo===b.dataset.tipo)return;fTipo=b.dataset.tipo;$("#formBody").dataset.tipo=fTipo;$$("#tipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.tipo===fTipo));}
   else return;
   markDirty();
@@ -3252,13 +3265,13 @@ function brainNameKey(value){return String(value||"").normalize("NFD").replace(/
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
 function fegsysLoadKey(){return [brainPeriod,brainDateFrom,brainDateTo].join("|");}
 async function loadFegsysBrain(force=false){
-  if(!isAdmin||activeSection!=="megabrainfegsys"||fegsysLoading)return;
+  if(activeSection!=="megabrainfegsys"||fegsysLoading)return;
   const key=fegsysLoadKey();if(!force&&fegsysLoadedKey===key)return;
   fegsysLoading=true;fegsysError="";renderSubFilter();
   try{
     const session=await sb.auth.getSession(),token=session.data&&session.data.session&&session.data.session.access_token;
     if(!token)throw new Error("sessão expirada");
-    const p=new URLSearchParams({period:brainPeriod});if(brainPeriod==="custom"){if(brainDateFrom)p.set("from",brainDateFrom);if(brainDateTo)p.set("to",brainDateTo);}if(force)p.set("refresh","1");
+    const p=new URLSearchParams({period:brainPeriod});if(brainPeriod==="custom"){if(brainDateFrom)p.set("from",brainDateFrom);if(brainDateTo)p.set("to",brainDateTo);}if(force&&isAdmin)p.set("refresh","1");
     const request=accessToken=>fetch("/.netlify/functions/fegsys-megabrain?"+p.toString(),{headers:{Authorization:"Bearer "+accessToken,"X-Feg-Auth":"Bearer "+accessToken},cache:"no-store"});
     let response=await request(token);
     if(response.status===401){const refreshed=await sb.auth.refreshSession();const fresh=refreshed.data&&refreshed.data.session&&refreshed.data.session.access_token;if(fresh)response=await request(fresh);}
@@ -3277,7 +3290,6 @@ async function loadFegsysBrain(force=false){
   finally{fegsysLoading=false;renderGrid();}
 }
 function fegsysPanelHtml(){
-  if(!isAdmin)return"";
   const unavailable=[];if(!fegsysSalesReady(fegsysSourceStatus))unavailable.push("vendas aguardando acesso a marts_feg.mart_criativos_diario");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available===false)unavailable.push("arquivos do Drive aguardando acesso");if(fegsysSourceStatus&&fegsysSourceStatus.drive&&fegsysSourceStatus.drive.available&&fegsysSourceStatus.drive.files===0)unavailable.push("nenhum arquivo acessível no Drive");
   const driveRoots=fegsysSourceStatus&&fegsysSourceStatus.drive&&Array.isArray(fegsysSourceStatus.drive.roots)?fegsysSourceStatus.drive.roots:[];
   const inaccessibleRoots=driveRoots.filter(root=>!root.available).length;if(inaccessibleRoots)unavailable.push(`${inaccessibleRoots} pasta${inaccessibleRoots>1?"s":""} do Drive aguardando compartilhamento`);
@@ -3285,21 +3297,29 @@ function fegsysPanelHtml(){
   const status=fegsysLoading?"Atualizando dados…":fegsysError?fegsysError:(fegsysSyncedAt?`Sincronizado ${relTime(fegsysSyncedAt)} · ${fegsysCards.length} criativos${fegsysMatches?` · ${fegsysMatches} cruzados com o acervo manual`:""}${driveReady}${unavailable.length?` · ${unavailable.join(" · ")}`:""}`:"Preparando a primeira sincronização");
   const periods=[["today","Hoje"],["yesterday","Ontem"],["7d","7 dias"],["14d","14 dias"],["30d","30 dias"],["90d","90 dias"],["custom","Personalizado"]];
   const totals=fegsysTotals||{},salesReady=fegsysSalesReady(fegsysSourceStatus),sales=salesReady?fmtNum(totals.conversions||0):"—";
-  return `<section class="fegsys-panel" aria-label="Vendas sincronizadas do FEGSYS"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Mega Brain - Fegsys</div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls">${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button></div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Vendas</span><strong class="accent">${sales}</strong></span></div></div></section>`;
+  return `<section class="fegsys-panel" aria-label="Vendas sincronizadas do Fegsys"><div class="fegsys-panel__top"><div class="fegsys-panel__identity"><span class="fegsys-panel__mark">${ic("pulse")}</span><div><div class="fegsys-panel__title">Fegsys <span class="live-state"><span class="live-dot" aria-hidden="true"></span>Ao vivo</span></div><div class="fegsys-panel__status${fegsysError||unavailable.length?" is-error":""}">${esc(status)}</div></div></div><div class="fegsys-periods" aria-label="Período dos dados">${periods.map(([value,label])=>`<button type="button" class="fegsys-period${brainPeriod===value?" active":""}" data-fegsys-period="${value}">${label}</button>`).join("")}</div></div><div class="fegsys-panel__body"><div class="fegsys-controls"><label class="fegsys-filter fegsys-filter--name">Nome do criativo<input type="search" id="brainFegsysName" value="${esc(searchTerm)}" placeholder="Buscar por nome"></label><label class="fegsys-filter">Vendas mínimas<input type="number" min="0" step="1" id="brainSalesMin" value="${esc(fegsysSalesMin)}" placeholder="0"></label><label class="fegsys-filter">Vendas máximas<input type="number" min="0" step="1" id="brainSalesMax" value="${esc(fegsysSalesMax)}" placeholder="Sem limite"></label>${brainPeriod==="custom"?`<div class="fegsys-custom"><label class="fegsys-date">De<input type="date" id="brainDateFrom" value="${esc(brainDateFrom)}"></label><label class="fegsys-date">Até<input type="date" id="brainDateTo" value="${esc(brainDateTo)}"></label><button type="button" class="btn btn--outline btn--sm" id="brainApplyDates">Aplicar</button></div>`:""}${isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="brainFegsysRefresh"${fegsysLoading?" disabled":""}>${ic("pulse")}${fegsysLoading?"Atualizando…":"Atualizar agora"}</button>`:""}</div><div class="fegsys-summary"><span class="fegsys-summary__item"><span>Vendas</span><strong class="accent">${sales}</strong></span></div></div></section>`;
 }
 function wireFegsysPanel(el){
   $$('[data-fegsys-period]',el).forEach(button=>button.addEventListener("click",()=>{brainPeriod=button.dataset.fegsysPeriod;if(brainPeriod!=="custom"){brainDateFrom="";brainDateTo="";}fegsysLoadedKey="";navigate(currentPath(),{replace:true});}));
   const apply=$("#brainApplyDates");if(apply)apply.addEventListener("click",()=>{brainDateFrom=$("#brainDateFrom").value;brainDateTo=$("#brainDateTo").value;fegsysLoadedKey="";navigate(currentPath(),{replace:true});});
   const refresh=$("#brainFegsysRefresh");if(refresh)refresh.addEventListener("click",()=>{fegsysLoadedKey="";loadFegsysBrain(true);});
+  const name=$("#brainFegsysName");if(name)name.addEventListener("input",()=>{searchTerm=name.value;const top=$("#searchInput");if(top)top.value=searchTerm;try{history.replaceState(null,"",currentPath());}catch(_){}clearTimeout(gridSearchTimer);gridSearchTimer=setTimeout(()=>renderGrid(true),140);});
+  const applySales=()=>{fegsysSalesMin=$("#brainSalesMin")?.value||"";fegsysSalesMax=$("#brainSalesMax")?.value||"";navigate(currentPath(),{replace:true});};
+  [$("#brainSalesMin"),$("#brainSalesMax")].filter(Boolean).forEach(input=>input.addEventListener("change",applySales));
+}
+function brandNavHtml(){
+  if(!BRAND_SECTIONS.has(activeSection))return"";
+  const entries=[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
+  return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
-  if(activeSection==="oferta"||BRAND_SECTIONS.has(activeSection)){
+  if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     el.style.display="";
     const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"]];
     const sectionItems=offers.filter(o=>sectionOf(o)===activeSection),reference=offerSortReference(sectionItems),health=automationCounts(activeSection);
-    const brandNav=BRAND_SECTIONS.has(activeSection)?(()=>{const general=offers.filter(o=>sectionOf(o)==="brandsgeneral").length,validated=offers.filter(o=>sectionOf(o)==="brandsvalidated").length;return `<div class="seg" aria-label="Listas da FEG Brands"><a class="seg-btn${activeSection==="brandsgeneral"?" active":""}" data-nav href="${esc(listPath("brandsgeneral",""))}">Ofertas no Geral · ${general}</a><a class="seg-btn${activeSection==="brandsvalidated"?" active":""}" data-nav href="${esc(listPath("brandsvalidated",""))}">Ofertas Insider · ${validated}</a></div>`;})():"";
+    const brandNav=brandNavHtml();
     const healthHtml=isAdmin?`<div class="automation-health" aria-label="Situação das automações"><span class="automation-health__item">Análises na fila <strong>${health.pending}</strong></span><span class="automation-health__item">Falhas <strong>${health.failed}</strong></span></div>`:"";
     const migrationButton=isAdmin&&activeSection==="oferta"&&new URLSearchParams(location.search).get("migration")==="offer-batch-july29"
       ?`<button type="button" class="btn btn--outline btn--sm" id="offerBatchApply">${ic("pulse")}Aplicar lote consolidado</button>`:"";
@@ -3351,16 +3371,16 @@ function renderSubFilter(){
     wireFegsysPanel(el);
     return;
   }
-  if(activeSection!=="criativo"){el.innerHTML="";el.style.display="none";return;}
+  if(activeSection!=="criativo"&&activeSection!=="brandcreative"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
-  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar vídeos</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" multiple hidden>`:"";
-  el.innerHTML=`<div class="subfilter__row"><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
-  $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
+  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar vídeos"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*"}" multiple hidden>`:"";
+  el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
+  $$('[data-plat]',el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
   const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
   if(batchButton&&batchFiles){
     batchButton.addEventListener("click",()=>batchFiles.click());
-    batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,activeNiche||"Emagrecimento");});
+    batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,activeNiche||"Emagrecimento",activeSection==="brandcreative");});
   }
 }
 
@@ -4629,6 +4649,19 @@ function criativoCard(o){
     actions:acts
   });
 }
+function brandCreativeCard(o){
+  const d=o.data||{},va=videoOfCrv(d),hasVid=!!va,brand=d.marca||"Balls n Brains";
+  const collection=d.collectionLabel||brand;
+  const actions=[hasVid?qbtn("Vídeo",va,"play"):"",d.print?qbtn("Imagem",d.print,"image"):""].filter(Boolean).join("");
+  return card({
+    id:o.id,variant:"kcard brand-card",
+    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic("play")}${esc(brand)}</span>`,
+    media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
+    body:`<div class="collection-flag">${ic("trending")}${esc(collection)}</div>${cardIdentity(brand,d.nome||"Criativo sem título")}`,
+    chips:`<div class="card__chips"><span class="chip accent">Balls n Brains</span><span class="chip">Swipe de Criativos</span></div>`,
+    actions
+  });
+}
 /* Selo temporario para validar o fluxo manual do Mega Brain sem alterar o nome do criativo. */
 const BRAIN_VALIDATION_TEST_IDS=new Set(["9daefe15-3078-45f4-bafa-f6ddc3c2ea91"]);
 function brainIsValidationTest(o){return !!(o&&BRAIN_VALIDATION_TEST_IDS.has(o.id));}
@@ -5358,7 +5391,7 @@ function openSimpleView(o,skipOpen){
   currentSimpleId=o.id;
   const d=o.data||{}, kind=d.kind, cfg=sectionCfg(kind);
   const isFegsys=d.source==="fegsys";
-  $("#viewTag").textContent=isFegsys?"Mega Brain - Fegsys":(d.marca?d.marca+" · ":"")+cfg.label;
+  $("#viewTag").textContent=isFegsys?"Fegsys":(d.marca?d.marca+" · ":"")+cfg.label;
   $("#viewEditBtn").style.display=isFegsys?"none":"";
   $("#viewDeleteBtn").style.display=isFegsys?"none":"";
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openSimpleForm(kind,o.id);};
@@ -5560,10 +5593,11 @@ async function uploadVideoFile(file){
 }
 
 let creativeBatchWorking=false;
-async function importCreativeBatch(files,niche="Emagrecimento"){
+async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
   if(!requireAdmin()||creativeBatchWorking)return;
-  const videos=files.filter(file=>/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
-  if(!videos.length){toast("Selecione pelo menos um arquivo de vídeo.",true);return;}
+  const videos=files.filter(file=>brandMode?/^(video|image)\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v|jpe?g|png|webp)$/i.test(file.name||""):/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
+  if(!videos.length){toast(brandMode?"Selecione vídeos ou imagens da Balls n Brains.":"Selecione pelo menos um arquivo de vídeo.",true);return;}
+  const batchName=brandMode?"Balls n Brains":"WL FEG";
   const button=$("#creativeBatchImport"),existingSources=new Set(
     offers.filter(row=>(row.data||{}).kind==="criativo")
       .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
@@ -5571,12 +5605,12 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
   creativeBatchWorking=true;if(button)button.disabled=true;
   let imported=0,skipped=0,failed=0,firstFailure="";
   for(let index=0;index<videos.length;index++){
-    const file=videos[index],sourceFile=String(file.name||`video-${index+1}.mp4`),dedupeKey=`wl feg|${sourceFile.toLowerCase()}`;
+    const file=videos[index],sourceFile=String(file.name||`criativo-${index+1}.mp4`),dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
     if(existingSources.has(dedupeKey)){skipped++;continue;}
     if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
-    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
+    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,brandMode?["video","image"]:["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
-    const storagePath=`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
+    const storagePath=brandMode?`brands/balls-n-brains/creatives/${uid}.${mediaInfo.ext}`:`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null,uploadToken="";
     try{
       uploadToken=await storageSignedUploadWithProgress(file,storagePath,percent=>{
@@ -5590,12 +5624,18 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
       const publicUrl=publicResult&&publicResult.data&&publicResult.data.publicUrl;
       if(!publicUrl)throw new Error("o armazenamento não retornou o link público");
       const originalName=sourceFile.replace(/\.[^.]+$/,"");
-      data={
-        kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho:niche,marca:"WL FEG",
+      const isVideo=mediaInfo.kind==="video";
+      data=brandMode?{
+        kind:"criativo",division:"fegbrands",brandSlug:"balls-n-brains",collectionLabel:"Balls n Brains",nome:originalName,nomeOriginal:originalName,nicho:"",marca:"Balls n Brains",
+        plataforma:"meta",linkAnuncio:"",video:isVideo?publicUrl:"",print:isVideo?"":publicUrl,copyLink:"",transcricao:"",transcricaoPt:"",
+        transcriptionStatus:isVideo?"pending":"",transcricaoStatus:isVideo?"pending":"",transcriptionAttempts:0,transcriptionProvider:isVideo?"faster-whisper":"",transcriptionVersion:isVideo?"1":"",
+        importBatch:batchName,sourceKey:`balls-n-brains/${sourceFile.toLowerCase()}`,sourceFile
+      }:{
+        kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho,marca:"WL FEG",
         plataforma:"meta",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",
         transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
         transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
-        importBatch:"WL FEG",sourceFile
+        importBatch:batchName,sourceFile
       };
     }catch(error){
       failed++;firstFailure||=String(error&&error.message||"falha ao preparar o card");
@@ -5621,7 +5661,7 @@ async function importCreativeBatch(files,niche="Emagrecimento"){
     offers.push(savedRow);existingSources.add(dedupeKey);imported++;
   }
   creativeBatchWorking=false;
-  if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar vídeos";}
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+(brandMode?"Subir Balls n Brains":"Importar vídeos");}
   renderGrid();writeCache();
   toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
