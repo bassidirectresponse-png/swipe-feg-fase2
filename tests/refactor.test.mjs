@@ -283,7 +283,9 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
 test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () => {
   assert.match(html, /key:"brandsgeneral",label:"Ofertas de Brands no Geral"/);
   assert.match(html, /key:"brandsvalidated",label:"Ofertas Insider"/);
-  assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated"\]\)/);
+  assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated","brandcreative"\]\)/);
+  assert.match(html, /key:"brandcreative",label:"Swipe de Criativos"/);
+  assert.match(html, /Balls n Brains/);
   assert.doesNotMatch(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
   assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
   assert.match(html, /snav__group--dr/);
@@ -295,7 +297,7 @@ test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () =
   assert.match(html, /brandsgeneral:"feg-brands-geral"/);
   assert.match(html, /brandsvalidated:"feg-brands-insider"/);
   assert.match(html, /PATH2SEC\["feg-brands-validadas"\]="brandsvalidated"/);
-  assert.match(html, /activeSection==="oferta"\|\|BRAND_SECTIONS\.has\(activeSection\)/);
+  assert.match(html, /activeSection==="oferta"\|\|BRAND_OFFER_SECTIONS\.has\(activeSection\)/);
 });
 
 test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {

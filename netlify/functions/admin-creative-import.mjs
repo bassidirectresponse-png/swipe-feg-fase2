@@ -12,7 +12,7 @@ import {
 } from "./_security.mjs";
 
 const METHODS = "POST, OPTIONS";
-const MEDIA_URL = /^https:\/\/[^/]+\/storage\/v1\/object\/public\/criativos\/criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)(?:\?.*)?$/i;
+const MEDIA_URL = /^https:\/\/[^/]+\/storage\/v1\/object\/public\/criativos\/(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))(?:\?.*)?$/i;
 
 function clean(value, limit = 180) {
   return String(value || "").trim().slice(0, limit);
@@ -27,20 +27,30 @@ export default async req => {
   try {
     const user = await authenticate(req);
     if (!isAdmin(user)) return json(req, 403, { ok: false, error: "somente o administrador pode importar este lote" }, METHODS);
-    const quota = await rateLimit("admin-creative-import", user.id, { limit: 40, windowMs: 60 * 60_000 });
+    const quota = await rateLimit("admin-creative-import", user.id, { limit: 220, windowMs: 60 * 60_000 });
     if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário atingido" }, METHODS);
 
     const body = await readJson(req, { maxBytes: 16 * 1024 });
     const video = clean(body.video, 900);
+    const print = clean(body.print, 900);
+    const brandMode = body.division === "fegbrands" && body.brandSlug === "balls-n-brains";
     const sourceFile = clean(body.sourceFile, 220);
     const nome = clean(body.nome, 120);
     const nomeOriginal = clean(body.nomeOriginal, 180);
     const nicho = clean(body.nicho, 80);
-    if (!MEDIA_URL.test(video) || !sourceFile || !nome || !nomeOriginal || !nicho) {
+    const media = video || print;
+    if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !nicho)) {
       return json(req, 400, { ok: false, error: "dados do criativo inválidos" }, METHODS);
     }
 
-    const data = {
+    const data = brandMode ? {
+      kind: "criativo", division: "fegbrands", brandSlug: "balls-n-brains", collectionLabel: "Balls n Brains",
+      nome, nomeOriginal, nicho: "", marca: "Balls n Brains", plataforma: "meta", linkAnuncio: "",
+      video, print, copyLink: "", transcricao: "", transcricaoPt: "",
+      transcriptionStatus: video ? "pending" : "", transcricaoStatus: video ? "pending" : "", transcriptionAttempts: 0,
+      transcriptionProvider: video ? "faster-whisper" : "", transcriptionVersion: video ? "1" : "",
+      importBatch: "Balls n Brains", sourceKey: `balls-n-brains/${sourceFile.toLowerCase()}`, sourceFile,
+    } : {
       kind: "criativo",
       nome,
       nomeOriginal,

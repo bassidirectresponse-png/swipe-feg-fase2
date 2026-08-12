@@ -42,7 +42,7 @@ test("histórico de atualizações permanece somente no painel admin", async () 
   assert.match(sql, /using \(public\.swipe_is_admin\(\)\)/);
   assert.match(sql, /after insert on public\.offers/);
   assert.match(sql, /item_kind not in \('oferta', 'brandsgeneral', 'brandsvalidated', 'presell', 'criativo'\)/);
-  assert.match(html, /ADMIN_SECTIONS=new Set\(\["megabrainfegsys","updates"\]\)/);
+  assert.match(html, /ADMIN_SECTIONS=new Set\(\["updates"\]\)/);
   assert.match(html, /sb\.from\("swipe_updates"\)/);
   assert.match(html, /Atualização \[\$\{esc\(date\)\}\]/);
   assert.match(html, /snav__cnt--alert/);

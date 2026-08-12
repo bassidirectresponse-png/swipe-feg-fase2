@@ -9,13 +9,13 @@ export default async req => {
   if (req.method !== "GET") return json(req, 405, { ok: false, error: "método inválido" }, "GET");
   const user = await authenticate(req);
   if (!user) return json(req, 401, { ok: false, error: "sessão não reconhecida; saia e entre novamente" }, "GET");
-  if (!isAdmin(user)) return json(req, 403, { ok: false, error: "acesso restrito ao administrador" }, "GET");
+  const admin = isAdmin(user);
   const quota = await rateLimit("fegsys-megabrain", user.id, { limit: 30, windowMs: 5 * 60_000 });
   if (!quota.allowed) return json(req, 429, { ok: false, error: "consultas demais; aguarde um instante", retryAfter: quota.retryAfter }, "GET");
 
   const url = new URL(req.url);
   const range = resolveRange(url.searchParams);
-  const forceRefresh = url.searchParams.get("refresh") === "1";
+  const forceRefresh = url.searchParams.get("refresh") === "1" && admin;
   let snapshot, result, syncedAt, coverage, sourceStatus;
   try {
     const precomputed = forceRefresh ? null : await getPrecomputedAggregate(range);

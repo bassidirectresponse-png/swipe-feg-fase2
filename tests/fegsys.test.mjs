@@ -17,13 +17,15 @@ test("JavaScript embutido do painel permanece sintaticamente válido", () => {
   for (const script of scripts) assert.doesNotThrow(() => new Function(script));
 });
 
-test("integração FEGSYS é horária, somente admin e não contém chave privada", () => {
+test("integração FEGSYS é horária, autenticada e não contém chave privada", () => {
   assert.match(syncFn, /schedule: "13 \* \* \* \*"/);
   assert.match(syncFn, /salesError:/);
   assert.match(syncFn, /safeSyncError/);
   assert.match(syncFn, /sales: snapshot\.sourceStatus/);
   assert.match(apiFn, /authenticate/);
   assert.match(apiFn, /isAdmin/);
+  assert.doesNotMatch(apiFn, /if \(!isAdmin\(user\)\) return json\(req, 403/);
+  assert.match(apiFn, /forceRefresh = url\.searchParams\.get\("refresh"\) === "1" && admin/);
   assert.match(securityFn, /ADMIN_EMAILS/);
   assert.match(securityFn, /ADMIN_IDS/);
   assert.match(securityFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
@@ -62,10 +64,12 @@ test("Drive cruza somente a nomenclatura exata e mantém variações separadas",
   assert.equal(match.videoCandidates, 1);
 });
 
-test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", () => {
+test("Mega Brain manual e Fegsys ficam em seções independentes", () => {
   assert.match(html, /key:"megabrainfegsys"/);
   assert.match(html, /mega-brain-fegsys/);
-  assert.match(html, /Mega Brain - Fegsys/);
+  assert.match(html, /key:"megabrainfegsys",label:"Fegsys"/);
+  assert.match(html, /live-state/);
+  assert.match(html, /Ao vivo/);
   assert.match(html, /activeSection==="megabrainfegsys"\?\[\.\.\.fegsysCards\]/);
   assert.doesNotMatch(html, /brainSource/);
   assert.match(html, /data-fegsys-period/);
@@ -74,7 +78,9 @@ test("Mega Brain manual e Mega Brain FEGSYS ficam em seções independentes", ()
   assert.doesNotMatch(html, /foram ocultados/);
   assert.match(html, /Mídia não vinculada/);
   assert.match(html, /Vídeo e copy não estão disponíveis na fonte/);
-  assert.match(html, /aria-label="Vendas sincronizadas do FEGSYS"/);
+  assert.match(html, /aria-label="Vendas sincronizadas do Fegsys"/);
+  assert.match(html, /brainSalesMin/);
+  assert.match(html, /brainSalesMax/);
   assert.match(html, /<span>Vendas<\/span><strong class="accent">\$\{sales\}/);
   assert.match(html, /<span>Vendas<\/span><strong>\$\{sales\}/);
   assert.match(html, /marts_feg\.mart_criativos_diario/);

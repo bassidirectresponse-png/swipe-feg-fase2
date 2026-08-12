@@ -12,7 +12,7 @@ import {
 } from "./_security.mjs";
 
 const METHODS = "POST, OPTIONS";
-const MEDIA_PATH = /^criativo\/wl-feg\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:mp4|mov|webm|m4v)$/i;
+const MEDIA_PATH = /^(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))$/i;
 
 function encodedPath(path) {
   return path.split("/").map(encodeURIComponent).join("/");
@@ -27,7 +27,7 @@ export default async req => {
   try {
     const user = await authenticate(req);
     if (!isAdmin(user)) return json(req, 403, { ok: false, error: "somente o administrador pode enviar este lote" }, METHODS);
-    const quota = await rateLimit("admin-media-ticket", user.id, { limit: 40, windowMs: 60 * 60_000 });
+    const quota = await rateLimit("admin-media-ticket", user.id, { limit: 220, windowMs: 60 * 60_000 });
     if (!quota.allowed) return json(req, 429, { ok: false, error: "limite temporário atingido" }, METHODS);
 
     const body = await readJson(req, { maxBytes: 4 * 1024 });
