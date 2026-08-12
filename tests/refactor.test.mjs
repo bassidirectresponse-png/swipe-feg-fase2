@@ -184,6 +184,17 @@ test("oferta não expõe os campos órfãos e o SEMrush usa Storage", () => {
   assert.match(html, /SEMRUSH_MAX_BYTES=12\*1024\*1024/);
 });
 
+test("Swipe de Ofertas vincula VSL por MP4 ou Drive e não exibe prints de PV e checkout", () => {
+  assert.match(html, /Domínios, Checkouts & VSL/);
+  assert.match(html, /Link da VSL \(Google Drive ou URL do vídeo\)/);
+  assert.match(html, /data-zone="dom\|\$\{i\}\|vsl"/);
+  assert.match(html, /async function uploadOfferVslFile\(file,dz,info\)/);
+  assert.match(html, /offers\/vsl\/\$\{new Date\(\)\.toISOString\(\)\.slice\(0,10\)\}/);
+  assert.match(html, /videoEmbedHtml\(dm\.vslVideo\|\|dm\.vslLink\)/);
+  assert.doesNotMatch(html, /Print — Página de vendas|Print — Checkout|prints da PV e do checkout/);
+  assert.doesNotMatch(html, /data-zone="dom\|\$\{i\}\|(?:pv|co)"/);
+});
+
 test("lightbox mantém links nativos e oferece teclado, zoom e pan", () => {
   assert.match(html, /a\[data-lightbox\]/);
   assert.match(html, /e\.metaKey\|\|e\.ctrlKey/);
