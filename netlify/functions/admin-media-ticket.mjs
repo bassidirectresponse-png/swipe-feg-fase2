@@ -12,7 +12,7 @@ import {
 } from "./_security.mjs";
 
 const METHODS = "POST, OPTIONS";
-const MEDIA_PATH = /^(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))$/i;
+const MEDIA_PATH = /^(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|organic\/ad-feg-ed\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))$/i;
 
 function encodedPath(path) {
   return path.split("/").map(encodeURIComponent).join("/");

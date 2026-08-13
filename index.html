@@ -1541,6 +1541,7 @@ const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diab
 const SECTIONS=[
   {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
   {key:"criativo",label:"Swipe de Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Vídeos, transcrições e anúncios vencedores organizados por nicho e plataforma.'},
+  {key:"organic",label:"Swipe Organic",icon:"sparkles",newLabel:"Novo orgânico",statLabel:"Criativos orgânicos",emptyTitle:"Nenhum criativo orgânico ainda",searchPlaceholder:"Buscar criativo orgânico ou hook...",subHtml:'Banco de criativos orgânicos para pesquisa de referências, formatos e ideias de hooks — sem separação por nicho.'},
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
   {key:"megabrainfegsys",label:"Fegsys",icon:"pulse",newLabel:"",statLabel:"Criativos encontrados",emptyTitle:"Nenhum criativo sincronizado",searchPlaceholder:"Buscar criativo no Fegsys...",subHtml:'<b>Fegsys</b>: resultados de vendas e mídia sincronizados automaticamente.'},
@@ -1556,7 +1557,7 @@ const SECTIONS=[
 function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
 function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
@@ -1901,14 +1902,14 @@ function automationCounts(section){
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
@@ -2239,6 +2240,7 @@ function cardFor(o){
     case "brandcreative":return brandCreativeCard(o);
     case "presell":return presellCard(o);
     case "criativo":return criativoCard(o);
+    case "organic":return criativoCard(o);
     case "megabrain":case "megabrainfegsys":return megabrainCard(o);
     case "noticia":return noticiaCard(o);
     case "tiktok":return tiktokCard(o);
@@ -2773,6 +2775,11 @@ function nextCreativeName(niche){
   const code=creativeNicheCode(niche),rx=new RegExp(`^\\[ADS ${code}\\]\\[(\\d+)\\]$`,"i");
   const max=offers.reduce((n,o)=>{if((o.data||{}).kind!=="criativo")return n;const m=String(o.data.nome||"").match(rx);return m?Math.max(n,+m[1]):n;},0);
   return `[ADS ${code}][${String(max+1).padStart(2,"0")}]`;
+}
+function nextOrganicNames(total){
+  const rx=/^\[ORG ED\]\[(\d+)\]$/i;
+  const max=offers.reduce((n,o)=>{const d=(o&&o.data)||{};if(d.kind!=="criativo"||d.division!=="organic")return n;const m=String(d.nome||"").match(rx);return m?Math.max(n,+m[1]):n;},0);
+  return Array.from({length:total},(_,index)=>`[ORG ED][${String(max+index+1).padStart(2,"0")}]`);
 }
 async function syncOfferCreatives(offerRow){
   const d=offerRow&&offerRow.data||{};
@@ -3400,8 +3407,15 @@ function renderSubFilter(){
     wireFegsysPanel(el);
     return;
   }
-  if(activeSection!=="criativo"&&activeSection!=="brandcreative"){el.innerHTML="";el.style.display="none";return;}
+  if(activeSection!=="criativo"&&activeSection!=="brandcreative"&&activeSection!=="organic"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
+  if(activeSection==="organic"){
+    const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar pasta de orgânicos</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" multiple webkitdirectory directory hidden>`:"";
+    el.innerHTML=`<div class="subfilter__row"><div class="sort-reference" role="status">Acervo único, sem separação por nichos.</div>${bulk}</div>`;
+    const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
+    if(batchButton&&batchFiles){batchButton.addEventListener("click",()=>batchFiles.click());batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,"",false,true);});}
+    return;
+  }
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
   const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar vídeos"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*"}" multiple hidden>`:"";
   el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
@@ -4692,9 +4706,10 @@ function presellCard(o){
 }
 function criativoCard(o){
   const d=o.data||{};
+  const organic=sectionOf(o)==="organic";
   const collection=d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:"";
   const tab=d.plataforma==="taboola";
-  const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
+  const badge=organic?`<span class="tbadge"><span class="tdot"></span>Organic</span>`:tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
   const hasVid=!!va&&!tab;
   const copy=brainCopyText(d),transcript=String(d.transcricao||"").trim(),copyLink=(d.copyLink||"").trim();
@@ -4704,12 +4719,12 @@ function criativoCard(o){
   const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
-  const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
+  const chips=organic?`<div class="card__chips"><span class="chip accent">Swipe Organic</span><span class="chip">Banco de hooks</span></div>`:(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
   const fbwork=st==="working"||st==="queued"?`<div class="fbwork">${ic("download")}Anexando mídia ao card…</div>`
     :st==="retry_scheduled"?`<div class="fbwork">${ic("clock")}Nova tentativa de mídia agendada</div>`:"";
   return card({
     id:o.id,variant:"kcard",
-    head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
+    head:`${badge}<span class="ktag">${ic(organic?"sparkles":"play")}${organic?"Swipe Organic":"Criativo"}</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
     body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}`,
     chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
@@ -5464,18 +5479,18 @@ function brainIngestControl(o){
 /* ===== VIEW DOS NOVOS SWIPES ===== */
 function openSimpleView(o,skipOpen){
   currentSimpleId=o.id;
-  const d=o.data||{}, kind=d.kind, cfg=sectionCfg(kind);
+  const d=o.data||{}, kind=d.kind, logicalKind=sectionOf(o), cfg=sectionCfg(logicalKind);
   const isFegsys=d.source==="fegsys";
   $("#viewTag").textContent=isFegsys?"Fegsys":(d.marca?d.marca+" · ":"")+cfg.label;
   $("#viewEditBtn").style.display=isFegsys?"none":"";
   $("#viewDeleteBtn").style.display=isFegsys?"none":"";
-  $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openSimpleForm(kind,o.id);};
+  $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openSimpleForm(logicalKind,o.id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir este item? Não dá para desfazer.")){deleteOffer(o.id);closeOverlay("#viewOverlay");}};
 
   const kvs=[];
   if(d.nicho)kvs.push(`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`);
   if(kind==="presell")kvs.push(`<div class="kv"><div class="k">Origem</div><div class="v">${d.tipoTrafego==="native"?"Native · Taboola":"Meta Ads"}</div></div>`);
-  if(kind==="criativo"){
+  if(kind==="criativo"&&logicalKind!=="organic"){
     kvs.push(`<div class="kv"><div class="k">Plataforma</div><div class="v">${d.plataforma==="taboola"?"Taboola":"Meta Ads"}</div></div>`);
     if(d.fbDaysActive!=null)kvs.push(`<div class="kv"><div class="k">No ar (Facebook)</div><div class="v" style="color:var(--accent)">${esc(fbDaysText(d))}</div></div>`);
     if(d.fbPageName)kvs.push(`<div class="kv"><div class="k">Página</div><div class="v">${esc(d.fbPageName)}</div></div>`);
@@ -5618,12 +5633,12 @@ function openSimpleView(o,skipOpen){
 function blankSimple(kind){
   const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
   if(kind==="presell")base.tipoTrafego="meta";
-  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
+  if(kind==="criativo"||kind==="organic")Object.assign(base,{plataforma:kind==="organic"?"organic":"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
   if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
   if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
 }
-function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
+function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="organic"?"Ex: Hook orgânico 01":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
 function setSimpleSaveState(s){const e=$("#simpleSaveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 function sMarkDirty(){sFormDirty=true;setSimpleSaveState("unsaved");}
 
@@ -5668,24 +5683,54 @@ async function uploadVideoFile(file){
 }
 
 let creativeBatchWorking=false;
-async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
+function organicSourceFile(file){
+  const raw=String(file.webkitRelativePath||file.name||"").replace(/\\/g,"/").replace(/^\/+/,"");
+  const parts=raw.split("/").filter(Boolean);if(parts.length>1)parts.shift();
+  return parts.join("/")||String(file.name||"");
+}
+function naturalFileCompare(a,b){return String(a||"").localeCompare(String(b||""),"pt-BR",{numeric:true,sensitivity:"base"});}
+async function buildOrganicManifest(files,existingSources){
+  const candidates=files.filter(file=>{
+    const name=String(file.name||"");
+    return !name.startsWith("._")&&!/^\.DS_Store$/i.test(name)&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(name));
+  }).map(file=>({file,sourceFile:organicSourceFile(file)})).sort((a,b)=>naturalFileCompare(a.sourceFile,b.sourceFile));
+  if(!candidates.length)throw new Error("nenhum vídeo válido foi encontrado na pasta");
+  const keys=new Set(),duplicates=[];
+  for(const item of candidates){const key=item.sourceFile.toLowerCase();if(keys.has(key))duplicates.push(item.sourceFile);keys.add(key);}
+  if(duplicates.length)throw new Error(`há caminhos duplicados no lote: ${duplicates.slice(0,3).join(", ")}`);
+  const pending=candidates.filter(item=>!existingSources.has(`ad feg ed|${item.sourceFile.toLowerCase()}`));
+  const names=nextOrganicNames(pending.length),records=[];
+  for(let index=0;index<pending.length;index++){
+    const item=pending[index],mediaInfo=await inspectUploadFile(item.file,["video"],VIDEO_MAX);
+    records.push({...item,mediaInfo,nome:names[index]});
+  }
+  return {records,skipped:candidates.length-pending.length,total:candidates.length};
+}
+async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,organicMode=false){
   if(!requireAdmin()||creativeBatchWorking)return;
-  const videos=files.filter(file=>brandMode?/^(video|image)\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v|jpe?g|png|webp)$/i.test(file.name||""):/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
+  let videos=files.filter(file=>brandMode?/^(video|image)\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v|jpe?g|png|webp)$/i.test(file.name||""):/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
   if(!videos.length){toast(brandMode?"Selecione vídeos ou imagens da Balls n Brains.":"Selecione pelo menos um arquivo de vídeo.",true);return;}
-  const batchName=brandMode?"Balls n Brains":"WL FEG";
+  const batchName=organicMode?"AD FEG ED":brandMode?"Balls n Brains":"WL FEG";
   const button=$("#creativeBatchImport"),existingSources=new Set(
     offers.filter(row=>(row.data||{}).kind==="criativo")
       .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
   );
+  let organicManifest=null;
+  if(organicMode){
+    try{if(button){button.disabled=true;button.innerHTML=ic("pulse")+"Validando 0/…";}organicManifest=await buildOrganicManifest(files,existingSources);videos=organicManifest.records;}
+    catch(error){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote não aplicado: ${String(error&&error.message||error)}`,true);return;}
+    if(!videos.length){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote validado: os ${organicManifest.total} vídeos já estão no Swipe Organic.`);return;}
+    toast(`Lote validado: ${organicManifest.total} vídeos · ${videos.length} para importar${organicManifest.skipped?` · ${organicManifest.skipped} já existentes`:""}.`);
+  }
   creativeBatchWorking=true;if(button)button.disabled=true;
-  let imported=0,skipped=0,failed=0,firstFailure="";
+  let imported=0,skipped=organicManifest?.skipped||0,failed=0,firstFailure="";
   for(let index=0;index<videos.length;index++){
-    const file=videos[index],sourceFile=String(file.name||`criativo-${index+1}.mp4`),dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
+    const record=organicMode?videos[index]:null,file=record?record.file:videos[index],sourceFile=record?record.sourceFile:String(file.name||`criativo-${index+1}.mp4`),dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
     if(existingSources.has(dedupeKey)){skipped++;continue;}
     if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
-    let mediaInfo;try{mediaInfo=await inspectUploadFile(file,brandMode?["video","image"]:["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
+    let mediaInfo;try{mediaInfo=(record&&record.mediaInfo)||await inspectUploadFile(file,brandMode?["video","image"]:["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
-    const storagePath=brandMode?`brands/balls-n-brains/creatives/${uid}.${mediaInfo.ext}`:`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
+    const storagePath=organicMode?`organic/ad-feg-ed/${uid}.${mediaInfo.ext}`:brandMode?`brands/balls-n-brains/creatives/${uid}.${mediaInfo.ext}`:`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null,uploadToken="";
     try{
       uploadToken=await storageSignedUploadWithProgress(file,storagePath,percent=>{
@@ -5700,7 +5745,12 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
       if(!publicUrl)throw new Error("o armazenamento não retornou o link público");
       const originalName=sourceFile.replace(/\.[^.]+$/,"");
       const isVideo=mediaInfo.kind==="video";
-      data=brandMode?{
+      data=organicMode?{
+        kind:"criativo",division:"organic",collectionLabel:"AD FEG ED",nome:record.nome,nomeOriginal:originalName,nicho:"",marca:"FEG Organic",
+        plataforma:"organic",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"pending",
+        transcriptionRequired:true,transcriptionStatus:"pending",transcricaoStatus:"pending",transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
+        importBatch:batchName,sourceKey:`organic/ad-feg-ed/${sourceFile.toLowerCase()}`,sourceFile
+      }:brandMode?{
         kind:"criativo",division:"fegbrands",brandSlug:"balls-n-brains",collectionLabel:"Balls n Brains",nome:nextCreativeName("Balls n Brains"),nomeOriginal:originalName,nicho:"",marca:"Balls n Brains",
         plataforma:"meta",linkAnuncio:"",video:isVideo?publicUrl:"",print:isVideo?"":publicUrl,copyLink:"",transcricao:"",transcricaoPt:"",
         transcriptionStatus:isVideo?"pending":"",transcricaoStatus:isVideo?"pending":"",transcriptionAttempts:0,transcriptionProvider:isVideo?"faster-whisper":"",transcriptionVersion:isVideo?"1":"",
@@ -5736,7 +5786,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
     offers.push(savedRow);existingSources.add(dedupeKey);imported++;
   }
   creativeBatchWorking=false;
-  if(button){button.disabled=false;button.innerHTML=ic("upload")+(brandMode?"Subir Balls n Brains":"Importar vídeos");}
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Subir Balls n Brains":"Importar vídeos");}
   renderGrid();writeCache();
   toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
@@ -5795,21 +5845,22 @@ function renderSimpleForm(){
       <div class="fsec__title"><span class="num">03</span> Comentário</div>
       ${comentField}
     </div>`;
-  }else if(k==="criativo"){
+  }else if(k==="criativo"||k==="organic"){
+    const organic=k==="organic";
     html=`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">01</span> Plataforma & Identificação</div>
-      <div class="field"><label class="lbl">Plataforma do criativo</label>
+      <div class="fsec__title"><span class="num">01</span> ${organic?"Identificação":"Plataforma & Identificação"}</div>
+      ${organic?"":`<div class="field"><label class="lbl">Plataforma do criativo</label>
         <div class="seg" id="sPlatSeg">
           <button type="button" class="seg-btn${it.plataforma!=="taboola"?" active":""}" data-saction="set-plat" data-val="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</button>
           <button type="button" class="seg-btn${it.plataforma==="taboola"?" active":""}" data-saction="set-plat" data-val="taboola"><span class="sdot" style="background:var(--native)"></span>Taboola</button>
         </div>
-      </div>
+      </div>`}
       ${nomeField}
-      <div class="row">${nichoField}${marcaField}</div>
-      <div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
+      ${organic?marcaField:`<div class="row">${nichoField}${marcaField}</div>`}
+      ${organic?"":`<div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
         <div class="fsec__hint" style="margin-top:8px">Se for um link de <b>anúncio do Facebook</b>, ao salvar o criativo é baixado automaticamente (vídeo salvo no acervo + "ativo há X dias"). Views/likes não são públicos nos anúncios do FB.</div>
-      </div>
+      </div>`}
     </div>
     <div class="fsec only-video">
       <div class="fsec__title"><span class="num">02</span> Vídeo do criativo</div>
@@ -5820,11 +5871,11 @@ function renderSimpleForm(){
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("type")} Tradução em português</label><textarea data-sk="transcricaoPt" placeholder="Gerada automaticamente e mantida separada do texto original.">${esc(it.transcricaoPt||"")}</textarea><div class="fsec__hint" style="margin-top:8px">Se ficar em branco, o sistema traduz automaticamente após concluir a transcrição original.</div></div>
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Link da copy no Drive (opcional)</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/... ou https://drive.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>
-    <div class="fsec">
+    ${organic?"":`<div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
       <div class="fsec__hint">Print ou imagem do criativo. <b>No Taboola, este é o único formato</b> (apenas imagem).</div>
       ${printField}
-    </div>`;
+    </div>`}`;
   }else if(k==="noticia"){
     html=`
     <div class="fsec">
@@ -5884,7 +5935,7 @@ function renderSimpleForm(){
   body.innerHTML=`<datalist id="nichosGlobal">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`+html;
   body.dataset.plat=(k==="criativo"&&it.plataforma==="taboola")?"taboola":"meta";
   wireZones(body);
-  if(k==="criativo"||k==="megabrain")wireVideoUpload();
+  if(k==="criativo"||k==="organic"||k==="megabrain")wireVideoUpload();
 }
 $("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
 $("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
@@ -5903,10 +5954,10 @@ async function saveSimpleForm(){
   sSaving=true;setSimpleSaveState("saving");setSync("load","Salvando");
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
-  const p=Object.assign({},sItem);p.kind=sKind;
+  const p=Object.assign({},sItem);p.kind=sKind==="organic"?"criativo":sKind;if(sKind==="organic"){p.division="organic";p.plataforma="organic";p.nicho="";}
   const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||""),transcriptChanged=String(p.transcricao||"")!==String(old.transcricao||"");
-  if(sKind==="criativo"&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
-  if((sKind==="criativo"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
+  if((sKind==="criativo"||sKind==="organic")&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
+  if((sKind==="criativo"||sKind==="organic"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
     p.transcriptionStatus="pending";p.transcriptionAttempts=0;p.transcriptionStartedAt="";p.transcriptionCompletedAt="";p.transcriptionLastError="";p.transcriptionNextRetryAt="";p.transcriptionProvider="faster-whisper";p.transcriptionVersion="1";p.transcricaoStatus="pending";
   }
   /* Só os novos registros (ou os que já carregam a marca) recebem o aviso.

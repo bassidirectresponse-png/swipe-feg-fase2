@@ -12,7 +12,7 @@ import {
 } from "./_security.mjs";
 
 const METHODS = "POST, OPTIONS";
-const MEDIA_URL = /^https:\/\/[^/]+\/storage\/v1\/object\/public\/criativos\/(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))(?:\?.*)?$/i;
+const MEDIA_URL = /^https:\/\/[^/]+\/storage\/v1\/object\/public\/criativos\/(?:criativo\/wl-feg\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|organic\/ad-feg-ed\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v)|brands\/balls-n-brains\/creatives\/[0-9a-f-]+\.(?:mp4|mov|webm|m4v|jpe?g|png|webp))(?:\?.*)?$/i;
 
 function clean(value, limit = 180) {
   return String(value || "").trim().slice(0, limit);
@@ -34,16 +34,24 @@ export default async req => {
     const video = clean(body.video, 900);
     const print = clean(body.print, 900);
     const brandMode = body.division === "fegbrands" && body.brandSlug === "balls-n-brains";
+    const organicMode = body.division === "organic";
     const sourceFile = clean(body.sourceFile, 220);
     const nome = clean(body.nome, 120);
     const nomeOriginal = clean(body.nomeOriginal, 180);
     const nicho = clean(body.nicho, 80);
     const media = video || print;
-    if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !nicho)) {
+    if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !organicMode && !nicho)) {
       return json(req, 400, { ok: false, error: "dados do criativo inválidos" }, METHODS);
     }
 
-    const data = brandMode ? {
+    const data = organicMode ? {
+      kind: "criativo", division: "organic", collectionLabel: "AD FEG ED",
+      nome, nomeOriginal, nicho: "", marca: "FEG Organic", plataforma: "organic", linkAnuncio: "",
+      video, print: "", copyLink: "", transcricao: "", transcricaoPt: "", transcricaoPtStatus: "pending",
+      transcriptionRequired: true, transcriptionStatus: "pending", transcricaoStatus: "pending", transcriptionAttempts: 0,
+      transcriptionProvider: "faster-whisper", transcriptionVersion: "1",
+      importBatch: "AD FEG ED", sourceKey: `organic/ad-feg-ed/${sourceFile.toLowerCase()}`, sourceFile,
+    } : brandMode ? {
       kind: "criativo", division: "fegbrands", brandSlug: "balls-n-brains", collectionLabel: "Balls n Brains",
       nome, nomeOriginal, nicho: "", marca: "Balls n Brains", plataforma: "meta", linkAnuncio: "",
       video, print, copyLink: "", transcricao: "", transcricaoPt: "",
