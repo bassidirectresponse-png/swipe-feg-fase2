@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import vm from "node:vm";
 import { suspiciousTranscript, wavSignalStats } from "../netlify/functions/transcribe-file.mjs";
 
 const script = await readFile(new URL("../scripts/transcrever.py", import.meta.url), "utf8");
@@ -51,6 +52,43 @@ test("endpoint de partes usa janela segura para picos do provedor", async () => 
   assert.match(endpoint, /GROQ_ATTEMPT_MS = 11_500/);
   assert.match(endpoint, /a fala não foi reconhecida com confiança/);
   assert.match(endpoint, /temperature", "0"/);
+});
+
+test("transcritor preserva a frase inicial e as bordas entre todas as partes", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /TR_CHUNK_OVERLAP_SEC=2/);
+  assert.match(html, /TR_WHISPER_LEAD_SEC=\.8/);
+  assert.match(html, /TR_RECORDER_WARMUP_MS=250/);
+  assert.match(html, /const streamRate=1/);
+  assert.match(html, /captureStart=Math\.max\(0,expectedStart-TR_CHUNK_OVERLAP_SEC\)/);
+  assert.match(html, /retainStart:expectedStart,retainEnd:expectedEnd/);
+  assert.match(html, /function trCropChunkPart\(part,chunk\)/);
+  assert.match(html, /part=trCropChunkPart\(rawPart,chunk\)/);
+  assert.match(html, /feg_transcricao_em_andamento_v2/);
+  assert.match(html, /feg-vsl-transcricao-v3/);
+  assert.doesNotMatch(html, /TR_STREAM_(?:PLAYBACK|FAST|VERY_LONG)_RATE/);
+
+  const helpers = html.match(/function trWordsText\(words\)\{[\s\S]*?\n\}/)?.[0] + "\n"
+    + html.match(/function trCropChunkPart\(part,chunk\)\{[\s\S]*?\n\}/)?.[0];
+  const context = {}; vm.createContext(context); vm.runInContext(`${helpers};globalThis.crop=trCropChunkPart`, context);
+  const cropped = context.crop({
+    text: "frase duplicada continuação limpa",
+    words: [
+      { word: "frase", start: 118.8, end: 119.2 },
+      { word: "duplicada", start: 119.3, end: 119.8 },
+      { word: "continuação", start: 120.1, end: 120.6 },
+      { word: "limpa", start: 120.7, end: 121.1 },
+    ],
+    segments: [], language: "pt",
+  }, { retainStart: 120, retainEnd: 240, index: 1, totalChunks: 2, offset: 118 });
+  assert.equal(cropped.text, "continuação limpa");
+  assert.deepEqual(cropped.words.map(item => item.word), ["continuação", "limpa"]);
+});
+
+test("automação local protege o começo da fala no VAD", () => {
+  assert.match(script, /beam_size=5/);
+  assert.match(script, /"speech_pad_ms": 1000/);
+  assert.match(script, /"min_silence_duration_ms": 500/);
 });
 
 test("transcritor rejeita alucinações repetitivas e reconhece silêncio", () => {

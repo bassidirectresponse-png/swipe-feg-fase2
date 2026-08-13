@@ -37,6 +37,17 @@ export function imageContent(images) {
   return content;
 }
 
+export const VSL_STRUCTURE_CONTRACT = `TAXONOMIA ESTRUTURAL FEG — use estes nomes e estes limites:
+- Microlead (opcional): mini-hook curto antes da Lead; interrompe padrão sem contexto, história, mecanismo ou produto.
+- Lead: trailer que captura atenção, abre loops, promete/revela e impede abandono. Termina quando começa o desenvolvimento da história. Não contém história completa, mecanismo profundo ou oferta.
+- Background History: contexto que transforma curiosidade em confiança. Separar obrigatoriamente quando existirem: Expert Presentation (autoridade/legitimidade), Emotional Story (dor, medo, tentativas e consequências antes da transformação) e Discovery Story (momento/caminho que leva à descoberta, ainda sem expor toda a tese).
+- Tese de Marketing: nova explicação que troca a crença antiga. Separar Mecanismo do Problema (causa raiz, novo culpado e razão das falhas anteriores) de Mecanismo da Solução (como a solução age sobre a causa, ainda sem oferta comercial).
+- Product Build-Up: materializa a teoria antes do preço. Separar Fórmula (método, protocolo, ritual, receita, suplemento, ingredientes, funcionamento, criação e diferenciais) de Personal Testimony opcional (transformação do narrador/personagem principal após usar a solução).
+- Bloco de Oferta: começa quando a VSL passa a vender. Separar Pitch (produto disponível, entregáveis, benefícios, preço, condições, garantia e CTA), Pós-Pitch (provas, objeções, garantia, urgência, escassez e novos CTAs após a apresentação formal) e Bônus (adicionais com nome, benefício e justificativa).
+- FAQ: perguntas/respostas finais que esclarecem dúvidas práticas e removem objeções, sem criar novas promessas.
+- Depoimentos de Terceiros (opcional e móvel): pessoas independentes do personagem principal. Registrar como Prova Social independente e também indicar sua posição relativa (Lead, após Tese, Product Build-Up, Pós-Pitch etc.). Nunca absorver na história principal ou na oferta por proximidade.
+A função do trecho prevalece sobre sua posição. Não invente blocos ausentes nem force intervalos fixos.`;
+
 export const SYSTEM = `Você é um copy chief sênior especializado em VSLs de resposta direta. Sua tarefa é transformar uma VSL em um ativo reutilizável de copy.
 
 Princípios obrigatórios:
@@ -45,7 +56,9 @@ Princípios obrigatórios:
 - Os blocos da VSL usam títulos de nível 1 com intervalo de tempo. Speakers usam títulos de nível 2. Não coloque timestamps nos parágrafos.
 - Parágrafos da transcrição têm 1 a 3 frases, com leitura fluida. Não inclua comentários do analista dentro da copy transcrita.
 - A análise é em português do Brasil, limpa e operacional. Trate promessas e claims como ativos persuasivos; não crie seções de compliance ou alertas jurídicos.
-- Não invente fatos ausentes. Responda somente em Markdown, sem preâmbulo ou despedida.`;
+- Não invente fatos ausentes. Responda somente em Markdown, sem preâmbulo ou despedida.
+
+${VSL_STRUCTURE_CONTRACT}`;
 
 function transcriptPrompt(meta) {
   const isPt = /^pt\b/i.test(meta.language || "");
@@ -61,7 +74,7 @@ CONTRATO DE SAÍDA:
 1. ${isPt ? `Crie apenas "# ${meta.name} — Transcrição Organizada Original PT-BR".` : `Crie primeiro "# ${meta.name} — Transcrição Organizada Original" e depois "# ${meta.name} — Transcrição Organizada PT-BR", estruturalmente idêntica.`}
 2. Inclua no início: "## Metadados", "## Mapa de Extração para Obsidian", "## Readers / Speakers Identificados" e "## Observações Visuais Importantes".
 3. No mapa, use subseções e tabelas para Histórias, Mecanismo, Provas, Objeções, Oferta e Fechamento e Depoimentos quando existirem. Aponte para os headings dos blocos.
-4. Organize toda a copy em blocos reais, escolhendo entre Micro-Lead, Lead, Background Story, Emotional Story, Discovery Story, Marketing Thesis, Product Build Up, Big Offer e Close. Use exatamente o formato "# Lead - 00:00-05:00".
+4. Organize toda a copy pelos blocos e sub-blocos canônicos da Estrutura FEG. Use exatamente o formato "# Lead - 00:00-05:00" e não force fronteiras em intervalos fixos.
 5. Sob cada bloco, use speakers como "## [Expert — Nome]:", "## [Narrador]:", "## [Depoimento — Nome]:", "## [Texto na Tela]:" ou marcador conservador equivalente.
 6. Não use bullets, resumos, interpretações ou comentários de estratégia dentro dos blocos transcritos.
 7. Finalize com "# Ambiguidades Reais de Transcrição/Speaker" somente para ambiguidades que realmente existirem.
@@ -74,13 +87,17 @@ TRANSCRIÇÃO BRUTA COMPLETA:
 ${clip(meta.transcript, 180_000)}
 
 SEGMENTOS COM TEMPO — use para definir os intervalos, mas remova os timestamps dos parágrafos finais:
-${clip(meta.segmentText, 180_000)}`;
+${clip(meta.segmentText, 180_000)}
+
+${VSL_STRUCTURE_CONTRACT}`;
 }
 
 function analysisPrompt(meta, organized) {
   return `DISSEQUE E EXPLIQUE A VSL EM UM ÚNICO DOCUMENTO: "# ${meta.name} — Dissecação Estratégica".
 
 Use a transcrição organizada abaixo e as contact sheets. Escreva em PT-BR. Separe a dissecação pelos mesmos blocos cronológicos da VSL e explique, para cada bloco: o que acontece, objetivo persuasivo, técnica de copy, crença construída/quebrada, prova usada, emoção ativada, transição e como modelar.
+
+Para cada ocorrência, registre intervalo, bloco principal, sub-bloco, frase inicial e frase final que sustentam a fronteira. Cubra o texto inteiro sem lacunas. Marque blocos opcionais ausentes como ausentes.
 
 Depois da dissecação cronológica, inclua obrigatoriamente:
 - Veredito estratégico
@@ -102,6 +119,8 @@ Use tabelas quando melhorarem comparação. Não crie tags aleatórias, rótulos
 
 NICHO: ${meta.niche || "inferir"}
 
+${VSL_STRUCTURE_CONTRACT}
+
 TRANSCRIÇÃO ORGANIZADA:
 ${clip(organized, 190_000)}`;
 }
@@ -113,8 +132,8 @@ Escreva em PT-BR e comece exatamente com "# ${meta.name} — Dissecação Estrat
 
 CONTRATO DE SAÍDA:
 1. Faça uma dissecação cronológica COMPLETA, cobrindo do início até ${time(meta.duration)} sem parar antes do fim.
-2. Use os mesmos intervalos de cinco minutos da transcrição como referência, mas renomeie cada trecho pela função real: Micro-Lead, Lead, Background Story, Emotional Story, Discovery Story, Marketing Thesis, Product Build Up, Big Offer, Close ou nome conservador equivalente.
-3. Para cada bloco explique: o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova usada, emoção, transição e como modelar.
+2. Determine as fronteiras por mudança de função persuasiva, nunca por intervalos fixos. Use somente a taxonomia FEG e preserve os sub-blocos.
+3. Para cada bloco explique: intervalo, frase inicial/final de fronteira, o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova usada, emoção, transição e como modelar.
 4. Depois inclua: Veredito estratégico, Big Idea, Pergunta paradoxal, Gimmick, Avatar completo, Belief Ladder em ordem, MUP, MSOL, mecanismo, provas, objeções e oferta completa.
 5. Não resuma a VSL inteira em poucos parágrafos. Não encerre sem cobrir o fechamento, preço/âncoras, garantia, urgência e CTA quando existirem.
 6. Use tabelas somente quando melhorarem a comparação. Não crie compliance nem invente fatos.
@@ -122,6 +141,8 @@ CONTRATO DE SAÍDA:
 NICHO: ${meta.niche || "inferir"}
 IDIOMA ORIGINAL: ${meta.language || "não detectado"}
 DURAÇÃO: ${time(meta.duration)}
+
+${VSL_STRUCTURE_CONTRACT}
 
 TRANSCRIÇÃO COMPLETA ORIGINAL:
 ${clip(meta.organized || meta.transcript, 190_000)}`;
@@ -175,8 +196,8 @@ Escreva em PT-BR. ${index === 0 ? `Comece exatamente com "# ${meta.name} — Dis
 
 CONTRATO DE SAÍDA:
 1. Cubra o trecho inteiro, do primeiro ao último bloco/timestamp presente.
-2. Para cada bloco use a função real (Micro-Lead, Lead, Background Story, Emotional Story, Discovery Story, Marketing Thesis, Product Build Up, Big Offer, Close ou equivalente conservador).
-3. Explique: o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova, emoção, transição e como modelar.
+2. Para cada bloco use a função real da taxonomia FEG e preserve bloco principal e sub-bloco.
+3. Explique: intervalo, frase inicial/final de fronteira, o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova, emoção, transição e como modelar.
 4. Inclua no final "## Síntese factual e ativos desta parte" com fatos, claims, provas, objeções, mecanismo, oferta, frases fortes e CTAs realmente encontrados. Essa síntese alimentará a consolidação global.
 5. Não resuma em poucos parágrafos, não crie compliance e não invente fatos.
 
@@ -184,6 +205,8 @@ NICHO: ${meta.niche || "inferir"}
 IDIOMA ORIGINAL: ${meta.language || "não detectado"}
 DURAÇÃO TOTAL: ${time(meta.duration)}
 PARTE: ${index + 1}/${total}
+
+${VSL_STRUCTURE_CONTRACT}
 
 TRECHO COMPLETO ORIGINAL DESTA PARTE:
 ${clean(chunk)}
@@ -199,6 +222,8 @@ Inclua obrigatoriamente: Veredito estratégico; Big Idea detalhada; Pergunta par
 
 NICHO: ${meta.niche || "inferir"}
 DURAÇÃO: ${time(meta.duration)}
+
+${VSL_STRUCTURE_CONTRACT}
 
 ANÁLISES E SÍNTESES DE TODAS AS PARTES:
 ${clean(source)}`;
@@ -227,7 +252,10 @@ CONTRATO OBRIGATÓRIO DA SKILL:
 - Veredito estratégico, Big Idea, pergunta paradoxal, gimmick, avatar completo, Belief Ladder, MUP, MSOL, mecanismo, provas, objeções, oferta e fechamento.
 - Inventário de provas com Demonstração, Motivo Lógico, Especificidade, Mecanismo, Crenças do Leitor, Reconhecimento da Descrença, Autoridade, Depoimentos, Humildade, Copy Lógica e Personalidade.
 - Banco de ativos reutilizáveis e Blueprint de modelagem.
+- Preserve a taxonomia estrutural FEG e a separação de seus sub-blocos.
 - Não invente, não crie compliance e não repita partes já completas.
+
+${VSL_STRUCTURE_CONTRACT}
 
 DOCUMENTO ATUAL:
 ${clean(analysis).slice(0, 170_000)}`;

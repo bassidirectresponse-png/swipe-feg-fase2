@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dissecador Estrutural de VSL"
+  short_description: "Classifica VSLs por blocos persuasivos com rigor"
+  default_prompt: "Use $vsl-structure-dissector para dissecar integralmente esta VSL conforme a estrutura FEG."
