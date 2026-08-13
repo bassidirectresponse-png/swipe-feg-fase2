@@ -230,7 +230,7 @@ test("Transcritor retoma vídeos longos e reduz automaticamente partes lentas", 
   assert.match(html, /trSaveProgress\(file,chunk\.index\+1,chunk\.totalChunks\)/);
   assert.match(html, /Continuar da última parte/);
   assert.match(html, /const saved=trReadProgress\(file\)/);
-  assert.match(html, /part=await trTranscribeSlice\(slice,rate,token,"auto",i\*TR_CHUNK_SEC\)/);
+  assert.match(html, /part=trCropChunkPart\(rawPart,chunk\)/);
 });
 
 test("Mega Brain transcreve vídeos grandes em partes e grava a copy", () => {
@@ -400,8 +400,8 @@ test("Transcritor preserva o arquivo até a leitura e entrega original com tradu
 test("Transcritor e Dissecador processam arquivos longos sem carregar o vídeo inteiro na memória", () => {
   assert.match(html, /TR_MEMORY_MAX_BYTES=192\*1024\*1024/);
   assert.match(html, /TR_MEMORY_MAX_SEC=30\*60/);
-  assert.match(html, /TR_STREAM_FAST_RATE=3,TR_STREAM_VERY_LONG_RATE=3\.5/);
-  assert.match(html, /duration>=90\*60\?TR_STREAM_VERY_LONG_RATE:duration>=45\*60\?TR_STREAM_FAST_RATE/);
+  assert.match(html, /const streamRate=1/);
+  assert.match(html, /TR_CHUNK_OVERLAP_SEC=2/);
   assert.match(html, /async function trCaptureLargeFile\(file,chunkSec,options\)/);
   assert.match(html, /new MediaRecorder\(destination\.stream/);
   assert.match(html, /Arquivo grande: leitura segura por partes/);

@@ -248,7 +248,9 @@ def load_model():
 
 def transcribe(model, path):
     raw_segments, info = model.transcribe(
-        path, beam_size=3, vad_filter=True, word_timestamps=True,
+        path, beam_size=5, vad_filter=True,
+        vad_parameters={"min_silence_duration_ms": 500, "speech_pad_ms": 1000},
+        word_timestamps=True,
         language=FORCE_LANG,
     )
     parts, segments, words = [], [], []
