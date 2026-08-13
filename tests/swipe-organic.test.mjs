@@ -13,6 +13,7 @@ test("Swipe Organic is directly below Swipe de Criativos and has no niche routes
   assert.ok(creative >= 0 && organic > creative && presell > organic);
   assert.match(html, /organic:"swipe-organic"/);
   assert.doesNotMatch(html, /NICHE_SECTIONS=new Set\([^\n]*"organic"/);
+  assert.match(html, /if\(NICHE_SECTIONS\.has\(activeSection\)/);
 });
 
 test("organic cards reuse the creative transcription and translation pipeline", () => {

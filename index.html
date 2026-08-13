@@ -2047,9 +2047,9 @@ function renderSideNav(){
   counts.megabrainfegsys=fegsysCards.length;
   counts.updates=updatesTotal;
 
-  /* nichos da seção ativa (só seções não-ferramenta) */
+  /* nichos somente nas seções que realmente usam essa taxonomia */
   let nicheHtml="";
-  if(!isToolSection(activeSection)&&activeSection!=="megabrainfegsys"&&activeSection!=="updates"){
+  if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
     const secOffers=offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
     secOffers.forEach(o=>{const n=nicheOf(o);if(!n){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
