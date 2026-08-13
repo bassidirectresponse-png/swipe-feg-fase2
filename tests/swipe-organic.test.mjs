@@ -28,6 +28,7 @@ test("organic cards reuse the creative transcription and translation pipeline", 
 test("organic folder import validates, deduplicates, preserves relative source and uses public storage", () => {
   assert.match(html, /buildOrganicManifest\(files,existingSources\)/);
   assert.match(html, /organicSourceFile\(file\)/);
+  assert.match(html, /!name\.includes\("\."\)/);
   assert.match(html, /organic\/ad-feg-ed\/\$\{uid\}/);
   assert.match(html, /\[ORG ED\]/);
   assert.match(importer, /organicMode = body\.division === "organic"/);

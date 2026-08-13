@@ -5693,7 +5693,7 @@ function naturalFileCompare(a,b){return String(a||"").localeCompare(String(b||""
 async function buildOrganicManifest(files,existingSources){
   const candidates=files.filter(file=>{
     const name=String(file.name||"");
-    return !name.startsWith("._")&&!/^\.DS_Store$/i.test(name)&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(name));
+    return !name.startsWith("._")&&!/^\.DS_Store$/i.test(name)&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(name)||!name.includes("."));
   }).map(file=>({file,sourceFile:organicSourceFile(file)})).sort((a,b)=>naturalFileCompare(a.sourceFile,b.sourceFile));
   if(!candidates.length)throw new Error("nenhum vídeo válido foi encontrado na pasta");
   const keys=new Set(),duplicates=[];
