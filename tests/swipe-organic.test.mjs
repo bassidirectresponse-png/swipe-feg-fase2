@@ -19,6 +19,8 @@ test("Swipe Organic is directly below Swipe de Criativos and has no niche routes
 test("organic cards reuse the creative transcription and translation pipeline", () => {
   assert.match(html, /d\.kind==="criativo"&&d\.division==="organic"/);
   assert.match(html, /case "organic":return criativoCard\(o\)/);
+  assert.match(html, /organic\?"VIDEO ORGANICO":d\.collectionLabel/);
+  assert.match(importer, /collectionLabel: "VIDEO ORGANICO"/);
   assert.match(html, /transcricaoPtStatus:"pending"/);
   assert.match(html, /transcriptionProvider:"faster-whisper"/);
 });

@@ -45,7 +45,7 @@ export default async req => {
     }
 
     const data = organicMode ? {
-      kind: "criativo", division: "organic", collectionLabel: "AD FEG ED",
+      kind: "criativo", division: "organic", collectionLabel: "VIDEO ORGANICO",
       nome, nomeOriginal, nicho: "", marca: "FEG Organic", plataforma: "organic", linkAnuncio: "",
       video, print: "", copyLink: "", transcricao: "", transcricaoPt: "", transcricaoPtStatus: "pending",
       transcriptionRequired: true, transcriptionStatus: "pending", transcricaoStatus: "pending", transcriptionAttempts: 0,

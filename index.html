@@ -4707,7 +4707,8 @@ function presellCard(o){
 function criativoCard(o){
   const d=o.data||{};
   const organic=sectionOf(o)==="organic";
-  const collection=d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:"";
+  const collectionLabel=organic?"VIDEO ORGANICO":d.collectionLabel;
+  const collection=collectionLabel?`<div class="collection-flag">${ic("user")}${esc(collectionLabel)}</div>`:"";
   const tab=d.plataforma==="taboola";
   const badge=organic?`<span class="tbadge"><span class="tdot"></span>Organic</span>`:tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
@@ -5495,7 +5496,7 @@ function openSimpleView(o,skipOpen){
     if(d.fbDaysActive!=null)kvs.push(`<div class="kv"><div class="k">No ar (Facebook)</div><div class="v" style="color:var(--accent)">${esc(fbDaysText(d))}</div></div>`);
     if(d.fbPageName)kvs.push(`<div class="kv"><div class="k">Página</div><div class="v">${esc(d.fbPageName)}</div></div>`);
     if(d.fbMetrics&&d.fbMetrics.impressions!=null)kvs.push(`<div class="kv"><div class="k">Impressões (FB)</div><div class="v">${esc(String(d.fbMetrics.impressions))}</div></div>`);
-    if(d.collectionLabel)kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(d.collectionLabel)}</div></div>`);
+    if(d.collectionLabel||logicalKind==="organic")kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(logicalKind==="organic"?"VIDEO ORGANICO":d.collectionLabel)}</div></div>`);
   }
   if(kind==="noticia"){
     if(d.fonte)kvs.push(`<div class="kv"><div class="k">Fonte</div><div class="v">${esc(d.fonte)}</div></div>`);
@@ -5609,7 +5610,7 @@ function openSimpleView(o,skipOpen){
   const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
   $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">
-      ${d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:""}
+      ${d.collectionLabel||logicalKind==="organic"?`<div class="collection-flag">${ic("user")}${esc(logicalKind==="organic"?"VIDEO ORGANICO":d.collectionLabel)}</div>`:""}
       <div class="brand">${esc(kind==="noticia"?(d.fonte||cfg.label):(d.marca||cfg.label))}</div>
       <h2>${esc(d.nome||"Sem título")}</h2>
       <div class="kvs">${kvs.join("")}</div>
@@ -5746,7 +5747,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
       const originalName=sourceFile.replace(/\.[^.]+$/,"");
       const isVideo=mediaInfo.kind==="video";
       data=organicMode?{
-        kind:"criativo",division:"organic",collectionLabel:"AD FEG ED",nome:record.nome,nomeOriginal:originalName,nicho:"",marca:"FEG Organic",
+        kind:"criativo",division:"organic",collectionLabel:"VIDEO ORGANICO",nome:record.nome,nomeOriginal:originalName,nicho:"",marca:"FEG Organic",
         plataforma:"organic",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"pending",
         transcriptionRequired:true,transcriptionStatus:"pending",transcricaoStatus:"pending",transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
         importBatch:batchName,sourceKey:`organic/ad-feg-ed/${sourceFile.toLowerCase()}`,sourceFile
