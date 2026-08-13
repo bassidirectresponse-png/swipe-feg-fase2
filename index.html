@@ -1920,6 +1920,7 @@ const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated","brandcreative"]);
+const FLAT_DETAIL_SECTIONS=new Set(["organic","transcritor"]);
 let routeReady=false;
 function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
 function nicheRouteKey(niche){return niche===NO_NICHE?NO_NICHE:routeSlug(niche);}
@@ -1955,7 +1956,10 @@ function listPath(section,niche){
 function currentPath(){return listPath(activeSection,activeNiche)+qsFromState();}
 function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsys":sectionOf(o);}
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
-function offerPath(o){const sec=itemSection(o);return "/"+(SEC2PATH[sec]||"ofertas")+"/"+catSlug(nicheOf(o))+"/"+o.id;}
+function offerPath(o){
+  const sec=itemSection(o),base="/"+(SEC2PATH[sec]||"ofertas");
+  return NICHE_SECTIONS.has(sec)?base+"/"+catSlug(nicheOf(o))+"/"+o.id:base+"/"+o.id;
+}
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
   const parts=[SEC_SHORT[activeSection]||cfg.label];
@@ -1976,8 +1980,13 @@ function parseLocation(){
     if(seg[1]!=null){niche=nicheFromSlug(section,seg[1]);if(niche===null){niche="";notFound=true;}}
     if(seg[2]!=null)id=seg[2];
   }else{
-    if(seg.length>2||section!=="transcritor"&&seg[1]!=null)return {section,niche:"",id:null,notFound:true,q};
-    if(seg[1]!=null)id=seg[1];
+    const legacyOrganicDetail=section==="organic"&&seg.length===3&&seg[1]==="todos";
+    if(legacyOrganicDetail)id=seg[2];
+    else{
+      if(seg.length>2||!FLAT_DETAIL_SECTIONS.has(section)&&seg[1]!=null)return {section,niche:"",id:null,notFound:true,q};
+      if(seg[1]!=null)id=seg[1];
+    }
+    if(legacyOrganicDetail)return {section,niche,id,notFound:false,q,legacyOrganicDetail:true};
   }
   return {section,niche,id,notFound,q};
 }
@@ -1999,6 +2008,7 @@ function applyRoute(){
   if(r.notFound){renderNotFound();return;}
   if(ADMIN_SECTIONS.has(r.section)&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   activeSection=r.section;
+  if(r.legacyOrganicDetail){try{history.replaceState(history.state,"",offerPath(itemById(r.id)||{id:r.id,data:{kind:"criativo",division:"organic"}})+location.search);}catch(_){}}
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";

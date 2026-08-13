@@ -16,6 +16,13 @@ test("Swipe Organic is directly below Swipe de Criativos and has no niche routes
   assert.match(html, /if\(NICHE_SECTIONS\.has\(activeSection\)/);
 });
 
+test("organic cards use a flat detail route and legacy links remain compatible", () => {
+  assert.match(html, /FLAT_DETAIL_SECTIONS=new Set\(\["organic","transcritor"\]\)/);
+  assert.match(html, /NICHE_SECTIONS\.has\(sec\)\?base\+"\/"\+catSlug\(nicheOf\(o\)\)\+"\/"\+o\.id:base\+"\/"\+o\.id/);
+  assert.match(html, /section==="organic"&&seg\.length===3&&seg\[1\]==="todos"/);
+  assert.match(html, /r\.legacyOrganicDetail/);
+});
+
 test("organic cards reuse the creative transcription and translation pipeline", () => {
   assert.match(html, /d\.kind==="criativo"&&d\.division==="organic"/);
   assert.match(html, /case "organic":return criativoCard\(o\)/);
