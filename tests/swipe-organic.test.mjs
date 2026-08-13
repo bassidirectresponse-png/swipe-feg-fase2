@@ -25,6 +25,13 @@ test("organic cards reuse the creative transcription and translation pipeline", 
   assert.match(html, /transcriptionProvider:"faster-whisper"/);
 });
 
+test("creative and organic swipes always paginate newest materials first", () => {
+  assert.match(html, /RECENT_FIRST_SECTIONS=new Set\(\["criativo","organic"\]\)/);
+  assert.match(html, /function recentFirstFn\(a,b\)/);
+  assert.match(html, /return bt-at/);
+  assert.match(html, /RECENT_FIRST_SECTIONS\.has\(activeSection\)\?\[\.\.\.list\]\.sort\(recentFirstFn\):list/);
+});
+
 test("organic folder import validates, deduplicates, preserves relative source and uses public storage", () => {
   assert.match(html, /buildOrganicManifest\(files,existingSources\)/);
   assert.match(html, /organicSourceFile\(file\)/);

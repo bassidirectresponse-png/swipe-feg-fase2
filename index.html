@@ -1894,6 +1894,12 @@ function offerSortFn(a,b){
   const ad=String((a&&a.created_at)||""),bd=String((b&&b.created_at)||"");if(ad!==bd)return bd.localeCompare(ad);
   return String(((a&&a.data)||{}).nomeOferta||"").localeCompare(String(((b&&b.data)||{}).nomeOferta||""),"pt-BR");
 }
+const RECENT_FIRST_SECTIONS=new Set(["criativo","organic"]);
+function recentFirstFn(a,b){
+  const at=Date.parse((a&&a.created_at)||"")||0,bt=Date.parse((b&&b.created_at)||"")||0;
+  if(at!==bt)return bt-at;
+  return String((b&&b.id)||"").localeCompare(String((a&&a.id)||""));
+}
 function offerSortReference(items){
   const refs=(items||[]).map(offerSortMetric).map(x=>x.referenceDate).filter(Boolean).sort();return refs.length?refs[refs.length-1]:"";
 }
@@ -2336,7 +2342,7 @@ function renderGrid(skipNav){
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
     area.innerHTML=gh+gridPager(page);
   }else{
-    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection))?[...list].sort(offerSortFn):list;
+    const items=(activeSection==="megabrain"||activeSection==="megabrainfegsys")?[...list].sort(brainSortFn):(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection))?[...list].sort(offerSortFn):RECENT_FIRST_SECTIONS.has(activeSection)?[...list].sort(recentFirstFn):list;
     const page=pagedItems(items),visible=page.items;
     let html=visible.map(cardFor).join("");
     if(isAdmin&&cfg.newLabel)html+=`<div class="card card--new" id="addCard"><div class="plus">${ic("plus")}</div><div class="t">${esc(cfg.newLabel)}</div></div>`;
