@@ -48,6 +48,18 @@ export const VSL_STRUCTURE_CONTRACT = `TAXONOMIA ESTRUTURAL FEG — use estes no
 - Depoimentos de Terceiros (opcional e móvel): pessoas independentes do personagem principal. Registrar como Prova Social independente e também indicar sua posição relativa (Lead, após Tese, Product Build-Up, Pós-Pitch etc.). Nunca absorver na história principal ou na oferta por proximidade.
 A função do trecho prevalece sobre sua posição. Não invente blocos ausentes nem force intervalos fixos.`;
 
+export const VSL_DISSECTION_OUTPUT_CONTRACT = `DISSECAÇÃO NÃO É TRADUÇÃO NEM TRANSCRIÇÃO REFORMATADA.
+- A tradução preserva a copy integral. A dissecação classifica, delimita e explica a função persuasiva de cada ocorrência; não reproduza a copy corrida como se fosse análise.
+- Abra com "# [Nome] — Dissecação Estrutural FEG" e entregue as seções obrigatórias "## Mapa cronológico", "## Dissecação bloco a bloco", "## Depoimentos de Terceiros", "## Estrutura consolidada", "## Blocos ausentes" e "## Ambiguidades reais".
+- No Mapa cronológico use: intervalo, bloco principal, sub-bloco, evidência literal curta, função psicológica e justificativa da fronteira.
+- Em cada ocorrência do bloco a bloco use: intervalo; bloco/sub-bloco canônico; o que acontece; função psicológica; elementos reconhecidos; evidência inicial; evidência final; justificativa da fronteira; transição; e como modelar. Evidências são curtas; não cole parágrafos inteiros da transcrição.
+- Cubra do primeiro ao último trecho, sem lacunas nem sobreposição contraditória. Se um chunk começar ou terminar no meio de um bloco, marque a fronteira como provisória para a consolidação global.
+- Preserve ocorrências separadas. Se houver Lead 1, Lead 2 e Lead 3, variantes de Pitch ou bônus repetidos, não funda tudo em um resumo único.
+- Headlines e mini-ganchos falados antes da Lead são Microlead/Lead conforme a função. Materiais apenas escritos e não executados no vídeo vão para ativos, fora da cronologia.
+- Prova Midiática e relatos de pessoas independentes são Depoimentos de Terceiros móveis; registre cada ocorrência e a posição em que foi inserida.
+- Quiz, comparadores de kits e personalização pertencem ao Bloco de Oferta; preserve o nome da técnica sem criar uma nova categoria estrutural concorrente.
+- Todo bloco canônico não encontrado deve aparecer em Blocos ausentes como "Ausente". Não complete o modelo inventando conteúdo.`;
+
 export const SYSTEM = `Você é um copy chief sênior especializado em VSLs de resposta direta. Sua tarefa é transformar uma VSL em um ativo reutilizável de copy.
 
 Princípios obrigatórios:
@@ -93,7 +105,7 @@ ${VSL_STRUCTURE_CONTRACT}`;
 }
 
 function analysisPrompt(meta, organized) {
-  return `DISSEQUE E EXPLIQUE A VSL EM UM ÚNICO DOCUMENTO: "# ${meta.name} — Dissecação Estratégica".
+  return `DISSEQUE E EXPLIQUE A VSL EM UM ÚNICO DOCUMENTO: "# ${meta.name} — Dissecação Estrutural FEG".
 
 Use a transcrição organizada abaixo e as contact sheets. Escreva em PT-BR. Separe a dissecação pelos mesmos blocos cronológicos da VSL e explique, para cada bloco: o que acontece, objetivo persuasivo, técnica de copy, crença construída/quebrada, prova usada, emoção ativada, transição e como modelar.
 
@@ -121,6 +133,8 @@ NICHO: ${meta.niche || "inferir"}
 
 ${VSL_STRUCTURE_CONTRACT}
 
+${VSL_DISSECTION_OUTPUT_CONTRACT}
+
 TRANSCRIÇÃO ORGANIZADA:
 ${clip(organized, 190_000)}`;
 }
@@ -128,7 +142,7 @@ ${clip(organized, 190_000)}`;
 function analysisCorePrompt(meta) {
   return `CRIE A PRIMEIRA PARTE DA DISSECAÇÃO ESTRATÉGICA DA VSL "${meta.name}".
 
-Escreva em PT-BR e comece exatamente com "# ${meta.name} — Dissecação Estratégica".
+Escreva em PT-BR e comece exatamente com "# ${meta.name} — Dissecação Estrutural FEG".
 
 CONTRATO DE SAÍDA:
 1. Faça uma dissecação cronológica COMPLETA, cobrindo do início até ${time(meta.duration)} sem parar antes do fim.
@@ -143,6 +157,8 @@ IDIOMA ORIGINAL: ${meta.language || "não detectado"}
 DURAÇÃO: ${time(meta.duration)}
 
 ${VSL_STRUCTURE_CONTRACT}
+
+${VSL_DISSECTION_OUTPUT_CONTRACT}
 
 TRANSCRIÇÃO COMPLETA ORIGINAL:
 ${clip(meta.organized || meta.transcript, 190_000)}`;
@@ -192,14 +208,16 @@ export function analysisChunkPrompt(meta, chunk, index, total, translation = "")
   return `DISSEQUE A PARTE ${index + 1} DE ${total} DA VSL "${meta.name}".
 
 Esta é uma parte cronológica; analise TODO o trecho recebido sem antecipar ou inventar partes ausentes.
-Escreva em PT-BR. ${index === 0 ? `Comece exatamente com "# ${meta.name} — Dissecação Estratégica".` : `Comece com "# Continuação da Dissecação — Parte ${index + 1} de ${total}".`}
+Escreva em PT-BR. Comece exatamente com "## Dissecação bloco a bloco — Parte ${index + 1} de ${total}".
 
 CONTRATO DE SAÍDA:
 1. Cubra o trecho inteiro, do primeiro ao último bloco/timestamp presente.
-2. Para cada bloco use a função real da taxonomia FEG e preserve bloco principal e sub-bloco.
-3. Explique: intervalo, frase inicial/final de fronteira, o que acontece, objetivo persuasivo, técnica de copy, crença construída ou quebrada, prova, emoção, transição e como modelar.
-4. Inclua no final "## Síntese factual e ativos desta parte" com fatos, claims, provas, objeções, mecanismo, oferta, frases fortes e CTAs realmente encontrados. Essa síntese alimentará a consolidação global.
-5. Não resuma em poucos parágrafos, não crie compliance e não invente fatos.
+2. Para cada ocorrência use "## [intervalo] — [Bloco principal] > [Sub-bloco]" e preserve a função real da taxonomia FEG.
+3. Sob cada ocorrência use exatamente os campos: **O que acontece**, **Função psicológica**, **Elementos reconhecidos**, **Evidência inicial**, **Evidência final**, **Justificativa da fronteira**, **Transição** e **Como modelar**.
+4. Evidência inicial/final deve ser literal e curta. Não copie a transcrição inteira nem a tradução para dentro da análise.
+5. Registre cada Depoimento de Terceiros separadamente, inclusive anexos de Prova Midiática, e informe sua posição relativa.
+6. Inclua no final "## Síntese factual e ativos desta parte" com fatos, claims, provas, objeções, mecanismo, oferta, frases fortes e CTAs realmente encontrados. Essa síntese alimentará a consolidação global.
+7. Não resuma em poucos parágrafos, não crie compliance e não invente fatos.
 
 NICHO: ${meta.niche || "inferir"}
 IDIOMA ORIGINAL: ${meta.language || "não detectado"}
@@ -207,6 +225,8 @@ DURAÇÃO TOTAL: ${time(meta.duration)}
 PARTE: ${index + 1}/${total}
 
 ${VSL_STRUCTURE_CONTRACT}
+
+${VSL_DISSECTION_OUTPUT_CONTRACT}
 
 TRECHO COMPLETO ORIGINAL DESTA PARTE:
 ${clean(chunk)}
@@ -217,13 +237,16 @@ ${translation ? `TRADUÇÃO PT-BR ORGANIZADA DA MESMA PARTE — use junto com o 
 export function analysisSynthesisPrompt(meta, source) {
   return `CONSOLIDE A ESTRATÉGIA GLOBAL DA VSL "${meta.name}" usando as análises cronológicas abaixo.
 
-Comece com "# Consolidação Estratégica Global" e escreva em PT-BR. Não repita a dissecação bloco a bloco.
-Inclua obrigatoriamente: Veredito estratégico; Big Idea detalhada; Pergunta paradoxal; Gimmick; Avatar completo (tentativas, crenças, vergonha, solução rejeitada, promessa desejada, inimigo aceito, culpa removida e identidade ferida); Belief Ladder em ordem; MUP; MSOL; mecanismo; provas categorizadas; objeções e quebras; oferta completa (produto, stack, bônus, preço/âncoras, garantia, urgência e CTA). Não invente itens ausentes.
+Comece exatamente com "# ${meta.name} — Dissecação Estrutural FEG" e escreva em PT-BR. Não repita a copy nem a tradução corrida.
+Inclua primeiro: "## Mapa cronológico" cobrindo toda a VSL; "## Estrutura consolidada" com a sequência real; "## Depoimentos de Terceiros" com cada ocorrência e posição; "## Blocos ausentes" citando todos os blocos canônicos não encontrados; e "## Ambiguidades reais". No mapa, mostre intervalo, bloco principal, sub-bloco, evidência literal curta, função psicológica e justificativa da fronteira.
+Depois inclua obrigatoriamente: Veredito estratégico; Big Idea detalhada; Pergunta paradoxal; Gimmick; Avatar completo (tentativas, crenças, vergonha, solução rejeitada, promessa desejada, inimigo aceito, culpa removida e identidade ferida); Belief Ladder em ordem; MUP; MSOL; mecanismo; provas categorizadas; objeções e quebras; oferta completa (produto, stack, bônus, preço/âncoras, garantia, urgência e CTA). Não invente itens ausentes.
 
 NICHO: ${meta.niche || "inferir"}
 DURAÇÃO: ${time(meta.duration)}
 
 ${VSL_STRUCTURE_CONTRACT}
+
+${VSL_DISSECTION_OUTPUT_CONTRACT}
 
 ANÁLISES E SÍNTESES DE TODAS AS PARTES:
 ${clean(source)}`;
@@ -256,6 +279,8 @@ CONTRATO OBRIGATÓRIO DA SKILL:
 - Não invente, não crie compliance e não repita partes já completas.
 
 ${VSL_STRUCTURE_CONTRACT}
+
+${VSL_DISSECTION_OUTPUT_CONTRACT}
 
 DOCUMENTO ATUAL:
 ${clean(analysis).slice(0, 170_000)}`;

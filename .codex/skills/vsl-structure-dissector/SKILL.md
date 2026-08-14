@@ -62,6 +62,16 @@ Entregar um documento em PT-BR com:
 5. `## Estrutura consolidada`, mostrando a sequência real e os blocos opcionais ausentes.
 6. `## Ambiguidades reais`, somente quando a evidência admitir mais de uma classificação; explicar o critério usado sem inventar certeza.
 
+### Separação obrigatória entre tradução e dissecação
+
+- A tradução preserva a copy integral no idioma de destino.
+- A dissecação não pode devolver a transcrição traduzida com novos títulos. Ela deve classificar, delimitar e explicar cada ocorrência.
+- Evidências literais servem apenas para sustentar fronteiras e devem ser curtas; não repetir parágrafos inteiros da copy.
+- Cada ocorrência deve informar `O que acontece`, `Função psicológica`, `Elementos reconhecidos`, `Evidência inicial`, `Evidência final`, `Justificativa da fronteira`, `Transição` e `Como modelar`.
+- Variações sucessivas, como `Lead 1`, `Lead 2`, `Lead 3`, pitches alternativos e bônus repetidos, permanecem ocorrências separadas.
+- Headlines e mini-ganchos só entram na cronologia quando forem executados no vídeo. Materiais apenas escritos vão para ativos reutilizáveis.
+- Quiz, comparação de kits e personalização são técnicas dentro do `Bloco de Oferta`; não criar uma categoria canônica concorrente.
+
 ## Critérios de conclusão
 
 Só concluir quando:
@@ -74,4 +84,3 @@ Só concluir quando:
 - depoimentos independentes estiverem separados da história principal e da oferta;
 - Pitch, Pós-Pitch, Bônus e FAQ estiverem separados quando existirem;
 - elementos ausentes estiverem marcados como ausentes, nunca presumidos.
-

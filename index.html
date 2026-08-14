@@ -2095,10 +2095,10 @@ function renderSideNav(){
     return out;
   };
   html+=`<div class="snav__group snav__group--dr">FEG DR</div>`;
+  if(isAdmin)html+=navItem(sectionCfg("updates"));
   SECTIONS.filter(s=>s.key!=="updates"&&!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)&&(!ADMIN_SECTIONS.has(s.key)||isAdmin)).forEach(s=>{html+=navItem(s);});
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
-  if(isAdmin){html+=`<div class="snav__group snav__group--updates">Histórico</div>`;html+=navItem(sectionCfg("updates"));}
   html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;
   SECTIONS.filter(s=>AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
   nav.innerHTML=html;

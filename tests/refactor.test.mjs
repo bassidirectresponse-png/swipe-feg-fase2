@@ -47,6 +47,13 @@ test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => 
   assert.doesNotMatch(html, /activeSection==="copychief"|activeSection==="furtado"/);
 });
 
+test("Atualizações aparece no topo do grupo FEG DR", () => {
+  const nav = html.slice(html.indexOf('html+=`<div class="snav__group snav__group--dr">FEG DR</div>`'), html.indexOf('html+=`<div class="snav__group snav__group--brands">'));
+  assert.ok(nav.indexOf('navItem(sectionCfg("updates"))') >= 0);
+  assert.ok(nav.indexOf('navItem(sectionCfg("updates"))') < nav.indexOf('SECTIONS.filter'));
+  assert.doesNotMatch(html, /snav__group--updates">Histórico/);
+});
+
 test("cards clicáveis usam brilho direcional leve e acessível", () => {
   assert.match(html, /\.card,.chat__icard,.ccttcard\{\s*--glow-x:50%/);
   assert.match(html, /function initPointerGlow\(\)/);

@@ -15,4 +15,8 @@ test("skill de dissecação cobre todos os blocos e limites informados", () => {
   assert.match(skill, /toda a duração ou todo o texto estiver coberto, sem lacunas/);
   assert.match(spec, /posição na estrutura principal/);
   assert.match(spec, /Nunca absorver o depoimento/);
+  assert.match(skill, /A dissecação não pode devolver a transcrição traduzida/);
+  assert.match(skill, /Lead 1.*Lead 2.*Lead 3/);
+  assert.match(spec, /Quiz.*Pitch ou Pós-Pitch/);
+  assert.match(spec, /não pode ser apenas a tradução reorganizada/);
 });

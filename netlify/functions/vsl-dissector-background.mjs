@@ -62,12 +62,37 @@ function composeTranscript(job) {
 }
 
 function composeAnalysis(job) {
-  return [...(job.coreParts || []), job.synthesisDoc, job.assetsDoc, job.repairDoc].filter(Boolean).join("\n\n---\n\n");
+  return [job.synthesisDoc, ...(job.coreParts || []), job.assetsDoc, job.repairDoc].filter(Boolean).join("\n\n---\n\n");
 }
 
 function analysisGaps(job) {
   const analysis = composeAnalysis(job);
   const checks = [
+    ["Mapa cronológico", /mapa cronol[oó]gico/i],
+    ["Dissecação bloco a bloco", /disseca[cç][aã]o bloco a bloco|continua[cç][aã]o da disseca[cç][aã]o/i],
+    ["Função psicológica", /fun[cç][aã]o psicol[oó]gica/i],
+    ["Justificativa da fronteira", /justificativa da fronteira/i],
+    ["Depoimentos de Terceiros", /depoimentos de terceiros/i],
+    ["Estrutura consolidada", /estrutura consolidada/i],
+    ["Blocos ausentes", /blocos ausentes/i],
+    ["Ambiguidades reais", /ambiguidades reais/i],
+    ["Microlead", /microlead/i],
+    ["Lead", /\blead\b/i],
+    ["Background History", /background history/i],
+    ["Expert Presentation", /expert presentation/i],
+    ["Emotional Story", /emotional story/i],
+    ["Discovery Story", /discovery story/i],
+    ["Tese de Marketing", /tese de marketing/i],
+    ["Mecanismo do Problema", /mecanismo do problema/i],
+    ["Mecanismo da Solução", /mecanismo da solu[cç][aã]o/i],
+    ["Product Build-Up", /product build-up/i],
+    ["Fórmula", /f[oó]rmula/i],
+    ["Personal Testimony", /personal testimony/i],
+    ["Bloco de Oferta", /bloco de oferta/i],
+    ["Pitch", /\bpitch\b/i],
+    ["Pós-Pitch", /p[oó]s-pitch/i],
+    ["Bônus", /b[oô]nus/i],
+    ["FAQ", /\bfaq\b/i],
     ["Veredito estratégico", /veredito estrat[eé]gico/i],
     ["Big Idea", /big idea/i],
     ["Pergunta paradoxal", /pergunta paradoxal/i],

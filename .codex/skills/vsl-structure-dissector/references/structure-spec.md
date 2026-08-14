@@ -229,3 +229,14 @@ História principal, apresentação do especialista, explicação do mecanismo, 
 ### Regra de classificação
 
 Registrar como bloco independente `Depoimentos de Terceiros` e também indicar sua posição na estrutura principal. Nunca absorver o depoimento na história do personagem principal ou no bloco de oferta apenas por proximidade.
+
+## Regras de aplicação derivadas do exemplo de referência
+
+- Quando a fonte contiver várias versões de uma mesma abertura (`Lead 1`, `Lead 2`, `Lead 3`), registrar cada versão como ocorrência independente; não fundir as técnicas e evidências.
+- `Headline` e `Mini gancho` executados antes da Lead são classificados como Microlead ou Lead conforme a função. Se estiverem apenas no roteiro e não no vídeo, registrar fora da cronologia como ativos.
+- Marcadores como `Anexo — Depoimento` e `Anexo — Prova Midiática` são provas móveis. Cada pessoa ou prova deve constar em `Depoimentos de Terceiros` com sua posição relativa.
+- Um `Quiz`, seletor de kits ou personalização não cria novo bloco canônico: registrar dentro de Pitch ou Pós-Pitch conforme apareça antes ou depois da apresentação formal da oferta.
+- `Fórmula` pode conter ingredientes, sinergia, fases, tecnologia, desafios de concentração, proporção, absorção e desenvolvimento. A fronteira com Pitch nasce somente quando a solução passa a ser oficialmente disponibilizada para compra.
+- Relatos do personagem da Emotional Story depois do uso são `Personal Testimony`; relatos de pessoas independentes continuam sendo `Depoimentos de Terceiros`, ainda que apareçam próximos.
+- Garantia, urgência, escassez e novos CTAs depois da apresentação formal pertencem ao `Pós-Pitch`; bônus permanecem ocorrências próprias com nome, benefício e justificativa.
+- O documento final deve tornar auditável por que cada fronteira começa e termina, e não pode ser apenas a tradução reorganizada da copy.
