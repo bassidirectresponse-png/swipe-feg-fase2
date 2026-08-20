@@ -61,6 +61,22 @@ test("cards clicáveis usam brilho direcional leve e acessível", () => {
   assert.match(html, /@media\(hover:none\),\(prefers-reduced-motion:reduce\)/);
 });
 
+test("interface principal segue os requisitos essenciais de acessibilidade", () => {
+  assert.match(html, /<a class="skip-link" href="#mainContent">Pular para o conteúdo<\/a>/);
+  assert.match(html, /<main class="main" id="mainContent" tabindex="-1">/);
+  assert.match(html, /id="searchInput" name="search" autocomplete="off" aria-label="Buscar no Swipe"/);
+  assert.match(html, /<meta name="theme-color" id="themeColor" content="#000000"/);
+  assert.match(html, /themeColor\.content=next==="light"\?"#f4f5f0":"#000000"/);
+  assert.doesNotMatch(html, /transition\s*:\s*all\b/i);
+});
+
+test("imagens previsíveis reservam espaço antes de carregar", () => {
+  assert.match(html, /class="logo-mark login-logo"[^>]*width="200" height="200"/);
+  assert.match(html, /class="logo-mark"[^>]*width="200" height="200"/);
+  assert.match(html, /class="cmedia__poster"[^>]*width="640" height="400"/);
+  assert.match(html, /alt="Imagem de \$\{esc\(d\.produto\|\|"produto"\)\}"/);
+});
+
 test("áreas autenticadas não repetem o hero da marca", () => {
   assert.doesNotMatch(html, /<h1 class="impact"/);
   assert.doesNotMatch(html, /id="pageSub"/);
