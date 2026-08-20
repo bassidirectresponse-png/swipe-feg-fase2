@@ -6,6 +6,7 @@
 <title>OFERTAS — Benchmarking Grupo FEG</title>
 <link rel="icon" type="image/jpeg" href="logo-feg.jpg" />
 <meta name="color-scheme" content="dark light" />
+<meta name="theme-color" id="themeColor" content="#000000" />
 <script src="/assets/theme-preload.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -52,6 +53,8 @@
   ::-webkit-scrollbar-thumb:hover{background:var(--border-strong);}
   .eyebrow{font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;}
   .hidden{display:none !important;}
+  .skip-link{position:fixed;top:10px;left:50%;z-index:7000;transform:translate(-50%,-180%);padding:10px 16px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-weight:700;box-shadow:var(--shadow);transition:transform .16s var(--ease);}
+  .skip-link:focus-visible{transform:translate(-50%,0);}
   svg{display:block;}
   .ico{width:1em;height:1em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;}
   :focus{outline:none;}
@@ -379,7 +382,7 @@
   .modal__bar .tag{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:700;}
   .modal__bar .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
   .modal__body{padding:clamp(20px,3.5vw,40px);}
-  .x{width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;}
+  .x{width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:background-color .2s,border-color .2s;}
   .x:hover{background:var(--surface-2);border-color:var(--border-strong);}
   .save-state{display:inline-flex;align-items:center;gap:7px;font-size:.72rem;color:var(--muted-fg);white-space:nowrap;}
   .save-state .ssdot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
@@ -416,7 +419,7 @@
   .kv .v{font-size:1.25rem;font-weight:600;}
 
   .linkbtns{display:flex;flex-wrap:wrap;gap:10px;}
-  .linkbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-2);background:var(--surface);padding:11px 16px;border-radius:var(--radius-sm);font-size:.85rem;font-weight:600;transition:all .18s;}
+  .linkbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-2);background:var(--surface);padding:11px 16px;border-radius:var(--radius-sm);font-size:.85rem;font-weight:600;transition:background-color .18s,color .18s,border-color .18s;}
   .linkbtn:hover{background:var(--accent);color:#000;border-color:var(--accent);}
   .linkbtn.accent{background:var(--accent-dim);border-color:rgba(229,255,45,.4);color:var(--accent);}
   .linkbtn.accent:hover{background:var(--accent);color:#000;}
@@ -501,12 +504,12 @@
   .block-edit .behead .t{font-weight:700;color:var(--accent);font-size:.82rem;letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
   .block-edit .behead .badge{background:var(--accent);color:#000;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;}
   .block-edit .rm-block{color:var(--red);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
-  .add-block{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--border-strong);background:transparent;color:var(--accent);padding:11px 18px;border-radius:var(--radius-sm);font-weight:600;font-size:.85rem;transition:all .18s;}
+  .add-block{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--border-strong);background:transparent;color:var(--accent);padding:11px 18px;border-radius:var(--radius-sm);font-weight:600;font-size:.85rem;transition:background-color .18s,border-color .18s;}
   .add-block:hover{background:var(--accent-dim);border-color:var(--accent);}
 
   /* segmented (tipo de tráfego) */
   .seg{display:inline-flex;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:4px;gap:4px;}
-  .seg-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;font-weight:600;font-size:.88rem;color:var(--muted-fg);transition:all .18s;}
+  .seg-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;font-weight:600;font-size:.88rem;color:var(--muted-fg);transition:background-color .18s,color .18s;}
   .seg-btn.active{background:var(--accent);color:#000;}
   .seg-btn:not(.active):hover{color:var(--fg);background:var(--surface-2);}
   .seg-btn .sdot{width:8px;height:8px;border-radius:50%;flex:none;}
@@ -1377,7 +1380,7 @@
 <!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-card">
-    <img class="logo-mark login-logo" src="logo-feg.jpg" alt="Grupo FEG" />
+    <img class="logo-mark login-logo" src="logo-feg.jpg" alt="Grupo FEG" width="200" height="200" />
     <div class="login-brand">
       <span class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>
       Benchmarking <span class="lime">Grupo FEG</span>
@@ -1385,8 +1388,8 @@
     <div class="login-sub">Além de um swipe de ofertas, um laboratório de análise de dados exclusivo.</div>
     <form id="loginForm">
       <div class="login-err" id="loginErr">Usuário ou senha incorretos.</div>
-      <div class="field"><label>Usuário</label><input type="text" id="loginUser" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="seu usuário"></div>
-      <div class="field"><label>Senha</label><input type="password" id="loginPass" autocomplete="current-password" placeholder="sua senha"></div>
+      <div class="field"><label for="loginUser">Usuário</label><input type="text" id="loginUser" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Ex.: seu usuário"></div>
+      <div class="field"><label for="loginPass">Senha</label><input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="Digite sua senha"></div>
       <button type="submit" class="btn btn--accent btn--lg">Entrar →</button>
     </form>
     <div class="login-foot">ACESSO RESTRITO · GRUPO FEG</div>
@@ -1409,8 +1412,8 @@ alter table offers enable row level security;
 create policy "public_all" on offers
   for all using (true) with check (true);<button class="btn btn--accent btn--sm copysql" id="copySql">COPIAR</button></div>
     <div class="form">
-      <div class="field"><label class="lbl">Supabase Project URL</label><input type="url" id="supUrl" placeholder="https://xxxxx.supabase.co" /></div>
-      <div class="field"><label class="lbl">Supabase anon key</label><input type="text" id="supKey" placeholder="eyJhbGciOi..." /></div>
+      <div class="field"><label class="lbl" for="supUrl">Supabase Project URL</label><input type="url" id="supUrl" name="supabase_url" autocomplete="url" placeholder="Ex.: https://xxxxx.supabase.co" /></div>
+      <div class="field"><label class="lbl" for="supKey">Supabase anon key</label><input type="password" id="supKey" name="supabase_anon_key" autocomplete="off" placeholder="Ex.: eyJhbGciOi…" /></div>
       <button class="btn btn--accent btn--lg" id="connectBtn">CONECTAR →</button>
     </div>
   </div>
@@ -1418,10 +1421,11 @@ create policy "public_all" on offers
 
 <!-- APP -->
 <div id="app" class="hidden">
+  <a class="skip-link" href="#mainContent">Pular para o conteúdo</a>
   <div class="topbar">
-    <div class="brand"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG" /></div>
+    <div class="brand"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG" width="200" height="200" /></div>
     <button class="icon-btn" id="nicheToggle" title="Menu" aria-label="Abrir menu de seções"><svg class="ico" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-    <div class="search"><span class="ic"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></span><input type="text" id="searchInput" placeholder="Buscar oferta, marca ou nicho..." /></div>
+    <div class="search"><span class="ic" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></span><input type="search" id="searchInput" name="search" autocomplete="off" aria-label="Buscar no Swipe" placeholder="Buscar oferta, marca ou nicho…" /></div>
     <div class="spacer"></div>
     <div class="sync" id="syncPill"><span class="dot"></span><span id="syncTxt">—</span></div>
     <div class="theme-switch" role="group" aria-label="Aparência"><button type="button" class="theme-switch__btn" data-theme-choice="light" aria-pressed="false">Claro</button><button type="button" class="theme-switch__btn" data-theme-choice="dark" aria-pressed="true">Escuro</button></div>
@@ -1433,7 +1437,7 @@ create policy "public_all" on offers
   <div class="shell">
     <aside class="sidenav" id="sideNav"></aside>
     <div class="sidenav-backdrop" id="sideNavBackdrop"></div>
-    <main class="main">
+    <main class="main" id="mainContent" tabindex="-1">
       <div class="page-identity" id="pageIdentity"><div><h1 class="page-identity__title" id="pageTitle">Swipe de Ofertas</h1><p class="page-identity__desc" id="pageDescription"></p></div><div class="page-identity__result" id="pageResult">0 resultados</div></div>
       <div class="page">
         <div class="meta-row"><div class="division-pill" id="divisionPill"><span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span></div><div class="stat"><span class="n" id="statTotal">0</span><span class="l" id="statLabel">Ofertas</span></div><div class="stat" id="statShownWrap" style="display:none"><span class="n" id="statShown">0</span><span class="l">Em exibição</span></div></div>
@@ -1578,6 +1582,7 @@ const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function applyTheme(theme,persist){
   const next=theme==="light"?"light":"dark";document.documentElement.dataset.theme=next;
+  const themeColor=document.getElementById("themeColor");if(themeColor)themeColor.content=next==="light"?"#f4f5f0":"#000000";
   $$('[data-theme-choice]').forEach(button=>{const active=button.dataset.themeChoice===next;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   if(persist){try{localStorage.setItem("feg_theme",next);}catch(_){}}
 }
@@ -2084,7 +2089,7 @@ function renderSideNav(){
   const sectionChanged=navPrevSection!==activeSection;
   navPrevSection=activeSection;
 
-  let html=`<div class="sidenav__head"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
+  let html=`<div class="sidenav__head"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG" width="200" height="200"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
@@ -2396,7 +2401,7 @@ $("#sideNavBackdrop").addEventListener("click",closeSideNav);
 function linkbtn(label,url,accent,icon){if(!url)return"";return `<a class="linkbtn${accent?' accent':''}" href="${esc(fixUrl(url))}" target="_blank" rel="noopener">${icon?ic(icon):""}<span class="lbtxt">${esc(label)}</span><span class="arr">${ic("external")}</span></a>`;}
 function shotView(label,img,thumb){
   if(!img)return`<div class="shot"><div class="shot__lbl">${label}</div><div class="none">Sem print</div></div>`;
-  return`<a class="shot" href="${esc(img)}" data-lightbox="${esc(img)}"><div class="shot__lbl">${label}<span class="zoom">${ic("maximize")}ampliar</span></div><span class="shot__media"><img loading="lazy" decoding="async" src="${esc(thumb||img)}" alt="${esc(label)}"></span></a>`;
+  return`<a class="shot" href="${esc(img)}" data-lightbox="${esc(img)}"><div class="shot__lbl">${label}<span class="zoom">${ic("maximize")}ampliar</span></div><span class="shot__media"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(thumb||img)}" alt="${esc(label)}"></span></a>`;
 }
 function openView(id){
   const o=itemById(id);if(!o)return;
@@ -2486,7 +2491,7 @@ function openView(id){
     <div>
       <section class="sec">
         <div class="prod-head">
-          ${d.imagemProduto?`<a href="${esc(d.imagemProduto)}" data-lightbox="${esc(d.imagemProduto)}"><img class="img" src="${esc(d.imagemProduto)}" alt=""></a>`:""}
+          ${d.imagemProduto?`<a href="${esc(d.imagemProduto)}" data-lightbox="${esc(d.imagemProduto)}"><img class="img" loading="lazy" decoding="async" width="160" height="160" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.produto||"produto")}"></a>`:""}
           <div class="info">
             <div class="brand">${esc(d.nomeMarca||"Sem marca")}</div>
             <h2>${esc(d.nomeOferta||"Oferta sem nome")}</h2>
@@ -4659,7 +4664,7 @@ function offerCardPreview(d,alt){
 function offerVslDetailPreview(domain,offer){
   const url=String((domain&&domain.vslVideo)||(domain&&domain.vslLink)||"").trim();if(!url)return"";
   const fallback=String((domain&&domain.printPV)||(offer&&offer.imagemProduto)||"").trim(),driveThumb=driveThumbUrl(url,1400),embed=videoEmbedHtml(url);
-  if(driveThumb)return `<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}Prévia da VSL</div><a class="offer-vsl__preview" href="${esc(fixUrl(url))}" target="_blank" rel="noopener"><img src="${esc(driveThumb)}" alt="Primeiro frame da VSL"${fallback?` data-offer-preview-fallback="${esc(fallback)}"`:""}><span class="cmedia__play">${ic("play")}</span></a></div>`;
+  if(driveThumb)return `<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}Prévia da VSL</div><a class="offer-vsl__preview" href="${esc(fixUrl(url))}" target="_blank" rel="noopener"><img loading="lazy" decoding="async" width="640" height="360" src="${esc(driveThumb)}" alt="Primeiro frame da VSL"${fallback?` data-offer-preview-fallback="${esc(fallback)}"`:""}><span class="cmedia__play">${ic("play")}</span></a></div>`;
   return embed?`<div class="offer-vsl"><div class="offer-vsl__label">${ic("play")}VSL vinculada</div>${embed}</div>`:"";
 }
 function mediaThumb(img,alt,hasVideo,videoUrl){
@@ -4670,7 +4675,7 @@ function mediaThumb(img,alt,hasVideo,videoUrl){
   const emb=videoUrl?videoEmbedUrl(videoUrl):null;
   if(emb&&emb.type==="video"){
     const cached=cardPosterCache.get(emb.src);
-    return `<div class="cmedia cmedia--vid" title="Abra o card para assistir" data-card-video-poster="${esc(emb.src)}">${cached?`<img class="cmedia__poster" loading="lazy" decoding="async" src="${esc(cached)}" alt="Primeiro take de ${esc(alt||"vídeo")}">`:`<span class="cmedia__posterload">${ic("film")}</span>`}${play}</div>`;
+    return `<div class="cmedia cmedia--vid" title="Abra o card para assistir" data-card-video-poster="${esc(emb.src)}">${cached?`<img class="cmedia__poster" loading="lazy" decoding="async" width="640" height="400" src="${esc(cached)}" alt="Primeiro take de ${esc(alt||"vídeo")}">`:`<span class="cmedia__posterload">${ic("film")}</span>`}${play}</div>`;
   }
   if(hasVideo)return `<div class="cmedia cmedia--empty">${ic("film")}<span>Vídeo — abra para assistir</span></div>`;
   return `<div class="cmedia cmedia--empty">${ic("image")}<span>Sem print</span></div>`;
