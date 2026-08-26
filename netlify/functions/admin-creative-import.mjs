@@ -36,11 +36,20 @@ export default async req => {
     const brandMode = body.division === "fegbrands" && body.brandSlug === "balls-n-brains";
     const organicMode = body.division === "organic";
     const sourceFile = clean(body.sourceFile, 220);
+    const sourceHash = clean(body.sourceHash, 64).toLowerCase();
+    const sourceKey = clean(body.sourceKey, 360).toLowerCase();
+    const importBatch = clean(body.importBatch, 120);
     const nome = clean(body.nome, 120);
     const nomeOriginal = clean(body.nomeOriginal, 180);
     const nicho = clean(body.nicho, 80);
+    const plataforma = ["meta", "taboola"].includes(clean(body.plataforma, 20).toLowerCase())
+      ? clean(body.plataforma, 20).toLowerCase()
+      : "meta";
+    const linkAnuncio = clean(body.linkAnuncio, 900);
     const media = video || print;
-    if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !organicMode && !nicho)) {
+    if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !organicMode && !nicho)
+      || (sourceHash && !/^[a-f0-9]{64}$/.test(sourceHash))
+      || (linkAnuncio && !/^https:\/\//i.test(linkAnuncio))) {
       return json(req, 400, { ok: false, error: "dados do criativo inválidos" }, METHODS);
     }
 
@@ -50,22 +59,22 @@ export default async req => {
       video, print: "", copyLink: "", transcricao: "", transcricaoPt: "", transcricaoPtStatus: "pending",
       transcriptionRequired: true, transcriptionStatus: "pending", transcricaoStatus: "pending", transcriptionAttempts: 0,
       transcriptionProvider: "faster-whisper", transcriptionVersion: "1",
-      importBatch: "AD FEG ED", sourceKey: `organic/ad-feg-ed/${sourceFile.toLowerCase()}`, sourceFile,
+      importBatch: "AD FEG ED", sourceKey: `organic/ad-feg-ed/${sourceFile.toLowerCase()}`, sourceFile, sourceHash,
     } : brandMode ? {
       kind: "criativo", division: "fegbrands", brandSlug: "balls-n-brains", collectionLabel: "Balls n Brains",
       nome, nomeOriginal, nicho: "", marca: "Balls n Brains", plataforma: "meta", linkAnuncio: "",
       video, print, copyLink: "", transcricao: "", transcricaoPt: "",
       transcriptionStatus: video ? "pending" : "", transcricaoStatus: video ? "pending" : "", transcriptionAttempts: 0,
       transcriptionProvider: video ? "faster-whisper" : "", transcriptionVersion: video ? "1" : "",
-      importBatch: "Balls n Brains", sourceKey: `balls-n-brains/${sourceFile.toLowerCase()}`, sourceFile,
+      importBatch: "Balls n Brains", sourceKey: `balls-n-brains/${sourceFile.toLowerCase()}`, sourceFile, sourceHash,
     } : {
       kind: "criativo",
       nome,
       nomeOriginal,
       nicho,
       marca: "WL FEG",
-      plataforma: "meta",
-      linkAnuncio: "",
+      plataforma,
+      linkAnuncio,
       video,
       print: "",
       copyLink: "",
@@ -76,7 +85,9 @@ export default async req => {
       transcriptionAttempts: 0,
       transcriptionProvider: "faster-whisper",
       transcriptionVersion: "1",
-      importBatch: "WL FEG",
+      importBatch: importBatch || "WL FEG",
+      sourceKey: sourceKey || `${(importBatch || "WL FEG").toLowerCase()}/${sourceFile.toLowerCase()}`,
+      sourceHash,
       sourceFile,
     };
 
