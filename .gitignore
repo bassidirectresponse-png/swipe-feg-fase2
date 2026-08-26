@@ -42,6 +42,7 @@ __pycache__/
 .agents/
 skills-lock.json
 node_modules/
+prepared/
 
 # Local Netlify folder
 .netlify

@@ -3438,7 +3438,7 @@ function renderSubFilter(){
     return;
   }
   const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
-  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar vídeos"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*"}" multiple hidden>`:"";
+  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar pasta"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*,application/json,.json"}" multiple${activeSection==="brandcreative"?"":" webkitdirectory directory"} hidden>`:"";
   el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
   $$('[data-plat]',el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
   const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
@@ -5728,26 +5728,80 @@ async function buildOrganicManifest(files,existingSources){
   }
   return {records,skipped:candidates.length-pending.length,total:candidates.length};
 }
+const SPY_BATCH_MANIFEST="swipe-import.json";
+function nextCreativeNamesFor(records){
+  const maxByCode=new Map();
+  for(const row of offers){
+    const data=(row&&row.data)||{};if(data.kind!=="criativo"||data.division==="organic"||data.division==="fegbrands")continue;
+    const match=String(data.nome||"").match(/^\[ADS ([A-Z0-9]+)\]\[(\d+)\]$/i);if(!match)continue;
+    const code=match[1].toUpperCase();maxByCode.set(code,Math.max(maxByCode.get(code)||0,Number(match[2])||0));
+  }
+  return records.map(record=>{
+    const code=creativeNicheCode(record.nicho),next=(maxByCode.get(code)||0)+1;maxByCode.set(code,next);
+    return `[ADS ${code}][${String(next).padStart(2,"0")}]`;
+  });
+}
+async function buildSpyCreativeManifest(files,existingSources,existingHashes,existingLinks){
+  const manifestFile=files.find(file=>String(file.name||"").toLowerCase()===SPY_BATCH_MANIFEST);
+  if(!manifestFile)return null;
+  let parsed;try{parsed=JSON.parse(await manifestFile.text());}catch(_){throw new Error(`o arquivo ${SPY_BATCH_MANIFEST} não contém JSON válido`);}
+  const sourceRecords=Array.isArray(parsed)?parsed:(Array.isArray(parsed.records)?parsed.records:[]);
+  if(!sourceRecords.length)throw new Error("o manifesto não contém criativos");
+  if(sourceRecords.length>150)throw new Error("o lote excede o limite seguro de 150 criativos");
+  const mediaFiles=files.filter(file=>!String(file.name||"").startsWith("._")&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||"")));
+  const byPath=new Map(),byName=new Map();
+  for(const file of mediaFiles){byPath.set(organicSourceFile(file).toLowerCase(),file);byName.set(String(file.name||"").toLowerCase(),file);}
+  const manifestHashes=new Set(),manifestSources=new Set(),prepared=[],skippedRecords=[];
+  const allowedNiches=new Set(["Emagrecimento","Disfunção Erétil","Memória","Diabetes/Glicose","Pressão Alta","Visão"]);
+  for(const source of sourceRecords){
+    const mediaFile=String(source&&source.mediaFile||"").replace(/\\/g,"/").replace(/^\/+/,"");
+    const file=byPath.get(mediaFile.toLowerCase())||byName.get(mediaFile.split("/").pop().toLowerCase());
+    const nicho=String(source&&source.nicho||"").trim(),plataforma=String(source&&source.plataforma||source&&source.platform||"").trim().toLowerCase();
+    const importBatch=String(source&&source.importBatch||source&&source.batch||"").trim(),sourceFile=String(source&&source.sourceFile||"").replace(/\\/g,"/").replace(/^\/+/,"");
+    const sourceHash=String(source&&source.sourceHash||"").trim().toLowerCase(),linkAnuncio=String(source&&source.linkAnuncio||source&&source.adUrl||"").trim();
+    const sourceKey=String(source&&source.sourceKey||`${importBatch}/${sourceFile}`).trim().toLowerCase();
+    if(!file||!allowedNiches.has(nicho)||!["meta","taboola"].includes(plataforma)||!importBatch||!sourceFile||!sourceKey||!/^[a-f0-9]{64}$/.test(sourceHash)||linkAnuncio&&!/^https:\/\//i.test(linkAnuncio))throw new Error(`registro inválido no manifesto: ${sourceFile||mediaFile||"sem arquivo"}`);
+    const dedupeKey=`${importBatch.toLowerCase()}|${sourceFile.toLowerCase()}`,linkKey=linkAnuncio?canonicalCreativeUrl(linkAnuncio):"";
+    if(manifestHashes.has(sourceHash)||manifestSources.has(dedupeKey))throw new Error(`o manifesto repete o criativo ${sourceFile}`);
+    manifestHashes.add(sourceHash);manifestSources.add(dedupeKey);
+    if(existingHashes.has(sourceHash)||existingSources.has(dedupeKey)||linkKey&&existingLinks.has(linkKey)){skippedRecords.push(sourceFile);continue;}
+    const mediaInfo=await inspectUploadFile(file,["video"],VIDEO_MAX);
+    prepared.push({file,mediaInfo,nicho,plataforma,importBatch,sourceFile,sourceHash,sourceKey,linkAnuncio,originalName:String(source&&source.originalName||sourceFile.replace(/\.[^.]+$/,"")).trim()});
+  }
+  const names=nextCreativeNamesFor(prepared);prepared.forEach((record,index)=>record.nome=names[index]);
+  return {records:prepared,skipped:skippedRecords.length,total:sourceRecords.length,duplicatesRemoved:Number(parsed&&parsed.duplicatesRemoved||0)};
+}
 async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,organicMode=false){
   if(!requireAdmin()||creativeBatchWorking)return;
   let videos=files.filter(file=>brandMode?/^(video|image)\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v|jpe?g|png|webp)$/i.test(file.name||""):/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
   if(!videos.length){toast(brandMode?"Selecione vídeos ou imagens da Balls n Brains.":"Selecione pelo menos um arquivo de vídeo.",true);return;}
-  const batchName=organicMode?"AD FEG ED":brandMode?"Balls n Brains":"WL FEG";
+  const defaultBatchName=organicMode?"AD FEG ED":brandMode?"Balls n Brains":"WL FEG";
   const button=$("#creativeBatchImport"),existingSources=new Set(
     offers.filter(row=>(row.data||{}).kind==="criativo")
       .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
+  ),existingHashes=new Set(
+    offers.filter(row=>(row.data||{}).kind==="criativo").map(row=>String((row.data||{}).sourceHash||"").toLowerCase()).filter(Boolean)
+  ),existingLinks=new Set(
+    offers.filter(row=>(row.data||{}).kind==="criativo").map(row=>canonicalCreativeUrl((row.data||{}).linkAnuncio||"")).filter(Boolean)
   );
-  let organicManifest=null;
+  let organicManifest=null,spyManifest=null;
   if(organicMode){
     try{if(button){button.disabled=true;button.innerHTML=ic("pulse")+"Validando 0/…";}organicManifest=await buildOrganicManifest(files,existingSources);videos=organicManifest.records;}
     catch(error){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote não aplicado: ${String(error&&error.message||error)}`,true);return;}
     if(!videos.length){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote validado: os ${organicManifest.total} vídeos já estão no Swipe Organic.`);return;}
     toast(`Lote validado: ${organicManifest.total} vídeos · ${videos.length} para importar${organicManifest.skipped?` · ${organicManifest.skipped} já existentes`:""}.`);
+  }else if(!brandMode&&files.some(file=>String(file.name||"").toLowerCase()===SPY_BATCH_MANIFEST)){
+    try{
+      if(button){button.disabled=true;button.innerHTML=ic("pulse")+"Validando manifesto…";}
+      spyManifest=await buildSpyCreativeManifest(files,existingSources,existingHashes,existingLinks);videos=spyManifest.records;
+    }catch(error){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta";}toast(`Lote não aplicado: ${String(error&&error.message||error)}`,true);return;}
+    if(!videos.length){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta";}toast(`Lote validado: os ${spyManifest.total} criativos já estão no Swipe.`);return;}
+    toast(`Lote validado: ${spyManifest.total} únicos · ${videos.length} para importar${spyManifest.skipped?` · ${spyManifest.skipped} já existentes`:""}${spyManifest.duplicatesRemoved?` · ${spyManifest.duplicatesRemoved} duplicados removidos na origem`:""}.`);
   }
   creativeBatchWorking=true;if(button)button.disabled=true;
-  let imported=0,skipped=organicManifest?.skipped||0,failed=0,firstFailure="";
+  let imported=0,skipped=(organicManifest?.skipped||0)+(spyManifest?.skipped||0),failed=0,firstFailure="";
   for(let index=0;index<videos.length;index++){
-    const record=organicMode?videos[index]:null,file=record?record.file:videos[index],sourceFile=record?record.sourceFile:String(file.name||`criativo-${index+1}.mp4`),dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
+    const record=(organicMode||spyManifest)?videos[index]:null,file=record?record.file:videos[index],sourceFile=record?record.sourceFile:String(file.name||`criativo-${index+1}.mp4`),batchName=record?.importBatch||defaultBatchName,dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
     if(existingSources.has(dedupeKey)){skipped++;continue;}
     if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
     let mediaInfo;try{mediaInfo=(record&&record.mediaInfo)||await inspectUploadFile(file,brandMode?["video","image"]:["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
@@ -5765,7 +5819,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
       const publicResult=sb.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath);
       const publicUrl=publicResult&&publicResult.data&&publicResult.data.publicUrl;
       if(!publicUrl)throw new Error("o armazenamento não retornou o link público");
-      const originalName=sourceFile.replace(/\.[^.]+$/,"");
+      const originalName=record?.originalName||sourceFile.replace(/\.[^.]+$/,"");
       const isVideo=mediaInfo.kind==="video";
       data=organicMode?{
         kind:"criativo",division:"organic",collectionLabel:"VIDEO ORGANICO",nome:record.nome,nomeOriginal:originalName,nicho:"",marca:"FEG Organic",
@@ -5778,11 +5832,11 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
         transcriptionStatus:isVideo?"pending":"",transcricaoStatus:isVideo?"pending":"",transcriptionAttempts:0,transcriptionProvider:isVideo?"faster-whisper":"",transcriptionVersion:isVideo?"1":"",
         importBatch:batchName,sourceKey:`balls-n-brains/${sourceFile.toLowerCase()}`,sourceFile
       }:{
-        kind:"criativo",nome:nextCreativeName(niche),nomeOriginal:originalName,nicho,marca:"WL FEG",
-        plataforma:"meta",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",
+        kind:"criativo",nome:record?.nome||nextCreativeName(niche),nomeOriginal:originalName,nicho:record?.nicho||niche,marca:"WL FEG",
+        plataforma:record?.plataforma||(critPlatform==="taboola"?"taboola":"meta"),linkAnuncio:record?.linkAnuncio||"",video:publicUrl,print:"",copyLink:"",
         transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
         transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
-        importBatch:batchName,sourceFile
+        importBatch:batchName,sourceKey:record?.sourceKey||`${batchName.toLowerCase()}/${sourceFile.toLowerCase()}`,sourceHash:record?.sourceHash||"",sourceFile
       };
     }catch(error){
       failed++;firstFailure||=String(error&&error.message||"falha ao preparar o card");
@@ -5805,10 +5859,10 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
       ]).catch(()=>{});
       continue;
     }
-    offers.push(savedRow);existingSources.add(dedupeKey);imported++;
+    offers.push(savedRow);existingSources.add(dedupeKey);if(record?.sourceHash)existingHashes.add(record.sourceHash);if(record?.linkAnuncio)existingLinks.add(canonicalCreativeUrl(record.linkAnuncio));imported++;
   }
   creativeBatchWorking=false;
-  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Subir Balls n Brains":"Importar vídeos");}
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Subir Balls n Brains":"Importar pasta");}
   renderGrid();writeCache();
   toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
