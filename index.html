@@ -175,6 +175,9 @@
   .transcription-state{display:inline-flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted-fg);font-weight:650;}
   .transcription-state.is-ready{color:var(--accent);}
   .transcription-state.is-error{color:var(--red);}
+  .creative-upload-date{display:flex;align-items:center;gap:6px;margin-top:9px;color:var(--muted-fg);font-size:.67rem;font-weight:650;letter-spacing:.01em;}
+  .creative-upload-date .ico{width:13px;height:13px;color:var(--accent);}
+  .creative-upload-date strong{color:var(--fg);font-variant-numeric:tabular-nums;}
   .qbtn[disabled]{cursor:not-allowed;opacity:.48;}
   .card{isolation:isolate;}
   .card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;opacity:0;background:linear-gradient(115deg,transparent 28%,rgba(229,255,45,.08),transparent 72%);transition:opacity .2s var(--ease);z-index:-1;}
@@ -4683,6 +4686,17 @@ function mediaThumb(img,alt,hasVideo,videoUrl){
 function commentPreview(c){if(!c)return"";return `<div class="kcomment">${ic("message")}<span>${esc(c)}</span></div>`;}
 function emptyActions(){return `<span class="muted-empty" style="font-size:.8rem">Sem link — abra para ver</span>`;}
 function nicheChip(d){return d.nicho?`<div class="card__chips"><span class="chip niche">${esc(d.nicho)}</span></div>`:"";}
+function creativeUploadDate(o){
+  const d=(o&&o.data)||{},raw=(o&&o.created_at)||d.uploadedAt||d.importedAt||"",date=new Date(raw);
+  return Number.isFinite(date.getTime())?date.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"America/Sao_Paulo"}):"";
+}
+function creativeUploadMeta(o){
+  const date=creativeUploadDate(o);
+  return date?`<div class="creative-upload-date">${ic("clock")}Adicionado em <strong>${esc(date)}</strong></div>`:"";
+}
+function creativeCardMedia(d,video){
+  return video?mediaThumb("",d.nome,true,video):mediaThumb(d.print,d.nome,false,"");
+}
 
 /* ===== COMPONENTE CANÔNICO DE CARD =====
    Único ponto que monta o esqueleto de TODO card (ofertas, presell, criativo,
@@ -4733,7 +4747,9 @@ function criativoCard(o){
   const tab=d.plataforma==="taboola";
   const badge=organic?`<span class="tbadge"><span class="tdot"></span>Organic</span>`:tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
-  const hasVid=!!va&&!tab;
+  /* A plataforma descreve a origem do anúncio, não o tipo da mídia. Criativos
+     nativos também podem ter MP4 e devem usar o primeiro frame como capa. */
+  const hasVid=!!va;
   const copy=brainCopyText(d),transcript=String(d.transcricao||"").trim(),copyLink=(d.copyLink||"").trim();
   const canonical=String(d.transcriptionStatus||d.transcricaoStatus||"").toLowerCase(),transcriptState=transcript?"ready":canonical==="failed"||canonical==="error"?"error":["pending","processing","working","retry_scheduled"].includes(canonical)?"pending":"missing";
   const translated=!!String(d.transcricaoPt||"").trim(),translationState=String(d.transcricaoPtStatus||"").toLowerCase();
@@ -4747,8 +4763,8 @@ function criativoCard(o){
   return card({
     id:o.id,variant:"kcard",
     head:`${badge}<span class="ktag">${ic(organic?"sparkles":"play")}${organic?"Swipe Organic":"Criativo"}</span>`,
-    media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
-    body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}`,
+    media:creativeCardMedia(d,hasVid?va:""),
+    body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}${creativeUploadMeta(o)}`,
     chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
     actions:acts
   });
@@ -5519,6 +5535,10 @@ function openSimpleView(o,skipOpen){
     if(d.fbMetrics&&d.fbMetrics.impressions!=null)kvs.push(`<div class="kv"><div class="k">Impressões (FB)</div><div class="v">${esc(String(d.fbMetrics.impressions))}</div></div>`);
     if(d.collectionLabel||logicalKind==="organic")kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(logicalKind==="organic"?"VIDEO ORGANICO":d.collectionLabel)}</div></div>`);
   }
+  if(kind==="criativo"){
+    const uploadDate=creativeUploadDate(o);
+    if(uploadDate)kvs.push(`<div class="kv"><div class="k">Adicionado em</div><div class="v">${esc(uploadDate)}</div></div>`);
+  }
   if(kind==="noticia"){
     if(d.fonte)kvs.push(`<div class="kv"><div class="k">Fonte</div><div class="v">${esc(d.fonte)}</div></div>`);
     if(d.dataPub)kvs.push(`<div class="kv"><div class="k">Data</div><div class="v">${relDate(d.dataPub)}</div></div>`);
@@ -5564,10 +5584,11 @@ function openSimpleView(o,skipOpen){
     sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Print</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Presell / Advertorial",d.print)}</div></section>`;
   }
 
-  /* criativo: vídeo embutido + transcrição ao lado (ou imagem, p/ Taboola) */
+  /* criativo: vídeo embutido + transcrição ao lado; a plataforma não altera
+     o tipo de mídia, portanto Taboola com MP4 segue o mesmo padrão do Meta. */
   if(kind==="criativo"){
     const va=videoOfCrv(d);
-    const showVideo=!!va&&d.plataforma!=="taboola";
+    const showVideo=!!va;
     if(showVideo){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
     }
