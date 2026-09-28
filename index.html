@@ -1566,6 +1566,9 @@ function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
+/* Agrupamento visual da navegação. A classificação dos dados continua separada. */
+const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
+const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
@@ -1979,7 +1982,7 @@ function parseLocation(){
   const path=decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
   const seg=path.split("/").filter(Boolean);
   const q=new URLSearchParams(location.search);
-  if(!seg.length)return {section:"oferta",niche:"",id:null,notFound:false,q};
+  if(!seg.length)return {section:"brandsgeneral",niche:"",id:null,notFound:false,q};
   const section=PATH2SEC[seg[0]];
   if(!section)return {notFound:true,q};
   let niche="",id=null,notFound=false;
@@ -2002,7 +2005,7 @@ function renderNotFound(msg){
   document.body.classList.remove("route-detail-full");
   document.title="Não encontrado — Benchmarking FEG";
   document.body.classList.remove("chatmode","toolmode");
-  const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/ofertas/todos" style="margin-top:18px">Voltar para as ofertas</a></div>`;
+  const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/feg-brands-geral/todos" style="margin-top:18px">Voltar para FEG Brands</a></div>`;
 }
 function maybeOpenView(id){
   const o=itemById(id);
@@ -2020,6 +2023,7 @@ function applyRoute(){
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   searchTerm=r.q.get("q")||"";
+  if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?(r.q.get("plataforma")||"all"):"all";
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days"].includes(requested)?requested:"active_ads";
@@ -2102,13 +2106,9 @@ function renderSideNav(){
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
   };
-  html+=`<div class="snav__group snav__group--dr">FEG DR</div>`;
-  if(isAdmin)html+=navItem(sectionCfg("updates"));
-  SECTIONS.filter(s=>s.key!=="updates"&&!BRAND_SECTIONS.has(s.key)&&!AI_SECTIONS.has(s.key)&&(!ADMIN_SECTIONS.has(s.key)||isAdmin)).forEach(s=>{html+=navItem(s);});
+  /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
-  SECTIONS.filter(s=>BRAND_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
-  html+=`<div class="snav__group snav__group--ai">${ic("sparkles")}Ferramentas IA</div>`;
-  SECTIONS.filter(s=>AI_SECTIONS.has(s.key)).forEach(s=>{html+=navItem(s);});
+  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
   nav.innerHTML=html;
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
@@ -3306,7 +3306,7 @@ function setSectionHeader(){
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
   const sw=$(".topbar .search");if(sw)sw.style.display=cc?"none":"";
   if(cc)return;
-  const division=$("#divisionPill"),brands=BRAND_SECTIONS.has(activeSection),history=activeSection==="updates";
+  const division=$("#divisionPill"),brands=BRANDS_NAV_SECTIONS.has(activeSection),history=activeSection==="updates";
   if(division){
     division.classList.toggle("division-pill--brands",brands);
     division.classList.toggle("division-pill--history",history);
