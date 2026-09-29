@@ -2073,14 +2073,14 @@ function setSectionHeader(){
         :`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;
   }
   const brandHub=activeSection==="brandcreative"&&isAdmin;
-  const ultimaPilot=isUltimaPeakPilotArea()&&activeBrand===ULTIMA_PEAK_PILOT_BRAND;
+  const selectedInsiderItem=isInsiderAdminArea()&&activeBrand?offers.find(o=>sectionOf(o)==="brandsvalidated"&&insiderProductKey(o)===activeBrand):null;
   const selectedHubItem=brandHub&&activeBrand?brandHubItems().find(o=>brandKeyOf(o)===activeBrand):null;
   const lbl=$("#statLabel");if(lbl)lbl.textContent=brandHub?"Materiais":cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=brandHub?"Buscar nicho, marca, oferta ou criativo...":cfg.searchPlaceholder;
   const title=$("#pageTitle"),description=$("#pageDescription");
-  if(title)title.textContent=ultimaPilot?"Ultima Peak":brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):cfg.label;
-  if(description)description.innerHTML=ultimaPilot?"Saúde masculina · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):cfg.subHtml||"";
+  if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):cfg.label;
+  if(description)description.innerHTML=selectedInsiderItem?esc(insiderNicheOf(selectedInsiderItem))+" · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}

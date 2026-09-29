@@ -11,6 +11,7 @@ test("Insider mantém a taxonomia e as cinco atribuições aprovadas só no admi
   assert.match(html,/function insiderOverride\(o\)\{if\(!isAdmin/);
   assert.match(html,/function renderAdminInsider\(items\)/);
   assert.match(html,/if\(isInsiderAdminArea\(\)\)\{\s*area\.innerHTML=renderAdminInsider\(list\)/);
+  assert.doesNotMatch(html,/isUltimaPeakPilotArea|ULTIMA_PEAK_PILOT_BRAND/);
 });
 
 test("Insider mostra capa limpa sem lightbox e preserva o histórico de ads no detalhe",()=>{
