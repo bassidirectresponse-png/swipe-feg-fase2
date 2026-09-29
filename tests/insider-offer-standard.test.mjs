@@ -27,7 +27,7 @@ test("Top ads usam data real registrada, nunca um intervalo inferido",()=>{
   const source=html.match(/function topAdDisplayName\(ad,index\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(source);
   const topAdDisplayName=new Function(`${source};return topAdDisplayName;`)();
-  assert.equal(topAdDisplayName({downloadedAt:"17/07/2026"},0),"Anúncio 1 — julho de 2026 — registrado em 17/07/2026");
-  assert.equal(topAdDisplayName({period:"2026-09",sourceDate:"18/09/2026",bmRange:"12/09/2026 a 18/09/2026"},1),"Anúncio 2 — setembro de 2026 — 12/09/2026 a 18/09/2026");
+  assert.equal(topAdDisplayName({downloadedAt:"17/07/2026"},0),"Anúncio 1 — Julho 2026 — registrado em 17/07/2026");
+  assert.equal(topAdDisplayName({period:"2026-09",sourceDate:"18/09/2026",bmRange:"12/09/2026 a 18/09/2026"},1),"Anúncio 2 — Setembro 2026 — 12/09/2026 a 18/09/2026");
   assert.equal(topAdDisplayName({},2),"Anúncio 3 — Período não informado — datas a confirmar");
 });

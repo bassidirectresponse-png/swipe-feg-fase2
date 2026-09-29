@@ -1107,7 +1107,7 @@ function topAdDisplayName(ad,index){
   const raw=String(ad&&((ad.period||ad.sourceDate||ad.downloadedAt||ad.startDate))||"").trim();
   const parts=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw),iso=/^(\d{4})-(\d{2})/.exec(raw);
   const year=parts?+parts[3]:iso?+iso[1]:null,month=parts?+parts[2]:iso?+iso[2]:null;
-  const monthLabel=year&&month>=1&&month<=12?new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(year,month-1,1))):"Período não informado";
+  const monthText=year&&month>=1&&month<=12?new Intl.DateTimeFormat("pt-BR",{month:"long",timeZone:"UTC"}).format(new Date(Date.UTC(year,month-1,1))):"",monthLabel=monthText?monthText.charAt(0).toLocaleUpperCase("pt-BR")+monthText.slice(1)+" "+year:"Período não informado";
   const range=String(ad&&((ad.bmRange||ad.analysisRange||ad.dataRange))||"").trim();
   const observed=String(ad&&((ad.sourceDate||ad.downloadedAt))||"").trim();
   return `Anúncio ${index+1} — ${monthLabel}${range?" — "+range:observed?" — registrado em "+observed:" — datas a confirmar"}`;
