@@ -630,7 +630,7 @@ function renderSideNav(){
       ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
-    nicheHtml+='<span class="snav__niches-title">Nichos e produtos</span>';
+    nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,sameNiche(activeNiche,n));});
     if(none)nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,activeNiche===NO_NICHE);
