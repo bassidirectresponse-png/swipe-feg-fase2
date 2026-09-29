@@ -13,6 +13,8 @@ test("admin agrupa Geral, Insider e Criativos por nicho e produto sem descartar 
   assert.match(html, /function renderAdminBrandHub\(items\)/);
   assert.match(html, /activeSection==="brandcreative"\|\|activeSection==="brandsgeneral"\)&&isAdmin&&activeBrand/);
   assert.match(html, /activeSection==="brandcreative"\|\|activeSection==="brandsgeneral"/);
+  assert.match(html, /if\(sectionOf\(o\)==="brandsvalidated"\)return insiderNicheOf\(o\)/);
+  assert.match(html, /niche===BRAND_NICHE_REVIEW\?NO_NICHE:niche/);
   assert.doesNotMatch(html, /list=list\.filter\(o=>INSIDER_NICHES\.some/);
 });
 

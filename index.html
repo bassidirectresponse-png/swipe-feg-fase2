@@ -2014,6 +2014,7 @@ function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>{const section=sectionOf(o);return BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative";});}
 function brandHubAdminData(o){const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
 function brandHubNicheOf(o){
+  if(sectionOf(o)==="brandsvalidated")return insiderNicheOf(o);
   const draftNiche=isAdmin&&o&&adminOfferDrafts[o.id]&&adminOfferDrafts[o.id].data_patch&&adminOfferDrafts[o.id].data_patch.nicho;
   const explicit=String(draftNiche||nicheOf(o)).trim();if(explicit)return brandNicheCanonical(explicit);
   if(sectionOf(o)!=="brandcreative")return "";
@@ -2580,7 +2581,7 @@ function renderAdminBrandHub(items){
     for(const [key,group] of brands){
       const brandOffers=group.items.filter(item=>BRAND_OFFER_SECTIONS.has(sectionOf(item))).sort(offerSortFn);
       const brandCreatives=group.items.filter(item=>sectionOf(item)==="brandcreative").sort(recentFirstFn);
-      const href=listPath("brandcreative",niche==="Sem nicho"?NO_NICHE:niche)+"?marca="+encodeURIComponent(key);
+      const href=listPath("brandcreative",niche==="Sem nicho"||niche===BRAND_NICHE_REVIEW?NO_NICHE:niche)+"?marca="+encodeURIComponent(key);
       html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+brandOffers.length+' ofertas · '+brandCreatives.length+' criativos</span></header>';
       if(brandOffers.length)html+='<div class="brandhub-lane"><h4 class="brandhub-lane__head">Ofertas completas</h4><div class="grid">'+brandOffers.map(cardFor).join("")+'</div></div>';
       if(brandCreatives.length)html+='<div class="brandhub-lane"><h4 class="brandhub-lane__head">Criativos da marca</h4><div class="grid">'+brandCreatives.map(cardFor).join("")+'</div></div>';
@@ -2616,7 +2617,7 @@ function renderAdminGeneral(items){
   let html='<div class="brandhub brandhub--general">';
   for(const niche of sections){const products=groups.get(niche)||new Map(),count=items.filter(o=>sameNiche(brandNicheCanonical(nicheOf(o)),niche)).length;if(!products.size)continue;
     html+='<section class="brandhub-niche"><header class="brandhub-niche__head"><h2>'+esc(niche)+'</h2><span class="brandhub-niche__count">'+count+' '+(count===1?'oferta':'ofertas')+'</span></header>';
-    for(const [key,group] of [...products.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'))){const href=listPath('brandsgeneral',niche)+'?marca='+encodeURIComponent(key);html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';}
+    for(const [key,group] of [...products.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'))){const href=listPath('brandsgeneral',niche===BRAND_NICHE_REVIEW?NO_NICHE:niche)+'?marca='+encodeURIComponent(key);html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';}
     html+='</section>';
   }
   return html+'</div>'+gridPager(page);
