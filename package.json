@@ -8,6 +8,8 @@
     "test": "node --test tests/*.test.mjs",
     "benchmark": "node tests/performance.mjs",
     "backup:supabase": "node scripts/backup_supabase_metadata.mjs",
+    "graph:sync": "node scripts/sync_graph_inline.mjs",
+    "graph:check": "node scripts/sync_graph_inline.mjs --check",
     "security:secrets": "node scripts/secret-scan.mjs",
     "security:csp": "node scripts/csp-hashes.mjs --check"
   },
