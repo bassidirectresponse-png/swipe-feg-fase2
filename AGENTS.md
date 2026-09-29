@@ -1,6 +1,6 @@
 # Navegação do Swipe FEG com Code Review Graph
 
-O Code Review Graph 2.3.9 está instalado localmente em `.venv/` e o índice persistente fica em `.code-review-graph/`. Ambos são locais e não devem entrar no Git. O MCP `code_review_graph` também está disponível neste ambiente; sempre informe `repo_root` com o caminho deste projeto quando a detecção automática não for confiável.
+Neste computador, o Code Review Graph 2.3.9 está instalado em `.venv/` e o índice persistente fica em `.code-review-graph/`. Ambos são locais e não entram no Git. Em um novo computador, execute `python3 -m venv .venv`, `.venv/bin/python -m pip install -r requirements-graph.txt` e `.venv/bin/code-review-graph build` na raiz do projeto. O MCP `code_review_graph` também está disponível neste ambiente; sempre informe `repo_root` com o caminho deste projeto quando a detecção automática não for confiável.
 
 ## Antes de alterar código
 
