@@ -2125,7 +2125,7 @@ function offerPath(o){
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
   const parts=[SEC_SHORT[activeSection]||cfg.label];
-  if(activeNiche===NO_NICHE)parts.unshift("Sem nicho");
+  if(activeNiche===NO_NICHE)parts.unshift(BRAND_SECTIONS.has(activeSection)&&isAdmin?BRAND_NICHE_REVIEW:"Sem nicho");
   else if(activeNiche)parts.unshift(activeNiche);
   if(activeSection==="brandcreative"&&isAdmin&&activeBrand){const match=brandHubItems().find(o=>brandKeyOf(o)===activeBrand);if(match)parts.unshift(brandNameOf(match));}
   if(isInsiderAdminArea()&&activeBrand){const match=offers.find(o=>sectionOf(o)==="brandsvalidated"&&insiderProductKey(o)===activeBrand);if(match)parts.unshift(insiderProductName(match));}
@@ -2249,8 +2249,9 @@ function renderSideNav(){
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,sameNiche(activeNiche,n));});
     if(none)nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,activeNiche===NO_NICHE);
-    if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&isAdmin&&activeNiche&&activeNiche!==NO_NICHE){
-      const nicheItems=secOffers.filter(o=>sameNiche(activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)),activeNiche)),brandCounts=new Map();
+    if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&isAdmin&&activeNiche){
+      const selectedNiche=activeNiche===NO_NICHE?BRAND_NICHE_REVIEW:activeNiche;
+      const nicheItems=secOffers.filter(o=>sameNiche(activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)),selectedNiche)),brandCounts=new Map();
       nicheItems.forEach(o=>{const name=brandNameOf(o),key=brandKeyOf(o);const entry=brandCounts.get(key)||{name,count:0};entry.count++;brandCounts.set(key,entry);});
       const brands=[...brandCounts.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR"));
       const base=listPath(activeSection,activeNiche);
