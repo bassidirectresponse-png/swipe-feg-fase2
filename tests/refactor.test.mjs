@@ -18,6 +18,8 @@ const vslDissectorFn = await readFile(new URL("../netlify/functions/vsl-dissecto
 const vslJobFn = await readFile(new URL("../netlify/functions/vsl-job.mjs", import.meta.url), "utf8");
 const vslBackgroundFn = await readFile(new URL("../netlify/functions/vsl-dissector-background.mjs", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
+const ultimaPeakNicheDraft = await readFile(new URL("../supabase/migrations/202609290002_admin_insider_male_health_niche_preview.sql", import.meta.url), "utf8");
+const ultimaPeakPrintDraft = await readFile(new URL("../supabase/migrations/202609290003_admin_ultima_peak_september_prints.sql", import.meta.url), "utf8");
 const joymodeIngest = await readFile(new URL("../scripts/ingest_joymode.mjs", import.meta.url), "utf8");
 const joymodeSeed = JSON.parse(await readFile(new URL("../assets/joymode/seed.json", import.meta.url), "utf8"));
 const primalVikingIngest = await readFile(new URL("../scripts/ingest_primal_viking.mjs", import.meta.url), "utf8");
@@ -47,10 +49,10 @@ test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => 
   assert.doesNotMatch(html, /activeSection==="copychief"|activeSection==="furtado"/);
 });
 
-test("Atualizações aparece no topo do grupo FEG DR", () => {
-  const nav = html.slice(html.indexOf('html+=`<div class="snav__group snav__group--dr">FEG DR</div>`'), html.indexOf('html+=`<div class="snav__group snav__group--brands">'));
-  assert.ok(nav.indexOf('navItem(sectionCfg("updates"))') >= 0);
-  assert.ok(nav.indexOf('navItem(sectionCfg("updates"))') < nav.indexOf('SECTIONS.filter'));
+test("navegação reúne seções legadas na área Brands sem remover seus registros", () => {
+  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
+  assert.match(html, /\/\* As seções ocultas e seus registros permanecem no armazenamento\. \*\//);
+  assert.doesNotMatch(html, /html\+=`<div class="snav__group snav__group--dr">FEG DR<\/div>`/);
   assert.doesNotMatch(html, /snav__group--updates">Histórico/);
 });
 
@@ -324,15 +326,15 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
-test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () => {
+test("FEG Brands reúne ofertas e o hub visual por nicho/marca no admin", () => {
   assert.match(html, /key:"brandsgeneral",label:"Ofertas de Brands no Geral"/);
   assert.match(html, /key:"brandsvalidated",label:"Ofertas Insider"/);
   assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated","brandcreative"\]\)/);
   assert.match(html, /key:"brandcreative",label:"Swipe de Criativos"/);
   assert.match(html, /Balls n Brains/);
-  assert.doesNotMatch(html, /if\(BRAND_SECTIONS\.has\(r\.section\)&&!isAdmin\)/);
   assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
-  assert.match(html, /snav__group--dr/);
+  assert.match(html, /const BRAND_NICHE_ORDER=\["Saúde masculina","Saúde feminina","Nicho pet","Saúde mental"\]/);
+  assert.match(html, /Pendente de revisão/);
   assert.match(html, /division-pill--brands/);
   assert.match(html, /DTC Intelligence/);
   assert.match(html, /FEG DR/);
@@ -344,13 +346,33 @@ test("FEG Brands fica visível para todos e separa spy de Ofertas Insider", () =
   assert.match(html, /activeSection==="oferta"\|\|BRAND_OFFER_SECTIONS\.has\(activeSection\)/);
 });
 
+test("rascunho de Insider preserva dados publicados e põe nichos legados em revisão", () => {
+  assert.match(ultimaPeakNicheDraft, /public\.admin_offer_drafts/);
+  assert.match(ultimaPeakNicheDraft, /like '%disfunção erétil%'/);
+  assert.match(ultimaPeakNicheDraft, /then 'Saúde masculina'/);
+  assert.match(ultimaPeakNicheDraft, /else 'Pendente de revisão'/);
+  assert.doesNotMatch(ultimaPeakNicheDraft, /update public\.offers/i);
+});
+
+test("rascunho de setembro anexa os 11 prints aos respectivos períodos sem sobrescrever o relatório", () => {
+  assert.equal((ultimaPeakPrintDraft.match(/\"reportKey\"/g)||[]).length,11);
+  assert.match(ultimaPeakPrintDraft,/2026-09-18-30d/);
+  assert.match(ultimaPeakPrintDraft,/2026-09-18-14d/);
+  assert.match(ultimaPeakPrintDraft,/2026-09-18-7d/);
+  assert.match(ultimaPeakPrintDraft,/2026-09-18-1d/);
+  assert.match(ultimaPeakPrintDraft,/data_patch = public\.admin_offer_drafts\.data_patch \|\| excluded\.data_patch/);
+  assert.doesNotMatch(ultimaPeakPrintDraft,/update public\.offers/i);
+});
+
 test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   for (const field of ["bmSpend7d","bmSpend14d","bmAvgConversion","bmCpc","bmCpcLink","bmCpm","bmCtr","bmCostUnique","bmCostIc","bmRoas","bmUpdatedAt"]) assert.match(html,new RegExp(field));
   assert.match(html, /function brandMetricGrid\(d,detail\)/);
-  assert.match(html, /function brandReportsHtml\(d\)/);
+  assert.match(html, /function brandReportsHtml\(d,id\)/);
+  assert.match(html, /role="tablist" aria-label="Períodos de análise da Business Manager"/);
+  assert.match(html, /function brandReportPane\(report,d\)/);
   assert.match(html, /Aguardando acesso à BM/);
   assert.match(html, /Resumo da Business Manager/);
-  assert.match(html, /Prints da BM/);
+  assert.match(html, /Outros prints da BM/);
   assert.match(html, /Top ads/);
   assert.match(html, /data-zone="bm\|\$\{i\}"/);
   assert.match(html, /data-zone="brandad\|\$\{i\}"/);

@@ -344,6 +344,15 @@
   .bm-report__metric{background:var(--surface);padding:12px 14px;min-width:0;}
   .bm-report__metric span{display:block;font-size:.57rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:4px;}
   .bm-report__metric strong{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+  .bm-period-tabs{display:flex;gap:8px;overflow:auto;padding:4px 2px 10px;margin-top:14px;scrollbar-width:thin;}
+  .bm-period-tab{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);color:var(--muted-fg);font:inherit;font-size:.82rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease);}
+  .bm-period-tab:hover{color:var(--fg);border-color:var(--border-strong);}
+  .bm-period-tab[aria-selected="true"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent);}
+  .bm-period-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .bm-report-pane{min-width:0;}
+  .bm-report-prints{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;padding:14px;border-top:1px solid var(--border);}
+  .bm-report-prints .shot{min-width:0;}
+  .bm-report-prints img{display:block;width:100%;height:auto;max-height:540px;object-fit:contain;background:var(--surface-2);}
   .bm-table-wrap{overflow:auto;max-width:100%;}
   .bm-table{width:100%;min-width:1180px;border-collapse:collapse;font-size:.76rem;font-variant-numeric:tabular-nums;}
   .bm-table th{position:sticky;top:0;background:var(--surface-2);color:var(--muted-fg);font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;text-align:right;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -1566,6 +1575,8 @@ const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const LEGACY_SUPABASE_REFS=["ppaajtzbhjixhyfidojd"];
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
+const BRAND_NICHE_ORDER=["Saúde masculina","Saúde feminina","Nicho pet","Saúde mental"];
+const BRAND_NICHE_REVIEW="Pendente de revisão";
 const SECTIONS=[
   {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
   {key:"criativo",label:"Swipe de Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Vídeos, transcrições e anúncios vencedores organizados por nicho e plataforma.'},
@@ -1593,7 +1604,7 @@ const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organ
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
-let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
+let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, activeBmPeriodByOffer={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0,offerVslUploading=0;
 let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
@@ -1914,14 +1925,25 @@ $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboa
 /* ===== GRID ===== */
 const NO_NICHE="__none__";
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
+function brandNicheCanonical(raw){
+  const value=String(raw||"").trim(),key=value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+  if(!key)return BRAND_NICHE_REVIEW;
+  if(key.includes("disfuncao eretil")||key==="saude masculina")return BRAND_NICHE_ORDER[0];
+  if(key==="saude feminina")return BRAND_NICHE_ORDER[1];
+  if(key==="nicho pet")return BRAND_NICHE_ORDER[2];
+  if(key==="saude mental")return BRAND_NICHE_ORDER[3];
+  return BRAND_NICHE_REVIEW;
+}
 function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeMarca||d.nomeOferta):(d.marca||d.nomeMarca||"Sem marca")||"Sem marca").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>{const section=sectionOf(o);return BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative";});}
+function brandHubAdminData(o){const draft=isAdmin&&o&&adminOfferDrafts[o.id];return draft?mergeAdminOfferDraftData(o.data,draft.data_patch):o&&o.data||{};}
 function brandHubNicheOf(o){
-  const explicit=nicheOf(o);if(explicit)return explicit;
+  const draftNiche=isAdmin&&o&&adminOfferDrafts[o.id]&&adminOfferDrafts[o.id].data_patch&&adminOfferDrafts[o.id].data_patch.nicho;
+  const explicit=String(draftNiche||nicheOf(o)).trim();if(explicit)return brandNicheCanonical(explicit);
   if(sectionOf(o)!=="brandcreative")return "";
   const match=offers.find(item=>BRAND_OFFER_SECTIONS.has(sectionOf(item))&&brandKeyOf(item)===brandKeyOf(o)&&nicheOf(item));
-  return match?nicheOf(match):"";
+  return match?brandNicheCanonical(nicheOf(match)):BRAND_NICHE_REVIEW;
 }
 function filtered(){
   let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
@@ -2128,10 +2150,13 @@ function renderSideNav(){
     const ncByKey=new Map();let none=0;
     secOffers.forEach(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):nicheOf(o);if(!n){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
+    if(activeSection==="brandcreative"&&isAdmin){BRAND_NICHE_ORDER.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
     if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
-    const ordered=[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
+    const ordered=activeSection==="brandcreative"&&isAdmin
+      ?[...BRAND_NICHE_ORDER, ...(nc.has(BRAND_NICHE_REVIEW)?[BRAND_NICHE_REVIEW]:[])]
+      :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{nicheHtml+=nitem(n,n,nc.get(n),sameNiche(activeNiche,n));});
@@ -2286,18 +2311,38 @@ const BRAND_BM_METRICS=[
 function brandBmHasData(d){return BRAND_BM_METRICS.some(([,key])=>String((d&&d[key])||"").trim())||(d&&d.bmPrints||[]).some(x=>x&&x.img)||(d&&d.brandTopAds||[]).some(x=>x&&(x.img||x.link));}
 function brandMetricGrid(d,detail){return `<div class="brand-metrics${detail?" brand-metrics--detail":""}">${BRAND_BM_METRICS.map(([label,key])=>{const value=String((d&&d[key])||"").trim();return `<div class="brand-metric"><span class="brand-metric__label">${esc(label)}</span><span class="brand-metric__value${value?"":" is-empty"}">${esc(value||"—")}</span></div>`;}).join("")}</div>`;}
 const BM_REPORT_METRICS=[["Gasto","spend"],["ROAS","roas"],["Valor médio","avgConversion"],["Custo por resultado","costResult"],["Resultados","results"],["CTR","ctr"],["CPC","cpc"],["CPM","cpm"],["CPC link","cpcLink"],["Clique único","costUnique"]];
-function brandReportsHtml(d){
+function bmReportTabLabel(report){
+  const text=`${report&&report.key||""} ${report&&report.label||""} ${report&&report.range||""}`.toLowerCase();
+  if(/30\s*dias|30d/.test(text))return"30 dias";
+  if(/14\s*dias|14d/.test(text))return"14 dias";
+  if(/7\s*dias|7d/.test(text))return"7 dias";
+  if(/ontem|1d|1 dia/.test(text))return"Ontem";
+  return String(report&&report.label||"Período").replace(/^.*?·\s*/,"" )||"Período";
+}
+function brandReportPane(report,d){
+  if(!report)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
+  const rows=Array.isArray(report.campaigns)?report.campaigns:[],totals=report.totals||{};
+  const metricValue=(source,key)=>source[key]||(key==="cpcLink"?source.cpc:"")||"—";
+  const summary=BM_REPORT_METRICS.map(([label,key])=>`<div class="bm-report__metric"><span>${esc(label)}</span><strong>${esc(metricValue(totals,key))}</strong></div>`).join("");
+  const table=rows.length?`<div class="bm-table-wrap"><table class="bm-table"><thead><tr><th>Campanha</th>${BM_REPORT_METRICS.map(([label])=>`<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.name||"Campanha")}</td>${BM_REPORT_METRICS.map(([,key])=>`<td>${esc(metricValue(row,key))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="muted-empty" style="padding:16px 18px">Sem linhas por campanha neste período.</div>`;
+  const prints=(Array.isArray(d&&d.bmPrints)?d.bmPrints:[]).filter(item=>item&&item.reportKey===report.key&&item.img);
+  const printHtml=prints.length?`<div class="bm-report-prints">${prints.map((item,index)=>shotView(item.nome||`Print · ${bmReportTabLabel(report)} · ${index+1}`,item.img)).join("")}</div>`:"";
+  return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(report.label||"Período")}</div><div class="bm-report__range">${esc(report.range||"")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}${printHtml}</article>`;
+}
+function brandReportsHtml(d,id){
   const reports=Array.isArray(d&&d.bmReports)?d.bmReports:[];
   if(!reports.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
-  return `<div class="bm-reports">${reports.map(r=>{
-    const rows=Array.isArray(r.campaigns)?r.campaigns:[],totals=r.totals||{};
-    const summary=BM_REPORT_METRICS.map(([label,key])=>`<div class="bm-report__metric"><span>${esc(label)}</span><strong>${esc(totals[key]||"—")}</strong></div>`).join("");
-    const table=rows.length?`<div class="bm-table-wrap"><table class="bm-table"><thead><tr><th>Campanha</th>${BM_REPORT_METRICS.map(([label])=>`<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.name||"Campanha")}</td>${BM_REPORT_METRICS.map(([,key])=>`<td>${esc(row[key]||"—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="muted-empty" style="padding:16px 18px">Sem linhas por campanha neste período.</div>`;
-    return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(r.label||"Período")}</div><div class="bm-report__range">${esc(r.range||"")}</div></div><span class="bm-report__level">${esc(r.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}</article>`;
-  }).join("")}</div>`;
+  const active=reports.find(report=>report&&report.key===activeBmPeriodByOffer[id])||reports[0];
+  activeBmPeriodByOffer[id]=active.key;
+  return `<div class="bm-period-tabs" id="bmPeriodTabs" role="tablist" aria-label="Períodos de análise da Business Manager">${reports.map((report,index)=>`<button type="button" class="bm-period-tab" role="tab" id="bm-period-tab-${index}" aria-controls="bmReportPane" aria-selected="${report.key===active.key}" tabindex="${report.key===active.key?0:-1}" data-bm-period-key="${esc(report.key)}" title="${esc(report.label||"")} · ${esc(report.range||"")}">${esc(bmReportTabLabel(report))}</button>`).join("")}</div><div class="bm-report-pane" id="bmReportPane" role="tabpanel" aria-labelledby="bm-period-tab-${reports.indexOf(active)}">${brandReportPane(active,d)}</div>`;
+}
+function brandReportsStaticHtml(d){
+  const reports=Array.isArray(d&&d.bmReports)?d.bmReports:[];
+  if(!reports.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
+  return `<div class="bm-reports">${reports.map(report=>brandReportPane(report,d)).join("")}</div>`;
 }
 function brandCard(o){
-  const d=normalize(o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
+  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
   const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
@@ -2375,8 +2420,7 @@ function renderAdminBrandHub(items){
     if(!brands.has(key))brands.set(key,{name:brand,items:[]});
     brands.get(key).items.push(o);
   });
-  const niches=[...NICHOS.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>n!=="Sem nicho"&&!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
-  if(groups.has("Sem nicho"))niches.push("Sem nicho");
+  const niches=[...BRAND_NICHE_ORDER.filter(n=>groups.has(n)),...(groups.has(BRAND_NICHE_REVIEW)?[BRAND_NICHE_REVIEW]:[])];
   const nicheCounts=new Map();items.forEach(o=>{const key=brandHubNicheOf(o)||"Sem nicho";nicheCounts.set(key,(nicheCounts.get(key)||0)+1);});
   let html='<div class="brandhub">';
   for(const niche of niches){
@@ -2584,14 +2628,15 @@ function openView(id,useAdminDraft=true){
   }
   let bmSection="";
   if(section==="brandsvalidated"){
-    const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
+    const bmPrints=d.bmPrints.filter(x=>x&&x.img&&(!showingDraft||!x.reportKey)),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
+    const reportsHtml=showingDraft?brandReportsHtml(d,id):brandReportsStaticHtml(d);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${brandMetricGrid(d,true)}
       ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
-      <div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${brandReportsHtml(d)}
-      <div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}
+      <div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}
+      <div class="sec__head" style="margin-top:26px"><span class="sec__title">${showingDraft?"Outros prints da BM":"Prints da BM"}</span><span class="sec__line"></span></div>${printsHtml}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Top ads</span><span class="sec__line"></span></div>${topAdsHtml}
     </section>`;
   }
@@ -2624,6 +2669,24 @@ function openView(id,useAdminDraft=true){
     </div>
     ${drive.length?`<aside class="sidebar"><div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div></aside>`:""}
   </div>`;
+  const periodTabs=$("#bmPeriodTabs"),reportPane=$("#bmReportPane");
+  if(periodTabs&&reportPane){
+    const reports=Array.isArray(d.bmReports)?d.bmReports:[];
+    periodTabs.addEventListener("click",event=>{
+      const button=event.target.closest("[data-bm-period-key]");if(!button)return;
+      const report=reports.find(item=>item&&item.key===button.dataset.bmPeriodKey);if(!report)return;
+      activeBmPeriodByOffer[id]=report.key;
+      $$("[role=tab][data-bm-period-key]",periodTabs).forEach(tab=>{const selected=tab===button;tab.setAttribute("aria-selected",String(selected));tab.tabIndex=selected?0:-1;});
+      reportPane.setAttribute("aria-labelledby",button.id);
+      reportPane.innerHTML=brandReportPane(report,d);
+      wireLightboxLinks(reportPane);
+    });
+    periodTabs.addEventListener("keydown",event=>{
+      if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
+      const tabs=$$('[role="tab"]',periodTabs),current=tabs.indexOf(event.target.closest('[role="tab"]'));if(current<0)return;
+      event.preventDefault();const next=event.key==="Home"?0:event.key==="End"?tabs.length-1:(current+(event.key==="ArrowRight"?1:tabs.length-1))%tabs.length;tabs[next].focus();tabs[next].click();
+    });
+  }
   wireLightboxLinks($("#viewBody"));
   wireCardPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
