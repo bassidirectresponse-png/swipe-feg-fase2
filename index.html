@@ -331,6 +331,7 @@
   .brand-metrics--detail{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));border:0;gap:12px;background:transparent;overflow:visible;}
   .brand-metrics--detail .brand-metric{border:1px solid var(--border-2)!important;border-radius:12px;background:var(--surface);padding:16px;}
   .brand-metrics--detail .brand-metric__value{font-size:1.35rem;white-space:normal;}
+  .brand-metrics--snapshot .brand-metric__label,.brand-metrics--snapshot .brand-metric__value{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;}
   .brand-bm-state{display:flex;align-items:center;gap:7px;color:var(--muted-fg);font-size:.72rem;font-weight:600;}
   .brand-bm-state .ico{width:14px;height:14px;}
   .brand-bm-state.is-ready{color:#8fd8ff;}
@@ -344,15 +345,54 @@
   .bm-report__metric{background:var(--surface);padding:12px 14px;min-width:0;}
   .bm-report__metric span{display:block;font-size:.57rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:4px;}
   .bm-report__metric strong{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
-  .bm-period-tabs{display:flex;gap:8px;overflow:auto;padding:4px 2px 10px;margin-top:14px;scrollbar-width:thin;}
-  .bm-period-tab{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);color:var(--muted-fg);font:inherit;font-size:.82rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease);}
+  .bm-history{min-width:0;margin-top:18px;}
+  .bm-history__intro{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .bm-history__intro h3{font-size:1rem;font-weight:700;}
+  .bm-history__intro p{color:var(--muted-fg);font-size:.78rem;}
+  .bm-history-notes{margin-top:14px;padding:12px 14px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);}
+  .bm-history-notes summary{cursor:pointer;font-size:.8rem;font-weight:650;}
+  .bm-history-notes .resumo{margin-top:12px;}
+  .bm-history .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  .bm-date-carousel{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:8px;min-width:0;}
+  .bm-date-arrow{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;font-size:1.25rem;cursor:pointer;}
+  .bm-date-arrow:hover:not(:disabled){border-color:var(--accent);}
+  .bm-date-arrow:disabled{opacity:.35;cursor:default;}
+  .bm-date-arrow:focus-visible,.bm-date-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .bm-date-rail{display:flex;gap:10px;min-width:0;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;padding:4px 2px 10px;}
+  .bm-date-card{flex:0 0 min(235px,75vw);min-width:0;min-height:98px;padding:12px 14px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);color:var(--fg);text-align:left;font:inherit;cursor:pointer;scroll-snap-align:start;transition:border-color .16s var(--ease),background .16s var(--ease);}
+  .bm-date-card:hover{border-color:var(--border-strong);}
+  .bm-date-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);}
+  .bm-date-card span{display:block;color:var(--muted-fg);font-size:.68rem;}
+  .bm-date-card strong{display:block;margin:4px 0;font-size:.96rem;}
+  .bm-date-card small{display:block;color:var(--muted-fg);font-size:.72rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  .bm-period-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 12px;}
+  .bm-period-tab{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 15px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);color:var(--muted-fg);font:inherit;font-size:.82rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease);}
   .bm-period-tab:hover{color:var(--fg);border-color:var(--border-strong);}
   .bm-period-tab[aria-selected="true"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent);}
   .bm-period-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
   .bm-report-pane{min-width:0;}
-  .bm-report-prints{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;padding:14px;border-top:1px solid var(--border);}
-  .bm-report-prints .shot{min-width:0;}
-  .bm-report-prints img{display:block;width:100%;height:auto;max-height:540px;object-fit:contain;background:var(--surface-2);}
+  .bm-report-pane .bm-report{overflow:visible;}
+  .bm-report-pane .bm-report__head{border-radius:14px 14px 0 0;}
+  .bm-report-pane .bm-report__summary{gap:8px;padding:14px;background:transparent;}
+  .bm-report__summary--primary{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+  .bm-report__summary--secondary{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important;border-top:1px solid var(--border);}
+  .bm-report-pane .bm-report__metric{min-width:0;padding:14px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface-2);}
+  .bm-report-pane .bm-report__metric strong{font-size:1.12rem;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.25;}
+  .bm-report-pane .bm-report__summary--primary .bm-report__metric:first-child strong{font-size:1.45rem;}
+  .bm-report__other{padding:0 18px 16px;color:var(--muted-fg);font-size:.77rem;}
+  .bm-campaigns{border-top:1px solid var(--border);padding:16px;}
+  .bm-campaigns__head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .bm-campaigns__head h4{font-size:.86rem;}
+  .bm-campaigns__head span{color:var(--muted-fg);font-size:.72rem;}
+  .bm-campaigns__list{display:grid;gap:10px;}
+  .bm-campaign{min-width:0;padding:13px 14px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface-2);}
+  .bm-campaign__name{font-size:.83rem;font-weight:700;overflow-wrap:anywhere;}
+  .bm-campaign__metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px;margin-top:10px;}
+  .bm-campaign__metric{min-width:0;}
+  .bm-campaign__metric span{display:block;color:var(--faint);font-size:.62rem;}
+  .bm-campaign__metric strong{display:block;margin-top:3px;font-size:.82rem;line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  .bm-campaign__metric strong.is-empty{color:var(--muted-fg);font-weight:500;}
+  @media(max-width:600px){.bm-date-carousel{grid-template-columns:40px minmax(0,1fr) 40px;gap:4px;}.bm-date-card{flex-basis:190px;}.bm-report__summary--primary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.bm-report__summary--primary .bm-report__metric:first-child{grid-column:1/-1;}.bm-report__summary--secondary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.bm-campaign__metrics{grid-template-columns:repeat(2,minmax(0,1fr));}}
   .bm-table-wrap{overflow:auto;max-width:100%;}
   .bm-table{width:100%;min-width:1180px;border-collapse:collapse;font-size:.76rem;font-variant-numeric:tabular-nums;}
   .bm-table th{position:sticky;top:0;background:var(--surface-2);color:var(--muted-fg);font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;text-align:right;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -2311,38 +2351,94 @@ const BRAND_BM_METRICS=[
 function brandBmHasData(d){return BRAND_BM_METRICS.some(([,key])=>String((d&&d[key])||"").trim())||(d&&d.bmPrints||[]).some(x=>x&&x.img)||(d&&d.brandTopAds||[]).some(x=>x&&(x.img||x.link));}
 function brandMetricGrid(d,detail){return `<div class="brand-metrics${detail?" brand-metrics--detail":""}">${BRAND_BM_METRICS.map(([label,key])=>{const value=String((d&&d[key])||"").trim();return `<div class="brand-metric"><span class="brand-metric__label">${esc(label)}</span><span class="brand-metric__value${value?"":" is-empty"}">${esc(value||"—")}</span></div>`;}).join("")}</div>`;}
 const BM_REPORT_METRICS=[["Gasto","spend"],["ROAS","roas"],["Valor médio","avgConversion"],["Custo por resultado","costResult"],["Resultados","results"],["CTR","ctr"],["CPC","cpc"],["CPM","cpm"],["CPC link","cpcLink"],["Clique único","costUnique"]];
+function bmReportDateKey(report){
+  const captured=String(report&&report.capturedAt||"").slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(captured))return captured;
+  const dates=String(report&&report.range||"").match(/\d{2}\/\d{2}\/\d{4}/g)||[];
+  if(!dates.length)return"sem-data";
+  const [day,month,year]=dates[dates.length-1].split("/");return`${year}-${month}-${day}`;
+}
+function bmReportDateLabel(key){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(key))return"Sem data";
+  return new Date(`${key}T12:00:00Z`).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric",timeZone:"UTC"});
+}
+function bmReportWindowKey(report){
+  const text=`${report&&report.key||""} ${report&&report.label||""}`.toLowerCase();
+  if(/30\s*dias|30d/.test(text))return"30d";
+  if(/14\s*dias|14d/.test(text))return"14d";
+  if(/7\s*dias|7d/.test(text))return"7d";
+  if(/ontem|1d|1 dia/.test(text))return"1d";
+  return"outro";
+}
+function bmReportGroups(d){
+  const byDate=new Map(),order={"1d":0,"7d":1,"14d":2,"30d":3,outro:4};
+  for(const report of Array.isArray(d&&d.bmReports)?d.bmReports:[]){
+    if(!report||!report.key)continue;
+    const date=bmReportDateKey(report);if(!byDate.has(date))byDate.set(date,[]);byDate.get(date).push(report);
+  }
+  return [...byDate.entries()].sort(([a],[b])=>a==="sem-data"?1:b==="sem-data"?-1:b.localeCompare(a)).map(([date,reports])=>({date,reports:reports.sort((a,b)=>order[bmReportWindowKey(a)]-order[bmReportWindowKey(b)])}));
+}
 function bmReportTabLabel(report){
-  const text=`${report&&report.key||""} ${report&&report.label||""} ${report&&report.range||""}`.toLowerCase();
-  if(/30\s*dias|30d/.test(text))return"30 dias";
-  if(/14\s*dias|14d/.test(text))return"14 dias";
-  if(/7\s*dias|7d/.test(text))return"7 dias";
-  if(/ontem|1d|1 dia/.test(text))return"Ontem";
+  const windowKey=bmReportWindowKey(report);
+  if(windowKey==="30d")return"30 dias";
+  if(windowKey==="14d")return"14 dias";
+  if(windowKey==="7d")return"7 dias";
+  if(windowKey==="1d")return/ontem/i.test(String(report&&report.label||""))?"Ontem":"1 dia";
   return String(report&&report.label||"Período").replace(/^.*?·\s*/,"" )||"Período";
 }
-function brandReportPane(report,d){
+function bmHasValue(value){return value!=null&&String(value).trim()!==""&&String(value).trim()!=="—";}
+function bmReportMetric(label,value,compact=false){
+  const ready=bmHasValue(value),tag=compact?"bm-campaign__metric":"bm-report__metric";
+  return `<div class="${tag}"><span>${esc(label)}</span><strong${ready?"":' class="is-empty"'}>${esc(ready?String(value):"Não informado")}</strong></div>`;
+}
+function bmReportSecondaryMetrics(source){
+  const separateLink=bmHasValue(source.cpcLink);
+  return [["Valor médio por compra",source.avgConversion],["Custo por resultado",source.costResult],["CTR",source.ctr],[separateLink?"CPC geral":"CPC no link",source.cpc],...(separateLink?[["CPC no link",source.cpcLink]]:[]),["CPM",source.cpm],["Clique único",source.costUnique]].filter(([,value])=>bmHasValue(value));
+}
+function brandReportPane(report){
   if(!report)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
   const rows=Array.isArray(report.campaigns)?report.campaigns:[],totals=report.totals||{};
-  const metricValue=(source,key)=>source[key]||(key==="cpcLink"?source.cpc:"")||"—";
-  const summary=BM_REPORT_METRICS.map(([label,key])=>`<div class="bm-report__metric"><span>${esc(label)}</span><strong>${esc(metricValue(totals,key))}</strong></div>`).join("");
-  const table=rows.length?`<div class="bm-table-wrap"><table class="bm-table"><thead><tr><th>Campanha</th>${BM_REPORT_METRICS.map(([label])=>`<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.name||"Campanha")}</td>${BM_REPORT_METRICS.map(([,key])=>`<td>${esc(metricValue(row,key))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="muted-empty" style="padding:16px 18px">Sem linhas por campanha neste período.</div>`;
-  const prints=(Array.isArray(d&&d.bmPrints)?d.bmPrints:[]).filter(item=>item&&item.reportKey===report.key&&item.img);
-  const printHtml=prints.length?`<div class="bm-report-prints">${prints.map((item,index)=>shotView(item.nome||`Print · ${bmReportTabLabel(report)} · ${index+1}`,item.img)).join("")}</div>`:"";
-  return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(report.label||"Período")}</div><div class="bm-report__range">${esc(report.range||"")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}${printHtml}</article>`;
+  const isPurchase=/compras|vendas/i.test(String(totals.results||""));
+  const primary=bmReportMetric("Gasto",totals.spend)+bmReportMetric(isPurchase?"Vendas":"Resultados",totals.results)+bmReportMetric("ROAS",totals.roas);
+  const secondary=bmReportSecondaryMetrics(totals).map(([label,value])=>bmReportMetric(label,value)).join("");
+  const campaigns=rows.length?`<div class="bm-campaigns__list">${rows.map(row=>{
+    const campaignPurchase=/compras|vendas/i.test(String(row.results||"")),core=[["Gasto",row.spend],[campaignPurchase?"Vendas":"Resultados",row.results],["ROAS",row.roas]];
+    const metrics=[...core,...bmReportSecondaryMetrics(row)].filter(([label,value])=>label==="Gasto"||bmHasValue(value));
+    return `<article class="bm-campaign"><div class="bm-campaign__name">${esc(row.name||"Campanha")}</div><div class="bm-campaign__metrics">${metrics.map(([label,value])=>bmReportMetric(label,value,true)).join("")}</div></article>`;
+  }).join("")}</div>`:`<div class="muted-empty">Nenhuma campanha informada neste período.</div>`;
+  return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(bmReportTabLabel(report))} · leitura de ${esc(bmReportDateLabel(bmReportDateKey(report)))}</div><div class="bm-report__range">${esc(report.range||"")} · ${esc(report.currency||"USD")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary bm-report__summary--primary">${primary}</div>${secondary?`<div class="bm-report__summary bm-report__summary--secondary">${secondary}</div>`:""}${totals.otherResults?`<div class="bm-report__other">Outros resultados: ${esc(totals.otherResults)}</div>`:""}<div class="bm-campaigns"><div class="bm-campaigns__head"><h4>Campanhas</h4><span>${rows.length} ${rows.length===1?"campanha":"campanhas"}</span></div>${campaigns}</div></article>`;
 }
 function brandReportsHtml(d,id){
-  const reports=Array.isArray(d&&d.bmReports)?d.bmReports:[];
-  if(!reports.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
-  const active=reports.find(report=>report&&report.key===activeBmPeriodByOffer[id])||reports[0];
+  const groups=bmReportGroups(d),all=groups.flatMap(group=>group.reports);
+  if(!all.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
+  const active=all.find(report=>report.key===activeBmPeriodByOffer[id])||groups[0].reports.find(report=>bmReportWindowKey(report)==="7d")||groups[0].reports[0];
   activeBmPeriodByOffer[id]=active.key;
-  return `<div class="bm-period-tabs" id="bmPeriodTabs" role="tablist" aria-label="Períodos de análise da Business Manager">${reports.map((report,index)=>`<button type="button" class="bm-period-tab" role="tab" id="bm-period-tab-${index}" aria-controls="bmReportPane" aria-selected="${report.key===active.key}" tabindex="${report.key===active.key?0:-1}" data-bm-period-key="${esc(report.key)}" title="${esc(report.label||"")} · ${esc(report.range||"")}">${esc(bmReportTabLabel(report))}</button>`).join("")}</div><div class="bm-report-pane" id="bmReportPane" role="tabpanel" aria-labelledby="bm-period-tab-${reports.indexOf(active)}">${brandReportPane(active,d)}</div>`;
+  const activeDate=bmReportDateKey(active),current=groups.find(group=>group.date===activeDate),activeIndex=current.reports.indexOf(active);
+  const dates=groups.map(group=>{
+    const seven=group.reports.find(report=>bmReportWindowKey(report)==="7d")||group.reports[0];
+    return `<button type="button" class="bm-date-card" data-bm-date="${esc(group.date)}" aria-pressed="${group.date===activeDate}"><span>Leitura da BM</span><strong>${esc(bmReportDateLabel(group.date))}</strong><small>${group.reports.length} ${group.reports.length===1?"período":"períodos"} · ${esc(bmReportTabLabel(seven))}: ${esc((seven.totals||{}).spend||"—")}</small></button>`;
+  }).join("");
+  return `<div class="bm-history" id="bmHistory"><div class="bm-history__intro"><h3>Histórico de desempenho</h3><p>${groups.length} ${groups.length===1?"leitura":"leituras"} · ${all.length} ${all.length===1?"período":"períodos"} salvos</p></div><div class="bm-date-carousel"><button type="button" class="bm-date-arrow" data-bm-date-step="-1" aria-label="Leitura mais recente" ${groups[0].date===activeDate?"disabled":""}>‹</button><div class="bm-date-rail" id="bmDateRail" role="group" aria-label="Datas das leituras da Business Manager">${dates}</div><button type="button" class="bm-date-arrow" data-bm-date-step="1" aria-label="Leitura mais antiga" ${groups[groups.length-1].date===activeDate?"disabled":""}>›</button></div><div class="bm-period-tabs" id="bmPeriodTabs" role="tablist" aria-label="Períodos da leitura selecionada" data-bm-date="${esc(activeDate)}">${bmPeriodTabsHtml(current.reports,active.key)}</div><div class="bm-report-pane" id="bmReportPane" role="tabpanel" aria-labelledby="bm-period-tab-${activeIndex}">${brandReportPane(active)}</div><span class="sr-only" id="bmReportStatus" aria-live="polite"></span></div>`;
 }
+function bmPeriodTabsHtml(reports,selectedKey){return reports.map((report,index)=>`<button type="button" class="bm-period-tab" role="tab" id="bm-period-tab-${index}" aria-controls="bmReportPane" aria-selected="${report.key===selectedKey}" tabindex="${report.key===selectedKey?0:-1}" data-bm-period-key="${esc(report.key)}" title="${esc(report.label||"")} · ${esc(report.range||"")}">${esc(bmReportTabLabel(report))}</button>`).join("");}
 function brandReportsStaticHtml(d){
   const reports=Array.isArray(d&&d.bmReports)?d.bmReports:[];
   if(!reports.length)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
-  return `<div class="bm-reports">${reports.map(report=>brandReportPane(report,d)).join("")}</div>`;
+  return `<div class="bm-reports">${reports.map(report=>{
+    const rows=Array.isArray(report.campaigns)?report.campaigns:[],totals=report.totals||{};
+    const summary=BM_REPORT_METRICS.map(([label,key])=>`<div class="bm-report__metric"><span>${esc(label)}</span><strong>${esc(totals[key]||"—")}</strong></div>`).join("");
+    const table=rows.length?`<div class="bm-table-wrap"><table class="bm-table"><thead><tr><th>Campanha</th>${BM_REPORT_METRICS.map(([label])=>`<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.name||"Campanha")}</td>${BM_REPORT_METRICS.map(([,key])=>`<td>${esc(row[key]||"—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="muted-empty" style="padding:16px 18px">Sem linhas por campanha neste período.</div>`;
+    return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(report.label||"Período")}</div><div class="bm-report__range">${esc(report.range||"")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}</article>`;
+  }).join("")}</div>`;
+}
+function brandDraftCardSnapshot(d){
+  const latest=bmReportGroups(d)[0];if(!latest)return"";
+  const report=latest.reports.find(item=>bmReportWindowKey(item)==="7d")||latest.reports[0],totals=report.totals||{};
+  const resultLabel=/compras|vendas/i.test(String(totals.results||""))?"Vendas":"Resultados";
+  return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(totals.spend||"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)} · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div></div>`;
 }
 function brandCard(o){
-  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d);
+  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferDrafts[o.id];
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
   const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
@@ -2353,7 +2449,7 @@ function brandCard(o){
     media:mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:validated?`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`:"",
+    extra:validated?(adminPreview&&brandDraftCardSnapshot(d)||`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`):"",
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
@@ -2540,6 +2636,7 @@ function mergeAdminOfferDraftData(base,patch){
   if(patch&&patch.bmNotes)merged.bmNotes=[base&&base.bmNotes,patch.bmNotes].filter(Boolean).join("\n\n");
   for(const key of ["bmReports","brandTopAds","bmPrints","bibliotecas","dominios"]){
     const before=Array.isArray(base&&base[key])?base[key]:[],after=Array.isArray(patch&&patch[key])?patch[key]:[];
+    if(key==="bmPrints"&&Array.isArray(patch&&patch[key])&&!after.length){merged[key]=[];continue;}
     if(!after.length)continue;
     const identity=item=>key==="bmReports"?String(item&&item.key||""):key==="bibliotecas"?String(item&&item.link||""):key==="dominios"?String(item&&(item.linkDominio||item.nome)||""):key==="brandTopAds"?String(item&&item.link||item&&item.nome||""):String(item&&item.nome||"");
     const updatedFirst=key==="bmReports"||key==="brandTopAds",updatedIds=new Set(after.map(identity).filter(Boolean));
@@ -2564,7 +2661,7 @@ function openView(id,useAdminDraft=true){
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
   $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?"Insider":"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
-  const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver rascunho de setembro";draftToggle.onclick=()=>openView(id,!showingDraft);}
+  const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver prévia administrativa";draftToggle.onclick=()=>openView(id,!showingDraft);}
   $("#viewEditBtn").hidden=showingDraft;
   $("#viewDeleteBtn").hidden=showingDraft;
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
@@ -2628,22 +2725,22 @@ function openView(id,useAdminDraft=true){
   }
   let bmSection="";
   if(section==="brandsvalidated"){
-    const bmPrints=d.bmPrints.filter(x=>x&&x.img&&(!showingDraft||!x.reportKey)),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
+    const bmPrints=showingDraft?[]:d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
     const reportsHtml=showingDraft?brandReportsHtml(d,id):brandReportsStaticHtml(d);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(x.nome||`Top ad ${i+1}`)}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(x.nome||`Top ad ${i+1}`,x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const bmCore=showingDraft
+      ?`${reportsHtml}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
+      :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
-      ${brandMetricGrid(d,true)}
-      ${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}
-      <div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}
-      <div class="sec__head" style="margin-top:26px"><span class="sec__title">${showingDraft?"Outros prints da BM":"Prints da BM"}</span><span class="sec__line"></span></div>${printsHtml}
+      ${bmCore}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Top ads</span><span class="sec__line"></span></div>${topAdsHtml}
     </section>`;
   }
 
   $("#viewBody").innerHTML=`
-  ${showingDraft?`<div class="banner banner--warn" style="margin:0 0 18px">Rascunho de setembro de 2026 · visível somente no painel admin · ainda não publicado para os demais usuários. Use “Ver dados publicados” para comparar com a versão atual.</div>`:""}
-  <div class="view-grid">
+  ${showingDraft?`<div class="banner banner--warn" style="margin:0 0 18px">Histórico da BM em validação · visível somente no painel admin. Use “Ver dados publicados” para comparar com a versão atual.</div>`:""}
+  <div class="view-grid${drive.length?"":" view-grid--full"}">
     <div>
       <section class="sec">
         <div class="prod-head">
@@ -2669,22 +2766,46 @@ function openView(id,useAdminDraft=true){
     </div>
     ${drive.length?`<aside class="sidebar"><div class="sidecard"><div class="sk">Drive / Docs</div><div class="linkbtns">${drive.map((l,i)=>linkbtn("Doc "+(i+1),l,false,"folder")).join("")}</div></div></aside>`:""}
   </div>`;
-  const periodTabs=$("#bmPeriodTabs"),reportPane=$("#bmReportPane");
-  if(periodTabs&&reportPane){
-    const reports=Array.isArray(d.bmReports)?d.bmReports:[];
-    periodTabs.addEventListener("click",event=>{
-      const button=event.target.closest("[data-bm-period-key]");if(!button)return;
-      const report=reports.find(item=>item&&item.key===button.dataset.bmPeriodKey);if(!report)return;
+  const bmHistory=$("#bmHistory");
+  if(bmHistory){
+    const groups=bmReportGroups(d),all=groups.flatMap(group=>group.reports),periodTabs=$("#bmPeriodTabs"),reportPane=$("#bmReportPane"),status=$("#bmReportStatus");
+    const selectReport=(report,scrollDate=false)=>{
+      if(!report)return;
+      const date=bmReportDateKey(report),group=groups.find(item=>item.date===date),groupIndex=groups.indexOf(group);if(!group)return;
       activeBmPeriodByOffer[id]=report.key;
-      $$("[role=tab][data-bm-period-key]",periodTabs).forEach(tab=>{const selected=tab===button;tab.setAttribute("aria-selected",String(selected));tab.tabIndex=selected?0:-1;});
-      reportPane.setAttribute("aria-labelledby",button.id);
-      reportPane.innerHTML=brandReportPane(report,d);
-      wireLightboxLinks(reportPane);
+      const dateButtons=[...bmHistory.querySelectorAll(".bm-date-card")];
+      dateButtons.forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.bmDate===date)));
+      bmHistory.querySelector('[data-bm-date-step="-1"]').disabled=groupIndex===0;
+      bmHistory.querySelector('[data-bm-date-step="1"]').disabled=groupIndex===groups.length-1;
+      if(periodTabs.dataset.bmDate!==date){periodTabs.innerHTML=bmPeriodTabsHtml(group.reports,report.key);periodTabs.dataset.bmDate=date;}
+      const tabs=[...periodTabs.querySelectorAll('[role="tab"]')];
+      tabs.forEach(button=>{const selected=button.dataset.bmPeriodKey===report.key;button.setAttribute("aria-selected",String(selected));button.tabIndex=selected?0:-1;});
+      reportPane.setAttribute("aria-labelledby",tabs[group.reports.indexOf(report)].id);
+      reportPane.innerHTML=brandReportPane(report);
+      status.textContent=`Leitura de ${bmReportDateLabel(date)}, ${bmReportTabLabel(report)} selecionado`;
+      if(scrollDate)dateButtons[groupIndex].scrollIntoView({block:"nearest",inline:"nearest"});
+    };
+    bmHistory.addEventListener("click",event=>{
+      const dateButton=event.target.closest(".bm-date-card");
+      if(dateButton){
+        const group=groups.find(item=>item.date===dateButton.dataset.bmDate),current=all.find(item=>item.key===activeBmPeriodByOffer[id]),sameWindow=bmReportWindowKey(current);
+        selectReport(group&&group.reports.find(item=>bmReportWindowKey(item)===sameWindow)||group&&group.reports.find(item=>bmReportWindowKey(item)==="7d")||group&&group.reports[0],true);return;
+      }
+      const stepButton=event.target.closest("[data-bm-date-step]");
+      if(stepButton){
+        const current=all.find(item=>item.key===activeBmPeriodByOffer[id]),index=groups.findIndex(item=>item.date===bmReportDateKey(current)),target=groups[index+Number(stepButton.dataset.bmDateStep)];
+        if(target){const sameWindow=bmReportWindowKey(current);selectReport(target.reports.find(item=>bmReportWindowKey(item)===sameWindow)||target.reports.find(item=>bmReportWindowKey(item)==="7d")||target.reports[0],true);}return;
+      }
+      const periodButton=event.target.closest("[data-bm-period-key]");
+      if(periodButton)selectReport(all.find(item=>item.key===periodButton.dataset.bmPeriodKey));
     });
-    periodTabs.addEventListener("keydown",event=>{
+    bmHistory.addEventListener("keydown",event=>{
       if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
-      const tabs=$$('[role="tab"]',periodTabs),current=tabs.indexOf(event.target.closest('[role="tab"]'));if(current<0)return;
-      event.preventDefault();const next=event.key==="Home"?0:event.key==="End"?tabs.length-1:(current+(event.key==="ArrowRight"?1:tabs.length-1))%tabs.length;tabs[next].focus();tabs[next].click();
+      const dateButton=event.target.closest(".bm-date-card"),periodButton=event.target.closest('[role="tab"]');
+      const buttons=dateButton?[...bmHistory.querySelectorAll(".bm-date-card")]:periodButton?[...periodTabs.querySelectorAll('[role="tab"]')]:[];
+      if(!buttons.length)return;
+      event.preventDefault();const current=buttons.indexOf(dateButton||periodButton),next=event.key==="Home"?0:event.key==="End"?buttons.length-1:(current+(event.key==="ArrowRight"?1:buttons.length-1))%buttons.length;
+      buttons[next].focus();buttons[next].click();
     });
   }
   wireLightboxLinks($("#viewBody"));

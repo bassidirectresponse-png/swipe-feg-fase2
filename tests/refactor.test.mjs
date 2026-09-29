@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const adsScraper = await readFile(new URL("../scripts/ads_scraper.py", import.meta.url), "utf8");
@@ -20,6 +21,8 @@ const vslBackgroundFn = await readFile(new URL("../netlify/functions/vsl-dissect
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 const ultimaPeakNicheDraft = await readFile(new URL("../supabase/migrations/202609290002_admin_insider_male_health_niche_preview.sql", import.meta.url), "utf8");
 const ultimaPeakPrintDraft = await readFile(new URL("../supabase/migrations/202609290003_admin_ultima_peak_september_prints.sql", import.meta.url), "utf8");
+const ultimaPeakStructuredDraft = await readFile(new URL("../supabase/migrations/202609290004_admin_ultima_peak_structured_metrics.sql", import.meta.url), "utf8");
+const ultimaPeakSeptemberSeedSql = await readFile(new URL("../supabase/migrations/202609290001_admin_only_ultima_peak_september_draft.sql", import.meta.url), "utf8");
 const joymodeIngest = await readFile(new URL("../scripts/ingest_joymode.mjs", import.meta.url), "utf8");
 const joymodeSeed = JSON.parse(await readFile(new URL("../assets/joymode/seed.json", import.meta.url), "utf8"));
 const primalVikingIngest = await readFile(new URL("../scripts/ingest_primal_viking.mjs", import.meta.url), "utf8");
@@ -354,25 +357,34 @@ test("rascunho de Insider preserva dados publicados e põe nichos legados em rev
   assert.doesNotMatch(ultimaPeakNicheDraft, /update public\.offers/i);
 });
 
-test("rascunho de setembro anexa os 11 prints aos respectivos períodos sem sobrescrever o relatório", () => {
-  assert.equal((ultimaPeakPrintDraft.match(/\"reportKey\"/g)||[]).length,11);
-  assert.match(ultimaPeakPrintDraft,/2026-09-18-30d/);
-  assert.match(ultimaPeakPrintDraft,/2026-09-18-14d/);
-  assert.match(ultimaPeakPrintDraft,/2026-09-18-7d/);
-  assert.match(ultimaPeakPrintDraft,/2026-09-18-1d/);
-  assert.match(ultimaPeakPrintDraft,/data_patch = public\.admin_offer_drafts\.data_patch \|\| excluded\.data_patch/);
-  assert.doesNotMatch(ultimaPeakPrintDraft,/update public\.offers/i);
+test("prévia limpa anexos e organiza julho e setembro sem perder os números", () => {
+  const september = JSON.parse(ultimaPeakSeptemberSeedSql.match(/\$draft\$(\{[\s\S]*?\})\$draft\$::jsonb/)?.[1] || "null");
+  assert.ok(september);
+  assert.doesNotMatch(ultimaPeakPrintDraft,/data:image|base64|reportKey/i);
+  assert.match(ultimaPeakStructuredDraft,/jsonb_build_object\('bmPrints', '\[\]'::jsonb\)/);
+  assert.doesNotMatch(ultimaPeakStructuredDraft,/update public\.offers/i);
+  const context = {};
+  runInNewContext(html.slice(html.indexOf("function mergeAdminOfferDraftData"),html.indexOf("function shotView")),context);
+  runInNewContext(html.slice(html.indexOf("function bmReportDateKey"),html.indexOf("function bmReportMetric")),context);
+  const merged = context.mergeAdminOfferDraftData(ultimaPeakSeed,{bmReports:september.bmReports,bmPrints:[]});
+  const groups = context.bmReportGroups(merged);
+  assert.equal(merged.bmPrints.length,0);
+  assert.deepEqual(Array.from(groups,group=>group.date),["2026-09-18","2026-07-15"]);
+  assert.deepEqual(Array.from(groups,group=>group.reports.length),[4,4]);
+  assert.equal(groups[0].reports.find(report=>context.bmReportWindowKey(report)==="7d").totals.spend,"US$ 8.379,11");
+  assert.equal(groups[1].reports.find(report=>context.bmReportWindowKey(report)==="7d").totals.spend,"US$ 290.352,06");
 });
 
 test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   for (const field of ["bmSpend7d","bmSpend14d","bmAvgConversion","bmCpc","bmCpcLink","bmCpm","bmCtr","bmCostUnique","bmCostIc","bmRoas","bmUpdatedAt"]) assert.match(html,new RegExp(field));
   assert.match(html, /function brandMetricGrid\(d,detail\)/);
   assert.match(html, /function brandReportsHtml\(d,id\)/);
-  assert.match(html, /role="tablist" aria-label="Períodos de análise da Business Manager"/);
-  assert.match(html, /function brandReportPane\(report,d\)/);
+  assert.match(html, /role="group" aria-label="Datas das leituras da Business Manager"/);
+  assert.match(html, /role="tablist" aria-label="Períodos da leitura selecionada"/);
+  assert.match(html, /function brandReportPane\(report\)/);
   assert.match(html, /Aguardando acesso à BM/);
   assert.match(html, /Resumo da Business Manager/);
-  assert.match(html, /Outros prints da BM/);
+  assert.match(html, /const bmPrints=showingDraft\?\[\]:/);
   assert.match(html, /Top ads/);
   assert.match(html, /data-zone="bm\|\$\{i\}"/);
   assert.match(html, /data-zone="brandad\|\$\{i\}"/);
@@ -468,7 +480,7 @@ test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perde
 });
 
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
-  assert.match(html, /extra:validated\?`<div class="brand-bm-state/);
+  assert.match(html, /extra:validated\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);
   assert.match(html, /<div id="brandBmFields"\$\{fBrandStage==="brandsvalidated"\?"":" hidden"\}>/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
