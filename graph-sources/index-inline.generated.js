@@ -36,7 +36,7 @@ const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organ
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
-let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, activeBmPeriodByOffer={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
+let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, adminBmHistoryPatches={}, activeBmPeriodByOffer={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0,offerVslUploading=0;
 let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
 let activeZone=null;
@@ -274,6 +274,25 @@ async function loadAdminOfferDrafts(){
     if(String(error&&error.code||"")!=="42P01")console.warn("Não foi possível carregar os rascunhos administrativos",error);
   }
 }
+async function loadAdminBmHistory(){
+  adminBmHistoryPatches={};
+  if(!isAdmin||!sb)return;
+  try{
+    const session=await sb.auth.getSession(),token=session?.data?.session?.access_token;
+    if(!token)throw new Error("Sessão administrativa ausente");
+    const response=await fetch("/.netlify/functions/admin-bm-history",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+    if(!response.ok)throw new Error(`Histórico administrativo indisponível (${response.status})`);
+    const payload=await response.json();
+    if(!payload.ok||!payload.patches||typeof payload.patches!=="object")throw new Error("Histórico administrativo inválido");
+    adminBmHistoryPatches=payload.patches;
+  }catch(error){console.warn("Não foi possível carregar o histórico administrativo da BM",error);}
+}
+function adminOfferPatch(id){
+  if(!isAdmin)return null;
+  const versioned=adminBmHistoryPatches[id],draft=adminOfferDrafts[id]?.data_patch;
+  if(versioned&&draft)return mergeAdminOfferDraftData(versioned,draft);
+  return draft||versioned||null;
+}
 function updateSeenAt(){try{return localStorage.getItem(UPDATE_SEEN_KEY)||"";}catch(_){return"";}}
 function unreadUpdates(){const seen=updateSeenAt();return updates.filter(item=>!seen||String(item.created_at||"")>seen).length;}
 function markUpdatesSeen(){
@@ -306,7 +325,7 @@ async function loadOffers(){
     from+=PAGE;
   }
   offers=all;
-  if(isAdmin){await Promise.all([loadUpdates(),loadAdminOfferDrafts()]);}else{updates=[];updatesTotal=0;adminOfferDrafts={};}
+  if(isAdmin){await Promise.all([loadUpdates(),loadAdminOfferDrafts(),loadAdminBmHistory()]);}else{updates=[];updatesTotal=0;adminOfferDrafts={};adminBmHistoryPatches={};}
   setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
   if(isAdmin){
     setTimeout(()=>scheduleCreativeTranslations(),1200);
@@ -369,7 +388,7 @@ function brandNicheCanonical(raw){
 function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeMarca||d.nomeOferta):(d.marca||d.nomeMarca||"Sem marca")||"Sem marca").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>{const section=sectionOf(o);return BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative";});}
-function brandHubAdminData(o){const draft=isAdmin&&o&&adminOfferDrafts[o.id];return draft?mergeAdminOfferDraftData(o.data,draft.data_patch):o&&o.data||{};}
+function brandHubAdminData(o){const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
 function brandHubNicheOf(o){
   const draftNiche=isAdmin&&o&&adminOfferDrafts[o.id]&&adminOfferDrafts[o.id].data_patch&&adminOfferDrafts[o.id].data_patch.nicho;
   const explicit=String(draftNiche||nicheOf(o)).trim();if(explicit)return brandNicheCanonical(explicit);
@@ -830,7 +849,7 @@ function brandDraftCardSnapshot(d){
   return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(totals.spend||"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)} · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div></div>`;
 }
 function brandCard(o){
-  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferDrafts[o.id];
+  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferPatch(o.id);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
   const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
@@ -1046,8 +1065,8 @@ function openView(id,useAdminDraft=true){
   const o=itemById(id);if(!o)return;
   const section=itemSection(o),isBrand=BRAND_OFFER_SECTIONS.has(section);
   if(section!=="oferta"&&!isBrand){openSimpleView(o);return;}
-  const adminDraft=isAdmin&&adminOfferDrafts[id]||null,showingDraft=!!(useAdminDraft&&adminDraft);
-  const d=normalize(showingDraft?mergeAdminOfferDraftData(o.data,adminDraft.data_patch):o.data);
+  const adminDraft=adminOfferPatch(id),showingDraft=!!(useAdminDraft&&adminDraft);
+  const d=normalize(showingDraft?mergeAdminOfferDraftData(o.data,adminDraft):o.data);
   const native=d.tipoTrafego==="native";
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);

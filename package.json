@@ -10,6 +10,8 @@
     "backup:supabase": "node scripts/backup_supabase_metadata.mjs",
     "graph:sync": "node scripts/sync_graph_inline.mjs",
     "graph:check": "node scripts/sync_graph_inline.mjs --check",
+    "bm:sync": "node scripts/sync_admin_bm_history.mjs",
+    "bm:check": "node scripts/sync_admin_bm_history.mjs --check",
     "security:secrets": "node scripts/secret-scan.mjs",
     "security:csp": "node scripts/csp-hashes.mjs --check"
   },
