@@ -2,6 +2,8 @@
 
 O modelo de referência é a prévia administrativa de Ultima Peak. Cada leitura da BM é identificada pela data de captura. Dentro da leitura, cada janela (1, 7, 14 ou 30 dias) tem seus próprios totais e campanhas. O carrossel mostra as leituras mais recentes primeiro e mantém o mesmo período ao trocar de data. Julho permanece nos dados publicados; setembro é acrescentado apenas à prévia administrativa, sem sobrescrever o histórico.
 
+Na validação de layout, apenas a Ultima Peak tem uma subseção própria em **Ofertas Insider → Saúde masculina → Ultima Peak** no painel admin. A capa desse produto mostra identidade e nicho, sem gastos, compras, leitura ou contadores; os dados continuam no detalhe. O gráfico de anúncios ativos é independente dos relatórios da BM e deve continuar usando `adsHistory` existente. Não crie séries de ads a partir dos gastos nem preencha valores ausentes. Os demais produtos e a visão de usuários comuns mantêm a apresentação anterior até a aprovação do padrão.
+
 ## Cadastro de uma nova leitura
 
 Acrescente objetos em `bmReports` sem remover os relatórios anteriores. Use uma chave única por data e janela, como `2026-09-18-7d`. Uma correção do mesmo recorte pode substituir o objeto com a mesma chave; uma nova data deve gerar uma nova chave.

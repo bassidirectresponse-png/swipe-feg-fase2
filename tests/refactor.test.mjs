@@ -366,9 +366,11 @@ test("prévia limpa anexos e organiza julho e setembro sem perder os números", 
   const context = {};
   runInNewContext(html.slice(html.indexOf("function mergeAdminOfferDraftData"),html.indexOf("function shotView")),context);
   runInNewContext(html.slice(html.indexOf("function bmReportDateKey"),html.indexOf("function bmReportMetric")),context);
-  const merged = context.mergeAdminOfferDraftData(ultimaPeakSeed,{bmReports:september.bmReports,bmPrints:[]});
+  const preservedHistory=[{d:"2026-09-18",n:29},{d:"2026-09-19",n:31}];
+  const merged = context.mergeAdminOfferDraftData({...ultimaPeakSeed,adsHistory:preservedHistory},{bmReports:september.bmReports,bmPrints:[]});
   const groups = context.bmReportGroups(merged);
   assert.equal(merged.bmPrints.length,0);
+  assert.deepEqual(merged.adsHistory,preservedHistory);
   assert.deepEqual(Array.from(groups,group=>group.date),["2026-09-18","2026-07-15"]);
   assert.deepEqual(Array.from(groups,group=>group.reports.length),[4,4]);
   assert.equal(groups[0].reports.find(report=>context.bmReportWindowKey(report)==="7d").totals.spend,"US$ 8.379,11");
@@ -480,7 +482,10 @@ test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perde
 });
 
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
-  assert.match(html, /extra:validated\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
+  assert.match(html, /extra:validated&&!pilot\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
+  assert.match(html, /pilot=isAdmin&&isUltimaPeakPilot\(o\)/);
+  assert.match(html, /isUltimaPeakPilotArea\(\)&&activeBrand===ULTIMA_PEAK_PILOT_BRAND/);
+  assert.match(html, /Ads ativos · evolução diária/);
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);
   assert.match(html, /<div id="brandBmFields"\$\{fBrandStage==="brandsvalidated"\?"":" hidden"\}>/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);

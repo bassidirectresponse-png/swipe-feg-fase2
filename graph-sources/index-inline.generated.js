@@ -375,6 +375,10 @@ $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboa
 
 /* ===== GRID ===== */
 const NO_NICHE="__none__";
+const ULTIMA_PEAK_PILOT_ID="23681d5a-89f6-4f41-8afb-ba3c8ab9bed9";
+const ULTIMA_PEAK_PILOT_BRAND="ultima-peak";
+function isUltimaPeakPilot(o){return !!o&&o.id===ULTIMA_PEAK_PILOT_ID&&sectionOf(o)==="brandsvalidated";}
+function isUltimaPeakPilotArea(){return isAdmin&&activeSection==="brandsvalidated"&&sameNiche(activeNiche,"Saúde masculina");}
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
 function brandNicheCanonical(raw){
   const value=String(raw||"").trim(),key=value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
@@ -408,6 +412,7 @@ function filtered(){
   }
   if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n:sameNiche(n,activeNiche);});}
   if(activeSection==="brandcreative"&&isAdmin&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
+  if(isUltimaPeakPilotArea()&&activeBrand===ULTIMA_PEAK_PILOT_BRAND)list=list.filter(isUltimaPeakPilot);
   if(searchTerm){
     const t=searchTerm.toLowerCase();
     list=list.filter(o=>{const d=o.data||{},topAds=Array.isArray(d.brandTopAds)?d.brandTopAds.flatMap(x=>[x&&x.nome,x&&x.link]):[];return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho,...topAds].some(v=>(v||"").toLowerCase().includes(t));});
@@ -468,7 +473,7 @@ function nicheFromSlug(section,slug){
 function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
-  if(activeSection==="brandcreative"&&isAdmin&&activeBrand)p.set("marca",activeBrand);
+  if((activeSection==="brandcreative"&&isAdmin||isUltimaPeakPilotArea())&&activeBrand)p.set("marca",activeBrand);
   if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
@@ -486,7 +491,8 @@ function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsy
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
   const sec=itemSection(o),base="/"+(SEC2PATH[sec]||"ofertas");
-  return NICHE_SECTIONS.has(sec)?base+"/"+catSlug(nicheOf(o))+"/"+o.id:base+"/"+o.id;
+  const path=NICHE_SECTIONS.has(sec)?base+"/"+catSlug(nicheOf(o))+"/"+o.id:base+"/"+o.id;
+  return isUltimaPeakPilotArea()&&activeBrand===ULTIMA_PEAK_PILOT_BRAND&&isUltimaPeakPilot(o)?path+"?marca="+ULTIMA_PEAK_PILOT_BRAND:path;
 }
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
@@ -494,6 +500,7 @@ function setDocTitle(){
   if(activeNiche===NO_NICHE)parts.unshift("Sem nicho");
   else if(activeNiche)parts.unshift(activeNiche);
   if(activeSection==="brandcreative"&&isAdmin&&activeBrand){const match=brandHubItems().find(o=>brandKeyOf(o)===activeBrand);if(match)parts.unshift(brandNameOf(match));}
+  if(isUltimaPeakPilotArea()&&activeBrand===ULTIMA_PEAK_PILOT_BRAND)parts.unshift("Ultima Peak");
   document.title=parts.join(" · ")+" — Benchmarking FEG";
 }
 function parseLocation(){
@@ -540,7 +547,7 @@ function applyRoute(){
   if(r.legacyOrganicDetail){try{history.replaceState(history.state,"",offerPath(itemById(r.id)||{id:r.id,data:{kind:"criativo",division:"organic"}})+location.search);}catch(_){}}
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
-  activeBrand=activeSection==="brandcreative"&&isAdmin?(r.q.get("marca")||""):"";
+  activeBrand=activeSection==="brandcreative"&&isAdmin?(r.q.get("marca")||""):isUltimaPeakPilotArea()&&r.q.get("marca")===ULTIMA_PEAK_PILOT_BRAND?ULTIMA_PEAK_PILOT_BRAND:"";
   searchTerm=r.q.get("q")||"";
   if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?(r.q.get("plataforma")||"all"):"all";
@@ -619,6 +626,10 @@ function renderSideNav(){
       const base=listPath(activeSection,activeNiche);
       const brandLink=(key,label,count,active)=>'<a class="snav__brand'+(active?" active":"")+'" data-nav href="'+esc(key?base+"?marca="+encodeURIComponent(key):base)+'"><span>'+esc(label)+'</span><span class="cnt">'+count+'</span></a>';
       nicheHtml+='<div class="snav__brands">'+brandLink("","Todas as marcas",nicheItems.length,!activeBrand)+brands.map(([key,entry])=>brandLink(key,entry.name,entry.count,activeBrand===key)).join("")+'</div>';
+    }
+    if(isUltimaPeakPilotArea()){
+      const pilot=secOffers.find(isUltimaPeakPilot);
+      if(pilot){const base=listPath(activeSection,activeNiche);nicheHtml+='<div class="snav__brands"><a class="snav__brand'+(activeBrand===ULTIMA_PEAK_PILOT_BRAND?' active':'')+'" data-nav href="'+esc(base+'?marca='+ULTIMA_PEAK_PILOT_BRAND)+'"><span>Ultima Peak</span><span class="cnt">1</span></a></div>';}
     }
   }
 
@@ -849,18 +860,18 @@ function brandDraftCardSnapshot(d){
   return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(totals.spend||"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)} · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div></div>`;
 }
 function brandCard(o){
-  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferPatch(o.id);
+  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",pilot=isAdmin&&isUltimaPeakPilot(o),hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferPatch(o.id);
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!pilot&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!pilot&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!pilot&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||"");
   return card({
-    id:o.id,variant:"brand-card",
+    id:o.id,variant:pilot?"brand-card brand-card--clean":"brand-card",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Insider":"Spy"}</span>`,
     media:mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:validated?(adminPreview&&brandDraftCardSnapshot(d)||`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`):"",
+    extra:validated&&!pilot?(adminPreview&&brandDraftCardSnapshot(d)||`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`):"",
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
@@ -990,6 +1001,12 @@ function renderGrid(skipNav){
     area.innerHTML=gh?gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
   }else if(activeSection==="brandcreative"&&isAdmin){
     area.innerHTML=renderAdminBrandHub(list);
+  }else if(isUltimaPeakPilotArea()){
+    const pilot=list.filter(isUltimaPeakPilot),others=list.filter(o=>!isUltimaPeakPilot(o));
+    let html="";
+    if(pilot.length)html+=`<section class="brandhub-brand"><header class="brandhub-brand__head"><h2><a data-nav href="${esc(listPath(activeSection,activeNiche)+"?marca="+ULTIMA_PEAK_PILOT_BRAND)}">Ultima Peak</a></h2><span class="brandhub-brand__count">Produto de Saúde masculina · ${pilot.length} card</span></header><div class="grid">${pilot.map(cardFor).join("")}</div></section>`;
+    if(others.length)html+=`<section class="brandhub-brand"><header class="brandhub-brand__head"><h2>Outros produtos</h2><span class="brandhub-brand__count">${others.length} ${others.length===1?"card":"cards"}</span></header><div class="grid">${others.map(cardFor).join("")}</div></section>`;
+    area.innerHTML=`<div class="brandhub">${html}</div>`;
   }else if(activeSection==="noticia"&&!activeNiche){
     const page=pagedItems(list),groups=new Map(),totals=new Map();
     list.forEach(o=>{const n=(o.data||{}).nicho||"Sem nicho";totals.set(n,(totals.get(n)||0)+1);});
@@ -2020,13 +2037,14 @@ function setSectionHeader(){
         :`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;
   }
   const brandHub=activeSection==="brandcreative"&&isAdmin;
+  const ultimaPilot=isUltimaPeakPilotArea()&&activeBrand===ULTIMA_PEAK_PILOT_BRAND;
   const selectedHubItem=brandHub&&activeBrand?brandHubItems().find(o=>brandKeyOf(o)===activeBrand):null;
   const lbl=$("#statLabel");if(lbl)lbl.textContent=brandHub?"Materiais":cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=brandHub?"Buscar nicho, marca, oferta ou criativo...":cfg.searchPlaceholder;
   const title=$("#pageTitle"),description=$("#pageDescription");
-  if(title)title.textContent=brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):cfg.label;
-  if(description)description.innerHTML=brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):cfg.subHtml||"";
+  if(title)title.textContent=ultimaPilot?"Ultima Peak":brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):cfg.label;
+  if(description)description.innerHTML=ultimaPilot?"Saúde masculina · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
