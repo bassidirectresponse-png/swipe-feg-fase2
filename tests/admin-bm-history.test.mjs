@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { adminBmHistory } from "../netlify/functions/_admin-bm-history.generated.mjs";
+import { adminBmHistory } from "../netlify/functions/_admin-bm-history-generated.mjs";
 import handler from "../netlify/functions/admin-bm-history.mjs";
 
 const offerId = "23681d5a-89f6-4f41-8afb-ba3c8ab9bed9";

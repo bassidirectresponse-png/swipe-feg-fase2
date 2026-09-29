@@ -1,5 +1,5 @@
 import { authenticate, isAdmin, json, preflight, trustedOrigin } from "./_security.mjs";
-import { adminBmHistory } from "./_admin-bm-history.generated.mjs";
+import { adminBmHistory } from "./_admin-bm-history-generated.mjs";
 
 export default async req => {
   const options = preflight(req, "GET, OPTIONS");
