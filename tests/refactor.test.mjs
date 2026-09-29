@@ -134,7 +134,7 @@ test("Mega Brain filtra copywriter e nicho com estado na URL", () => {
 test("rotas de cards tratam variações de maiúsculas e acentos do mesmo nicho", () => {
   assert.match(html, /function nicheRouteKey\(niche\)/);
   assert.match(html, /function sameNiche\(a,b\)/);
-  assert.match(html, /return hit\?canonicalNiche\(hit\):null/);
+  assert.match(html, /if\(hit\)return canonicalNiche\(hit\)/);
   assert.match(html, /sameNiche\(nicheOf\(o\),activeNiche\)/);
   assert.match(html, /const ncByKey=new Map\(\)/);
   assert.match(html, /sameNiche\(activeNiche,n\)/);
@@ -386,7 +386,7 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /function brandReportPane\(report\)/);
   assert.match(html, /Aguardando acesso à BM/);
   assert.match(html, /Resumo da Business Manager/);
-  assert.match(html, /const bmPrints=showingDraft\?\[\]:/);
+  assert.match(html, /bmPrints=adminInsider\?\[\]:/);
   assert.match(html, /Top ads/);
   assert.match(html, /data-zone="bm\|\$\{i\}"/);
   assert.match(html, /data-zone="brandad\|\$\{i\}"/);
@@ -482,9 +482,9 @@ test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perde
 });
 
 test("Ofertas no Geral não exibem nem salvam métricas do Gerenciador", () => {
-  assert.match(html, /extra:validated&&!pilot\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
-  assert.match(html, /pilot=isAdmin&&isUltimaPeakPilot\(o\)/);
-  assert.match(html, /isUltimaPeakPilotArea\(\)&&activeBrand===ULTIMA_PEAK_PILOT_BRAND/);
+  assert.match(html, /extra:validated&&!clean\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
+  assert.match(html, /clean=validated&&isAdmin/);
+  assert.match(html, /if\(isInsiderAdminArea\(\)&&activeBrand\)list=list\.filter/);
   assert.match(html, /Ads ativos · evolução diária/);
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);
   assert.match(html, /<div id="brandBmFields"\$\{fBrandStage==="brandsvalidated"\?"":" hidden"\}>/);
