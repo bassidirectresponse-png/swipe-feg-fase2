@@ -5,22 +5,23 @@ import test from "node:test";
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const docs=readFileSync(new URL("../docs/insider-offer-standard.md",import.meta.url),"utf8");
 
-test("Insider mantém a taxonomia e as cinco atribuições aprovadas só no admin",()=>{
+test("Insider mantém a taxonomia e as atribuições aprovadas para todos os leitores",()=>{
   for(const niche of ["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"])assert.ok(html.includes(niche));
   for(const product of ["Ultima Peak","Primal Viking","Mars Men Boost","JOYMODE HARD+","Ancestral Supplements"])assert.ok(html.includes(product));
-  assert.match(html,/function insiderOverride\(o\)\{if\(!isAdmin/);
+  assert.match(html,/function insiderOverride\(o\)\{if\(!o\|\|sectionOf\(o\)!=="brandsvalidated"\)/);
+  assert.match(html,/function isInsiderAdminArea\(\)\{return activeSection==="brandsvalidated";\}/);
   assert.match(html,/function renderAdminInsider\(items\)/);
   assert.match(html,/if\(isInsiderAdminArea\(\)\)\{\s*area\.innerHTML=renderAdminInsider\(list\)/);
   assert.doesNotMatch(html,/isUltimaPeakPilotArea|ULTIMA_PEAK_PILOT_BRAND/);
 });
 
 test("Insider mostra capa limpa sem lightbox e preserva o histórico de ads no detalhe",()=>{
-  assert.match(html,/clean=validated&&isAdmin/);
+  assert.match(html,/clean=validated/);
   assert.match(html,/media:clean&&d\.imagemProduto\?`<div class="cmedia">/);
   assert.match(html,/adsHistOf\(d\)/);
   assert.match(html,/Ads ativos · evolução diária/);
-  assert.match(html,/const reportsHtml=adminInsider\?brandReportsHtml\(d,id\):brandReportsStaticHtml\(d\)/);
-  assert.match(html,/const bmCore=adminInsider/);
+  assert.match(html,/const reportsHtml=interactiveInsider\?brandReportsHtml\(d,id\):brandReportsStaticHtml\(d\)/);
+  assert.match(html,/const bmCore=interactiveInsider/);
   assert.match(docs,/não a foto ampliada/);
 });
 
