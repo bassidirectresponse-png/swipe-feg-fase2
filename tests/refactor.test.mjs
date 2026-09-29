@@ -336,7 +336,9 @@ test("FEG Brands reúne ofertas e o hub visual por nicho/marca no admin", () => 
   assert.match(html, /key:"brandcreative",label:"Swipe de Criativos"/);
   assert.match(html, /Balls n Brains/);
   assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
-  assert.match(html, /const BRAND_NICHE_ORDER=\["Saúde masculina","Saúde feminina","Nicho pet","Saúde mental"\]/);
+  assert.match(html, /const BRAND_NICHE_ORDER=\["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima \/ libido","Sono\/ Beleza","Saúde Geral\/Nutrição"\]/);
+  assert.match(html, /function renderAdminGeneral\(items\)/);
+  assert.match(html, /function catalogNiches\(\)/);
   assert.match(html, /Pendente de revisão/);
   assert.match(html, /division-pill--brands/);
   assert.match(html, /DTC Intelligence/);

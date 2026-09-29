@@ -107,6 +107,17 @@ NICHES = {
     },
 }
 
+# Taxonomia FEG Brands preparada para ativação controlada. Mantê-la fora da
+# coleta agendada evita ampliar consultas/custos do provedor sem crédito aprovado.
+BRAND_NICHES = {
+    "Saúde masculina": {"queries": ["mens health", "testosterone health", "prostate health"], "must": ["mens health", "men's health", "testosterone", "prostate", "male health"]},
+    "Saúde feminina": {"queries": ["womens health", "menopause health", "female hormones"], "must": ["womens health", "women's health", "menopause", "female health", "hormonal health"]},
+    "Saúde Cardiovascular": {"queries": ["heart health", "blood pressure health", "cardiovascular health"], "must": ["heart health", "cardiovascular", "blood pressure", "cholesterol"]},
+    "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"]},
+    "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness"]},
+    "Saúde Geral/Nutrição": {"queries": ["nutrition health", "dietary supplements", "gut health"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamins"]},
+}
+
 
 # =============================== HTTP ======================================
 def http_json(url, headers=None, timeout=40):
@@ -356,10 +367,11 @@ def hosted_url(video_id):
 
 
 # =============================== Coleta ====================================
-def collect():
+def collect(niches=None):
+    niches = niches or NICHES
     seen = {}       # videoId -> record (dedup global, 1º nicho ganha)
-    per_niche = {n: [] for n in NICHES}
-    for nicho, cfg in NICHES.items():
+    per_niche = {n: [] for n in niches}
+    for nicho, cfg in niches.items():
         queries = cfg["queries"] if isinstance(cfg, dict) else cfg
         must = cfg.get("must", []) if isinstance(cfg, dict) else []
         got = {}
@@ -392,9 +404,14 @@ def collect():
 
 
 def main():
+    if "--list-taxonomy" in sys.argv:
+        print(json.dumps({"legacy": list(NICHES), "brands_prepared": BRAND_NICHES, "provider_calls": 0}, ensure_ascii=False, indent=2))
+        return
     dry = "--dry" in sys.argv
+    brand_enabled = os.environ.get("ENABLE_BRAND_NICHES", "").lower() in ("1", "true", "yes")
+    active_niches = {**NICHES, **BRAND_NICHES} if brand_enabled else NICHES
     print(f"TikTok mining — provider={PROVIDER}  dry={dry}\n")
-    per_niche = collect()
+    per_niche = collect(active_niches)
     total = sum(len(v) for v in per_niche.values())
     print(f"\nTotal coletado: {total} vídeos em {len(per_niche)} nichos")
 

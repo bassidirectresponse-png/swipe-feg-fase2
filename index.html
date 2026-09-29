@@ -222,10 +222,11 @@
   .snav__sec--ai.active .snav__badge{background:rgba(0,0,0,.18);color:#0a0a06;}
 
   /* nichos aninhados sob a seção ativa */
-  .snav__niches{margin:2px 0 9px 19px;padding-left:12px;border-left:1px solid var(--border-2);display:flex;flex-direction:column;gap:1px;}
+  .snav__niches{margin:5px 0 13px 19px;padding:6px 0 2px 12px;border-left:1px solid var(--border-2);display:flex;flex-direction:column;gap:3px;}
+  .snav__niches-title{padding:3px 11px 5px;color:var(--faint);font-size:.61rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;}
   .snav__niches--in{animation:navReveal .3s cubic-bezier(.22,.75,.28,1) both;will-change:opacity,transform;}
   @keyframes navReveal{from{opacity:0;transform:translateY(-7px);}to{opacity:1;transform:none;}}
-  .snav__niche{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;padding:7px 11px;border-radius:9px;color:var(--muted-fg);font-size:.85rem;font-weight:600;transition:background .2s var(--ease),color .2s var(--ease);}
+  .snav__niche{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:38px;text-align:left;padding:8px 11px;border-radius:9px;color:var(--muted-fg);font-size:.83rem;font-weight:600;transition:background .2s var(--ease),color .2s var(--ease);}
   .snav__niche .nl{display:flex;align-items:center;gap:9px;min-width:0;}
   .snav__niche .nl>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .snav__niche .ndot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex:none;transition:background .2s var(--ease),box-shadow .2s var(--ease);}
@@ -235,11 +236,13 @@
   .snav__niche.active .ndot{background:var(--accent);box-shadow:0 0 7px var(--accent);}
   .snav__niche .cnt{font-size:.68rem;font-weight:700;color:var(--faint);flex:none;transition:color .2s var(--ease);}
   .snav__niche.active .cnt{color:var(--accent);}
-  .snav__brands{margin:0 0 8px 25px;padding-left:11px;border-left:1px solid var(--border);display:grid;gap:2px;}
-  .snav__brand{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;padding:6px 9px;border-radius:8px;color:var(--muted-fg);font-size:.78rem;font-weight:600;}
+  .snav__brands{margin:1px 0 9px 25px;padding:3px 0 3px 11px;border-left:1px solid var(--border);display:grid;gap:3px;}
+  .snav__brand{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;padding:7px 9px;border-radius:8px;color:var(--muted-fg);font-size:.78rem;font-weight:600;min-width:0;}
+  .snav__brand>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .snav__brand:hover{background:var(--surface-2);color:var(--fg);}
   .snav__brand.active{background:var(--accent-dim);color:var(--accent);}
   .snav__brand .cnt{font-size:.66rem;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .snav__niche:focus-visible,.snav__brand:focus-visible,.snav__sec:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
   .brandhub{display:grid;gap:32px;}
   .brandhub-niche{display:grid;gap:18px;}
   .brandhub-niche__head{display:flex;align-items:center;gap:14px;padding:0 0 12px;border-bottom:1px solid var(--border-strong);}
@@ -1619,7 +1622,7 @@ const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const LEGACY_SUPABASE_REFS=["ppaajtzbhjixhyfidojd"];
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
-const BRAND_NICHE_ORDER=["Saúde masculina","Saúde feminina","Nicho pet","Saúde mental"];
+const BRAND_NICHE_ORDER=["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"];
 const BRAND_NICHE_REVIEW="Pendente de revisão";
 const SECTIONS=[
   {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
@@ -1987,24 +1990,26 @@ $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboa
 
 /* ===== GRID ===== */
 const NO_NICHE="__none__";
-const INSIDER_NICHES=["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"];
+const INSIDER_NICHES=BRAND_NICHE_ORDER;
 const INSIDER_PRODUCT_OVERRIDES={"ultima-peak":{name:"Ultima Peak",niche:"Saúde masculina"},"primal-viking":{name:"Primal Viking",niche:"Saúde masculina"},"mars-men":{name:"Mars Men Boost",niche:"Saúde masculina"},"mars-men-boost":{name:"Mars Men Boost",niche:"Saúde masculina"},"joymode":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"joymode-hard":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"ancestral-supplements":{name:"Ancestral Supplements",niche:"Saúde Geral/Nutrição"}};
 function insiderOverride(o){if(!isAdmin||!o||sectionOf(o)!=="brandsvalidated")return null;const d=o.data||{},names=[d.nomeOferta,d.nomeMarca].map(routeSlug);return names.map(name=>INSIDER_PRODUCT_OVERRIDES[name]).find(Boolean)||null;}
 function insiderProductName(o){return (insiderOverride(o)||{}).name||String(((o||{}).data||{}).nomeOferta||"Produto sem nome").trim();}
 function insiderProductKey(o){return routeSlug(insiderProductName(o));}
-function insiderNicheOf(o){const raw=(insiderOverride(o)||{}).niche||nicheOf(o);return INSIDER_NICHES.find(n=>sameNiche(n,raw))||raw;}
+function insiderNicheOf(o){const raw=(insiderOverride(o)||{}).niche||nicheOf(o);return INSIDER_NICHES.find(n=>sameNiche(n,raw))||brandNicheCanonical(raw);}
 function isInsiderAdminArea(){return isAdmin&&activeSection==="brandsvalidated";}
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
+function topicNicheOf(o){const raw=nicheOf(o),key=nicheRouteKey(raw);if(["disfuncao-eretil","prostata","energia-testosterona"].includes(key))return BRAND_NICHE_ORDER[0];if(key==="menopausa")return BRAND_NICHE_ORDER[1];if(key==="sono-ansiedade")return BRAND_NICHE_ORDER[4];return raw;}
+function catalogNiches(){const names=new Map(BRAND_NICHE_ORDER.map(n=>[nicheRouteKey(n),n]));offers.filter(o=>BRAND_OFFER_SECTIONS.has(sectionOf(o))).forEach(o=>{const raw=sectionOf(o)==="brandsvalidated"?insiderNicheOf(o):nicheOf(o),name=brandNicheCanonical(raw);if(raw&&name!==BRAND_NICHE_REVIEW)names.set(nicheRouteKey(name),name);});return [...names.values()];}
 function brandNicheCanonical(raw){
   const value=String(raw||"").trim(),key=value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
   if(!key)return BRAND_NICHE_REVIEW;
   if(key.includes("disfuncao eretil")||key==="saude masculina")return BRAND_NICHE_ORDER[0];
   if(key==="saude feminina")return BRAND_NICHE_ORDER[1];
-  if(key==="nicho pet")return BRAND_NICHE_ORDER[2];
-  if(key==="saude mental")return BRAND_NICHE_ORDER[3];
-  return BRAND_NICHE_REVIEW;
+  const known=BRAND_NICHE_ORDER.find(n=>nicheRouteKey(n)===nicheRouteKey(value));
+  if(known)return known;
+  return NICHOS.some(n=>sameNiche(n,value))?BRAND_NICHE_REVIEW:value;
 }
-function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeMarca||d.nomeOferta):(d.marca||d.nomeMarca||"Sem marca")||"Sem marca").trim();}
+function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeOferta||d.nomeMarca):(d.nomeProduto||d.produto||d.marca||d.nomeMarca||"Produto sem nome")||"Produto sem nome").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>{const section=sectionOf(o);return BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative";});}
 function brandHubAdminData(o){const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
@@ -2012,8 +2017,8 @@ function brandHubNicheOf(o){
   const draftNiche=isAdmin&&o&&adminOfferDrafts[o.id]&&adminOfferDrafts[o.id].data_patch&&adminOfferDrafts[o.id].data_patch.nicho;
   const explicit=String(draftNiche||nicheOf(o)).trim();if(explicit)return brandNicheCanonical(explicit);
   if(sectionOf(o)!=="brandcreative")return "";
-  const match=offers.find(item=>BRAND_OFFER_SECTIONS.has(sectionOf(item))&&brandKeyOf(item)===brandKeyOf(o)&&nicheOf(item));
-  return match?brandNicheCanonical(nicheOf(match)):BRAND_NICHE_REVIEW;
+  const match=offers.find(item=>BRAND_OFFER_SECTIONS.has(sectionOf(item))&&brandKeyOf(item)===brandKeyOf(o)&&(sectionOf(item)==="brandsvalidated"?insiderNicheOf(item):nicheOf(item)));
+  return match?brandNicheCanonical(sectionOf(match)==="brandsvalidated"?insiderNicheOf(match):nicheOf(match)):BRAND_NICHE_REVIEW;
 }
 function filtered(){
   let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
@@ -2025,9 +2030,8 @@ function filtered(){
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
-  if(activeSection==="brandsvalidated"&&isAdmin)list=list.filter(o=>INSIDER_NICHES.some(n=>sameNiche(n,insiderNicheOf(o))));
-  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n:sameNiche(n,activeNiche);});}
-  if(activeSection==="brandcreative"&&isAdmin&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
+  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"&&isAdmin?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
+  if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&isAdmin&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
   if(searchTerm){
     const t=searchTerm.toLowerCase();
@@ -2082,17 +2086,20 @@ function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
   if(slug==="sem-nicho")return NO_NICHE;
   const source=section==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===section);
-  const present=new Set(source.map(o=>section==="brandcreative"&&isAdmin?brandHubNicheOf(o):section==="brandsvalidated"&&isAdmin?insiderNicheOf(o):nicheOf(o)).filter(Boolean));
-  if(section==="brandsvalidated"&&isAdmin){const configured=INSIDER_NICHES.find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
+  const present=new Set(source.map(o=>section==="brandcreative"&&isAdmin?brandHubNicheOf(o):section==="brandsvalidated"&&isAdmin?insiderNicheOf(o):(section==="noticia"||section==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
+  if(BRAND_SECTIONS.has(section)&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
+  if((section==="noticia"||section==="tiktok")&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   const hit=[...present].find(n=>nicheRouteKey(n)===slug);
   if(hit)return canonicalNiche(hit);
+  if(BRAND_SECTIONS.has(section)&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy){const mapped=section==="brandcreative"?brandHubNicheOf(legacy):section==="brandsvalidated"?insiderNicheOf(legacy):brandNicheCanonical(nicheOf(legacy));return mapped===BRAND_NICHE_REVIEW?NO_NICHE:mapped;}}
+  if((section==="noticia"||section==="tiktok")&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   if(section==="brandsvalidated"&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   return null;   // null => categoria inexistente (404)
 }
 function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
-  if((activeSection==="brandcreative"&&isAdmin||isInsiderAdminArea())&&activeBrand)p.set("marca",activeBrand);
+  if((BRAND_SECTIONS.has(activeSection)&&isAdmin)&&activeBrand)p.set("marca",activeBrand);
   if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
@@ -2110,7 +2117,7 @@ function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsy
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
   const sec=itemSection(o),base="/"+(SEC2PATH[sec]||"ofertas");
-  const niche=sec==="brandsvalidated"&&isAdmin?insiderNicheOf(o):nicheOf(o);
+  const niche=sec==="brandsvalidated"&&isAdmin?insiderNicheOf(o):sec==="brandsgeneral"&&isAdmin?brandNicheCanonical(nicheOf(o)):(sec==="noticia"||sec==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);
   const path=NICHE_SECTIONS.has(sec)?base+"/"+catSlug(niche)+"/"+o.id:base+"/"+o.id;
   return sec==="brandsvalidated"&&isAdmin&&activeBrand===insiderProductKey(o)?path+"?marca="+encodeURIComponent(activeBrand):path;
 }
@@ -2154,7 +2161,7 @@ function renderNotFound(msg){
 }
 function maybeOpenView(id){
   const o=itemById(id);
-  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?!nicheOf(o):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)));
+  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?(!nicheOf(o)||BRAND_SECTIONS.has(activeSection)&&isAdmin&&((activeSection==="brandsvalidated"?insiderNicheOf(o):activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)))===BRAND_NICHE_REVIEW)):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)||(activeSection==="brandsgeneral"&&isAdmin&&sameNiche(brandNicheCanonical(nicheOf(o)),activeNiche))||(activeSection==="brandcreative"&&isAdmin&&sameNiche(brandHubNicheOf(o),activeNiche))||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin&&sameNiche(topicNicheOf(o),activeNiche))));
   if(!o||itemSection(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
@@ -2168,7 +2175,7 @@ function applyRoute(){
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   if(activeSection==="brandsvalidated"&&isAdmin&&r.id){const item=itemById(r.id);if(item&&sectionOf(item)==="brandsvalidated"&&!sameNiche(activeNiche,insiderNicheOf(item))){activeNiche=insiderNicheOf(item);try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+"/"+r.id+location.search);}catch(_){}}}
-  activeBrand=(activeSection==="brandcreative"&&isAdmin||isInsiderAdminArea())?(r.q.get("marca")||""):"";
+  activeBrand=(BRAND_SECTIONS.has(activeSection)&&isAdmin)?(r.q.get("marca")||""):"";
   searchTerm=r.q.get("q")||"";
   if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?(r.q.get("plataforma")||"all"):"all";
@@ -2227,27 +2234,27 @@ function renderSideNav(){
   if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
     const secOffers=activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
-    secOffers.forEach(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):nicheOf(o);if(!n){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
+    secOffers.forEach(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"&&isAdmin?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
-    if(activeSection==="brandcreative"&&isAdmin){BRAND_NICHE_ORDER.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
-    if(isInsiderAdminArea()){INSIDER_NICHES.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
+    if((BRAND_SECTIONS.has(activeSection)||activeSection==="noticia"||activeSection==="tiktok")&&isAdmin){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
     if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
-    const ordered=isInsiderAdminArea()?INSIDER_NICHES:activeSection==="brandcreative"&&isAdmin
-      ?[...BRAND_NICHE_ORDER, ...(nc.has(BRAND_NICHE_REVIEW)?[BRAND_NICHE_REVIEW]:[])]
+    const ordered=(BRAND_SECTIONS.has(activeSection)||activeSection==="noticia"||activeSection==="tiktok")&&isAdmin
+      ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
-    nicheHtml+=nitem("","Todos",isInsiderAdminArea()?secOffers.filter(o=>INSIDER_NICHES.some(n=>sameNiche(n,insiderNicheOf(o)))).length:secOffers.length,activeNiche==="");
+    nicheHtml+='<span class="snav__niches-title">Nichos e produtos</span>';
+    nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,sameNiche(activeNiche,n));});
-    if(none&&!isInsiderAdminArea())nicheHtml+=nitem(NO_NICHE,"Sem nicho",none,activeNiche===NO_NICHE);
-    if(activeSection==="brandcreative"&&isAdmin&&activeNiche&&activeNiche!==NO_NICHE){
-      const nicheItems=secOffers.filter(o=>sameNiche(brandHubNicheOf(o),activeNiche)),brandCounts=new Map();
+    if(none)nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,activeNiche===NO_NICHE);
+    if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&isAdmin&&activeNiche&&activeNiche!==NO_NICHE){
+      const nicheItems=secOffers.filter(o=>sameNiche(activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)),activeNiche)),brandCounts=new Map();
       nicheItems.forEach(o=>{const name=brandNameOf(o),key=brandKeyOf(o);const entry=brandCounts.get(key)||{name,count:0};entry.count++;brandCounts.set(key,entry);});
       const brands=[...brandCounts.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR"));
       const base=listPath(activeSection,activeNiche);
       const brandLink=(key,label,count,active)=>'<a class="snav__brand'+(active?" active":"")+'" data-nav href="'+esc(key?base+"?marca="+encodeURIComponent(key):base)+'"><span>'+esc(label)+'</span><span class="cnt">'+count+'</span></a>';
-      nicheHtml+='<div class="snav__brands">'+brandLink("","Todas as marcas",nicheItems.length,!activeBrand)+brands.map(([key,entry])=>brandLink(key,entry.name,entry.count,activeBrand===key)).join("")+'</div>';
+      nicheHtml+='<div class="snav__brands">'+brandLink("","Todos os produtos",nicheItems.length,!activeBrand)+brands.map(([key,entry])=>brandLink(key,entry.name,entry.count,activeBrand===key)).join("")+'</div>';
     }
     if(isInsiderAdminArea()&&activeNiche){
       const groups=new Map();secOffers.filter(o=>sameNiche(insiderNicheOf(o),activeNiche)).forEach(o=>{const key=insiderProductKey(o),entry=groups.get(key)||{name:insiderProductName(o),count:0};entry.count++;groups.set(key,entry);});
@@ -2561,7 +2568,7 @@ function renderAdminBrandHub(items){
     if(!brands.has(key))brands.set(key,{name:brand,items:[]});
     brands.get(key).items.push(o);
   });
-  const niches=[...BRAND_NICHE_ORDER.filter(n=>groups.has(n)),...(groups.has(BRAND_NICHE_REVIEW)?[BRAND_NICHE_REVIEW]:[])];
+  const niches=[...catalogNiches().filter(n=>groups.has(n)),...groups.keys()].filter((n,i,a)=>a.indexOf(n)===i);
   const nicheCounts=new Map();items.forEach(o=>{const key=brandHubNicheOf(o)||"Sem nicho";nicheCounts.set(key,(nicheCounts.get(key)||0)+1);});
   let html='<div class="brandhub">';
   for(const niche of niches){
@@ -2587,7 +2594,7 @@ function renderAdminBrandHub(items){
 function renderAdminInsider(items){
   const sorted=[...items].sort(offerSortFn),page=pagedItems(sorted),groups=new Map();
   page.items.forEach(o=>{const niche=insiderNicheOf(o),product=insiderProductName(o),key=insiderProductKey(o);if(!groups.has(niche))groups.set(niche,new Map());const products=groups.get(niche);if(!products.has(key))products.set(key,{name:product,items:[]});products.get(key).items.push(o);});
-  const sections=activeNiche?[activeNiche]:INSIDER_NICHES;
+  const sections=activeNiche?[activeNiche===NO_NICHE?BRAND_NICHE_REVIEW:activeNiche]:[...catalogNiches().filter(n=>groups.has(n)),...groups.keys()].filter((n,i,a)=>a.indexOf(n)===i);
   let html='<div class="brandhub brandhub--insider">';
   for(const niche of sections){
     const products=groups.get(niche)||new Map(),count=items.filter(o=>sameNiche(insiderNicheOf(o),niche)).length;
@@ -2598,6 +2605,18 @@ function renderAdminInsider(items){
       const href=listPath("brandsvalidated",niche)+"?marca="+encodeURIComponent(key);
       html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';
     }
+    html+='</section>';
+  }
+  return html+'</div>'+gridPager(page);
+}
+function renderAdminGeneral(items){
+  const page=pagedItems([...items].sort(offerSortFn)),groups=new Map();
+  page.items.forEach(o=>{const niche=brandNicheCanonical(nicheOf(o)),key=brandKeyOf(o);if(!groups.has(niche))groups.set(niche,new Map());const products=groups.get(niche);if(!products.has(key))products.set(key,{name:brandNameOf(o),items:[]});products.get(key).items.push(o);});
+  const sections=activeNiche?[activeNiche===NO_NICHE?BRAND_NICHE_REVIEW:activeNiche]:[...catalogNiches().filter(n=>groups.has(n)),...groups.keys()].filter((n,i,a)=>a.indexOf(n)===i);
+  let html='<div class="brandhub brandhub--general">';
+  for(const niche of sections){const products=groups.get(niche)||new Map(),count=items.filter(o=>sameNiche(brandNicheCanonical(nicheOf(o)),niche)).length;if(!products.size)continue;
+    html+='<section class="brandhub-niche"><header class="brandhub-niche__head"><h2>'+esc(niche)+'</h2><span class="brandhub-niche__count">'+count+' '+(count===1?'oferta':'ofertas')+'</span></header>';
+    for(const [key,group] of [...products.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'))){const href=listPath('brandsgeneral',niche)+'?marca='+encodeURIComponent(key);html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';}
     html+='</section>';
   }
   return html+'</div>'+gridPager(page);
@@ -2644,11 +2663,13 @@ function renderGrid(skipNav){
     area.innerHTML=renderAdminBrandHub(list);
   }else if(isInsiderAdminArea()){
     area.innerHTML=renderAdminInsider(list);
+  }else if(activeSection==="brandsgeneral"&&isAdmin){
+    area.innerHTML=renderAdminGeneral(list);
   }else if(activeSection==="noticia"&&!activeNiche){
     const page=pagedItems(list),groups=new Map(),totals=new Map();
-    list.forEach(o=>{const n=(o.data||{}).nicho||"Sem nicho";totals.set(n,(totals.get(n)||0)+1);});
-    page.items.forEach(o=>{const n=(o.data||{}).nicho||"Sem nicho";if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
-    const order=[...NICHOS.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
+    list.forEach(o=>{const n=isAdmin?topicNicheOf(o)||"Sem nicho":(o.data||{}).nicho||"Sem nicho";totals.set(n,(totals.get(n)||0)+1);});
+    page.items.forEach(o=>{const n=isAdmin?topicNicheOf(o)||"Sem nicho":(o.data||{}).nicho||"Sem nicho";if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
+    const priority=isAdmin?catalogNiches():NICHOS,order=[...priority.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>!priority.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     let gh="";
     order.forEach(n=>{const arr=groups.get(n);gh+=`<div class="newsgroup"><div class="newsgroup__head">${ic("layers")}<span>${esc(n)}</span><span class="newsgroup__cnt">${totals.get(n)||arr.length}</span><span class="newsgroup__line"></span></div><div class="grid">${arr.map(cardFor).join("")}</div></div>`;});
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;

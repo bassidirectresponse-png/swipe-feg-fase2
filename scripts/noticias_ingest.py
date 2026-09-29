@@ -80,6 +80,20 @@ NICHE_KEYWORDS = {
     "Diabetes / Glicose": ["diabetes", "diabetic", "blood sugar", "blood glucose", "insulin resistance", "a1c", "prediabetes"],
 }
 
+# Pronto para ativar depois da validação do admin. O job agendado não muda a
+# classificação pública enquanto ENABLE_BRAND_NICHES não for explicitamente 1.
+BRAND_NICHE_KEYWORDS = {
+    "Saúde masculina": ["men's health", "male health", "testosterone", "prostate health", "erectile dysfunction"],
+    "Saúde feminina": ["women's health", "female health", "menopause", "perimenopause", "hormonal health"],
+    "Saúde Cardiovascular": ["heart health", "cardiovascular health", "blood pressure", "cholesterol", "heart disease"],
+    "Saúde íntima / libido": ["sexual wellness", "sexual health", "libido", "intimate health"],
+    "Sono/ Beleza": ["sleep health", "sleep quality", "insomnia", "skin health", "beauty health"],
+    "Saúde Geral/Nutrição": ["nutrition", "nutritional health", "dietary supplements", "vitamins", "gut health"],
+}
+if os.environ.get("ENABLE_BRAND_NICHES", "").lower() in ("1", "true", "yes"):
+    NICHE_FEEDS.update({n: [] for n in BRAND_NICHE_KEYWORDS})
+    NICHE_KEYWORDS.update(BRAND_NICHE_KEYWORDS)
+
 # =============================== helpers HTTP ================================
 def http_get(url, timeout=20):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
