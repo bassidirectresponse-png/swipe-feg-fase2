@@ -377,6 +377,7 @@ $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboa
 const NO_NICHE="__none__";
 const INSIDER_NICHES=BRAND_NICHE_ORDER;
 const INSIDER_PRODUCT_OVERRIDES={"ultima-peak":{name:"Ultima Peak",niche:"Saúde masculina"},"primal-viking":{name:"Primal Viking",niche:"Saúde masculina"},"mars-men":{name:"Mars Men Boost",niche:"Saúde masculina"},"mars-men-boost":{name:"Mars Men Boost",niche:"Saúde masculina"},"joymode":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"joymode-hard":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"ancestral-supplements":{name:"Ancestral Supplements",niche:"Saúde Geral/Nutrição"}};
+const BRAND_CREATIVE_NICHE_OVERRIDES={"balls-n-brains":"Saúde masculina"};
 function insiderOverride(o){if(!isAdmin||!o||sectionOf(o)!=="brandsvalidated")return null;const d=o.data||{},names=[d.nomeOferta,d.nomeMarca].map(routeSlug);return names.map(name=>INSIDER_PRODUCT_OVERRIDES[name]).find(Boolean)||null;}
 function insiderProductName(o){return (insiderOverride(o)||{}).name||String(((o||{}).data||{}).nomeOferta||"Produto sem nome").trim();}
 function insiderProductKey(o){return routeSlug(insiderProductName(o));}
@@ -396,10 +397,11 @@ function brandNicheCanonical(raw){
 }
 function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeOferta||d.nomeMarca):(d.nomeProduto||d.produto||d.marca||d.nomeMarca||"Produto sem nome")||"Produto sem nome").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
-function brandHubItems(){return offers.filter(o=>{const section=sectionOf(o);return BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative";});}
+function brandHubItems(){return offers.filter(o=>sectionOf(o)==="brandcreative");}
 function brandHubAdminData(o){const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
 function brandHubNicheOf(o){
   if(sectionOf(o)==="brandsvalidated")return insiderNicheOf(o);
+  const forced=BRAND_CREATIVE_NICHE_OVERRIDES[brandKeyOf(o)];if(forced)return forced;
   const draftNiche=isAdmin&&o&&adminOfferDrafts[o.id]&&adminOfferDrafts[o.id].data_patch&&adminOfferDrafts[o.id].data_patch.nicho;
   const explicit=String(draftNiche||nicheOf(o)).trim();if(explicit)return brandNicheCanonical(explicit);
   if(sectionOf(o)!=="brandcreative")return "";
@@ -408,7 +410,7 @@ function brandHubNicheOf(o){
 }
 function filtered(){
   let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
-  if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")list=list.filter(o=>activeSection==="brandcreative"&&isAdmin&&BRAND_OFFER_SECTIONS.has(sectionOf(o))||((o.data||{}).plataforma||"meta")===critPlatform);
+  if(activeSection==="criativo"||activeSection==="brandcreative")list=list.filter(o=>((o.data||{}).plataforma||"meta")==="meta");
   if(activeSection==="megabrainfegsys"){
     const min=fegsysSalesMin===""?null:Number(fegsysSalesMin),max=fegsysSalesMax===""?null:Number(fegsysSalesMax);
     list=list.filter(o=>{const metrics=(o.data||{}).fegsysMetrics||{},sales=Number(metrics.conversions||metrics.orders||0);return(min==null||sales>=min)&&(max==null||sales<=max);});
@@ -486,7 +488,6 @@ function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
   if((BRAND_SECTIONS.has(activeSection)&&isAdmin)&&activeBrand)p.set("marca",activeBrand);
-  if((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform&&critPlatform!=="all")p.set("plataforma",critPlatform);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
@@ -564,7 +565,7 @@ function applyRoute(){
   activeBrand=(BRAND_SECTIONS.has(activeSection)&&isAdmin)?(r.q.get("marca")||""):"";
   searchTerm=r.q.get("q")||"";
   if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
-  critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?(r.q.get("plataforma")||"all"):"all";
+  critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?"meta":"all";
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days"].includes(requested)?requested:"active_ads";
     offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
@@ -630,23 +631,20 @@ function renderSideNav(){
       ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
+    const productMenu=niche=>{
+      if(!BRAND_SECTIONS.has(activeSection)||!isAdmin)return"";
+      const selectedNiche=niche===NO_NICHE?BRAND_NICHE_REVIEW:niche,groups=new Map();
+      secOffers.filter(o=>{const productNiche=activeSection==="brandcreative"?brandHubNicheOf(o):activeSection==="brandsvalidated"?insiderNicheOf(o):brandNicheCanonical(nicheOf(o));return sameNiche(productNiche,selectedNiche);}).forEach(o=>{
+        const key=activeSection==="brandsvalidated"?insiderProductKey(o):brandKeyOf(o),name=activeSection==="brandsvalidated"?insiderProductName(o):brandNameOf(o),entry=groups.get(key)||{name,count:0};entry.count++;groups.set(key,entry);
+      });
+      if(!groups.size)return"";
+      const base=listPath(activeSection,niche),brandLink=(key,label,count,active)=>'<a class="snav__brand'+(active?" active":"")+'" data-nav href="'+esc(key?base+"?marca="+encodeURIComponent(key):base)+'"><span>'+esc(label)+'</span><span class="cnt">'+count+'</span></a>';
+      return '<div class="snav__brands">'+brandLink("","Todos os produtos",[...groups.values()].reduce((total,entry)=>total+entry.count,0),!activeBrand)+[...groups.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR")).map(([key,entry])=>brandLink(key,entry.name,entry.count,activeBrand===key)).join("")+'</div>';
+    };
     nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
-    ordered.forEach(n=>{nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,sameNiche(activeNiche,n));});
-    if(none)nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,activeNiche===NO_NICHE);
-    if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&isAdmin&&activeNiche){
-      const selectedNiche=activeNiche===NO_NICHE?BRAND_NICHE_REVIEW:activeNiche;
-      const nicheItems=secOffers.filter(o=>sameNiche(activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)),selectedNiche)),brandCounts=new Map();
-      nicheItems.forEach(o=>{const name=brandNameOf(o),key=brandKeyOf(o);const entry=brandCounts.get(key)||{name,count:0};entry.count++;brandCounts.set(key,entry);});
-      const brands=[...brandCounts.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR"));
-      const base=listPath(activeSection,activeNiche);
-      const brandLink=(key,label,count,active)=>'<a class="snav__brand'+(active?" active":"")+'" data-nav href="'+esc(key?base+"?marca="+encodeURIComponent(key):base)+'"><span>'+esc(label)+'</span><span class="cnt">'+count+'</span></a>';
-      nicheHtml+='<div class="snav__brands">'+brandLink("","Todos os produtos",nicheItems.length,!activeBrand)+brands.map(([key,entry])=>brandLink(key,entry.name,entry.count,activeBrand===key)).join("")+'</div>';
-    }
-    if(isInsiderAdminArea()&&activeNiche){
-      const groups=new Map();secOffers.filter(o=>sameNiche(insiderNicheOf(o),activeNiche)).forEach(o=>{const key=insiderProductKey(o),entry=groups.get(key)||{name:insiderProductName(o),count:0};entry.count++;groups.set(key,entry);});
-      if(groups.size){const base=listPath(activeSection,activeNiche);nicheHtml+='<div class="snav__brands">'+[...groups.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR")).map(([key,entry])=>'<a class="snav__brand'+(activeBrand===key?' active':'')+'" data-nav href="'+esc(base+'?marca='+encodeURIComponent(key))+'"><span>'+esc(entry.name)+'</span><span class="cnt">'+entry.count+'</span></a>').join('')+'</div>';}
-    }
+    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected)nicheHtml+=productMenu(n);});
+    if(none){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
   /* anima o slide dos nichos só quando a SEÇÃO muda (não a cada clique de nicho) */
@@ -964,15 +962,14 @@ function renderAdminBrandHub(items){
       return latest(b[1])-latest(a[1])||a[1].name.localeCompare(b[1].name,"pt-BR");
     });
     html+='<section class="brandhub-niche"><header class="brandhub-niche__head"><h2>'+esc(niche)+'</h2><span class="brandhub-niche__count">'+(nicheCounts.get(niche)||0)+' materiais</span></header>';
+    html+='<div class="brandhub-products">';
     for(const [key,group] of brands){
-      const brandOffers=group.items.filter(item=>BRAND_OFFER_SECTIONS.has(sectionOf(item))).sort(offerSortFn);
-      const brandCreatives=group.items.filter(item=>sectionOf(item)==="brandcreative").sort(recentFirstFn);
+      const brandCreatives=group.items.sort(recentFirstFn);
       const href=listPath("brandcreative",niche==="Sem nicho"||niche===BRAND_NICHE_REVIEW?NO_NICHE:niche)+"?marca="+encodeURIComponent(key);
-      html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+brandOffers.length+' ofertas · '+brandCreatives.length+' criativos</span></header>';
-      if(brandOffers.length)html+='<div class="brandhub-lane"><h4 class="brandhub-lane__head">Ofertas completas</h4><div class="grid">'+brandOffers.map(cardFor).join("")+'</div></div>';
-      if(brandCreatives.length)html+='<div class="brandhub-lane"><h4 class="brandhub-lane__head">Criativos da marca</h4><div class="grid">'+brandCreatives.map(cardFor).join("")+'</div></div>';
+      html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+brandCreatives.length+' '+(brandCreatives.length===1?'criativo':'criativos')+'</span></header><div class="grid">'+brandCreatives.map(cardFor).join("")+'</div>';
       html+='</section>';
     }
+    html+='</div>';
     html+='</section>';
   }
   html+='</div>'+gridPager(page);
@@ -988,10 +985,12 @@ function renderAdminInsider(items){
     if(activeBrand&&!products.size)continue;
     html+='<section class="brandhub-niche"><header class="brandhub-niche__head"><h2><a data-nav href="'+esc(listPath("brandsvalidated",niche))+'">'+esc(niche)+'</a></h2><span class="brandhub-niche__count">'+count+' '+(count===1?'produto':'produtos')+'</span></header>';
     if(!products.size)html+='<p class="brandhub-empty">Nenhum produto cadastrado neste nicho.</p>';
+    html+='<div class="brandhub-products">';
     for(const [key,group] of [...products.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,"pt-BR"))){
       const href=listPath("brandsvalidated",niche)+"?marca="+encodeURIComponent(key);
       html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';
     }
+    html+='</div>';
     html+='</section>';
   }
   return html+'</div>'+gridPager(page);
@@ -1003,7 +1002,9 @@ function renderAdminGeneral(items){
   let html='<div class="brandhub brandhub--general">';
   for(const niche of sections){const products=groups.get(niche)||new Map(),count=items.filter(o=>sameNiche(brandNicheCanonical(nicheOf(o)),niche)).length;if(!products.size)continue;
     html+='<section class="brandhub-niche"><header class="brandhub-niche__head"><h2>'+esc(niche)+'</h2><span class="brandhub-niche__count">'+count+' '+(count===1?'oferta':'ofertas')+'</span></header>';
+    html+='<div class="brandhub-products">';
     for(const [key,group] of [...products.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'))){const href=listPath('brandsgeneral',niche===BRAND_NICHE_REVIEW?NO_NICHE:niche)+'?marca='+encodeURIComponent(key);html+='<section class="brandhub-brand"><header class="brandhub-brand__head"><h3><a data-nav href="'+esc(href)+'">'+esc(group.name)+'</a></h3><span class="brandhub-brand__count">'+group.items.length+' '+(group.items.length===1?'card':'cards')+'</span></header><div class="grid">'+group.items.map(cardFor).join('')+'</div></section>';}
+    html+='</div>';
     html+='</section>';
   }
   return html+'</div>'+gridPager(page);
@@ -1306,13 +1307,13 @@ function openForm(id){
   $("#formTag").textContent=id?"Editar oferta":"Nova oferta";
   setSaveState(id?"saved":"new");
   fProductImg=d.imagemProduto||"";
-  fTipo=d.tipoTrafego==="native"?"native":"meta";
+  fTipo="meta";
   fSemrushOriginal=d.printSemrushOriginal||d.printSemrush||"";
   fSemrushThumb=d.printSemrushThumb||fSemrushOriginal;
   fDominios=d.dominios.length?JSON.parse(JSON.stringify(d.dominios)):[{nome:"",linkDominio:"",linkCheckout:"",backRedirect:"",views:"",viewsPeriod:"",vslLink:"",vslVideo:""}];
   fCriativos=d.criativos.length?JSON.parse(JSON.stringify(d.criativos)):[{nome:"",link:"",transcricao:""}];
   fBibliotecas=d.bibliotecas.length?JSON.parse(JSON.stringify(d.bibliotecas)):[{nome:"",link:""}];
-  fTaboola=d.taboolaAds.length?JSON.parse(JSON.stringify(d.taboolaAds)):[{nome:"",img:""}];
+  fTaboola=[];
   const sourceSection=id?sectionOf(offers.find(x=>x.id===id)):activeSection,isBrand=BRAND_OFFER_SECTIONS.has(sourceSection);
   $("#formTag").textContent=isBrand?(id?"Editar oferta · FEG Brands":"Nova oferta · FEG Brands"):(id?"Editar oferta":"Nova oferta");
   fBrandStage=isBrand?sourceSection:"oferta";
@@ -1363,8 +1364,7 @@ function openForm(id){
       <div class="field">
         <label class="lbl">Origem do tráfego</label>
         <div class="seg" id="tipoSeg">
-          <button type="button" class="seg-btn${fTipo==="meta"?" active":""}" data-action="set-tipo" data-tipo="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads (Facebook)</button>
-          <button type="button" class="seg-btn${fTipo==="native"?" active":""}" data-action="set-tipo" data-tipo="native"><span class="sdot" style="background:var(--native)"></span>Native Ads (Taboola)</button>
+          <span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>Meta Ads (Facebook)</span>
         </div>
       </div>
       <div class="field big"><label class="lbl">Nome da oferta *</label><input type="text" id="f_nomeOferta" placeholder="Ex: Performance Masculina XYZ" value="${esc(d.nomeOferta)}"></div>
@@ -1399,13 +1399,6 @@ function openForm(id){
       <div class="fsec__hint">Link do criativo (Drive ou anúncio). Transcrição (.doc) opcional vira o botão "Ver transcrição do ad".</div>
       <div id="crvWrap"></div>
       <button type="button" class="add-block" data-action="add-crv">+ Adicionar criativo</button>
-    </div>
-
-    <div class="fsec only-native">
-      <div class="fsec__title"><span class="num">03</span> Anúncios encontrados (Taboola)</div>
-      <div class="fsec__hint">Cole o print de cada anúncio que você encontrou no Taboola. Adicione quantos quiser — cada print é um anúncio separado (Taboola é só imagem).</div>
-      <div id="tabWrap"></div>
-      <button type="button" class="add-block" data-action="add-tab">+ Adicionar anúncio</button>
     </div>
 
     <div class="fsec">
@@ -1523,14 +1516,14 @@ $("#formBody").addEventListener("click",e=>{
 function buildPayload(){
   const legacy=editingId?Object.assign({},(offers.find(x=>x.id===editingId)||{}).data||{}):{};
   const payload=Object.assign(legacy,{
-    tipoTrafego:fTipo==="native"?"native":"meta",
+    tipoTrafego:"meta",
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
     bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
     dominios:fDominios.filter(x=>x.nome||x.linkDominio||x.linkCheckout||x.backRedirect||x.views||x.vslLink||x.vslVideo),
     criativos:fCriativos.filter(x=>x.nome||x.link||x.transcricao),
-    taboolaAds:fTaboola.filter(x=>x.nome||x.img),
+    taboolaAds:[],
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
     driveLinks:val("f_driveLinks")
   });
@@ -2221,10 +2214,9 @@ function renderSubFilter(){
     if(batchButton&&batchFiles){batchButton.addEventListener("click",()=>batchFiles.click());batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,"",false,true);});}
     return;
   }
-  const opts=[["all","Todos"],["meta","Meta Ads"],["taboola","Taboola"]];
+  const opts=[["meta","Meta Ads"]];
   const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar pasta"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*,application/json,.json"}" multiple${activeSection==="brandcreative"?"":" webkitdirectory directory"} hidden>`:"";
-  el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${critPlatform===v?" active":""}" data-plat="${v}"><span class="sdot" style="background:${v==="taboola"?"var(--native)":v==="meta"?"var(--fb)":"var(--faint)"}"></span>${l}</button>`).join("")}</div>${bulk}</div>`;
-  $$('[data-plat]',el).forEach(b=>b.addEventListener("click",()=>{critPlatform=b.dataset.plat;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid();}));
+  el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>${l}</span>`).join("")}</div>${bulk}</div>`;
   const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
   if(batchButton&&batchFiles){
     batchButton.addEventListener("click",()=>batchFiles.click());
@@ -4562,7 +4554,7 @@ async function buildSpyCreativeManifest(files,existingSources,existingHashes,exi
     const importBatch=String(source&&source.importBatch||source&&source.batch||"").trim(),sourceFile=String(source&&source.sourceFile||"").replace(/\\/g,"/").replace(/^\/+/,"");
     const sourceHash=String(source&&source.sourceHash||"").trim().toLowerCase(),linkAnuncio=String(source&&source.linkAnuncio||source&&source.adUrl||"").trim();
     const sourceKey=String(source&&source.sourceKey||`${importBatch}/${sourceFile}`).trim().toLowerCase();
-    if(!file||!allowedNiches.has(nicho)||!["meta","taboola"].includes(plataforma)||!importBatch||!sourceFile||!sourceKey||!/^[a-f0-9]{64}$/.test(sourceHash)||linkAnuncio&&!/^https:\/\//i.test(linkAnuncio))throw new Error(`registro inválido no manifesto: ${sourceFile||mediaFile||"sem arquivo"}`);
+    if(!file||!allowedNiches.has(nicho)||plataforma!=="meta"||!importBatch||!sourceFile||!sourceKey||!/^[a-f0-9]{64}$/.test(sourceHash)||linkAnuncio&&!/^https:\/\//i.test(linkAnuncio))throw new Error(`registro inválido no manifesto: ${sourceFile||mediaFile||"sem arquivo"}`);
     const dedupeKey=`${importBatch.toLowerCase()}|${sourceFile.toLowerCase()}`,linkKey=linkAnuncio?canonicalCreativeUrl(linkAnuncio):"";
     if(manifestHashes.has(sourceHash)||manifestSources.has(dedupeKey))throw new Error(`o manifesto repete o criativo ${sourceFile}`);
     manifestHashes.add(sourceHash);manifestSources.add(dedupeKey);
@@ -4636,7 +4628,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
         importBatch:batchName,sourceKey:`balls-n-brains/${sourceFile.toLowerCase()}`,sourceFile
       }:{
         kind:"criativo",nome:record?.nome||nextCreativeName(niche),nomeOriginal:originalName,nicho:record?.nicho||niche,marca:"WL FEG",
-        plataforma:record?.plataforma||(critPlatform==="taboola"?"taboola":"meta"),linkAnuncio:record?.linkAnuncio||"",video:publicUrl,print:"",copyLink:"",
+        plataforma:"meta",linkAnuncio:record?.linkAnuncio||"",video:publicUrl,print:"",copyLink:"",
         transcricao:"",transcricaoPt:"",transcriptionStatus:"pending",transcricaoStatus:"pending",
         transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
         importBatch:batchName,sourceKey:record?.sourceKey||`${batchName.toLowerCase()}/${sourceFile.toLowerCase()}`,sourceHash:record?.sourceHash||"",sourceFile
@@ -4707,10 +4699,7 @@ function renderSimpleForm(){
     <div class="fsec">
       <div class="fsec__title"><span class="num">01</span> Identificação</div>
       <div class="field"><label class="lbl">Origem do tráfego</label>
-        <div class="seg" id="sTipoSeg">
-          <button type="button" class="seg-btn${it.tipoTrafego!=="native"?" active":""}" data-saction="set-tipo" data-val="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</button>
-          <button type="button" class="seg-btn${it.tipoTrafego==="native"?" active":""}" data-saction="set-tipo" data-val="native"><span class="sdot" style="background:var(--native)"></span>Native / Taboola</button>
-        </div>
+        <div class="seg" id="sTipoSeg"><span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</span></div>
       </div>
       ${nomeField}
       <div class="row">${nichoField}${marcaField}</div>
@@ -4728,13 +4717,8 @@ function renderSimpleForm(){
     const organic=k==="organic";
     html=`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">01</span> ${organic?"Identificação":"Plataforma & Identificação"}</div>
-      ${organic?"":`<div class="field"><label class="lbl">Plataforma do criativo</label>
-        <div class="seg" id="sPlatSeg">
-          <button type="button" class="seg-btn${it.plataforma!=="taboola"?" active":""}" data-saction="set-plat" data-val="meta"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</button>
-          <button type="button" class="seg-btn${it.plataforma==="taboola"?" active":""}" data-saction="set-plat" data-val="taboola"><span class="sdot" style="background:var(--native)"></span>Taboola</button>
-        </div>
-      </div>`}
+      <div class="fsec__title"><span class="num">01</span> ${organic?"Identificação":"Meta Ads & Identificação"}</div>
+      ${organic?"":`<div class="field"><label class="lbl">Plataforma do criativo</label><div class="seg" id="sPlatSeg"><span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</span></div></div>`}
       ${nomeField}
       ${organic?marcaField:`<div class="row">${nichoField}${marcaField}</div>`}
       ${organic?"":`<div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
@@ -4752,7 +4736,7 @@ function renderSimpleForm(){
     </div>
     ${organic?"":`<div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
-      <div class="fsec__hint">Print ou imagem do criativo. <b>No Taboola, este é o único formato</b> (apenas imagem).</div>
+      <div class="fsec__hint">Print ou imagem do criativo do Meta Ads.</div>
       ${printField}
     </div>`}`;
   }else if(k==="noticia"){
@@ -4812,7 +4796,7 @@ function renderSimpleForm(){
   }
   const body=$("#simpleFormBody");
   body.innerHTML=`<datalist id="nichosGlobal">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`+html;
-  body.dataset.plat=(k==="criativo"&&it.plataforma==="taboola")?"taboola":"meta";
+  body.dataset.plat="meta";
   wireZones(body);
   if(k==="criativo"||k==="organic"||k==="megabrain")wireVideoUpload();
 }
@@ -4820,8 +4804,8 @@ $("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.
 $("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
 $("#simpleFormBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-saction]");if(!b)return;
-  if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego=b.dataset.val;$$("#sTipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));sMarkDirty();}
-  else if(b.dataset.saction==="set-plat"){sItem.plataforma=b.dataset.val;$$("#sPlatSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));$("#simpleFormBody").dataset.plat=b.dataset.val==="taboola"?"taboola":"meta";sMarkDirty();}
+  if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego="meta";sMarkDirty();}
+  else if(b.dataset.saction==="set-plat"){sItem.plataforma="meta";$("#simpleFormBody").dataset.plat="meta";sMarkDirty();}
   else if(b.dataset.saction==="set-metrica"){sItem.metricaTipo=b.dataset.val;$$("#sMetricaSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.val===b.dataset.val));const fat=b.dataset.val==="faturamento";const lbl=$("#sMetricaLbl");if(lbl)lbl.textContent=fat?"Faturamento (US$)":"Quantas vendas o criativo fez";const inp=$('[data-sk="metricaValor"]');if(inp)inp.placeholder=fat?"Ex: 5000":"Ex: 8";sMarkDirty();}
 });
 
@@ -4834,6 +4818,8 @@ async function saveSimpleForm(){
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
   const p=Object.assign({},sItem);p.kind=sKind==="organic"?"criativo":sKind;if(sKind==="organic"){p.division="organic";p.plataforma="organic";p.nicho="";}
+  if(sKind==="presell")p.tipoTrafego="meta";
+  if(sKind==="criativo")p.plataforma="meta";
   const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||""),transcriptChanged=String(p.transcricao||"")!==String(old.transcricao||"");
   if((sKind==="criativo"||sKind==="organic")&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
   if((sKind==="criativo"||sKind==="organic"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){

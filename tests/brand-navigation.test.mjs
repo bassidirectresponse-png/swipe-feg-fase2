@@ -11,11 +11,13 @@ test("admin agrupa Geral, Insider e Criativos por nicho e produto sem descartar 
   assert.match(html, /function renderAdminGeneral\(items\)/);
   assert.match(html, /function renderAdminInsider\(items\)/);
   assert.match(html, /function renderAdminBrandHub\(items\)/);
-  assert.match(html, /activeSection==="brandcreative"\|\|activeSection==="brandsgeneral"\)&&isAdmin&&activeBrand/);
-  assert.match(html, /activeSection==="brandcreative"\|\|activeSection==="brandsgeneral"/);
+  assert.match(html, /const productMenu=niche=>/);
+  assert.match(html, /if\(selected\)nicheHtml\+=productMenu\(n\)/);
   assert.match(html, /if\(sectionOf\(o\)==="brandsvalidated"\)return insiderNicheOf\(o\)/);
   assert.match(html, /niche===BRAND_NICHE_REVIEW\?NO_NICHE:niche/);
-  assert.match(html, /const selectedNiche=activeNiche===NO_NICHE\?BRAND_NICHE_REVIEW:activeNiche/);
+  assert.match(html, /const selectedNiche=niche===NO_NICHE\?BRAND_NICHE_REVIEW:niche/);
+  assert.match(html, /const BRAND_CREATIVE_NICHE_OVERRIDES=\{"balls-n-brains":"Saúde masculina"\}/);
+  assert.match(html, /function brandHubItems\(\)\{return offers\.filter\(o=>sectionOf\(o\)==="brandcreative"\);\}/);
   assert.doesNotMatch(html, /list=list\.filter\(o=>INSIDER_NICHES\.some/);
 });
 

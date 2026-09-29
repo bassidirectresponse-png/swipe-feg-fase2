@@ -42,9 +42,7 @@ export default async req => {
     const nome = clean(body.nome, 120);
     const nomeOriginal = clean(body.nomeOriginal, 180);
     const nicho = clean(body.nicho, 80);
-    const plataforma = ["meta", "taboola"].includes(clean(body.plataforma, 20).toLowerCase())
-      ? clean(body.plataforma, 20).toLowerCase()
-      : "meta";
+    const plataforma = "meta";
     const linkAnuncio = clean(body.linkAnuncio, 900);
     const media = video || print;
     if (!MEDIA_URL.test(media) || !sourceFile || !nome || !nomeOriginal || (!brandMode && !organicMode && !nicho)

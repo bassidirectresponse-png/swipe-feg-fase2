@@ -15,12 +15,12 @@ test("spy folder importer validates a manifest and assigns standard sequential n
   assert.match(html, /sourceHash:record\?\.sourceHash/);
 });
 
-test("spy importer preserves niche, traffic platform and source ad URL", () => {
-  assert.match(endpoint, /plataforma = \["meta", "taboola"\]/);
+test("spy importer preserves niche, Meta Ads platform and source ad URL", () => {
+  assert.match(endpoint, /const plataforma = "meta"/);
   assert.match(endpoint, /linkAnuncio = clean\(body\.linkAnuncio/);
   assert.match(endpoint, /importBatch: importBatch \|\| "WL FEG"/);
   assert.match(endpoint, /sourceHash,/);
-  assert.match(preparer, /plataforma: "taboola"/);
+  assert.doesNotMatch(preparer, /plataforma: "taboola"/);
   assert.match(preparer, /facebookLinks/);
 });
 

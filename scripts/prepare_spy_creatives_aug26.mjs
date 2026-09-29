@@ -20,7 +20,6 @@ const SOURCES = [
   { dir: path.join(META_ROOT, "WL"), nicho: "Emagrecimento", plataforma: "meta", importBatch: "SPY META WL 2026-08-26", facebookManifest: true },
   { dir: path.join(META_ROOT, "ED"), nicho: "Disfunção Erétil", plataforma: "meta", importBatch: "SPY META ED 2026-08-26", facebookManifest: true },
   { dir: "/Users/guilhermeaugustobassi/Desktop/criativos spy swl/Diabetes - 20-08-2026", nicho: "Diabetes/Glicose", plataforma: "meta", importBatch: "SPY META DB 2026-08-20", facebookManifest: false },
-  { dir: "/Volumes/PortableSSD/CRIATIVOS FEG SPY/CRIATIVOS SPY NATIVO DOWLOAD/WL BK", nicho: "Emagrecimento", plataforma: "taboola", importBatch: "SPY NATIVO WL BK 2026-08-26", facebookManifest: false },
 ];
 
 async function sha256(file) {
