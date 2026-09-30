@@ -1515,6 +1515,7 @@ create policy "public_all" on offers
     <div class="theme-switch" role="group" aria-label="Aparência"><button type="button" class="theme-switch__btn" data-theme-choice="light" aria-pressed="false">Claro</button><button type="button" class="theme-switch__btn" data-theme-choice="dark" aria-pressed="true">Escuro</button></div>
     <span class="whoami" id="whoami"></span>
     <span class="ro-pill" id="roPill" hidden><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Somente leitura</span>
+    <button class="icon-btn" id="loginAdminBtn" title="Entrar como admin" aria-label="Entrar como admin"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
     <button class="icon-btn" id="logoutBtn" title="Sair" aria-label="Sair"><svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
     <button class="btn btn--accent" id="newBtn" data-admin-only><svg class="ico" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="newBtn-txt">Nova oferta</span></button>
   </div>
@@ -1815,6 +1816,9 @@ function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
+  const login=$("#loginAdminBtn"),logout=$("#logoutBtn");
+  if(login)login.hidden=!!user;
+  if(logout)logout.hidden=!user;
 }
 function requireAdmin(){if(isAdmin)return true;toast("Somente leitura — apenas o admin pode alterar.",true);return false;}
 function toEmail(u){u=(u||"").trim().toLowerCase();return u.includes("@")?u:u+"@"+EMAIL_DOMAIN;}
@@ -1839,7 +1843,8 @@ async function startAuth(){
   if(!initSupabase(url,key)){showSetup();return;}
   let session=null;
   try{const r=await sb.auth.getSession();session=r.data&&r.data.session;}catch(e){}
-  if(session){hideLogin();showWho(session.user);boot();}else showLogin();
+  if(session){hideLogin();showWho(session.user);boot();}
+  else{hideLogin();showWho(null);boot();}
 }
 $("#loginForm").addEventListener("submit",async e=>{
   e.preventDefault();
@@ -1854,6 +1859,7 @@ $("#loginForm").addEventListener("submit",async e=>{
 });
 async function logout(){try{await sb.auth.signOut();}catch(e){}try{localStorage.removeItem(LS.cache);}catch(e){}location.reload();}
 document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(confirm("Sair do painel?"))logout();}});
+document.addEventListener("click",e=>{if(e.target.closest("#loginAdminBtn"))showLogin();});
 
 /* ===== SUPABASE ===== */
 function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").classList.add("hidden");}
