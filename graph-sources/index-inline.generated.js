@@ -195,9 +195,6 @@ function applyRole(user){
   isAdmin=!!user&&ADMIN_EMAILS.includes(String(user.email||"").trim().toLowerCase());
   document.body.classList.toggle("readonly",!isAdmin);
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
-  const login=$("#loginAdminBtn"),logout=$("#logoutBtn");
-  if(login)login.hidden=!!user;
-  if(logout)logout.hidden=!user;
 }
 function requireAdmin(){if(isAdmin)return true;toast("Somente leitura — apenas o admin pode alterar.",true);return false;}
 function toEmail(u){u=(u||"").trim().toLowerCase();return u.includes("@")?u:u+"@"+EMAIL_DOMAIN;}
@@ -222,8 +219,7 @@ async function startAuth(){
   if(!initSupabase(url,key)){showSetup();return;}
   let session=null;
   try{const r=await sb.auth.getSession();session=r.data&&r.data.session;}catch(e){}
-  if(session){hideLogin();showWho(session.user);boot();}
-  else{hideLogin();showWho(null);boot();}
+  if(session){hideLogin();showWho(session.user);boot();}else showLogin();
 }
 $("#loginForm").addEventListener("submit",async e=>{
   e.preventDefault();
@@ -238,7 +234,6 @@ $("#loginForm").addEventListener("submit",async e=>{
 });
 async function logout(){try{await sb.auth.signOut();}catch(e){}try{localStorage.removeItem(LS.cache);}catch(e){}location.reload();}
 document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(confirm("Sair do painel?"))logout();}});
-document.addEventListener("click",e=>{if(e.target.closest("#loginAdminBtn"))showLogin();});
 
 /* ===== SUPABASE ===== */
 function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").classList.add("hidden");}
