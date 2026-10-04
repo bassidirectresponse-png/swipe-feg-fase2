@@ -30,6 +30,9 @@ function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
+const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
+function offerTagsOf(d){return [...new Set((Array.isArray(d&&d.offerTags)?d.offerTags:[]).map(x=>String(x).toLowerCase()).filter(x=>OFFER_TAGS[x]))];}
+function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
 const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
 const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
@@ -38,7 +41,7 @@ const ADMIN_SECTIONS=new Set(["updates"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, adminBmHistoryPatches={}, activeBmPeriodByOffer={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0,offerVslUploading=0;
-let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
+let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="",fOfferTags=[];
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
@@ -664,7 +667,7 @@ function renderSideNav(){
   };
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
-  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
+  (isAdmin?["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]:BRANDS_NAV_ORDER).forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
   nav.innerHTML=html;
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
@@ -714,7 +717,7 @@ function adsChartSvg(hist){
       xlab+=`<text x="${x.toFixed(1)}" y="${h-14}" text-anchor="middle" class="axl">${fmtDateShort(p.d)}</text>`;
     }
   });
-  return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise">${grid}${ylab}<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
+  return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise"><defs><linearGradient id="adsFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--accent)" stop-opacity=".42"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".03"/></linearGradient><filter id="adsGlow" x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${grid}${ylab}<path d="${area}" fill="url(#adsFill)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.6" filter="url(#adsGlow)" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
 }
 
 function cardHtml(o){
@@ -885,7 +888,7 @@ function brandCard(o){
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Insider":"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
-    body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
+    body:`<div class="card__body">${offerTagsHtml(d)?`<div class="offer-tags">${offerTagsHtml(d)}</div>`:""}${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
     extra:validated&&!clean?(adminPreview&&brandDraftCardSnapshot(d)||`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`):"",
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
@@ -1322,16 +1325,14 @@ function openForm(id){
   fBrandTopAds=d.brandTopAds.length?JSON.parse(JSON.stringify(d.brandTopAds)):[{nome:"",link:"",img:""}];
   fBrandSemrush1m=d.brandSemrush1m||"";
   fBrandSemrush3m=d.brandSemrush3m||"";
+  fOfferTags=offerTagsOf(d);
 
   const brandForm=isBrand?`
     <div class="fsec">
       <div class="fsec__title"><span class="num">B</span> FEG Brands · classificação</div>
-      <div class="fsec__hint">Ofertas no Geral reúnem páginas, checkouts, bibliotecas e anúncios. Métricas do Gerenciador ficam somente em Ofertas Insider.</div>
-      <div class="field"><label class="lbl">Lista da oferta</label><div class="seg" id="brandStageSeg">
-        <button type="button" class="seg-btn${fBrandStage==="brandsgeneral"?" active":""}" data-action="set-brand-stage" data-stage="brandsgeneral">Ofertas no Geral</button>
-        <button type="button" class="seg-btn${fBrandStage==="brandsvalidated"?" active":""}" data-action="set-brand-stage" data-stage="brandsvalidated">Ofertas Insider</button>
-      </div></div>
-      <div id="brandBmFields"${fBrandStage==="brandsvalidated"?"":" hidden"}>
+      <div class="fsec__hint">Ofertas Brands reúne o acervo Insider com páginas, bibliotecas, métricas da BM e top ads. Os registros existentes permanecem intactos.</div>
+      <div class="field"><label class="lbl">Tags da oferta</label><div class="tag-picker" aria-label="Tags da oferta">${Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-action="toggle-offer-tag" data-tag="${key}" aria-pressed="${fOfferTags.includes(key)}">${ic(t.icon)}${t.label}</button>`).join("")}</div><div class="fsec__hint">Selecione uma ou mais tags. INSIDER identifica coleta pela BM; NOVA, POTENCIAL e ESCALA organizam a prioridade comercial.</div></div>
+      <div id="brandBmFields">
       <div class="row3">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
         <div class="field"><label class="lbl">Gasto nos últimos 14 dias</label><input type="text" id="f_bmSpend14d" placeholder="Ex: R$ 91.600" value="${esc(d.bmSpend14d||"")}"></div>
@@ -1507,7 +1508,7 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-bm-print"){fBmPrints.splice(+b.dataset.i,1);renderBmPrints();}
   else if(a==="add-brand-ad"){fBrandTopAds.push({nome:"",link:"",img:""});renderBrandTopAds();}
   else if(a==="rm-brand-ad"){fBrandTopAds.splice(+b.dataset.i,1);renderBrandTopAds();}
-  else if(a==="set-brand-stage"){if(!BRAND_OFFER_SECTIONS.has(b.dataset.stage)||fBrandStage===b.dataset.stage)return;fBrandStage=b.dataset.stage;$$("#brandStageSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.stage===fBrandStage));const bm=$("#brandBmFields");if(bm)bm.hidden=fBrandStage!=="brandsvalidated";}
+  else if(a==="toggle-offer-tag"){const tag=b.dataset.tag;if(!OFFER_TAGS[tag])return;fOfferTags=fOfferTags.includes(tag)?fOfferTags.filter(x=>x!==tag):[...fOfferTags,tag];b.setAttribute("aria-pressed",String(fOfferTags.includes(tag)));}
   else if(a==="set-tipo"){if(fTipo===b.dataset.tipo)return;fTipo=b.dataset.tipo;$("#formBody").dataset.tipo=fTipo;$$("#tipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.tipo===fTipo));}
   else return;
   markDirty();
@@ -1530,6 +1531,7 @@ function buildPayload(){
   });
   if(fBrandStage==="brandsvalidated")Object.assign(payload,{
     kind:"brandsvalidated",
+    offerTags:fOfferTags,
     adsLibraryCheckedAt:val("f_adsLibraryCheckedAt"),
     bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmSpend30d:val("f_bmSpend30d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
     bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
@@ -2093,8 +2095,9 @@ function setSectionHeader(){
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=brandHub?"Buscar nicho, marca, oferta ou criativo...":cfg.searchPlaceholder;
   const title=$("#pageTitle"),description=$("#pageDescription");
-  if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):cfg.label;
-  if(description)description.innerHTML=selectedInsiderItem?esc(insiderNicheOf(selectedInsiderItem))+" · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):cfg.subHtml||"";
+  const adminBrands=isAdmin&&activeSection==="brandsvalidated";
+  if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):adminBrands?"Ofertas Brands":cfg.label;
+  if(description)description.innerHTML=selectedInsiderItem?esc(insiderNicheOf(selectedInsiderItem))+" · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):adminBrands?"<b>Ofertas Brands</b> — acervo Insider com leitura de BM, bibliotecas, histórico de anúncios e tags de prioridade.":cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
@@ -2144,7 +2147,7 @@ function wireFegsysPanel(el){
 }
 function brandNavHtml(){
   if(!BRAND_SECTIONS.has(activeSection))return"";
-  const entries=[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
+  const entries=isAdmin?[["brandsvalidated","Ofertas Brands"],["brandcreative","Swipe de Criativos"]]:[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){

@@ -32,3 +32,13 @@ test("Notícias e Radar recebem os nichos de Brands sem nova coleta automática"
     assert.ok(info.brands_prepared[niche]?.must.length);
   }
 });
+
+test("Radar TikTok de Brands limita a coleta diária e preserva a taxonomia Insider", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/tiktok-mining.yml", import.meta.url), "utf8");
+  const miner = readFileSync(new URL("../scripts/tiktok_mining.py", import.meta.url), "utf8");
+  assert.match(workflow, /ENABLE_BRAND_NICHES: "1"/);
+  assert.match(workflow, /MAX_PER_NICHE: "50"/);
+  assert.match(workflow, /PER_KEYWORD: "20"/);
+  assert.match(miner, /active_niches = BRAND_NICHES if brand_enabled else NICHES/);
+  assert.match(miner, /\[:MAX_PER_NICHE\]/);
+});

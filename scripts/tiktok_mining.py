@@ -21,7 +21,7 @@ Env:
   SUPABASE_BOT_EMAIL, SUPABASE_BOT_PASSWORD (obrigatórias, exceto --dry)
   PROVIDER=tikwm
   ENSEMBLE_TOKEN / APIFY_TOKEN (conforme o provedor)
-  MAX_PER_NICHE=12   MAX_AGE_DAYS=45   PER_KEYWORD=8   (teto ~100/dia, ~metade do custo)
+  MAX_PER_NICHE=50   MAX_AGE_DAYS=45   PER_KEYWORD=20  (teto de 50 por nicho)
 
 Uso:
   python scripts/tiktok_mining.py --dry     # só busca e imprime, não grava
@@ -35,12 +35,11 @@ ANON = os.environ.get("SUPABASE_ANON_KEY",
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 PROVIDER = os.environ.get("PROVIDER", "tikwm").lower()
-# Teto de volume/custo: guarda no máx. MAX_PER_NICHE por nicho (12 × 8 nichos ≈ 96/dia,
-# abaixo do teto de 100/dia) e raspa PER_KEYWORD por query (8 corta ~metade do que a
-# Apify cobra vs. o antigo 15/30). Tudo sobrescrevível por env no workflow.
-MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "12"))
+# Volume/custo é configurável pelo workflow. O padrão busca margem suficiente
+# para filtrar e deduplicar antes de guardar até 50 vídeos por nicho.
+MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "50"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "45"))
-PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "8"))
+PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "20"))
 HISTORY_CAP = 60
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())
@@ -409,7 +408,9 @@ def main():
         return
     dry = "--dry" in sys.argv
     brand_enabled = os.environ.get("ENABLE_BRAND_NICHES", "").lower() in ("1", "true", "yes")
-    active_niches = {**NICHES, **BRAND_NICHES} if brand_enabled else NICHES
+    # Brands substitui a taxonomia legada: não mistura o Radar nem gasta créditos
+    # em consultas que não correspondem às Ofertas Brands.
+    active_niches = BRAND_NICHES if brand_enabled else NICHES
     print(f"TikTok mining — provider={PROVIDER}  dry={dry}\n")
     per_niche = collect(active_niches)
     total = sum(len(v) for v in per_niche.values())
