@@ -288,18 +288,17 @@ async function loadUpdates(){
   }
 }
 async function loadAdminOfferDrafts(){
-  adminOfferDrafts={};
   if(!isAdmin||!sb)return;
   try{
     const result=await sb.from("admin_offer_drafts").select("target_offer_id,data_patch,label,updated_at");
     if(result.error)throw result.error;
-    for(const draft of result.data||[])if(draft&&draft.target_offer_id)adminOfferDrafts[draft.target_offer_id]=draft;
+    const drafts={};for(const draft of result.data||[])if(draft&&draft.target_offer_id)drafts[draft.target_offer_id]=draft;
+    adminOfferDrafts=drafts;
   }catch(error){
     if(String(error&&error.code||"")!=="42P01")console.warn("Não foi possível carregar os rascunhos administrativos",error);
   }
 }
 async function loadAdminBmHistory(){
-  adminBmHistoryPatches={};
   if(!isAdmin||!sb)return;
   try{
     const session=await sb.auth.getSession(),token=session?.data?.session?.access_token;
@@ -328,12 +327,30 @@ async function boot(){
   if(!sb){showSetup();return;}
   showApp();
   const cached=readCache();
-  if(cached&&cached.length){offers=cached;routeReady=true;applyRoute();setSync("load","Atualizando");}
-  else $("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
-  const ok=await loadOffers();
-  if(ok!==false&&isAdmin)ensureJoymodeInsider();
-  if(ok!==false&&activeSection==="megabrainfegsys")loadFegsysBrain();
-  if(ok===false&&!(cached&&cached.length)){showSetup();toast("Erro ao carregar (verifique login/RLS)",true);}
+  let displayedCached=false;
+  if(cached&&cached.length){
+    try{offers=cached;routeReady=true;applyRoute();displayedCached=true;setSync("load","Atualizando");}
+    catch(error){console.warn("Cache local indisponível",error);routeReady=false;}
+  }
+  if(!displayedCached)$("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
+  try{
+    const ok=await loadOffers();
+    if(ok!==false&&isAdmin)ensureJoymodeInsider();
+    if(ok!==false&&activeSection==="megabrainfegsys")loadFegsysBrain();
+    if(ok===false&&!displayedCached)showOffersLoadError();
+  }catch(error){console.error("Falha ao carregar ofertas",error);setSync("err","Erro ao carregar");if(!displayedCached)showOffersLoadError();else toast("Não foi possível atualizar as ofertas; mostrando dados salvos neste navegador.",true);}
+}
+function showOffersLoadError(){
+  $("#gridArea").innerHTML='<div class="empty" role="alert"><h2>Não foi possível carregar as ofertas</h2><p>Os dados não foram apagados. Verifique a conexão e tente novamente.</p><button type="button" class="btn btn--outline" id="retryOffers">Tentar novamente</button></div>';
+  $("#retryOffers").addEventListener("click",()=>boot(),{once:true});
+}
+async function loadAdminEnhancements(){
+  const tasks=[loadUpdates,loadAdminOfferDrafts,loadAdminBmHistory];
+  await Promise.allSettled(tasks.map(async load=>{
+    await load();
+    if(routeReady)try{renderGrid(true);}catch(error){console.error("Falha ao atualizar painel admin",error);}
+  }));
+  setSync("ok","Sincronizado");
 }
 async function loadOffers(){
   setSync("load","Carregando");
@@ -342,16 +359,19 @@ async function loadOffers(){
   // novos (ex.: Mega Brain recém-criados) ficam de fora e "somem" da tela.
   const PAGE=1000; let all=[], from=0;
   for(;;){
-    const {data,error}=await sb.from("offers").select("*").order("created_at",{ascending:true}).range(from,from+PAGE-1);
+    let timer;
+    const query=sb.from("offers").select("*").order("created_at",{ascending:true}).range(from,from+PAGE-1);
+    const {data,error}=await Promise.race([query,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("Tempo esgotado ao buscar ofertas")),45000);})]).finally(()=>clearTimeout(timer));
     if(error){setSync("err","Erro");console.warn(error);return false;}
     all=all.concat(data||[]);
     if(!data||data.length<PAGE)break;
     from+=PAGE;
   }
   offers=all;
-  if(isAdmin){await Promise.all([loadUpdates(),loadAdminOfferDrafts(),loadAdminBmHistory()]);}else{updates=[];updatesTotal=0;adminOfferDrafts={};adminBmHistoryPatches={};}
-  setSync("ok","Sincronizado");routeReady=true;applyRoute();writeCache();
+  if(!isAdmin){updates=[];updatesTotal=0;adminOfferDrafts={};adminBmHistoryPatches={};}
+  setSync("ok",isAdmin?"Ofertas carregadas":"Sincronizado");routeReady=true;applyRoute();writeCache();
   if(isAdmin){
+    void loadAdminEnhancements();
     setTimeout(()=>scheduleCreativeTranslations(),1200);
     setTimeout(()=>resumeOfferCreativeArchives(),2200);
   }
@@ -676,7 +696,7 @@ function renderSideNav(){
   const sectionChanged=navPrevSection!==activeSection;
   navPrevSection=activeSection;
 
-  let html=`<div class="sidenav__head"><img class="logo-mark" src="logo-feg.jpg" alt="Grupo FEG" width="200" height="200"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
+  let html=`<div class="sidenav__head"><img class="logo-mark" src="/logo-feg.jpg" alt="Grupo FEG" width="200" height="200"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;

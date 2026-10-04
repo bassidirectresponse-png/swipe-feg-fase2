@@ -497,6 +497,30 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /const OFFER_TAGS=/);
 });
 
+test("cards carregam antes das consultas complementares do administrador", async () => {
+  const source = html.match(/async function loadOffers\(\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source,"função de carregamento encontrada");
+  let rendered = false, status = "";
+  const context = {
+    sb:{from:()=>({select:()=>({order:()=>({range:()=>Promise.resolve({data:[{id:"card-1",data:{kind:"brandsvalidated"}}],error:null})})})})},
+    setSync:(_,value)=>{status=value;},isAdmin:true,offers:[],routeReady:false,
+    applyRoute:()=>{rendered=true;},writeCache:()=>{},
+    loadAdminEnhancements:()=>new Promise(()=>{}),
+    scheduleCreativeTranslations:()=>{},resumeOfferCreativeArchives:()=>{},
+    activeSection:"brandsvalidated",setTimeout:()=>1,clearTimeout:()=>{},console,
+  };
+  const result = await runInNewContext(`${source}\nloadOffers()`,context);
+  assert.equal(result,true);
+  assert.equal(rendered,true);
+  assert.equal(status,"Ofertas carregadas");
+  assert.equal(context.offers.length,1);
+});
+
+test("logo usa caminho absoluto para funcionar em rotas internas", () => {
+  assert.doesNotMatch(html, /(?:src|href)="logo-feg\.jpg"/);
+  assert.match(html, /src="\/logo-feg\.jpg"/);
+});
+
 test("histórico de ads ativos aparece no topo do detalhe de Brands", () => {
   const detailTemplate = html.slice(html.indexOf('$("#viewBody").innerHTML=`'), html.indexOf('wireLightboxLinks($("#viewBody"));'));
   assert.ok(detailTemplate.indexOf("${adsSection}") < detailTemplate.indexOf("${bmSection}"));
