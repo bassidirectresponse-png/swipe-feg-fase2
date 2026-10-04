@@ -24,7 +24,7 @@ Env:
   SUPABASE_URL, SUPABASE_ANON_KEY (obrigatórias)
   SUPABASE_BOT_EMAIL, SUPABASE_BOT_PASSWORD (obrigatórias p/ gravar)
   DRY_RUN=1        (não grava; só mostra o que leria)
-  HISTORY_DAYS=60  (quantos pontos de histórico manter por oferta)
+  O histórico é preservado integralmente desde a primeira leitura disponível.
 """
 import copy, os, sys, re, json, time, urllib.request, urllib.error, uuid
 from datetime import datetime, timedelta, timezone
@@ -37,7 +37,6 @@ BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
-HISTORY_DAYS = int(os.environ.get("HISTORY_DAYS", "60"))
 MAX_OFFERS = max(1, int(os.environ.get("MAX_OFFERS", "200")))
 MAX_ATTEMPTS = max(1, int(os.environ.get("MAX_ANALYSIS_ATTEMPTS", "6")))
 LOCK_MINUTES = max(10, int(os.environ.get("ANALYSIS_LOCK_MINUTES", "90")))
@@ -287,8 +286,7 @@ def update_history(data, total, now):
             pass
     hist.append({"d": today, "at": now.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"), "n": total})
     hist = normalize_history(hist)
-    cutoff = (now - timedelta(days=max(1, HISTORY_DAYS) - 1)).strftime("%Y-%m-%d")
-    return [point for point in hist if point["d"] >= cutoff][-HISTORY_DAYS * 4:]
+    return hist
 
 
 def round_robin_targets(targets, limit):

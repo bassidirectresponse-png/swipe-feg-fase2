@@ -392,7 +392,7 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /Top ads/);
   assert.match(html, /data-zone="bm\|\$\{i\}"/);
   assert.match(html, /data-zone="brandad\|\$\{i\}"/);
-  assert.match(html, /data-action="toggle-offer-tag"/);
+  assert.match(html, /data-tag-choice=/);
   assert.match(html, /bmPrints:fBmPrints\.filter/);
   assert.match(html, /brandTopAds:fBrandTopAds\.filter/);
   assert.doesNotMatch(html, /data-zone="brandsemrush1m"/);
@@ -484,14 +484,16 @@ test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perde
 });
 
 test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", () => {
-  assert.match(html, /extra:validated&&!clean\?\(adminPreview&&brandDraftCardSnapshot\(d\)/);
+  assert.match(html, /extra:isAdmin&&validated\?\(brandDraftCardSnapshot\(d\)/);
   assert.match(html, /clean=validated/);
   assert.match(html, /if\(isInsiderAdminArea\(\)&&activeBrand\)list=list\.filter/);
   assert.match(html, /Ads ativos · evolução diária/);
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);
   assert.match(html, /<div id="brandBmFields">/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
-  assert.match(html, /offerTags:fOfferTags/);
+  assert.match(html, /data-edit-tags=/);
+  assert.match(html, /admin_offer_drafts"\)\.upsert\(/);
+  assert.doesNotMatch(html, /offerTags:fOfferTags/);
   assert.match(html, /const OFFER_TAGS=/);
 });
 

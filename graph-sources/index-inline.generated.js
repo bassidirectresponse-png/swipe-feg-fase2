@@ -31,8 +31,27 @@ function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
-function offerTagsOf(d){return [...new Set((Array.isArray(d&&d.offerTags)?d.offerTags:[]).map(x=>String(x).toLowerCase()).filter(x=>OFFER_TAGS[x]))];}
+function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:(d&&d.kind==="brandsvalidated"?["insider"]:[]);return [...new Set(list.map(x=>String(x).toLowerCase()).filter(x=>OFFER_TAGS[x]))];}
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
+function openTagEditor(id){
+  if(!isAdmin||!sb)return;
+  const offer=offers.find(item=>item.id===id);if(!offer||sectionOf(offer)!=="brandsvalidated")return;
+  editingTagOfferId=id;tagDraft=offerTagsOf(brandHubAdminData(offer));
+  const descriptions={insider:"Entramos na BM para coletar dados",new:"Nova oferta adicionada",potential:"Potencial para acompanhar · mínimo 200 ads ativos",scale:"Marca com mais de US$ 100 mil investidos na semana"};
+  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}">${ic(t.icon)}${t.label}</button>`).join("");
+  openOverlay("#tagOverlay");
+}
+async function saveTagEditor(){
+  if(!isAdmin||!sb||!editingTagOfferId)return;
+  const offer=offers.find(item=>item.id===editingTagOfferId);if(!offer)return;
+  const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:[...tagDraft]};
+  const button=$("#tagEditorSave");button.disabled=true;
+  try{
+    const result=await sb.from("admin_offer_drafts").upsert({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch},{onConflict:"target_offer_id"}).select("target_offer_id,data_patch,label,updated_at").single();
+    if(result.error)throw result.error;
+    adminOfferDrafts[offer.id]=result.data;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
+  }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
+}
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
 const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
 const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
@@ -41,7 +60,8 @@ const ADMIN_SECTIONS=new Set(["updates"]);
 
 let sb=null, currentSbUrl="", currentSbKey="", offers=[], adminOfferDrafts={}, adminBmHistoryPatches={}, activeBmPeriodByOffer={}, searchTerm="", activeNiche="", activeBrand="", editingId=null;
 let fProductImg="", fDominios=[], fCriativos=[], fBibliotecas=[], fTaboola=[], fSemrushOriginal="", fSemrushThumb="", fTipo="meta", semrushUploading=false,brandMediaUploading=0,offerVslUploading=0;
-let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="",fOfferTags=[];
+let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",fBrandSemrush3m="";
+let editingTagOfferId=null,tagDraft=[];
 let activeZone=null;
 let formDirty=false, saving=false;
 let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
@@ -86,6 +106,7 @@ const ICONS={
   link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',
   external:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
   plus:'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+  edit:'<path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
   brain:'<path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"></path>',
   image:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>',
   film:'<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M7 3v18"></path><path d="M3 7.5h4"></path><path d="M3 12h18"></path><path d="M3 16.5h4"></path><path d="M17 3v18"></path><path d="M17 7.5h4"></path><path d="M17 16.5h4"></path>',
@@ -514,7 +535,7 @@ function offerPath(o){
 }
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
-  const parts=[SEC_SHORT[activeSection]||cfg.label];
+  const parts=[isAdmin&&activeSection==="brandsvalidated"?"Ofertas Brands":SEC_SHORT[activeSection]||cfg.label];
   if(activeNiche===NO_NICHE)parts.unshift(BRAND_SECTIONS.has(activeSection)&&isAdmin?BRAND_NICHE_REVIEW:"Sem nicho");
   else if(activeNiche)parts.unshift(activeNiche);
   if(activeSection==="brandcreative"&&isAdmin&&activeBrand){const match=brandHubItems().find(o=>brandKeyOf(o)===activeBrand);if(match)parts.unshift(brandNameOf(match));}
@@ -661,7 +682,8 @@ function renderSideNav(){
     const updateCount=s.key==="updates"?unreadUpdates():0;
     const chip=s.key==="vsldissector"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
     const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
-    let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(SEC_SHORT[s.key]||s.label)}</span>${chip}</a>`;
+    const label=isAdmin&&s.key==="brandsvalidated"?"Ofertas Brands":SEC_SHORT[s.key]||s.label;
+    let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(label)}</span>${chip}</a>`;
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
   };
@@ -680,7 +702,7 @@ function fmtNum(n){n=Number(n);return isNaN(n)?"–":n.toLocaleString("pt-BR");}
 function kfmt(n){n=Number(n)||0;const a=Math.abs(n);if(a>=1e6)return (n/1e6).toFixed(a%1e6?1:0)+"M";if(a>=1000)return (n/1000).toFixed(a%1000&&a<1e4?1:0)+"k";return String(Math.round(n));}
 function fmtDateShort(s){const p=String(s||"").split("-");return p.length===3?p[2]+"/"+p[1]:esc(s||"");}
 function relTime(iso){const t=Date.parse(iso);if(isNaN(t))return"";let s=Math.floor((Date.now()-t)/1000);if(s<0)s=0;if(s<60)return"agora";if(s<3600)return"há "+Math.floor(s/60)+" min";if(s<86400)return"há "+Math.floor(s/3600)+"h";const d=Math.floor(s/86400);if(d<30)return"há "+d+(d===1?" dia":" dias");return new Date(t).toLocaleDateString("pt-BR");}
-function adsHistOf(d){const h=d&&d.adsHistory;return Array.isArray(h)?h.filter(x=>x&&x.d&&x.n!=null&&!isNaN(+x.n)).map(x=>({d:x.d,n:+x.n})):[];}
+function adsHistOf(d){const h=d&&d.adsHistory;return Array.isArray(h)?h.filter(x=>x&&x.d&&x.n!=null&&!isNaN(+x.n)).map(x=>({d:x.d,n:+x.n,at:x.at||""})).sort((a,b)=>String(a.at||a.d).localeCompare(String(b.at||b.d))):[];}
 function sparkSvg(hist){
   const pts=hist.slice(-14);if(pts.length<2)return"";
   const w=140,h=36,pad=3,ns=pts.map(p=>p.n),mn=Math.min(...ns),mx=Math.max(...ns),rng=(mx-mn)||1,li=pts.length-1;
@@ -690,10 +712,10 @@ function sparkSvg(hist){
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(li).toFixed(1)}" cy="${Y(pts[li].n).toFixed(1)}" r="2.4" fill="var(--accent)" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function adsChartSvg(hist){
-  const pts=hist.slice(-30);
+  const pts=isAdmin?hist:hist.slice(-30);
   if(!pts.length)return`<div class="muted-empty">Sem histórico ainda — será preenchido automaticamente a cada atualização do robô.</div>`;
   if(pts.length<2)return`<div class="muted-empty">Apenas 1 leitura até agora (${fmtNum(pts[0].n)} anúncios em ${fmtDateShort(pts[0].d)}). O gráfico aparece a partir da 2ª leitura.</div>`;
-  const w=720,h=252,padL=54,padR=26,padT=30,padB=40;
+  const w=isAdmin?Math.max(720,pts.length*28):720,h=252,padL=54,padR=26,padT=30,padB=40;
   const ns=pts.map(p=>p.n);let mn=Math.min(...ns),mx=Math.max(...ns);if(mn===mx){mn=Math.max(0,mn-1);mx=mx+1;}
   const iw=w-padL-padR,ih=h-padT-padB,li=pts.length-1;
   const X=i=>padL+i*iw/li,Y=n=>padT+ih-((n-mn)/(mx-mn))*ih;
@@ -717,7 +739,8 @@ function adsChartSvg(hist){
       xlab+=`<text x="${x.toFixed(1)}" y="${h-14}" text-anchor="middle" class="axl">${fmtDateShort(p.d)}</text>`;
     }
   });
-  return `<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise"><defs><linearGradient id="adsFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--accent)" stop-opacity=".42"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".03"/></linearGradient><filter id="adsGlow" x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${grid}${ylab}<path d="${area}" fill="url(#adsFill)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.6" filter="url(#adsGlow)" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
+  const chart=`<svg class="adschart"${isAdmin?` style="min-width:${w}px"`:""} viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise"><defs><linearGradient id="adsFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--accent)" stop-opacity=".42"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".03"/></linearGradient><filter id="adsGlow" x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${grid}${ylab}<path d="${area}" fill="url(#adsFill)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.6" filter="url(#adsGlow)" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
+  return isAdmin?`<div class="adschart-scroll" role="region" tabindex="0" aria-label="Histórico completo de anúncios ativos: ${pts.length} leituras">${chart}</div>`:chart;
 }
 
 function cardHtml(o){
@@ -875,10 +898,10 @@ function brandDraftCardSnapshot(d){
   const latest=bmReportGroups(d)[0];if(!latest)return"";
   const report=latest.reports.find(item=>bmReportWindowKey(item)==="7d")||latest.reports[0],totals=report.totals||{};
   const resultLabel=/compras|vendas/i.test(String(totals.results||""))?"Vendas":"Resultados";
-  return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(totals.spend||"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)} · ${esc(bmReportTabLabel(report))}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div></div>`;
+  return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">ROAS</span><strong class="brand-metric__value">${esc(bmHasValue(totals.roas)?totals.roas:"Não informado")}</strong></div></div>`;
 }
 function brandCard(o){
-  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated,hasBm=brandBmHasData(d),adminPreview=validated&&isAdmin&&!!adminOfferPatch(o.id);
+  const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
   if(clean){d.nicho=insiderNicheOf(o);d.nomeOferta=insiderProductName(o);}
   const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
@@ -886,11 +909,12 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Insider":"Spy"}</span>`,
+    top:isAdmin&&validated?`<div class="offer-tags">${offerTagsHtml(d)}<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button></div>`:"",
+    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?(isAdmin?"Brands":"Insider"):"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
-    body:`<div class="card__body">${offerTagsHtml(d)?`<div class="offer-tags">${offerTagsHtml(d)}</div>`:""}${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
+    body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:validated&&!clean?(adminPreview&&brandDraftCardSnapshot(d)||`<div class="brand-bm-state${hasBm?" is-ready":""}">${ic(hasBm?"trending":"clock")}${hasBm?"Resumo da BM atualizado":"Aguardando acesso à BM"}</div>${brandMetricGrid(d,false)}`):"",
+    extra:isAdmin&&validated?(brandDraftCardSnapshot(d)||`<div class="brand-bm-state">${ic("clock")}Aguardando acesso à BM</div>`):"",
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
@@ -959,7 +983,7 @@ function renderAdminBrandHub(items){
   });
   const niches=[...catalogNiches().filter(n=>groups.has(n)),...groups.keys()].filter((n,i,a)=>a.indexOf(n)===i);
   const nicheCounts=new Map();items.forEach(o=>{const key=brandHubNicheOf(o)||"Sem nicho";nicheCounts.set(key,(nicheCounts.get(key)||0)+1);});
-  let html='<div class="brandhub">';
+  let html='<div class="brandhub brandhub--creative">';
   for(const niche of niches){
     const brands=[...groups.get(niche).entries()].sort((a,b)=>{
       const latest=group=>Math.max(...group.items.map(item=>Date.parse(item.created_at||"")||0));
@@ -1085,6 +1109,7 @@ function renderGrid(skipNav){
       c.appendChild(a);
     }
   });
+  $$('[data-edit-tags]',area).forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openTagEditor(button.dataset.editTags);}));
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();
     if(b.dataset.copyTranscript!=null){const o=itemById(b.dataset.copyTranscript),text=String(((o||{}).data||{}).transcricao||"").trim();if(!text)return;try{b.disabled=true;await navigator.clipboard.writeText(text);const old=b.innerHTML,oldLabel=b.getAttribute("aria-label")||"";b.innerHTML=ic("clipboard")+"Copiado";b.setAttribute("aria-label","Transcrição copiada");toast("Transcrição copiada");setTimeout(()=>{if(b.isConnected){b.innerHTML=old;b.disabled=false;b.setAttribute("aria-label",oldLabel);}},1600);}catch(_){b.disabled=false;toast("Não foi possível copiar a transcrição.",true);}return;}
     if(b.dataset.transcribeCard!=null){const o=itemById(b.dataset.transcribeCard),video=o&&videoOfCrv(o.data||{});if(o&&video)requestInstantTranscription(o.id,video);return;}
@@ -1148,7 +1173,7 @@ function openView(id,useAdminDraft=true){
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
-  $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?"Insider":"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
+  $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?(isAdmin?"Ofertas Brands":"Insider"):"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
   const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver prévia administrativa";draftToggle.onclick=()=>openView(id,!showingDraft);}
   $("#viewEditBtn").hidden=showingDraft;
   $("#viewDeleteBtn").hidden=showingDraft;
@@ -1179,7 +1204,7 @@ function openView(id,useAdminDraft=true){
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
-  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta Insider":"Em monitoramento"}</div></div>`;
+  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?(isAdmin?"Oferta Brands":"Oferta Insider"):"Em monitoramento"}</div></div>`;
   if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
   else kvs+=`<div class="kv"><div class="k">${isBrand?"Ads ativos na biblioteca":"Ads ativos"}</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div>${isBrand?`<div class="kv"><div class="k">Biblioteca conferida em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div>`:""}`;
 
@@ -1325,13 +1350,11 @@ function openForm(id){
   fBrandTopAds=d.brandTopAds.length?JSON.parse(JSON.stringify(d.brandTopAds)):[{nome:"",link:"",img:""}];
   fBrandSemrush1m=d.brandSemrush1m||"";
   fBrandSemrush3m=d.brandSemrush3m||"";
-  fOfferTags=offerTagsOf(d);
 
   const brandForm=isBrand?`
     <div class="fsec">
       <div class="fsec__title"><span class="num">B</span> FEG Brands · classificação</div>
       <div class="fsec__hint">Ofertas Brands reúne o acervo Insider com páginas, bibliotecas, métricas da BM e top ads. Os registros existentes permanecem intactos.</div>
-      <div class="field"><label class="lbl">Tags da oferta</label><div class="tag-picker" aria-label="Tags da oferta">${Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-action="toggle-offer-tag" data-tag="${key}" aria-pressed="${fOfferTags.includes(key)}">${ic(t.icon)}${t.label}</button>`).join("")}</div><div class="fsec__hint">Selecione uma ou mais tags. INSIDER identifica coleta pela BM; NOVA, POTENCIAL e ESCALA organizam a prioridade comercial.</div></div>
       <div id="brandBmFields">
       <div class="row3">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
@@ -1508,7 +1531,6 @@ $("#formBody").addEventListener("click",e=>{
   else if(a==="rm-bm-print"){fBmPrints.splice(+b.dataset.i,1);renderBmPrints();}
   else if(a==="add-brand-ad"){fBrandTopAds.push({nome:"",link:"",img:""});renderBrandTopAds();}
   else if(a==="rm-brand-ad"){fBrandTopAds.splice(+b.dataset.i,1);renderBrandTopAds();}
-  else if(a==="toggle-offer-tag"){const tag=b.dataset.tag;if(!OFFER_TAGS[tag])return;fOfferTags=fOfferTags.includes(tag)?fOfferTags.filter(x=>x!==tag):[...fOfferTags,tag];b.setAttribute("aria-pressed",String(fOfferTags.includes(tag)));}
   else if(a==="set-tipo"){if(fTipo===b.dataset.tipo)return;fTipo=b.dataset.tipo;$("#formBody").dataset.tipo=fTipo;$$("#tipoSeg .seg-btn").forEach(x=>x.classList.toggle("active",x.dataset.tipo===fTipo));}
   else return;
   markDirty();
@@ -1531,7 +1553,6 @@ function buildPayload(){
   });
   if(fBrandStage==="brandsvalidated")Object.assign(payload,{
     kind:"brandsvalidated",
-    offerTags:fOfferTags,
     adsLibraryCheckedAt:val("f_adsLibraryCheckedAt"),
     bmSpend7d:val("f_bmSpend7d"),bmSpend14d:val("f_bmSpend14d"),bmSpend30d:val("f_bmSpend30d"),bmAvgConversion:val("f_bmAvgConversion"),bmCpc:val("f_bmCpc"),bmCpcLink:val("f_bmCpcLink"),bmCpm:val("f_bmCpm"),bmCtr:val("f_bmCtr"),bmCostUnique:val("f_bmCostUnique"),bmCostIc:val("f_bmCostIc"),bmRoas:val("f_bmRoas"),bmUpdatedAt:val("f_bmUpdatedAt"),bmNotes:val("f_bmNotes"),
     bmPrints:fBmPrints.filter(x=>x.nome||x.img),brandTopAds:fBrandTopAds.filter(x=>x.nome||x.link||x.img||x.video),brandSemrush1m:fBrandSemrush1m||"",brandSemrush3m:fBrandSemrush3m||""
@@ -2036,6 +2057,9 @@ function closeOverlay(s){
   el.classList.remove("open");document.body.style.overflow="";activeZone=null;
   if(!$(".overlay.open")&&lastFocused&&lastFocused.focus){try{lastFocused.focus({preventScroll:true});}catch(e){}lastFocused=null;}
 }
+$("#tagEditorOptions").addEventListener("click",event=>{const button=event.target.closest("[data-tag-choice]");if(!button)return;const key=button.dataset.tagChoice;if(!OFFER_TAGS[key])return;tagDraft=tagDraft.includes(key)?tagDraft.filter(tag=>tag!==key):[...tagDraft,key];button.setAttribute("aria-pressed",String(tagDraft.includes(key)));});
+$("#tagEditorClose").addEventListener("click",()=>closeOverlay("#tagOverlay"));
+$("#tagEditorSave").addEventListener("click",saveTagEditor);
 /* prende o Tab dentro do modal aberto no topo */
 document.addEventListener("keydown",e=>{
   if(e.key!=="Tab")return;
@@ -2070,6 +2094,7 @@ function switchSection(key){
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=isToolSection(activeSection);
+  document.body.classList.toggle("admin-preview",isAdmin);
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
   document.body.classList.toggle("toolmode",cc);
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
@@ -2147,7 +2172,8 @@ function wireFegsysPanel(el){
 }
 function brandNavHtml(){
   if(!BRAND_SECTIONS.has(activeSection))return"";
-  const entries=isAdmin?[["brandsvalidated","Ofertas Brands"],["brandcreative","Swipe de Criativos"]]:[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
+  if(isAdmin&&activeSection==="brandcreative")return"";
+  const entries=isAdmin?[["brandsvalidated","Ofertas Brands"]]:[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){
@@ -3489,9 +3515,10 @@ function creativeCardMedia(d,video){
 function cardIdentity(brand,title){
   return `<div class="card__id">${brand?`<div class="card__brand">${esc(brand)}</div>`:""}${title?`<div class="card__title">${esc(title)}</div>`:""}</div>`;
 }
-function card({id,variant="",head="",media="",body="",brand="",title="",chips="",extra="",actions=""}){
+function card({id,variant="",top="",head="",media="",body="",brand="",title="",chips="",extra="",actions=""}){
   if(!body&&(brand||title))body=cardIdentity(brand,title);
   return `<article class="card${variant?" "+variant:""}" data-id="${id}">`
+    +top
     +`<div class="card__head${head?"":" card__head--empty"}">${head||"<span aria-hidden=\"true\">&nbsp;</span>"}</div>`
     +media
     +body

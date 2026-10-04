@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { productionAdminAuth, authHeaders } from "./_supabase-auth.mjs";
 
-const root = path.resolve(new URL("../", import.meta.url).pathname);
+const root = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
 const html = await fs.readFile(path.join(root, "index.html"), "utf8");
 const verifyRemote = process.argv.includes("--verify");
 

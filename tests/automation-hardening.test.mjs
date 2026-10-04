@@ -80,6 +80,30 @@ print(json.dumps(same_day))
   assert.notEqual(points[0].at, points[1].at);
 });
 
+test("histórico de anúncios não descarta leituras anteriores a 60 dias", () => {
+  const code = String.raw`
+import importlib.util, json, sys, types
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]).resolve().parent))
+playwright = types.ModuleType("playwright")
+sync_api = types.ModuleType("playwright.sync_api")
+sync_api.sync_playwright = lambda: None
+sys.modules["playwright"] = playwright
+sys.modules["playwright.sync_api"] = sync_api
+spec = importlib.util.spec_from_file_location("ads_scraper_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+from datetime import datetime, timezone
+data = {"adsHistory": [{"d":"2025-01-01", "n":10}]}
+result = module.update_history(data, 12, datetime(2026,8,4,23,0,tzinfo=timezone.utc))
+print(json.dumps(result))
+`;
+  const output = execFileSync("python3", ["-c", code, adsPath], { encoding: "utf8" });
+  const points = JSON.parse(output);
+  assert.equal(points.length, 2);
+  assert.equal(points[0].d, "2025-01-01");
+});
+
 test("tradução cobre Criativos e Mega Brain e recupera locks antigos", () => {
   assert.match(transcriptionWorkflow, /TRANSLATE_KINDS: "criativo,megabrain"/);
   assert.match(transcriptionWorkflow, /TRANSLATION_LOCK_MINUTES: "45"/);
