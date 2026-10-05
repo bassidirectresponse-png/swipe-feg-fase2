@@ -280,7 +280,7 @@
   .brandhub--insider .grid,.brandhub--creative .grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:18px;}
   @media(max-width:600px){.grid{grid-template-columns:1fr;}}
   .grid>.card{content-visibility:auto;contain-intrinsic-size:460px;}
-  .grid>.brand-card--clean{height:auto;align-self:start;contain-intrinsic-size:360px;}
+  .grid>.brand-card--clean{height:100%;align-self:stretch;contain-intrinsic-size:620px;}
   .gridpager{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:24px 0 4px;padding:14px 16px;border-top:1px solid var(--border);}
   .gridpager__meta{min-width:190px;text-align:center;font-size:.78rem;color:var(--muted-fg);font-variant-numeric:tabular-nums;}
   .gridpager__size{display:inline-flex;align-items:center;gap:8px;font-size:.76rem;color:var(--muted-fg);white-space:nowrap;}
@@ -299,6 +299,14 @@
   .card-tag-editor__choices{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.card-tag-editor__choices button{cursor:pointer;opacity:.52}.card-tag-editor__choices button[aria-pressed="true"]{opacity:1;box-shadow:0 0 0 2px var(--surface),0 0 0 3px currentColor}.card-tag-editor__choices button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .card-tag-editor__save{min-height:34px;padding:6px 11px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#101508;font-size:.7rem;font-weight:800;cursor:pointer}.card-tag-editor__save:disabled{opacity:.6;cursor:wait}
   .brand-card--clean{box-shadow:inset 0 1px rgba(255,255,255,.055),0 13px 30px rgba(0,0,0,.14)}.brand-card--clean .card__title{font-weight:760;letter-spacing:-.03em}
+  /* A mesma estrutura e altura em Ofertas Brands, inclusive entre nichos e no modo admin. */
+  .brandhub--insider .brandhub-products{align-items:stretch;grid-auto-rows:1fr;}
+  .brandhub--insider .brandhub-brand{height:100%;align-content:stretch;}
+  .brandhub--insider .brandhub-brand>.grid{height:100%;grid-auto-rows:1fr;}
+  .brandhub--insider .brand-card--clean{height:100%;min-height:620px;align-self:stretch;}
+  .brand-card--clean .brand-bm-state{min-height:2.7em;align-items:center;}
+  .brand-card--clean .brand-metrics--snapshot{min-height:160px;grid-template-rows:repeat(2,minmax(0,1fr));}
+  .brand-card--clean .card__actions{min-height:72px;align-content:flex-start;}
   .tag-picker{display:flex;gap:10px;flex-wrap:wrap}.tag-picker button{min-height:42px;cursor:pointer;opacity:.55}.tag-picker button[aria-pressed="true"]{opacity:1;box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor;transform:translateY(-1px)}.tag-editor{width:min(500px,calc(100vw - 32px));max-height:80vh;margin:auto;padding:24px;background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;box-shadow:var(--shadow-lg)}.tag-editor h2{font-size:1.2rem}.tag-editor p{color:var(--muted-fg);margin:7px 0 18px;line-height:1.5}.tag-editor #tagEditorSave{margin-top:22px}.adschart-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;border:1px solid var(--border-2);border-radius:14px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 7%,var(--surface)),var(--surface));box-shadow:inset 0 1px rgba(255,255,255,.08),0 14px 32px rgba(0,0,0,.12)}.adschart-scroll .adschart{display:block;max-width:none}
   /* Item 5: link real "stretched" cobrindo o card; ações ficam acima do link */
   .card__navlink{position:absolute;inset:0;z-index:2;border-radius:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent;}
