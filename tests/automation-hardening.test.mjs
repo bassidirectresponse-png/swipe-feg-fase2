@@ -48,6 +48,7 @@ print(json.dumps({"fallback_ok": True, "override": override}))
 test("seleção de anúncios ativos é round-robin e guarda checkpoint por card", () => {
   assert.match(ads, /def round_robin_targets\(targets, limit\):/);
   assert.match(ads, /analysisCursorAt/);
+  assert.match(ads, /brand_priority = 0 if data\.get\("kind"\) in \("brandsgeneral", "brandsvalidated"\) else 1/);
   assert.match(ads, /eligible_count = len\(targets\)/);
   assert.match(ads, /selected=len\(targets\)/);
   assert.doesNotMatch(ads, /targets = targets\[:MAX_OFFERS\]/);

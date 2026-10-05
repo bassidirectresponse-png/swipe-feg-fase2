@@ -48,11 +48,11 @@ test("histórico de atualizações permanece somente no painel admin", async () 
   assert.match(html, /snav__cnt--alert/);
 });
 
-test("ordenação de ofertas usa somente anúncios ativos e dias ativos", async () => {
+test("ordenação de ofertas inclui anúncios, dias, gasto e vendas", async () => {
   const html = await read("index.html");
   const metrics = await read("lib/swipe-metrics.js");
-  assert.match(html, /const options=\[\["active_ads","Anúncios ativos"\],\["active_days","Dias ativos"\]\]/);
-  assert.match(html, /offerSort=\["active_ads","active_days"\]\.includes/);
+  assert.match(html, /const options=\[\["active_ads","Anúncios ativos"\],\["active_days","Dias ativos"\],\["spend_7d","Maior gasto · 7 dias"\],\["sales_7d","Mais vendas · 7 dias"\]\]/);
+  assert.match(html, /offerSort=\["active_ads","active_days","spend_7d","sales_7d"\]\.includes/);
   assert.match(metrics, /function activeDays\(data\)/);
   assert.match(metrics, /if \(sort === "active_days"\) return activeDays\(data\)/);
 });

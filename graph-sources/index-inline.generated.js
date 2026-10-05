@@ -35,8 +35,15 @@ function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&activeRadarG
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=false;
-function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:(d&&d.kind==="brandsvalidated"?["insider"]:[]);return [...new Set(list.map(x=>String(x).toLowerCase()).filter(x=>OFFER_TAGS[x]))];}
+function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];const tags=[...new Set([...(d&&d.kind==="brandsvalidated"?["insider"]:[]),...list.map(x=>String(x).toLowerCase())].filter(x=>OFFER_TAGS[x]))];return tags.includes("scale")?tags.filter(x=>x!=="potential"):tags;}
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
+function tagChoiceHtml(d){return Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-inline-tag="${key}" aria-pressed="${offerTagsOf(d).includes(key)}"${key==="insider"?' disabled title="Tag obrigatória para ofertas coletadas via BM"':""}>${ic(t.icon)}${t.label}</button>`).join("");}
+function normalizeTagSelection(tags){const unique=[...new Set(tags.filter(key=>OFFER_TAGS[key]))];return unique.includes("scale")?unique.filter(key=>key!=="potential"):unique;}
+async function persistOfferTags(offer,tags){
+  const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection(["insider",...tags])};
+  const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
+  adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;renderGrid(true);toast("Tags salvas no painel admin");
+}
 function openTagEditor(id){
   if(!isAdmin||!sb)return;
   const offer=offers.find(item=>item.id===id);if(!offer||sectionOf(offer)!=="brandsvalidated")return;
@@ -48,11 +55,9 @@ function openTagEditor(id){
 async function saveTagEditor(){
   if(!isAdmin||!sb||!editingTagOfferId)return;
   const offer=offers.find(item=>item.id===editingTagOfferId);if(!offer)return;
-  const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:[...tagDraft]};
   const button=$("#tagEditorSave");button.disabled=true;
   try{
-    const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
-    adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
+    await persistOfferTags(offer,tagDraft);closeOverlay("#tagOverlay");
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
@@ -67,7 +72,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let editingTagOfferId=null,tagDraft=[];
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
 let updates=[],updatesTotal=0;
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysSalesMin="",fegsysSalesMax="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
@@ -494,15 +499,30 @@ function filtered(){
   if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
   if((activeSection==="brandcreative"&&isAdmin||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
+  if(activeSection==="brandsvalidated"&&offerTagFilter&&(isAdmin||BRAND_TAGS_PUBLISHED))list=list.filter(o=>offerTagsOf(isAdmin?brandHubAdminData(o):o.data).includes(offerTagFilter));
   if(searchTerm){
     const t=searchTerm.toLowerCase();
     list=list.filter(o=>{const d=o.data||{},topAds=Array.isArray(d.brandTopAds)?d.brandTopAds.flatMap(x=>[x&&x.nome,x&&x.link]):[];return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho,isInsiderAdminArea()?insiderProductName(o):"",isInsiderAdminArea()?insiderNicheOf(o):"",...topAds].some(v=>(v||"").toLowerCase().includes(t));});
   }
   return list;
 }
-function offerSortMetric(o){return window.SwipeMetrics.offerMetric((o&&o.data)||{},offerSort);}
+function offerSortMetric(o){
+  const d=isAdmin&&sectionOf(o)==="brandsvalidated"?brandHubAdminData(o):(o&&o.data)||{};
+  if((offerSort==="spend_7d"||offerSort==="sales_7d")&&Array.isArray(d.bmReports)){
+    const group=bmReportGroups(d).find(item=>item.reports.some(report=>bmReportWindowKey(report)==="7d"));
+    const report=group&&group.reports.find(item=>bmReportWindowKey(item)==="7d");
+    if(report){const value=offerSort==="spend_7d"?bmNumeric(report.totals?.spend):bmNumeric(bmReportDisplayTotals(report).results);return {value,referenceDate:group.date,source:"bm_latest_7d"};}
+  }
+  if(offerSort==="sales_7d"){
+    const value=window.SwipeMetrics.metricNumber(d.sales7d??d.vendas7d??d.bmResults7d);
+    return {value,referenceDate:d.bmUpdatedAt||"",source:"aggregate"};
+  }
+  return window.SwipeMetrics.offerMetric(d,offerSort);
+}
 function offerSortFn(a,b){
-  const result=window.SwipeMetrics.compareOffers(a,b,offerSort,offerDirection);if(result)return result;
+  const av=offerSortMetric(a).value,bv=offerSortMetric(b).value;
+  if(av==null&&bv!=null)return 1;if(bv==null&&av!=null)return -1;
+  if(av!=null&&bv!=null&&av!==bv)return offerDirection==="asc"?av-bv:bv-av;
   const ad=String((a&&a.created_at)||""),bd=String((b&&b.created_at)||"");if(ad!==bd)return bd.localeCompare(ad);
   return String(((a&&a.data)||{}).nomeOferta||"").localeCompare(String(((b&&b.data)||{}).nomeOferta||""),"pt-BR");
 }
@@ -565,7 +585,7 @@ function qsFromState(){
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   if(activeSection==="megabrainfegsys"){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);if(fegsysSalesMin!=="")p.set("vendas_min",fegsysSalesMin);if(fegsysSalesMax!=="")p.set("vendas_max",fegsysSalesMax);}
-  if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){p.set("sort",offerSort);p.set("direction",offerDirection);}
+  if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){p.set("sort",offerSort);p.set("direction",offerDirection);if(activeSection==="brandsvalidated"&&offerTagFilter)p.set("tag",offerTagFilter);}
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
@@ -640,8 +660,9 @@ function applyRoute(){
   if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?"meta":"all";
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
-    const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days"].includes(requested)?requested:"active_ads";
+    const requested=r.q.get("sort")||"active_ads";offerSort=["active_ads","active_days","spend_7d","sales_7d"].includes(requested)?requested:"active_ads";
     offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
+    offerTagFilter=activeSection==="brandsvalidated"&&OFFER_TAGS[r.q.get("tag")]?r.q.get("tag"):"";
   }
   if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
@@ -724,7 +745,7 @@ function renderSideNav(){
   const sectionChanged=navPrevSection!==activeSection;
   navPrevSection=activeSection;
 
-  let html=`<div class="sidenav__head"><img class="logo-mark" src="/logo-feg.jpg" alt="Grupo FEG" width="200" height="200"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
+  let html=`<div class="sidenav__head"><img class="logo-mark" src="/assets/feg-mark-3d.svg" alt="Grupo FEG" width="200" height="200"><span class="sidenav__brand">Grupo <span class="lime">FEG</span></span><button class="sidenav__x" id="sideNavClose" aria-label="Fechar menu">${ic("x")}</button></div>`;
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
@@ -1073,7 +1094,7 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
+    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}</div>${isAdmin?`<details class="card-tag-editor" data-tag-editor="${esc(o.id)}"><summary>${ic("edit")}Editar tags deste card</summary><div class="card-tag-editor__choices">${tagChoiceHtml(d)}</div><button class="card-tag-editor__save" type="button" data-save-inline-tags="${esc(o.id)}">Salvar tags</button></details>`:""}`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?(isAdmin?"Brands":"Insider"):"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
@@ -1098,7 +1119,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,offerTagFilter,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -1169,6 +1190,7 @@ function renderAdminBrandHub(items){
 }
 function renderAdminInsider(items){
   const sorted=[...items].sort(offerSortFn),page=pagedItems(sorted),groups=new Map();
+  if(offerSort==="spend_7d"||offerSort==="sales_7d")return `<div class="brandhub brandhub--insider"><div class="grid">${page.items.map(cardFor).join("")}</div></div>${gridPager(page)}`;
   page.items.forEach(o=>{const niche=insiderNicheOf(o),product=insiderProductName(o),key=insiderProductKey(o);if(!groups.has(niche))groups.set(niche,new Map());const products=groups.get(niche);if(!products.has(key))products.set(key,{name:product,items:[]});products.get(key).items.push(o);});
   const sections=activeNiche?[activeNiche===NO_NICHE?BRAND_NICHE_REVIEW:activeNiche]:[...catalogNiches().filter(n=>groups.has(n)),...groups.keys()].filter((n,i,a)=>a.indexOf(n)===i);
   let html='<div class="brandhub brandhub--insider">';
@@ -1274,6 +1296,23 @@ function renderGrid(skipNav){
     }
   });
   $$('[data-edit-tags]',area).forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openTagEditor(button.dataset.editTags);}));
+  $$(".card-tag-editor",area).forEach(editor=>{
+    editor.addEventListener("click",event=>event.stopPropagation());
+    editor.addEventListener("keydown",event=>event.stopPropagation());
+    editor.querySelectorAll("[data-inline-tag]").forEach(button=>button.addEventListener("click",()=>{
+      const key=button.dataset.inlineTag,pressed=button.getAttribute("aria-pressed")==="true";
+      button.setAttribute("aria-pressed",String(!pressed));
+      if(!pressed&&key==="scale")editor.querySelector('[data-inline-tag="potential"]')?.setAttribute("aria-pressed","false");
+      if(!pressed&&key==="potential")editor.querySelector('[data-inline-tag="scale"]')?.setAttribute("aria-pressed","false");
+    }));
+    editor.querySelector("[data-save-inline-tags]")?.addEventListener("click",async event=>{
+      const button=event.currentTarget,offer=offers.find(item=>item.id===button.dataset.saveInlineTags);
+      if(!isAdmin||!sb||!offer)return;
+      const tags=[...editor.querySelectorAll('[data-inline-tag][aria-pressed="true"]')].map(choice=>choice.dataset.inlineTag);
+      button.disabled=true;
+      try{await persistOfferTags(offer,tags);}catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);button.disabled=false;}
+    });
+  });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();
     if(b.dataset.copyTranscript!=null){const o=itemById(b.dataset.copyTranscript),text=String(((o||{}).data||{}).transcricao||"").trim();if(!text)return;try{b.disabled=true;await navigator.clipboard.writeText(text);const old=b.innerHTML,oldLabel=b.getAttribute("aria-label")||"";b.innerHTML=ic("clipboard")+"Copiado";b.setAttribute("aria-label","Transcrição copiada");toast("Transcrição copiada");setTimeout(()=>{if(b.isConnected){b.innerHTML=old;b.disabled=false;b.setAttribute("aria-label",oldLabel);}},1600);}catch(_){b.disabled=false;toast("Não foi possível copiar a transcrição.",true);}return;}
     if(b.dataset.transcribeCard!=null){const o=itemById(b.dataset.transcribeCard),video=o&&videoOfCrv(o.data||{});if(o&&video)requestInstantTranscription(o.id,video);return;}
@@ -2237,7 +2276,7 @@ function closeOverlay(s){
   el.classList.remove("open");document.body.style.overflow="";activeZone=null;
   if(!$(".overlay.open")&&lastFocused&&lastFocused.focus){try{lastFocused.focus({preventScroll:true});}catch(e){}lastFocused=null;}
 }
-$("#tagEditorOptions").addEventListener("click",event=>{const button=event.target.closest("[data-tag-choice]");if(!button)return;const key=button.dataset.tagChoice;if(!OFFER_TAGS[key])return;tagDraft=tagDraft.includes(key)?tagDraft.filter(tag=>tag!==key):[...tagDraft,key];button.setAttribute("aria-pressed",String(tagDraft.includes(key)));});
+$("#tagEditorOptions").addEventListener("click",event=>{const button=event.target.closest("[data-tag-choice]");if(!button)return;const key=button.dataset.tagChoice;if(!OFFER_TAGS[key])return;tagDraft=tagDraft.includes(key)?tagDraft.filter(tag=>tag!==key):[...tagDraft,key];if(key==="scale"&&tagDraft.includes("scale"))tagDraft=tagDraft.filter(tag=>tag!=="potential");if(key==="potential"&&tagDraft.includes("potential"))tagDraft=tagDraft.filter(tag=>tag!=="scale");$$("[data-tag-choice]",$("#tagEditorOptions")).forEach(choice=>choice.setAttribute("aria-pressed",String(tagDraft.includes(choice.dataset.tagChoice))));});
 $("#tagEditorClose").addEventListener("click",()=>closeOverlay("#tagOverlay"));
 $("#tagEditorSave").addEventListener("click",saveTagEditor);
 /* prende o Tab dentro do modal aberto no topo */
@@ -2361,16 +2400,18 @@ function renderSubFilter(){
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     el.style.display="";
-    const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"]];
+    const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"],["spend_7d","Maior gasto · 7 dias"],["sales_7d","Mais vendas · 7 dias"]];
     const sectionItems=offers.filter(o=>sectionOf(o)===activeSection),reference=offerSortReference(sectionItems),health=automationCounts(activeSection);
     const brandNav=brandNavHtml();
     const healthHtml=isAdmin?`<div class="automation-health" aria-label="Situação das automações"><span class="automation-health__item">Análises na fila <strong>${health.pending}</strong></span><span class="automation-health__item">Falhas <strong>${health.failed}</strong></span></div>`:"";
     const migrationButton=isAdmin&&activeSection==="oferta"&&new URLSearchParams(location.search).get("migration")==="offer-batch-july29"
       ?`<button type="button" class="btn btn--outline btn--sm" id="offerBatchApply">${ic("pulse")}Aplicar lote consolidado</button>`:"";
-    el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label><div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}${migrationButton}</div>`;
-    const changeSort=(key,value)=>{const panel=$(".sort-panel",el),message=$(".sort-reference",el);panel.setAttribute("aria-busy","true");if(message)message.textContent="Atualizando ordenação…";setTimeout(()=>{if(key==="sort")offerSort=value;else offerDirection=value;navigate(currentPath(),{replace:true});},0);};
+    const tagControl=activeSection==="brandsvalidated"&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<label class="sort-control sort-control--tag"><span>Filtrar por tag</span><select id="offerTagFilter" aria-label="Filtrar ofertas por tag"><option value="">Todas as tags</option>${Object.entries(OFFER_TAGS).map(([key,tag])=>`<option value="${key}"${offerTagFilter===key?" selected":""}>${tag.label}</option>`).join("")}</select></label>`:"";
+    el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label>${tagControl}<div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}${migrationButton}</div>`;
+    const changeSort=(key,value)=>{const panel=$(".sort-panel",el),message=$(".sort-reference",el);panel.setAttribute("aria-busy","true");if(message)message.textContent="Atualizando ordenação…";setTimeout(()=>{if(key==="sort")offerSort=value;else if(key==="tag")offerTagFilter=value;else offerDirection=value;navigate(currentPath(),{replace:true});},0);};
     $("#offerSort").addEventListener("change",event=>changeSort("sort",event.target.value));
     $("#offerDirection").addEventListener("change",event=>changeSort("direction",event.target.value));
+    $("#offerTagFilter")?.addEventListener("change",event=>changeSort("tag",event.target.value));
     const batchApply=$("#offerBatchApply");
     if(batchApply)batchApply.addEventListener("click",async()=>{
       batchApply.disabled=true;batchApply.innerHTML=ic("pulse")+"Consolidando…";

@@ -76,7 +76,7 @@ test("interface principal segue os requisitos essenciais de acessibilidade", () 
 });
 
 test("imagens previsíveis reservam espaço antes de carregar", () => {
-  assert.match(html, /class="logo-mark login-logo"[^>]*width="200" height="200"/);
+  assert.match(html, /class="login-logo"[^>]*width="132" height="132"/);
   assert.match(html, /class="logo-mark"[^>]*width="200" height="200"/);
   assert.match(html, /class="cmedia__poster"[^>]*width="640" height="400"/);
   assert.match(html, /alt="Imagem de \$\{esc\(d\.nomeOferta\|\|d\.produto\|\|"produto"\)\}"/);
@@ -491,7 +491,8 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /if\(section==="brandsvalidated"\)\{/);
   assert.match(html, /<div id="brandBmFields">/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
-  assert.match(html, /data-edit-tags=/);
+  assert.match(html, /data-tag-editor=/);
+  assert.match(html, /data-save-inline-tags=/);
   assert.match(html, /top:validated&&\(isAdmin\|\|BRAND_TAGS_PUBLISHED\)\?`<div class="offer-tags">\$\{offerTagsHtml\(d\)\}/);
   assert.match(html, /const BRAND_TAGS_PUBLISHED=false/);
   assert.doesNotMatch(html, /Rascunho admin/);
@@ -521,7 +522,7 @@ test("cards carregam antes das consultas complementares do administrador", async
 
 test("logo usa caminho absoluto para funcionar em rotas internas", () => {
   assert.doesNotMatch(html, /(?:src|href)="logo-feg\.jpg"/);
-  assert.match(html, /src="\/logo-feg\.jpg"/);
+  assert.match(html, /src="\/assets\/feg-mark-3d\.svg"/);
 });
 
 test("histórico de ads ativos aparece no topo do detalhe de Brands", () => {

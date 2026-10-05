@@ -295,12 +295,15 @@ def round_robin_targets(targets, limit):
     ``analysisCursorAt`` é atualizado assim que o card é reservado. Dessa
     forma uma falha ou timeout não prende sempre o mesmo prefixo de IDs e os
     cards além de ``MAX_OFFERS`` entram naturalmente nos ciclos seguintes.
+    Ofertas Brands entram primeiro em cada ciclo para que o painel principal
+    seja revisado mesmo se um lote grande de ofertas DR alcançar o timeout.
     """
     def key(item):
         row, _links = item
         data = row.get("data") or {}
         checkpoint = parse_iso(data.get("analysisCursorAt"))
-        return (checkpoint or datetime.min.replace(tzinfo=timezone.utc), str(row.get("id") or ""))
+        brand_priority = 0 if data.get("kind") in ("brandsgeneral", "brandsvalidated") else 1
+        return (brand_priority, checkpoint or datetime.min.replace(tzinfo=timezone.utc), str(row.get("id") or ""))
 
     return sorted(targets, key=key)[:limit]
 
