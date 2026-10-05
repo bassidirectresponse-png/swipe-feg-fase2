@@ -205,12 +205,38 @@ APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
 APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "clockworks~tiktok-scraper")
 APIFY_SORT = os.environ.get("APIFY_SORT", "MOST_RELEVANT")   # MOST_RELEVANT|MOST_LIKED|LATEST
 APIFY_DATE = os.environ.get("APIFY_DATE", "ALL_TIME")        # ALL_TIME|PAST_24_HOURS|PAST_WEEK|PAST_MONTH...
+APIFY_RUN_MAX_SECONDS = int(os.environ.get("APIFY_RUN_MAX_SECONDS", "900"))
+
+
+def apify_json(method, url, payload=None, retries=3):
+    """Repete apenas leituras e respostas 429; não duplica runs após POST incerto."""
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {"Authorization": f"Bearer {APIFY_TOKEN}"}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=80 if method == "GET" else 35) as response:
+                return json.loads(response.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")[:160]
+            retryable = error.code == 429 or method == "GET" and error.code in (500, 502, 503, 504)
+            if retryable and attempt + 1 < retries:
+                time.sleep(min(20, 2 ** attempt * 3))
+                continue
+            raise RuntimeError(f"Apify HTTP {error.code}: {detail}") from error
+        except (urllib.error.URLError, TimeoutError) as error:
+            if method == "GET" and attempt + 1 < retries:
+                time.sleep(min(20, 2 ** attempt * 3))
+                continue
+            raise RuntimeError(f"Apify indisponível: {str(error)[:120]}") from error
 
 
 def fetch_apify(keywords, per_kw):
-    """Uma execução do ator por nicho (todas as keywords de uma vez)."""
+    """Inicia um run assíncrono por nicho, acompanha e lê o dataset final."""
     if not APIFY_TOKEN:
-        raise SystemExit("PROVIDER=apify precisa de APIFY_TOKEN")
+        raise RuntimeError("PROVIDER=apify precisa de APIFY_TOKEN")
     inp = {
         "searchQueries": list(keywords),
         "searchSection": "/video",
@@ -223,19 +249,32 @@ def fetch_apify(keywords, per_kw):
         "shouldDownloadAvatars": False,
         "shouldDownloadSlideshowImages": False,
     }
-    url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
-    try:
-        req = urllib.request.Request(url, data=json.dumps(inp).encode(),
-                                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {APIFY_TOKEN}"}, method="POST")
-        with urllib.request.urlopen(req, timeout=300) as r:
-            out = json.loads(r.read().decode("utf-8", "replace"))
-            return out if isinstance(out, list) else []
-    except urllib.error.HTTPError as e:
-        print(f"      ! apify HTTP {e.code}: {e.read().decode()[:180]}", file=sys.stderr)
-        return []
-    except Exception as e:
-        print(f"      ! apify falhou: {str(e)[:120]}", file=sys.stderr)
-        return []
+    actor = urllib.parse.quote(APIFY_ACTOR, safe="~")
+    base = "https://api.apify.com/v2"
+    response = apify_json("POST", f"{base}/actors/{actor}/runs?timeout={APIFY_RUN_MAX_SECONDS}", inp)
+    run = response.get("data") or {}
+    run_id = run.get("id")
+    if not run_id:
+        raise RuntimeError("Apify não retornou o ID do run")
+    print(f"      Apify run {run_id} iniciado", flush=True)
+    deadline = time.monotonic() + APIFY_RUN_MAX_SECONDS + 90
+    while True:
+        if time.monotonic() > deadline:
+            raise RuntimeError(f"Apify run {run_id} excedeu o limite de acompanhamento")
+        state = (apify_json("GET", f"{base}/actor-runs/{run_id}?waitForFinish=60").get("data") or {})
+        status = state.get("status")
+        if status == "SUCCEEDED":
+            dataset_id = state.get("defaultDatasetId") or run.get("defaultDatasetId")
+            if not dataset_id:
+                raise RuntimeError(f"Apify run {run_id} terminou sem dataset")
+            out = apify_json("GET", f"{base}/datasets/{dataset_id}/items?clean=true&limit=500")
+            if not isinstance(out, list):
+                raise RuntimeError(f"Apify run {run_id} retornou dataset inválido")
+            print(f"      Apify run {run_id}: {len(out)} itens", flush=True)
+            return out
+        if status in ("FAILED", "TIMED-OUT", "ABORTED"):
+            raise RuntimeError(f"Apify run {run_id}: {status} — {str(state.get('statusMessage') or '')[:120]}")
+        time.sleep(5)
 
 
 def _iso_to_unix(iso):
@@ -444,8 +483,9 @@ def hosted_url(video_id):
 
 
 # =============================== Coleta ====================================
-def collect(niches=None):
+def collect(niches=None, failures=None):
     niches = niches or BRAND_NICHES
+    failures = failures if failures is not None else {}
     seen = {}       # videoId -> record (dedup global, 1º nicho ganha)
     per_niche = {n: [] for n in niches}
     # Uma execução por divisão do Apify cabe em ondas; a classificação
@@ -455,13 +495,25 @@ def collect(niches=None):
         with ThreadPoolExecutor(max_workers=min(3, len(niches))) as pool:
             jobs = {n: pool.submit(fetch_niche, cfg["queries"] if isinstance(cfg, dict) else cfg, PER_KEYWORD)
                     for n, cfg in niches.items()}
-            prefetched = {n: job.result() for n, job in jobs.items()}
+            for nicho, job in jobs.items():
+                try:
+                    prefetched[nicho] = job.result()
+                except Exception as error:
+                    failures[nicho] = str(error)[:180]
+                    prefetched[nicho] = []
     for nicho, cfg in niches.items():
         queries = cfg["queries"] if isinstance(cfg, dict) else cfg
         must = cfg.get("must", []) if isinstance(cfg, dict) else []
         got = {}
         off = 0                            # descartados por não serem do nicho
-        source = prefetched[nicho] if nicho in prefetched else fetch_niche(queries, PER_KEYWORD)
+        if nicho in prefetched:
+            source = prefetched[nicho]
+        else:
+            try:
+                source = fetch_niche(queries, PER_KEYWORD)
+            except Exception as error:
+                failures[nicho] = str(error)[:180]
+                source = []
         for prov, v in source:
             rec = normalize(prov, v, nicho)
             if not rec or not rec["videoId"]:
@@ -482,6 +534,8 @@ def collect(niches=None):
         for r in ranked:
             seen[r["videoId"]] = r
         per_niche[nicho] = ranked
+        if not ranked and nicho not in failures:
+            failures[nicho] = "nenhum vídeo orgânico relevante após os filtros"
         print(f"  {nicho:22} {len(ranked):>3} vídeos "
               f"(viral {sum(r['faixa']=='viral' for r in ranked)}, "
               f"high {sum(r['faixa']=='high' for r in ranked)}, "
@@ -502,11 +556,15 @@ def main():
     # Não há caminho de produção para a taxonomia legada: o Radar segue Ofertas.
     active_niches = BRAND_NICHES
     print(f"TikTok mining — provider={PROVIDER}  dry={dry}\n")
-    per_niche = collect(active_niches)
+    failures = {}
+    per_niche = collect(active_niches, failures=failures)
     total = sum(len(v) for v in per_niche.values())
     print(f"\nTotal coletado: {total} vídeos em {len(per_niche)} nichos")
-    if not total or any(not videos for videos in per_niche.values()):
-        raise RuntimeError("Radar não foi atualizado: ao menos um nicho ficou sem vídeos relevantes")
+    if failures:
+        for nicho, reason in failures.items():
+            print(f"::warning::Radar TikTok {nicho}: {reason}", file=sys.stderr)
+    if not total:
+        raise RuntimeError("Radar não foi atualizado: nenhum nicho retornou vídeos relevantes")
 
     # amostra
     print("\nAmostras (top por nicho):")
