@@ -26,8 +26,10 @@ export default async request=>{
     }
     const body=await readJson(request,{maxBytes:256*1024}),offerId=String(body?.target_offer_id||"");
     if(!UUID.test(offerId)||!body?.data_patch||typeof body.data_patch!=="object"||Array.isArray(body.data_patch))return json(request,400,{ok:false,error:"rascunho inválido"},METHODS);
+    const newOffer=body.new_offer===true;
+    if(newOffer&&(body.data_patch.kind!=="brandsvalidated"||!String(body.data_patch.nomeOferta||"").trim()||!String(body.data_patch.nicho||"").trim()))return json(request,400,{ok:false,error:"nova oferta privada precisa de produto, nicho e tipo Brands"},METHODS);
     const label=String(body.label||"Oferta Brands").slice(0,160);
-    const draft={target_offer_id:offerId,label,data_patch:body.data_patch,updated_at:new Date().toISOString(),updated_by:String(user.email||"admin")};
+    const draft={target_offer_id:offerId,label,new_offer:newOffer,data_patch:body.data_patch,updated_at:new Date().toISOString(),updated_by:String(user.email||"admin")};
     await store.setJSON(`offers/${offerId}.json`,draft);
     return json(request,200,{ok:true,draft},METHODS);
   }catch(error){

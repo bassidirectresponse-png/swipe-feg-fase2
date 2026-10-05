@@ -47,8 +47,8 @@ async function saveTagEditor(){
   const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:[...tagDraft]};
   const button=$("#tagEditorSave");button.disabled=true;
   try{
-    const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch});
-    adminOfferDrafts[offer.id]=draft;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
+    const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
+    adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
@@ -267,7 +267,7 @@ function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.pa
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
-  try{const lite=offers.map(o=>{const d=Object.assign({},o.data);d.printSemrush="";d.printSemrushOriginal="";d.printSemrushThumb="";d.brandSemrush1m="";d.brandSemrush3m="";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
+  try{const lite=offers.filter(o=>!o.adminPrivate).map(o=>{const d=Object.assign({},o.data);d.printSemrush="";d.printSemrushOriginal="";d.printSemrushThumb="";d.brandSemrush1m="";d.brandSemrush3m="";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
 }
 function writeCache(){
   const version=++cacheWriteVersion,run=()=>persistLiteCache(version);
@@ -293,6 +293,12 @@ async function loadAdminOfferDrafts(){
     const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"Rascunhos indisponíveis");
     const drafts={};for(const draft of result.drafts||[])if(draft&&draft.target_offer_id)drafts[draft.target_offer_id]=draft;
     adminOfferDrafts=drafts;
+    offers=offers.filter(row=>!row.adminPrivate);
+    for(const draft of Object.values(drafts)){
+      if(!draft.new_offer||draft.data_patch?.kind!=="brandsvalidated"||!draft.data_patch?.nomeOferta||offers.some(row=>row.id===draft.target_offer_id))continue;
+      offers.push({id:draft.target_offer_id,created_at:draft.updated_at,data:draft.data_patch,adminPrivate:true});
+    }
+    if(routeReady)renderSideNav();
   }catch(error){
     console.warn("Não foi possível carregar os rascunhos administrativos",error);
   }
@@ -460,7 +466,7 @@ function brandNicheCanonical(raw){
 function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeOferta||d.nomeMarca):(d.nomeProduto||d.produto||d.marca||d.nomeMarca||"Produto sem nome")||"Produto sem nome").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>sectionOf(o)==="brandcreative");}
-function brandHubAdminData(o){const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
+function brandHubAdminData(o){if(o?.adminPrivate)return o.data||{};const patch=o&&adminOfferPatch(o.id);return patch?mergeAdminOfferDraftData(o.data,patch):o&&o.data||{};}
 function brandHubNicheOf(o){
   if(sectionOf(o)==="brandsvalidated")return insiderNicheOf(o);
   const forced=BRAND_CREATIVE_NICHE_OVERRIDES[brandKeyOf(o)];if(forced)return forced;
@@ -1027,8 +1033,8 @@ async function importBmEvidence(offerId,button){
         if(status)status.textContent=`Importando ${index+1} de ${files.length} prints…`;
       }
       patch.bmPrints=prints;
-      const draft=await saveAdminOfferDraft({target_offer_id:offerId,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch});
-      adminOfferDrafts[offerId]=draft;openView(offerId,true);toast(`${files.length} prints salvos apenas no painel admin.`);
+      const draft=await saveAdminOfferDraft({target_offer_id:offerId,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
+      adminOfferDrafts[offerId]=draft;if(offer.adminPrivate)offer.data=patch;openView(offerId,true);renderGrid(true);toast(`${files.length} prints salvos apenas no painel admin.`);
     }catch(error){console.warn("Falha ao importar prints",error);toast(`Importação incompleta: ${error.message||"tente novamente"}`,true);if(status)status.textContent="Importação incompleta; repita a operação para concluir.";}
     finally{button.disabled=false;}
   },{once:true});input.click();
@@ -1062,7 +1068,7 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    top:isAdmin&&validated?`<div class="offer-tags">${offerTagsHtml(d)}<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button></div>`:"",
+    top:isAdmin&&validated?`<div class="offer-tags">${o.adminPrivate?'<span class="offer-tag offer-tag--new">Rascunho admin</span>':""}${offerTagsHtml(d)}<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button></div>`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?(isAdmin?"Brands":"Insider"):"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
@@ -1322,17 +1328,17 @@ function openView(id,useAdminDraft=true){
   const o=itemById(id);if(!o)return;
   const section=itemSection(o),isBrand=BRAND_OFFER_SECTIONS.has(section);
   if(section!=="oferta"&&!isBrand){openSimpleView(o);return;}
-  const adminDraft=adminOfferPatch(id),showingDraft=!!(useAdminDraft&&adminDraft);
-  const d=normalize(showingDraft?mergeAdminOfferDraftData(o.data,adminDraft):o.data);
+  const adminDraft=o.adminPrivate?null:adminOfferPatch(id),showingDraft=!!(o.adminPrivate||useAdminDraft&&adminDraft);
+  const d=normalize(o.adminPrivate?o.data:showingDraft?mergeAdminOfferDraftData(o.data,adminDraft):o.data);
   if(section==="brandsvalidated"){d.nicho=insiderNicheOf(o);d.nomeOferta=insiderProductName(o);}
   const native=d.tipoTrafego==="native";
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
   $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?(isAdmin?"Ofertas Brands":"Insider"):"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
-  const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver prévia administrativa";draftToggle.onclick=()=>openView(id,!showingDraft);}
-  $("#viewEditBtn").hidden=showingDraft;
-  $("#viewDeleteBtn").hidden=showingDraft;
+  const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft||!!o.adminPrivate;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver prévia administrativa";draftToggle.onclick=()=>openView(id,!showingDraft);}
+  $("#viewEditBtn").hidden=showingDraft&&!o.adminPrivate;
+  $("#viewDeleteBtn").hidden=showingDraft||!!o.adminPrivate;
   $("#viewEditBtn").onclick=()=>{closeOverlay("#viewOverlay");openForm(id);};
   $("#viewDeleteBtn").onclick=()=>{if(confirm("Excluir esta oferta? Não dá para desfazer.")){deleteOffer(id);closeOverlay("#viewOverlay");}};
 
@@ -1409,7 +1415,7 @@ function openView(id,useAdminDraft=true){
   }
 
   $("#viewBody").innerHTML=`
-  ${showingDraft?`<div class="banner banner--warn" style="margin:0 0 18px">Histórico da BM em validação · visível somente no painel admin. Use “Ver dados publicados” para comparar com a versão atual.</div>`:""}
+  ${showingDraft?`<div class="banner banner--warn" style="margin:0 0 18px">${o.adminPrivate?"Oferta privada em revisão · visível somente no painel admin. Ainda não publicada.":"Histórico da BM em validação · visível somente no painel admin. Use “Ver dados publicados” para comparar com a versão atual."}</div>`:""}
   <div class="view-grid${drive.length?"":" view-grid--full"}">
     <div>
       <section class="sec">
@@ -1823,7 +1829,11 @@ async function saveForm(){
   if(size>6000000){saving=false;setSaveState("error");toast("Imagens muito grandes ("+Math.round(size/1048576)+"MB). Remova/reduza um print.",true);return false;}
   let res;
   try{
-    if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
+    if(editingId&&offers.find(row=>row.id===editingId)?.adminPrivate){
+      const previous=adminOfferDrafts[editingId]||{},draft=await saveAdminOfferDraft({target_offer_id:editingId,label:previous.label||p.nomeOferta,new_offer:true,data_patch:p});
+      adminOfferDrafts[editingId]=draft;res={data:[{id:editingId,created_at:previous.updated_at||draft.updated_at,data:p,adminPrivate:true}]};
+    }
+    else if(editingId)res=await sb.from("offers").update({data:p}).eq("id",editingId).select();
     else res=await sb.from("offers").insert({data:p}).select();
   }catch(err){res={error:err};}
   saving=false;
@@ -1833,7 +1843,7 @@ async function saveForm(){
     if(!editingId){editingId=row.id;offers.push(row);}
     else{const i=offers.findIndex(o=>o.id===editingId);if(i>=0)offers[i]=row;else offers.push(row);}
   }
-  if(row)await syncOfferCreatives(row);
+  if(row&&!row.adminPrivate)await syncOfferCreatives(row);
   formDirty=false;setSaveState("saved");setSync("ok","Salvo");renderGrid();writeCache();
   return true;
 }
