@@ -14,8 +14,9 @@ test("prints são agrupados pelo período explícito, sem inventar datas",()=>{
   assert.deepEqual(bmPrintPeriod({nome:"Print sem metadata"}),["other","Período não identificado"]);
 });
 
-test("galeria de evidências e métricas ficam restritas ao admin",()=>{
-  assert.match(html,/isAdmin\?bmEvidenceHtml\(d,id\):""/);
+test("galeria de evidências e métricas publicadas aparecem ao leitor sem importar",()=>{
+  assert.match(html,/\$\{reportsHtml\}\$\{bmEvidenceHtml\(d,id\)\}/);
+  assert.match(html,/const importButton=isAdmin\?/);
   assert.match(html,/body\.admin-preview \.bm-evidence/);
   assert.match(html,/Última leitura da BM ·/);
   assert.match(html,/data-lightbox-group="bm-/);
@@ -27,13 +28,14 @@ test("galeria usa somente os prints do produto e mantém as setas do lightbox no
   const refSource=html.match(/function bmEvidenceRef\(img\)\{[\s\S]*?\n\}/)?.[0];
   const gallerySource=html.match(/function bmEvidenceHtml\(d,id\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(periodSource&&refSource&&gallerySource);
-  const render=new Function(`const esc=value=>String(value).replaceAll('"','&quot;');${periodSource};${refSource};${gallerySource};return bmEvidenceHtml;`)();
+  const render=new Function(`const isAdmin=false;const esc=value=>String(value).replaceAll('"','&quot;');${periodSource};${refSource};${gallerySource};return bmEvidenceHtml;`)();
   const output=render({bmPrints:[{nome:"Produto A · últimos 7 dias",img:"/a.jpg"},{nome:"Produto A · últimos 14 dias",img:"/b.jpg"},{nome:"sem imagem",img:""}]},"produto-a");
   assert.match(output,/data-lightbox-group="bm-produto-a"/);
   assert.match(output,/Últimos 7 dias/);
   assert.match(output,/Últimos 14 dias/);
   assert.doesNotMatch(output,/sem imagem/);
   assert.doesNotMatch(output,/produto-b/);
+  assert.doesNotMatch(output,/Importar pasta de prints/);
 });
 
 test("vendas e ROAS calculados só viram total quando as campanhas cobrem todo o gasto",()=>{

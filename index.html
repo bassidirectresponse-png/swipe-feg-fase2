@@ -1702,7 +1702,7 @@ const SECTIONS=[
   {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
-  {key:"brandsvalidated",label:"Ofertas Insider",icon:"trending",newLabel:"Nova oferta Insider",statLabel:"Ofertas Insider",emptyTitle:"Nenhuma oferta Insider",searchPlaceholder:"Buscar produto Insider, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Insider</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
+  {key:"brandsvalidated",label:"Ofertas Brands",icon:"trending",newLabel:"Nova oferta Brands",statLabel:"Ofertas Brands",emptyTitle:"Nenhuma oferta Brands",searchPlaceholder:"Buscar produto Brands, marca ou nicho...",subHtml:'<b>FEG Brands · Ofertas Brands</b> — produtos com acesso à BM, resumo de investimento, eficiência e top ads.'},
   {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Criativos",emptyTitle:"Nenhum criativo de Brands",searchPlaceholder:"Buscar criativo ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — acervo de anúncios organizado por marca.'},
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
@@ -1717,7 +1717,7 @@ function syncRadarGeneration(rows){activeRadarGeneration=rows.some(row=>row?.dat
 function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&activeRadarGeneration&&d.radarGeneration!==activeRadarGeneration)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
-const BRAND_TAGS_PUBLISHED=false;
+const BRAND_TAGS_PUBLISHED=true;
 function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];const tags=[...new Set([...(d&&d.kind==="brandsvalidated"?["insider"]:[]),...list.map(x=>String(x).toLowerCase())].filter(x=>OFFER_TAGS[x]))];return tags.includes("scale")?tags.filter(x=>x!=="potential"):tags;}
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
 function tagChoiceHtml(d){return Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-inline-tag="${key}" aria-pressed="${offerTagsOf(d).includes(key)}"${key==="insider"?' disabled title="Tag obrigatória para ofertas coletadas via BM"':""}>${ic(t.icon)}${t.label}</button>`).join("");}
@@ -1745,7 +1745,7 @@ async function saveTagEditor(){
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
 const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
-const BRANDS_NAV_ORDER=["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
+const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
@@ -1983,7 +1983,7 @@ async function loadAdminOfferDrafts(){
   try{
     const token=await adminBmToken(),response=await fetch("/.netlify/functions/admin-offer-drafts",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
     const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"Rascunhos indisponíveis");
-    const drafts={};for(const draft of result.drafts||[])if(draft&&draft.target_offer_id)drafts[draft.target_offer_id]=draft;
+    const drafts={};for(const draft of result.drafts||[])if(draft&&draft.target_offer_id&&!(draft.published_at&&draft.published_update_at===draft.updated_at))drafts[draft.target_offer_id]=draft;
     adminOfferDrafts=drafts;
     offers=offers.filter(row=>!row.adminPrivate);
     for(const draft of Object.values(drafts)){
@@ -2053,7 +2053,7 @@ function showOffersLoadError(){
   $("#retryOffers").addEventListener("click",()=>boot(),{once:true});
 }
 async function loadAdminEnhancements(){
-  const tasks=[loadUpdates,loadAdminOfferDrafts,loadAdminBmHistory];
+  const tasks=[loadUpdates,loadAdminOfferDrafts];
   await Promise.allSettled(tasks.map(async load=>{
     await load();
     if(routeReady)try{renderGrid(true);}catch(error){console.error("Falha ao atualizar painel admin",error);}
@@ -2170,7 +2170,7 @@ function brandHubNicheOf(o){
   return match?brandNicheCanonical(sectionOf(match)==="brandsvalidated"?insiderNicheOf(match):nicheOf(match)):BRAND_NICHE_REVIEW;
 }
 function filtered(){
-  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
+  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
   if(activeSection==="criativo"||activeSection==="brandcreative")list=list.filter(o=>((o.data||{}).plataforma||"meta")==="meta");
   if(activeSection==="megabrainfegsys"){
     const min=fegsysSalesMin===""?null:Number(fegsysSalesMin),max=fegsysSalesMax===""?null:Number(fegsysSalesMax);
@@ -2179,8 +2179,8 @@ function filtered(){
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
-  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
-  if((activeSection==="brandcreative"&&isAdmin||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
+  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
+  if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
   if(activeSection==="brandsvalidated"&&offerTagFilter&&(isAdmin||BRAND_TAGS_PUBLISHED))list=list.filter(o=>offerTagsOf(isAdmin?brandHubAdminData(o):o.data).includes(offerTagFilter));
   if(searchTerm){
@@ -2223,7 +2223,7 @@ function automationCounts(section){
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Insider",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
@@ -2249,13 +2249,13 @@ function catSlug(niche){return niche===NO_NICHE?"sem-nicho":(niche?routeSlug(nic
 function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
   if(slug==="sem-nicho")return NO_NICHE;
-  const source=section==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===section);
-  const present=new Set(source.map(o=>section==="brandcreative"&&isAdmin?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(section==="noticia"||section==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
-  if((BRAND_OFFER_SECTIONS.has(section)||(section==="brandcreative"&&isAdmin))){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
+  const source=section==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===section);
+  const present=new Set(source.map(o=>section==="brandcreative"?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(section==="noticia"||section==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
+  if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   if((section==="noticia"||section==="tiktok")&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   const hit=[...present].find(n=>nicheRouteKey(n)===slug);
   if(hit)return canonicalNiche(hit);
-  if((BRAND_OFFER_SECTIONS.has(section)||(section==="brandcreative"&&isAdmin))){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy){const mapped=section==="brandcreative"?brandHubNicheOf(legacy):section==="brandsvalidated"?insiderNicheOf(legacy):brandNicheCanonical(nicheOf(legacy));return mapped===BRAND_NICHE_REVIEW?NO_NICHE:mapped;}}
+  if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy){const mapped=section==="brandcreative"?brandHubNicheOf(legacy):section==="brandsvalidated"?insiderNicheOf(legacy):brandNicheCanonical(nicheOf(legacy));return mapped===BRAND_NICHE_REVIEW?NO_NICHE:mapped;}}
   if((section==="noticia"||section==="tiktok")&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   if(section==="brandsvalidated"){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   return null;   // null => categoria inexistente (404)
@@ -2263,7 +2263,7 @@ function nicheFromSlug(section,slug){
 function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
-  if((BRAND_OFFER_SECTIONS.has(activeSection)||(activeSection==="brandcreative"&&isAdmin))&&activeBrand)p.set("marca",activeBrand);
+  if((BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")&&activeBrand)p.set("marca",activeBrand);
   if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
@@ -2280,16 +2280,16 @@ function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsy
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
   const sec=itemSection(o),base="/"+(SEC2PATH[sec]||"ofertas");
-  const niche=sec==="brandsvalidated"?insiderNicheOf(o):sec==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(sec==="noticia"||sec==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);
+  const niche=sec==="brandsvalidated"?insiderNicheOf(o):sec==="brandcreative"?brandHubNicheOf(o):sec==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(sec==="noticia"||sec==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);
   const path=NICHE_SECTIONS.has(sec)?base+"/"+catSlug(niche)+"/"+o.id:base+"/"+o.id;
   return sec==="brandsvalidated"&&activeBrand===insiderProductKey(o)?path+"?marca="+encodeURIComponent(activeBrand):path;
 }
 function setDocTitle(){
   const cfg=sectionCfg(activeSection);
-  const parts=[isAdmin&&activeSection==="brandsvalidated"?"Ofertas Brands":SEC_SHORT[activeSection]||cfg.label];
+  const parts=[SEC_SHORT[activeSection]||cfg.label];
   if(activeNiche===NO_NICHE)parts.unshift(BRAND_SECTIONS.has(activeSection)&&isAdmin?BRAND_NICHE_REVIEW:"Sem nicho");
   else if(activeNiche)parts.unshift(activeNiche);
-  if(activeSection==="brandcreative"&&isAdmin&&activeBrand){const match=brandHubItems().find(o=>brandKeyOf(o)===activeBrand);if(match)parts.unshift(brandNameOf(match));}
+  if(activeSection==="brandcreative"&&activeBrand){const match=brandHubItems().find(o=>brandKeyOf(o)===activeBrand);if(match)parts.unshift(brandNameOf(match));}
   if(isInsiderAdminArea()&&activeBrand){const match=offers.find(o=>sectionOf(o)==="brandsvalidated"&&insiderProductKey(o)===activeBrand);if(match)parts.unshift(insiderProductName(match));}
   document.title=parts.join(" · ")+" — Benchmarking FEG";
 }
@@ -2297,7 +2297,7 @@ function parseLocation(){
   const path=decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
   const seg=path.split("/").filter(Boolean);
   const q=new URLSearchParams(location.search);
-  if(!seg.length)return {section:"brandsgeneral",niche:"",id:null,notFound:false,q};
+  if(!seg.length)return {section:"brandsvalidated",niche:"",id:null,notFound:false,q};
   const section=PATH2SEC[seg[0]];
   if(!section)return {notFound:true,q};
   let niche="",id=null,notFound=false;
@@ -2320,11 +2320,11 @@ function renderNotFound(msg){
   document.body.classList.remove("route-detail-full");
   document.title="Não encontrado — Benchmarking FEG";
   document.body.classList.remove("chatmode","toolmode");
-  const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/feg-brands-geral/todos" style="margin-top:18px">Voltar para FEG Brands</a></div>`;
+  const area=$("#gridArea");if(area)area.innerHTML=`<div class="empty"><h2>404 — página não encontrada</h2><p>${esc(msg||"Essa rota não existe.")}</p><a class="btn btn--accent" data-nav href="/feg-brands-insider/todos" style="margin-top:18px">Voltar para Ofertas Brands</a></div>`;
 }
 function maybeOpenView(id){
   const o=itemById(id);
-  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?(!nicheOf(o)||BRAND_SECTIONS.has(activeSection)&&isAdmin&&((activeSection==="brandsvalidated"?insiderNicheOf(o):activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)))===BRAND_NICHE_REVIEW)):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)||(activeSection==="brandsgeneral"&&isAdmin&&sameNiche(brandNicheCanonical(nicheOf(o)),activeNiche))||(activeSection==="brandcreative"&&isAdmin&&sameNiche(brandHubNicheOf(o),activeNiche))||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin&&sameNiche(topicNicheOf(o),activeNiche))));
+  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?(!nicheOf(o)||BRAND_SECTIONS.has(activeSection)&&((activeSection==="brandsvalidated"?insiderNicheOf(o):activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)))===BRAND_NICHE_REVIEW)):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)||(activeSection==="brandsgeneral"&&sameNiche(brandNicheCanonical(nicheOf(o)),activeNiche))||(activeSection==="brandcreative"&&sameNiche(brandHubNicheOf(o),activeNiche))||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin&&sameNiche(topicNicheOf(o),activeNiche))));
   if(!o||itemSection(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
@@ -2338,7 +2338,7 @@ function applyRoute(){
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   if(activeSection==="brandsvalidated"&&r.id){const item=itemById(r.id);if(item&&sectionOf(item)==="brandsvalidated"&&!sameNiche(activeNiche,insiderNicheOf(item))){activeNiche=insiderNicheOf(item);try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+"/"+r.id+location.search);}catch(_){}}}
-  activeBrand=(BRAND_OFFER_SECTIONS.has(activeSection)||(activeSection==="brandcreative"&&isAdmin))?(r.q.get("marca")||""):"";
+  activeBrand=(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")?(r.q.get("marca")||""):"";
   searchTerm=r.q.get("q")||"";
   if(location.pathname==="/"){try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+location.search);}catch(_){}}
   critPlatform=(activeSection==="criativo"||activeSection==="brandcreative")?"meta":"all";
@@ -2396,20 +2396,20 @@ function renderSideNav(){
   /* nichos somente nas seções que realmente usam essa taxonomia */
   let nicheHtml="";
   if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
-    const secOffers=activeSection==="brandcreative"&&isAdmin?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
+    const secOffers=activeSection==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
-    secOffers.forEach(o=>{const n=activeSection==="brandcreative"&&isAdmin?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
+    secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
-    if(BRAND_OFFER_SECTIONS.has(activeSection)||(activeSection==="brandcreative"&&isAdmin)||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin)){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
+    if(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin)){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
     if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
-    const ordered=(BRAND_OFFER_SECTIONS.has(activeSection)||(activeSection==="brandcreative"&&isAdmin)||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin))
+    const ordered=(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin))
       ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
     const productMenu=niche=>{
-      if(!BRAND_OFFER_SECTIONS.has(activeSection)&&!(activeSection==="brandcreative"&&isAdmin))return"";
+      if(!BRAND_OFFER_SECTIONS.has(activeSection)&&activeSection!=="brandcreative")return"";
       const selectedNiche=niche===NO_NICHE?BRAND_NICHE_REVIEW:niche,groups=new Map();
       secOffers.filter(o=>{const productNiche=activeSection==="brandcreative"?brandHubNicheOf(o):activeSection==="brandsvalidated"?insiderNicheOf(o):brandNicheCanonical(nicheOf(o));return sameNiche(productNiche,selectedNiche);}).forEach(o=>{
         const key=activeSection==="brandsvalidated"?insiderProductKey(o):brandKeyOf(o),name=activeSection==="brandsvalidated"?insiderProductName(o):brandNameOf(o),entry=groups.get(key)||{name,count:0};entry.count++;groups.set(key,entry);
@@ -2421,7 +2421,7 @@ function renderSideNav(){
     nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
     ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected)nicheHtml+=productMenu(n);});
-    if(none){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)&&isAdmin?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
+    if(none){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
   /* anima o slide dos nichos só quando a SEÇÃO muda (não a cada clique de nicho) */
@@ -2434,14 +2434,14 @@ function renderSideNav(){
     const updateCount=s.key==="updates"?unreadUpdates():0;
     const chip=s.key==="vsldissector"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
     const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
-    const label=isAdmin&&s.key==="brandsvalidated"?"Ofertas Brands":SEC_SHORT[s.key]||s.label;
+    const label=SEC_SHORT[s.key]||s.label;
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(label)}</span>${chip}</a>`;
     if(active&&nicheHtml)out+=`<div class="snav__niches${sectionChanged?" snav__niches--in":""}">${nicheHtml}</div>`;
     return out;
   };
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
-  (isAdmin?["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]:BRANDS_NAV_ORDER).forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
+  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
   nav.innerHTML=html;
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
@@ -2464,10 +2464,10 @@ function sparkSvg(hist){
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(li).toFixed(1)}" cy="${Y(pts[li].n).toFixed(1)}" r="2.4" fill="var(--accent)" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function adsChartSvg(hist){
-  const pts=isAdmin?hist:hist.slice(-30);
+  const pts=hist;
   if(!pts.length)return`<div class="muted-empty">Sem histórico ainda — será preenchido automaticamente a cada atualização do robô.</div>`;
   if(pts.length<2)return`<div class="muted-empty">Apenas 1 leitura até agora (${fmtNum(pts[0].n)} anúncios em ${fmtDateShort(pts[0].d)}). O gráfico aparece a partir da 2ª leitura.</div>`;
-  const w=isAdmin?Math.max(720,pts.length*28):720,h=252,padL=54,padR=26,padT=30,padB=40;
+  const w=Math.max(720,pts.length*28),h=252,padL=54,padR=26,padT=30,padB=40;
   const ns=pts.map(p=>p.n);let mn=Math.min(...ns),mx=Math.max(...ns);if(mn===mx){mn=Math.max(0,mn-1);mx=mx+1;}
   const iw=w-padL-padR,ih=h-padT-padB,li=pts.length-1;
   const X=i=>padL+i*iw/li,Y=n=>padT+ih-((n-mn)/(mx-mn))*ih;
@@ -2686,9 +2686,14 @@ async function adminBmToken(){
   if(!isAdmin||!token)throw new Error("Sessão administrativa necessária");
   return token;
 }
+async function bmEvidenceReadToken(){
+  const session=sb&&await sb.auth.getSession(),token=session?.data?.session?.access_token;
+  if(!token)throw new Error("Sessão necessária para ler o print");
+  return token;
+}
 async function hydrateBmEvidence(root){
   const links=$$("a[data-bm-ref]",root);if(!links.length)return;
-  let token;try{token=await adminBmToken();}catch(_){return;}
+  let token;try{token=await bmEvidenceReadToken();}catch(_){return;}
   for(const link of links){
     if(!link.isConnected)return;
     const ref=link.dataset.bmRef;
@@ -2750,7 +2755,7 @@ async function importBmEvidence(offerId,button){
 }
 function bmEvidenceHtml(d,id){
   const prints=(Array.isArray(d&&d.bmPrints)?d.bmPrints:[]).filter(print=>print&&print.img);
-  const importButton=`<button class="bm-evidence__import" type="button" data-bm-import="${esc(id)}">Importar pasta de prints</button>`;
+  const importButton=isAdmin?`<button class="bm-evidence__import" type="button" data-bm-import="${esc(id)}">Importar pasta de prints</button>`:"";
   if(!prints.length)return`<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3>${importButton}</div><p class="bm-evidence__note">Nenhum print salvo para este produto.</p><p class="bm-evidence__status sr-only" aria-live="polite"></p></div>`;
   const groups=new Map();for(const print of prints){const [key,label]=bmPrintPeriod(print);if(!groups.has(key))groups.set(key,{label,prints:[]});groups.get(key).prints.push(print);}
   const order={"1d":0,"7d":1,"14d":2,"30d":3,"settings":8,"other":9};
@@ -2778,11 +2783,11 @@ function brandCard(o){
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
     top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}</div>${isAdmin?`<details class="card-tag-editor" data-tag-editor="${esc(o.id)}"><summary>${ic("edit")}Editar tags deste card</summary><div class="card-tag-editor__choices">${tagChoiceHtml(d)}</div><button class="card-tag-editor__save" type="button" data-save-inline-tags="${esc(o.id)}">Salvar tags</button></details>`:""}`:"",
-    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?(isAdmin?"Brands":"Insider"):"Spy"}</span>`,
+    head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Brands":"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:isAdmin&&validated?(brandDraftCardSnapshot(d)||`<div class="brand-bm-state">${ic("clock")}Aguardando acesso à BM</div>`):"",
+    extra:validated?(brandDraftCardSnapshot(d)||`<div class="brand-bm-state">${ic("clock")}Aguardando acesso à BM</div>`):"",
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
@@ -2820,7 +2825,7 @@ function wireGridPager(area){
   $$('[data-grid-page]',area).forEach(button=>button.addEventListener("click",()=>{const next=+button.dataset.gridPage||1;if(next===gridPage)return;gridPage=next;renderGrid(true);const top=Math.max(0,(area.getBoundingClientRect().top+window.scrollY)-110);window.scrollTo({top,behavior:"auto"});}));
   $$('[data-grid-size]',area).forEach(select=>select.addEventListener("change",()=>{const next=+select.value;if(!GRID_PAGE_OPTIONS.includes(next)||next===gridPageSize)return;gridPageSize=next;gridPage=1;try{localStorage.setItem("feg_grid_page_size",String(next));}catch(e){}renderGrid(true);}));
 }
-function updateKindLabel(kind){return {oferta:"Swipe de ofertas",brandsgeneral:"Ofertas de Brands",brandsvalidated:"Ofertas Insider",presell:"Presell",criativo:"Swipe de criativos"}[kind]||"Materiais";}
+function updateKindLabel(kind){return {oferta:"Swipe de ofertas",brandsgeneral:"Ofertas de Brands",brandsvalidated:"Ofertas Brands",presell:"Presell",criativo:"Swipe de criativos"}[kind]||"Materiais";}
 function updateItemPath(item){
   const target=offers.find(offer=>String(offer.id)===String(item.entity_id));
   if(target)return offerPath(target);
@@ -2914,7 +2919,7 @@ function renderGrid(skipNav){
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   if(activeSection==="updates"){renderUpdates();return;}
   const cfg=sectionCfg(activeSection);
-  const manualSecCount=activeSection==="brandcreative"&&isAdmin?brandHubItems().length:offers.filter(o=>sectionOf(o)===activeSection).length;
+  const manualSecCount=activeSection==="brandcreative"?brandHubItems().length:offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
@@ -2944,7 +2949,7 @@ function renderGrid(skipNav){
       gh+=`<div class="ttgroup ttgroup--${key}"><div class="ttgroup__head"><span class="ttgroup__lbl">${esc(lbl)}</span><span class="ttgroup__cnt">${totals.get(key)}</span></div><div class="grid grid--tt">${arr.map(cardFor).join("")}</div></div>`;
     });
     area.innerHTML=gh?gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
-  }else if(activeSection==="brandcreative"&&isAdmin){
+  }else if(activeSection==="brandcreative"){
     area.innerHTML=renderAdminBrandHub(list);
   }else if(isInsiderAdminArea()){
     area.innerHTML=renderAdminInsider(list);
@@ -3062,7 +3067,7 @@ function openView(id,useAdminDraft=true){
   const ads=getAds(d);const high=!native&&ads!=null&&ads>=HIGH_VOLUME;
   const domLinks=d.dominios.filter(x=>x.linkDominio);const coLinks=d.dominios.filter(x=>x.linkCheckout);
   const multi=domLinks.length>1||coLinks.length>1;
-  $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?(isAdmin?"Ofertas Brands":"Insider"):"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
+  $("#viewTag").textContent=(isBrand?`FEG Brands · ${section==="brandsvalidated"?"Ofertas Brands":"Spy"}`:((d.nomeMarca?d.nomeMarca+" · ":"")+(native?"Native · Taboola":"Oferta")))+(showingDraft?" · RASCUNHO ADMIN":"");
   const draftToggle=$("#viewDraftToggleBtn");if(draftToggle){draftToggle.hidden=!adminDraft||!!o.adminPrivate;draftToggle.textContent=showingDraft?"Ver dados publicados":"Ver prévia administrativa";draftToggle.onclick=()=>openView(id,!showingDraft);}
   $("#viewEditBtn").hidden=showingDraft&&!o.adminPrivate;
   $("#viewDeleteBtn").hidden=showingDraft||!!o.adminPrivate;
@@ -3093,7 +3098,7 @@ function openView(id,useAdminDraft=true){
   const drive=(d.driveLinks||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
   let kvs=`${d.nicho?`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`:""}<div class="kv"><div class="k">Formato</div><div class="v">${esc(d.formato||"—")}</div></div>`;
-  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?(isAdmin?"Oferta Brands":"Oferta Insider"):"Em monitoramento"}</div></div>`;
+  if(isBrand)kvs+=`<div class="kv"><div class="k">Status FEG Brands</div><div class="v" style="color:#8fd8ff">${section==="brandsvalidated"?"Oferta Brands":"Em monitoramento"}</div></div>`;
   if(native)kvs+=`<div class="kv"><div class="k">Origem</div><div class="v" style="color:#a78bff">Native · Taboola</div></div><div class="kv"><div class="k">Tráfego · últimos 28 dias</div><div class="v">${d.trafego28d?esc(d.trafego28d):"—"}</div></div>`;
   else kvs+=`<div class="kv"><div class="k">${isBrand?"Ads ativos na biblioteca":"Ads ativos"}</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div>${isBrand?`<div class="kv"><div class="k">Biblioteca conferida em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div>`:""}`;
 
@@ -3135,7 +3140,7 @@ function openView(id,useAdminDraft=true){
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     const bmCore=interactiveInsider
-      ?`${reportsHtml}${isAdmin?bmEvidenceHtml(d,id):""}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
+      ?`${reportsHtml}${bmEvidenceHtml(d,id)}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
       :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${bmCore}
@@ -3996,7 +4001,7 @@ function switchSection(key){
 function setSectionHeader(){
   const cfg=sectionCfg(activeSection);
   const cc=isToolSection(activeSection);
-  document.body.classList.toggle("admin-preview",isAdmin);
+  document.body.classList.add("admin-preview");
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
   document.body.classList.toggle("toolmode",cc);
   const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
@@ -4015,16 +4020,16 @@ function setSectionHeader(){
         ?`<span class="division-pill__mark">BR</span><span class="division-pill__copy"><span class="division-pill__name">FEG Brands</span><span class="division-pill__desc">DTC Intelligence</span></span>`
         :`<span class="division-pill__mark">DR</span><span class="division-pill__copy"><span class="division-pill__name">FEG DR</span><span class="division-pill__desc">Direct Response</span></span>`;
   }
-  const brandHub=activeSection==="brandcreative"&&isAdmin;
+  const brandHub=activeSection==="brandcreative";
   const selectedInsiderItem=isInsiderAdminArea()&&activeBrand?offers.find(o=>sectionOf(o)==="brandsvalidated"&&insiderProductKey(o)===activeBrand):null;
   const selectedHubItem=brandHub&&activeBrand?brandHubItems().find(o=>brandKeyOf(o)===activeBrand):null;
   const lbl=$("#statLabel");if(lbl)lbl.textContent=brandHub?"Materiais":cfg.statLabel;
   const nb=$(".newBtn-txt");if(nb)nb.textContent=cfg.newLabel;
   const si=$("#searchInput");if(si)si.placeholder=brandHub?"Buscar nicho, marca, oferta ou criativo...":cfg.searchPlaceholder;
   const title=$("#pageTitle"),description=$("#pageDescription");
-  const adminBrands=isAdmin&&activeSection==="brandsvalidated";
+  const adminBrands=activeSection==="brandsvalidated";
   if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):adminBrands?"Ofertas Brands":cfg.label;
-  if(description)description.innerHTML=selectedInsiderItem?esc(insiderNicheOf(selectedInsiderItem))+" · seção do produto em validação no painel admin":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Marca selecionada no painel admin":"Painel admin · ofertas completas e criativos agrupados por nicho e marca. Essa organização visual não altera os dados publicados."):adminBrands?"<b>Ofertas Brands</b> — acervo Insider com leitura de BM, bibliotecas, histórico de anúncios e tags de prioridade.":cfg.subHtml||"";
+  if(description)description.innerHTML=selectedInsiderItem?esc(insiderNicheOf(selectedInsiderItem))+" · produto do acervo Brands":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Criativos desta marca":"Criativos organizados por nicho e marca."):adminBrands?"<b>Ofertas Brands</b> — acervo com leitura de BM, bibliotecas, histórico de anúncios e tags de prioridade.":cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
@@ -4074,8 +4079,8 @@ function wireFegsysPanel(el){
 }
 function brandNavHtml(){
   if(!BRAND_SECTIONS.has(activeSection))return"";
-  if(isAdmin&&activeSection==="brandcreative")return"";
-  const entries=isAdmin?[["brandsvalidated","Ofertas Brands"]]:[["brandsgeneral","Ofertas no Geral"],["brandsvalidated","Ofertas Insider"],["brandcreative","Swipe de Criativos"]];
+  if(activeSection==="brandcreative")return"";
+  const entries=[["brandsvalidated","Ofertas Brands"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){
@@ -5486,7 +5491,7 @@ function brandCreativeCard(o){
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic("play")}${esc(brand)}</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
     body:`<div class="collection-flag">${ic("trending")}${esc(collection)}</div>${cardIdentity(brand,d.nome||"Criativo sem título")}`,
-    chips:`<div class="card__chips"><span class="chip accent">Balls n Brains</span><span class="chip">Swipe de Criativos</span></div>`,
+    chips:`<div class="card__chips"><span class="chip accent">${esc(brand)}</span><span class="chip">Swipe de Criativos</span></div>`,
     actions
   });
 }

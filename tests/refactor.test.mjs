@@ -52,8 +52,9 @@ test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => 
   assert.doesNotMatch(html, /activeSection==="copychief"|activeSection==="furtado"/);
 });
 
-test("navegação reúne seções legadas na área Brands sem remover seus registros", () => {
-  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
+test("navegação publica Brands sem apagar as rotas e registros antigos", () => {
+  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
+  assert.match(html, /brandsgeneral:"feg-brands-geral"/);
   assert.match(html, /\/\* As seções ocultas e seus registros permanecem no armazenamento\. \*\//);
   assert.doesNotMatch(html, /html\+=`<div class="snav__group snav__group--dr">FEG DR<\/div>`/);
   assert.doesNotMatch(html, /snav__group--updates">Histórico/);
@@ -329,9 +330,9 @@ test("seções com vídeo usam o áudio original e sincronizam palavra por palav
   assert.match(html, /wireVideoTranscripts\(\$\("#viewBody"\)\)/);
 });
 
-test("FEG Brands reúne ofertas e o hub visual por nicho/marca no admin", () => {
+test("FEG Brands reúne ofertas e o hub visual por nicho/marca para todos", () => {
   assert.match(html, /key:"brandsgeneral",label:"Ofertas de Brands no Geral"/);
-  assert.match(html, /key:"brandsvalidated",label:"Ofertas Insider"/);
+  assert.match(html, /key:"brandsvalidated",label:"Ofertas Brands"/);
   assert.match(html, /const BRAND_SECTIONS=new Set\(\["brandsgeneral","brandsvalidated","brandcreative"\]\)/);
   assert.match(html, /key:"brandcreative",label:"Swipe de Criativos"/);
   assert.match(html, /Balls n Brains/);
@@ -484,7 +485,7 @@ test("Transcritor e Dissecador sobrepõem preparação e transcrição sem perde
 });
 
 test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", () => {
-  assert.match(html, /extra:isAdmin&&validated\?\(brandDraftCardSnapshot\(d\)/);
+  assert.match(html, /extra:validated\?\(brandDraftCardSnapshot\(d\)/);
   assert.match(html, /clean=validated/);
   assert.match(html, /if\(isInsiderAdminArea\(\)&&activeBrand\)list=list\.filter/);
   assert.match(html, /Ads ativos · evolução diária/);
@@ -494,7 +495,7 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /data-tag-editor=/);
   assert.match(html, /data-save-inline-tags=/);
   assert.match(html, /top:validated&&\(isAdmin\|\|BRAND_TAGS_PUBLISHED\)\?`<div class="offer-tags">\$\{offerTagsHtml\(d\)\}/);
-  assert.match(html, /const BRAND_TAGS_PUBLISHED=false/);
+  assert.match(html, /const BRAND_TAGS_PUBLISHED=true/);
   assert.doesNotMatch(html, /Rascunho admin/);
   assert.match(html, /saveAdminOfferDraft\(/);
   assert.doesNotMatch(html, /offerTags:fOfferTags/);

@@ -1,0 +1,49 @@
+name: Publicar Ofertas Brands validadas
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Publicar os rascunhos pendentes no acervo compartilhado"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: brands-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Conferir e publicar rascunhos pendentes
+        env:
+          APPLY: ${{ inputs.apply }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(jq -r '.value' <<< "$OIDC_RESPONSE")"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+          ENDPOINT="https://benchmarkinggrupofeg.site/.netlify/functions/brands-release"
+          PREVIEW="$(curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT")"
+          jq '{total, pending, drafts: [.drafts[] | select(.pending) | {id, name, newOffer, reports, prints, wrongBrand, patchKeys}]}' <<< "$PREVIEW"
+          if [[ "$APPLY" != "true" ]]; then
+            echo "Prévia concluída; nenhuma oferta foi alterada."
+            exit 0
+          fi
+          while IFS= read -r OFFER_ID; do
+            test -n "$OFFER_ID"
+            RESULT="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "Content-Type: application/json" --data "{\"offer_id\":\"$OFFER_ID\"}" "$ENDPOINT")"
+            jq '{ok, id, newOffer, changedFields, reports, prints, tags, excludedMisattributedBm, backupKey}' <<< "$RESULT"
+            jq -e '.ok == true' <<< "$RESULT" >/dev/null
+          done < <(jq -r '.drafts[] | select(.pending) | .id' <<< "$PREVIEW")
+          FINAL="$(curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT")"
+          jq '{total, pending}' <<< "$FINAL"
+          jq -e '.pending == 0' <<< "$FINAL" >/dev/null

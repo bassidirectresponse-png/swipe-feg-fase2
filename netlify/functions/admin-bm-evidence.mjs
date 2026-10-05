@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {readFile} from "node:fs/promises";
 import {resolve} from "node:path";
 import {getStore} from "@netlify/blobs";
-import {authenticate, corsHeaders, isAdmin, json, preflight, trustedOrigin} from "./_security.mjs";
+import {authenticate, bearerToken, corsHeaders, isAdmin, json, preflight, SUPABASE_ANON_KEY, SUPABASE_URL, trustedOrigin} from "./_security.mjs";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BLOB_REF=/^blob:([0-9a-f-]{36}):([0-9a-f]{64}):(jpeg|png|webp)$/i;
@@ -22,7 +22,7 @@ export default async req=>{
   if(!trustedOrigin(req))return json(req,403,{ok:false,error:"origem não autorizada"},"GET, POST, OPTIONS");
   const user=await authenticate(req);
   if(!user)return json(req,401,{ok:false,error:"sessão não reconhecida"},"GET, POST, OPTIONS");
-  if(!isAdmin(user))return json(req,403,{ok:false,error:"acesso restrito ao administrador"},"GET, POST, OPTIONS");
+  if(req.method==="POST"&&!isAdmin(user))return json(req,403,{ok:false,error:"acesso restrito ao administrador"},"GET, POST, OPTIONS");
   try{
     if(req.method==="POST"){
       const offerId=String(req.headers.get("x-offer-id")||"");
@@ -40,6 +40,17 @@ export default async req=>{
     const ref=String(new URL(req.url).searchParams.get("ref")||"");
     const blob=BLOB_REF.exec(ref),legacy=LEGACY_REF.exec(ref);
     if(!blob&&!legacy)return json(req,400,{ok:false,error:"referência inválida"},"GET, POST, OPTIONS");
+    if(!isAdmin(user)){
+      const suffix=blob?`&id=eq.${encodeURIComponent(blob[1])}`:"&data->>kind=eq.brandsvalidated&limit=1000";
+      const visible=await fetch(`${SUPABASE_URL}/rest/v1/offers?select=data${suffix}`,{
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${bearerToken(req)}`},signal:AbortSignal.timeout(10_000),
+      });
+      if(!visible.ok)return json(req,503,{ok:false,error:"não foi possível conferir publicação"},"GET, POST, OPTIONS");
+      const rows=await visible.json();
+      if(!Array.isArray(rows)||!rows.some(row=>row.data?.kind==="brandsvalidated"&&Array.isArray(row.data?.bmPrints)&&row.data.bmPrints.some(print=>print?.img===`admin-bm:${ref}`||print?.img===`/assets/${legacy?.[1]}/print-${legacy?.[2]}.${legacy?.[3]}`))){
+        return json(req,403,{ok:false,error:"print ainda não publicado"},"GET, POST, OPTIONS");
+      }
+    }
     let bytes,mime;
     if(blob){
       const [,offerId,hash,type]=blob;if(!UUID.test(offerId))return json(req,400,{ok:false,error:"oferta inválida"},"GET, POST, OPTIONS");

@@ -32,7 +32,7 @@ function includesAudience(audience) {
   return Array.isArray(audience) ? audience.includes(AUDIENCE) : audience === AUDIENCE;
 }
 
-export async function verifyGithubAutomationToken(token) {
+export async function verifyGithubAutomationToken(token, allowedWorkflows = ALLOWED_WORKFLOWS) {
   const parts = String(token || "").split(".");
   if (parts.length !== 3) throw new Error("token OIDC inválido");
   const [encodedHeader, encodedPayload, encodedSignature] = parts;
@@ -57,7 +57,7 @@ export async function verifyGithubAutomationToken(token) {
 
   const workflowRef = String(claims.workflow_ref || "");
   const match = workflowRef.match(/\.github\/workflows\/([^@/]+)@refs\/heads\/main$/);
-  if (!workflowRef.startsWith(`${REPOSITORY}/`) || !match || !ALLOWED_WORKFLOWS.has(match[1])) {
+  if (!workflowRef.startsWith(`${REPOSITORY}/`) || !match || !allowedWorkflows.has(match[1])) {
     throw new Error("workflow OIDC não permitido");
   }
   return claims;
