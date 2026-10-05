@@ -26,8 +26,11 @@ test("Ofertas oferecem ranking por gasto e vendas e filtro de tag no painel",()=
   assert.match(html,/\["spend_7d","Maior gasto · 7 dias"\]/);
   assert.match(html,/\["sales_7d","Mais vendas · 7 dias"\]/);
   assert.match(html,/id="offerTagFilter"/);
-  assert.match(html,/data-tag-editor=/);
-  assert.match(html,/data-save-inline-tags=/);
+  assert.match(html,/data-edit-tags=/);
+  assert.match(html,/id="tagEditorOptions"/);
+  assert.match(html,/data-tag-choice=/);
+  assert.doesNotMatch(html,/data-tag-editor=/);
+  assert.doesNotMatch(html,/data-save-inline-tags=/);
   assert.doesNotMatch(html,/@keyframes tag-in/);
 });
 

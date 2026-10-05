@@ -38,7 +38,6 @@ const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},
 const BRAND_TAGS_PUBLISHED=true;
 function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];const tags=[...new Set([...(d&&d.kind==="brandsvalidated"?["insider"]:[]),...list.map(x=>String(x).toLowerCase())].filter(x=>OFFER_TAGS[x]))];return tags.includes("scale")?tags.filter(x=>x!=="potential"):tags;}
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
-function tagChoiceHtml(d){return Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-inline-tag="${key}" aria-pressed="${offerTagsOf(d).includes(key)}"${key==="insider"?' disabled title="Tag obrigatória para ofertas coletadas via BM"':""}>${ic(t.icon)}${t.label}</button>`).join("");}
 function normalizeTagSelection(tags){const unique=[...new Set(tags.filter(key=>OFFER_TAGS[key]))];return unique.includes("scale")?unique.filter(key=>key!=="potential"):unique;}
 async function persistOfferTags(offer,tags){
   const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection(["insider",...tags])};
@@ -50,7 +49,7 @@ function openTagEditor(id){
   const offer=offers.find(item=>item.id===id);if(!offer||sectionOf(offer)!=="brandsvalidated")return;
   editingTagOfferId=id;tagDraft=offerTagsOf(brandHubAdminData(offer));
   const descriptions={insider:"Entramos na BM para coletar dados",new:"Nova oferta adicionada",potential:"Potencial para acompanhar · mínimo 200 ads ativos",scale:"Marca com mais de US$ 100 mil investidos na semana"};
-  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}">${ic(t.icon)}${t.label}</button>`).join("");
+  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}"${key==="insider"?" disabled":""}>${ic(t.icon)}${t.label}</button>`).join("");
   openOverlay("#tagOverlay");
 }
 async function saveTagEditor(){
@@ -59,6 +58,7 @@ async function saveTagEditor(){
   const button=$("#tagEditorSave");button.disabled=true;
   try{
     await persistOfferTags(offer,tagDraft);closeOverlay("#tagOverlay");
+    $$('[data-edit-tags]').find(trigger=>trigger.dataset.editTags===offer.id)?.focus({preventScroll:true});
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
@@ -1112,7 +1112,7 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}</div>${isAdmin?`<details class="card-tag-editor" data-tag-editor="${esc(o.id)}"><summary>${ic("edit")}Editar tags deste card</summary><div class="card-tag-editor__choices">${tagChoiceHtml(d)}</div><button class="card-tag-editor__save" type="button" data-save-inline-tags="${esc(o.id)}">Salvar tags</button></details>`:""}`:"",
+    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Brands":"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
@@ -1314,23 +1314,6 @@ function renderGrid(skipNav){
     }
   });
   $$('[data-edit-tags]',area).forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openTagEditor(button.dataset.editTags);}));
-  $$(".card-tag-editor",area).forEach(editor=>{
-    editor.addEventListener("click",event=>event.stopPropagation());
-    editor.addEventListener("keydown",event=>event.stopPropagation());
-    editor.querySelectorAll("[data-inline-tag]").forEach(button=>button.addEventListener("click",()=>{
-      const key=button.dataset.inlineTag,pressed=button.getAttribute("aria-pressed")==="true";
-      button.setAttribute("aria-pressed",String(!pressed));
-      if(!pressed&&key==="scale")editor.querySelector('[data-inline-tag="potential"]')?.setAttribute("aria-pressed","false");
-      if(!pressed&&key==="potential")editor.querySelector('[data-inline-tag="scale"]')?.setAttribute("aria-pressed","false");
-    }));
-    editor.querySelector("[data-save-inline-tags]")?.addEventListener("click",async event=>{
-      const button=event.currentTarget,offer=offers.find(item=>item.id===button.dataset.saveInlineTags);
-      if(!isAdmin||!sb||!offer)return;
-      const tags=[...editor.querySelectorAll('[data-inline-tag][aria-pressed="true"]')].map(choice=>choice.dataset.inlineTag);
-      button.disabled=true;
-      try{await persistOfferTags(offer,tags);}catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);button.disabled=false;}
-    });
-  });
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();
     if(b.dataset.copyTranscript!=null){const o=itemById(b.dataset.copyTranscript),text=String(((o||{}).data||{}).transcricao||"").trim();if(!text)return;try{b.disabled=true;await navigator.clipboard.writeText(text);const old=b.innerHTML,oldLabel=b.getAttribute("aria-label")||"";b.innerHTML=ic("clipboard")+"Copiado";b.setAttribute("aria-label","Transcrição copiada");toast("Transcrição copiada");setTimeout(()=>{if(b.isConnected){b.innerHTML=old;b.disabled=false;b.setAttribute("aria-label",oldLabel);}},1600);}catch(_){b.disabled=false;toast("Não foi possível copiar a transcrição.",true);}return;}
     if(b.dataset.transcribeCard!=null){const o=itemById(b.dataset.transcribeCard),video=o&&videoOfCrv(o.data||{});if(o&&video)requestInstantTranscription(o.id,video);return;}
