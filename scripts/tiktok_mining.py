@@ -28,6 +28,7 @@ Uso:
   python scripts/tiktok_mining.py           # busca e grava no Supabase
 """
 import os, sys, json, time, io, urllib.request, urllib.parse, urllib.error
+from concurrent.futures import ThreadPoolExecutor
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pkvzwtstidtobpdngxnd.supabase.co").rstrip("/")
 ANON = os.environ.get("SUPABASE_ANON_KEY",
@@ -41,6 +42,7 @@ MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "50"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "45"))
 PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "20"))
 HISTORY_CAP = 60
+RADAR_GENERATION = os.environ.get("RADAR_GENERATION", "brands-2026-10-05")
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())
 
@@ -203,10 +205,10 @@ def fetch_apify(keywords, per_kw):
         "shouldDownloadAvatars": False,
         "shouldDownloadSlideshowImages": False,
     }
-    url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items?token={APIFY_TOKEN}"
+    url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
     try:
         req = urllib.request.Request(url, data=json.dumps(inp).encode(),
-                                     headers={"Content-Type": "application/json"}, method="POST")
+                                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {APIFY_TOKEN}"}, method="POST")
         with urllib.request.urlopen(req, timeout=300) as r:
             out = json.loads(r.read().decode("utf-8", "replace"))
             return out if isinstance(out, list) else []
@@ -331,16 +333,24 @@ def bot_login():
 
 
 def load_existing(token):
-    """videoId -> {id, data} dos tiktoks já salvos."""
-    st, txt = sb("GET", "/rest/v1/offers?select=id,data&data->>kind=eq.tiktok", token=token)
-    if st != 200:
-        print(f"aviso: leitura de existentes HTTP {st} {txt[:120]}", file=sys.stderr)
-        return {}
+    """videoId -> {id, data} da geração atual, sem truncar na página 1000."""
     out = {}
-    for row in json.loads(txt):
-        d = row.get("data") or {}
-        vid = d.get("videoId")
-        if vid: out[str(vid)] = {"id": row["id"], "data": d}
+    offset = 0
+    while True:
+        path = ("/rest/v1/offers?select=id,data&data->>kind=eq.tiktok"
+                f"&data->>radarGeneration=eq.{urllib.parse.quote(RADAR_GENERATION)}"
+                f"&order=created_at.asc&limit=1000&offset={offset}")
+        st, txt = sb("GET", path, token=token)
+        if st != 200:
+            raise RuntimeError(f"leitura dos vídeos atuais falhou: HTTP {st} {txt[:120]}")
+        rows = json.loads(txt)
+        for row in rows:
+            d = row.get("data") or {}
+            vid = d.get("videoId")
+            if vid: out[str(vid)] = {"id": row["id"], "data": d}
+        if len(rows) < 1000:
+            break
+        offset += 1000
     return out
 
 
@@ -370,15 +380,25 @@ def collect(niches=None):
     niches = niches or NICHES
     seen = {}       # videoId -> record (dedup global, 1º nicho ganha)
     per_niche = {n: [] for n in niches}
+    # Seis execuções independentes do Apify cabem em três ondas; a classificação
+    # continua na ordem fixa dos nichos para a deduplicação ser reproduzível.
+    prefetched = {}
+    if PROVIDER == "apify" and len(niches) > 1:
+        with ThreadPoolExecutor(max_workers=min(3, len(niches))) as pool:
+            jobs = {n: pool.submit(fetch_niche, cfg["queries"] if isinstance(cfg, dict) else cfg, PER_KEYWORD)
+                    for n, cfg in niches.items()}
+            prefetched = {n: job.result() for n, job in jobs.items()}
     for nicho, cfg in niches.items():
         queries = cfg["queries"] if isinstance(cfg, dict) else cfg
         must = cfg.get("must", []) if isinstance(cfg, dict) else []
         got = {}
         off = 0                            # descartados por não serem do nicho
-        for prov, v in fetch_niche(queries, PER_KEYWORD):
+        source = prefetched[nicho] if nicho in prefetched else fetch_niche(queries, PER_KEYWORD)
+        for prov, v in source:
             rec = normalize(prov, v, nicho)
             if not rec or not rec["videoId"]:
                 continue
+            rec["radarGeneration"] = RADAR_GENERATION
             if too_old(rec["dataPub"]) or rec["isAd"]:
                 continue
             if not relevant(rec, must):    # filtro de relevância por nicho
@@ -415,6 +435,8 @@ def main():
     per_niche = collect(active_niches)
     total = sum(len(v) for v in per_niche.values())
     print(f"\nTotal coletado: {total} vídeos em {len(per_niche)} nichos")
+    if not total or (brand_enabled and any(not videos for videos in per_niche.values())):
+        raise RuntimeError("Radar não foi atualizado: ao menos um nicho ficou sem vídeos relevantes")
 
     # amostra
     print("\nAmostras (top por nicho):")

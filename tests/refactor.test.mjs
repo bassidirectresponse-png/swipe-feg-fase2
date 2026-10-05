@@ -492,6 +492,8 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /<div id="brandBmFields">/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
   assert.match(html, /data-edit-tags=/);
+  assert.match(html, /top:validated\?`<div class="offer-tags">\$\{offerTagsHtml\(d\)\}/);
+  assert.doesNotMatch(html, /Rascunho admin/);
   assert.match(html, /saveAdminOfferDraft\(/);
   assert.doesNotMatch(html, /offerTags:fOfferTags/);
   assert.match(html, /const OFFER_TAGS=/);
@@ -504,7 +506,7 @@ test("cards carregam antes das consultas complementares do administrador", async
   const context = {
     sb:{from:()=>({select:()=>({order:()=>({range:()=>Promise.resolve({data:[{id:"card-1",data:{kind:"brandsvalidated"}}],error:null})})})})},
     setSync:(_,value)=>{status=value;},isAdmin:true,offers:[],routeReady:false,
-    applyRoute:()=>{rendered=true;},writeCache:()=>{},
+    applyRoute:()=>{rendered=true;},writeCache:()=>{},syncRadarGeneration:()=>{},
     loadAdminEnhancements:()=>new Promise(()=>{}),
     scheduleCreativeTranslations:()=>{},resumeOfferCreativeArchives:()=>{},
     activeSection:"brandsvalidated",setTimeout:()=>1,clearTimeout:()=>{},console,

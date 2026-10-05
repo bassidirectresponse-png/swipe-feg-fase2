@@ -26,6 +26,7 @@ jobs:
       APIFY_DATE: PAST_MONTH  # ALL_TIME | PAST_WEEK | PAST_MONTH | PAST_24_HOURS
       # Seis nichos de Ofertas Brands, até 50 vídeos únicos por nicho/dia.
       ENABLE_BRAND_NICHES: "1"
+      RADAR_GENERATION: "brands-2026-10-05"
       MAX_PER_NICHE: "50"
       MAX_AGE_DAYS: "60"
       PER_KEYWORD: "20"
