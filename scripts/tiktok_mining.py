@@ -114,7 +114,7 @@ NICHES = {
 BRAND_NICHES = {
     "Saúde masculina": {"queries": ["testosterone health", "male libido", "prostate health", "mens health"], "must": ["testosterone", "libido", "prostate", "men's health", "mens health", "male health"], "topics": {"Testosterona": ["testosterone", "low t"], "Libido": ["libido", "sex drive"], "Próstata": ["prostate", "bph"]}},
     "Saúde feminina": {"queries": ["menopause health", "female hormones", "womens health"], "must": ["menopause", "perimenopause", "female hormones", "hormonal health", "women's health", "womens health"], "topics": {"Menopausa": ["menopause", "perimenopause"], "Hormônios": ["hormone", "hormonal"]}},
-    "Saúde Cardiovascular": {"queries": ["heart health", "blood pressure health", "cholesterol health"], "must": ["heart health", "cardiovascular", "blood pressure", "cholesterol"], "topics": {"Coração": ["heart", "cardiovascular"], "Pressão arterial": ["blood pressure", "hypertension"], "Colesterol": ["cholesterol"]}},
+    "Saúde Cardiovascular": {"queries": ["heart disease symptoms", "high blood pressure", "lower cholesterol", "heart health tips"], "must": ["heart health", "heart disease", "cardiovascular", "blood pressure", "hypertension", "cholesterol"], "topics": {"Coração": ["heart", "cardiovascular"], "Pressão arterial": ["blood pressure", "hypertension"], "Colesterol": ["cholesterol"]}},
     "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"], "topics": {"Libido": ["libido", "sex drive"], "Saúde sexual": ["sexual health", "sexual wellness"], "Saúde íntima": ["intimate health", "intimate wellness"]}},
     "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness", "skin care"], "topics": {"Sono": ["sleep", "insomnia"], "Pele": ["skin", "skincare"], "Beleza": ["beauty"]}},
     "Saúde Geral/Nutrição": {"queries": ["nutrition tips", "gut health", "supplements", "collagen benefits"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamin", "immune", "joint", "collagen"], "topics": {"Nutrição": ["nutrition", "vitamin", "supplement"], "Intestino": ["gut", "digestive"], "Imunidade": ["immune", "immunity"], "Articulações": ["joint", "collagen"]}},
@@ -559,7 +559,12 @@ def main():
         return
     dry = "--dry" in sys.argv
     # Não há caminho de produção para a taxonomia legada: o Radar segue Ofertas.
+    only_niche = os.environ.get("RADAR_ONLY_NICHE", "").strip()
+    if only_niche and only_niche not in BRAND_NICHES:
+        raise ValueError(f"RADAR_ONLY_NICHE inválido: {only_niche}")
     active_niches = BRAND_NICHES
+    if only_niche:
+        active_niches = {only_niche: BRAND_NICHES[only_niche]}
     print(f"TikTok mining — provider={PROVIDER}  dry={dry}\n")
     failures = {}
     per_niche = collect(active_niches, failures=failures)

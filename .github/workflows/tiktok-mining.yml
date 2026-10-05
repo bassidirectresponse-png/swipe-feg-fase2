@@ -14,6 +14,10 @@ on:
         type: choice
         options: [mine, reset]
         default: mine
+      niche:
+        description: "Opcional: minerar só um nicho de Ofertas (vazio = todos)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ jobs:
       REHOST_THUMBS: "0"       # capa do CDN; falhas de Storage não bloqueiam vídeos
       # Nichos de Ofertas Brands, inclusive Pet, até 50 vídeos únicos por nicho/dia.
       RADAR_GENERATION: "offers-topics-2026-10-05"
+      RADAR_ONLY_NICHE: ${{ inputs.niche || '' }}
       MAX_PER_NICHE: "50"
       MAX_AGE_DAYS: "60"
       PER_KEYWORD: "20"

@@ -65,3 +65,14 @@ print(json.dumps({'rehost':m.rehost_thumb('token','12345678901','https://example
   assert.equal(result.rehost,"");
   assert.equal(result.default_disabled,true);
 });
+
+test("disparo isolado minera apenas o nicho solicitado",()=>{
+  const result=python(`import importlib.util,json,os,sys
+s=importlib.util.spec_from_file_location('miner','scripts/tiktok_mining.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+os.environ['RADAR_ONLY_NICHE']='Saúde Cardiovascular';sys.argv=['miner','--dry']
+seen=[]
+def collect(niches,failures):seen.extend(niches);return {name:[{'nome':'x','views':1,'likes':0,'comentarios':0,'engajamento':0,'autor':'x'}] for name in niches}
+m.collect=collect;m.main()
+print(json.dumps({'niches':seen}))`);
+  assert.deepEqual(result.niches,["Saúde Cardiovascular"]);
+});
