@@ -12,7 +12,7 @@ test("admin agrupa Geral, Insider e Criativos por nicho e produto sem descartar 
   assert.match(html, /function renderAdminInsider\(items\)/);
   assert.match(html, /function renderAdminBrandHub\(items\)/);
   assert.match(html, /const productMenu=niche=>/);
-  assert.match(html, /if\(selected\)nicheHtml\+=productMenu\(n\)/);
+  assert.match(html, /if\(selected\)\{nicheHtml\+=productMenu\(n\)/);
   assert.match(html, /if\(sectionOf\(o\)==="brandsvalidated"\)return insiderNicheOf\(o\)/);
   assert.match(html, /niche===BRAND_NICHE_REVIEW\?NO_NICHE:niche/);
   assert.match(html, /const selectedNiche=niche===NO_NICHE\?BRAND_NICHE_REVIEW:niche/);
@@ -21,32 +21,35 @@ test("admin agrupa Geral, Insider e Criativos por nicho e produto sem descartar 
   assert.doesNotMatch(html, /list=list\.filter\(o=>INSIDER_NICHES\.some/);
 });
 
-test("Notícias e Radar recebem os nichos de Brands sem nova coleta automática", () => {
+test("Radar usa as divisões de Brands e subnichos na coleta", () => {
   assert.match(html, /function topicNicheOf\(o\)/);
-  assert.match(html, /activeSection==="noticia"\|\|activeSection==="tiktok"/);
+  assert.match(html, /const RADAR_TOPICS=/);
   const radar = execFileSync("python3", ["scripts/tiktok_mining.py", "--list-taxonomy"], { cwd: fileURLToPath(new URL("..", import.meta.url)) });
   const info = JSON.parse(radar.toString());
   assert.equal(info.provider_calls, 0);
-  for (const niche of ["Saúde masculina", "Saúde feminina", "Saúde Cardiovascular", "Saúde íntima / libido", "Sono/ Beleza", "Saúde Geral/Nutrição"]) {
+  for (const niche of ["Saúde masculina", "Saúde feminina", "Saúde Cardiovascular", "Saúde íntima / libido", "Sono/ Beleza", "Saúde Geral/Nutrição", "Pet"]) {
     assert.ok(info.brands_prepared[niche]?.queries.length);
     assert.ok(info.brands_prepared[niche]?.must.length);
+    assert.ok(Object.keys(info.brands_prepared[niche]?.topics).length);
   }
+  assert.deepEqual(Object.keys(info.brands_prepared["Saúde masculina"].topics),["Testosterona","Libido","Próstata"]);
 });
 
 test("Radar TikTok de Brands limita a coleta diária e preserva a taxonomia Insider", () => {
   const workflow = readFileSync(new URL("../.github/workflows/tiktok-mining.yml", import.meta.url), "utf8");
   const miner = readFileSync(new URL("../scripts/tiktok_mining.py", import.meta.url), "utf8");
-  assert.match(workflow, /ENABLE_BRAND_NICHES: "1"/);
   assert.match(workflow, /MAX_PER_NICHE: "50"/);
-  assert.match(workflow, /RADAR_GENERATION: "brands-2026-10-05"/);
+  assert.match(workflow, /RADAR_GENERATION: "offers-topics-2026-10-05"/);
+  assert.match(workflow, /scripts\/tiktok_mining\.py --reset/);
   assert.match(workflow, /PER_KEYWORD: "20"/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /github-automation-token/);
   assert.match(workflow, /SUPABASE_BOT_ACCESS_TOKEN=/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_BOT_PASSWORD/);
   assert.match(html, /function syncRadarGeneration\(rows\)/);
-  assert.match(html, /if\(d\.kind==="tiktok"&&activeRadarGeneration&&d\.radarGeneration!==activeRadarGeneration\)return"tiktok-archive"/);
-  assert.match(miner, /active_niches = BRAND_NICHES if brand_enabled else NICHES/);
+  assert.match(html, /if\(d\.kind==="tiktok"&&d\.radarGeneration!==RADAR_GENERATION\)return"tiktok-archive"/);
+  assert.match(html, /tiktokProfiles\(list\)/);
+  assert.match(miner, /active_niches = BRAND_NICHES/);
   assert.match(miner, /rec\["radarGeneration"\] = RADAR_GENERATION/);
   assert.match(miner, /\[:MAX_PER_NICHE\]/);
 });
@@ -64,5 +67,5 @@ test("Radar novo conserva geração e não duplica vídeos entre nichos", () => 
   assert.equal(result.A.length,2);
   assert.equal(result.B.length,2);
   assert.equal(new Set([...result.A,...result.B].map(([id])=>id)).size,4);
-  assert.ok([...result.A,...result.B].every(([,generation])=>generation==="brands-2026-10-05"));
+  assert.ok([...result.A,...result.B].every(([,generation])=>generation==="offers-topics-2026-10-05"));
 });

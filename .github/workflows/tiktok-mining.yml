@@ -7,7 +7,13 @@ name: Radar TikTok (mineração diária)
 on:
   schedule:
     - cron: "0 8 * * *"     # 05h BRT (08:00 UTC)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Minerar novos vídeos ou limpar somente o Radar TikTok"
+        type: choice
+        options: [mine, reset]
+        default: mine
 
 permissions:
   contents: read
@@ -25,9 +31,8 @@ jobs:
       PROVIDER: apify         # tikwm | ensembledata | apify
       APIFY_SORT: MOST_LIKED  # prioriza referências com maior prova social
       APIFY_DATE: PAST_MONTH  # ALL_TIME | PAST_WEEK | PAST_MONTH | PAST_24_HOURS
-      # Seis nichos de Ofertas Brands, até 50 vídeos únicos por nicho/dia.
-      ENABLE_BRAND_NICHES: "1"
-      RADAR_GENERATION: "brands-2026-10-05"
+      # Nichos de Ofertas Brands, inclusive Pet, até 50 vídeos únicos por nicho/dia.
+      RADAR_GENERATION: "offers-topics-2026-10-05"
       MAX_PER_NICHE: "50"
       MAX_AGE_DAYS: "60"
       PER_KEYWORD: "20"
@@ -54,7 +59,12 @@ jobs:
           echo "::add-mask::$ACCESS_TOKEN"
           echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
 
+      - name: Limpar vídeos do Radar TikTok
+        if: inputs.mode == 'reset'
+        run: python -u scripts/tiktok_mining.py --reset
+
       - name: Minerar TikTok
+        if: inputs.mode != 'reset'
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: python -u scripts/tiktok_mining.py

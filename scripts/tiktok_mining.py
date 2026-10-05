@@ -43,7 +43,7 @@ MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "50"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "45"))
 PER_KEYWORD = int(os.environ.get("PER_KEYWORD", "20"))
 HISTORY_CAP = 60
-RADAR_GENERATION = os.environ.get("RADAR_GENERATION", "brands-2026-10-05")
+RADAR_GENERATION = os.environ.get("RADAR_GENERATION", "offers-topics-2026-10-05")
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())
 
@@ -109,16 +109,32 @@ NICHES = {
     },
 }
 
-# Taxonomia FEG Brands preparada para ativação controlada. Mantê-la fora da
-# coleta agendada evita ampliar consultas/custos do provedor sem crédito aprovado.
+# As divisões são as mesmas de Ofertas Brands, incluindo Pet. Uma execução por divisão
+# consulta seus assuntos específicos; cada vídeo recebe também um subnicho.
 BRAND_NICHES = {
-    "Saúde masculina": {"queries": ["mens health", "testosterone health", "prostate health"], "must": ["mens health", "men's health", "testosterone", "prostate", "male health"]},
-    "Saúde feminina": {"queries": ["womens health", "menopause health", "female hormones"], "must": ["womens health", "women's health", "menopause", "female health", "hormonal health"]},
-    "Saúde Cardiovascular": {"queries": ["heart health", "blood pressure health", "cardiovascular health"], "must": ["heart health", "cardiovascular", "blood pressure", "cholesterol"]},
-    "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"]},
-    "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness"]},
-    "Saúde Geral/Nutrição": {"queries": ["nutrition health", "dietary supplements", "gut health"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamins"]},
+    "Saúde masculina": {"queries": ["testosterone health", "male libido", "prostate health", "mens health"], "must": ["testosterone", "libido", "prostate", "men's health", "mens health", "male health"], "topics": {"Testosterona": ["testosterone", "low t"], "Libido": ["libido", "sex drive"], "Próstata": ["prostate", "bph"]}},
+    "Saúde feminina": {"queries": ["menopause health", "female hormones", "womens health"], "must": ["menopause", "perimenopause", "female hormones", "hormonal health", "women's health", "womens health"], "topics": {"Menopausa": ["menopause", "perimenopause"], "Hormônios": ["hormone", "hormonal"]}},
+    "Saúde Cardiovascular": {"queries": ["heart health", "blood pressure health", "cholesterol health"], "must": ["heart health", "cardiovascular", "blood pressure", "cholesterol"], "topics": {"Coração": ["heart", "cardiovascular"], "Pressão arterial": ["blood pressure", "hypertension"], "Colesterol": ["cholesterol"]}},
+    "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"], "topics": {"Libido": ["libido", "sex drive"], "Saúde sexual": ["sexual health", "sexual wellness"], "Saúde íntima": ["intimate health", "intimate wellness"]}},
+    "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness", "skin care"], "topics": {"Sono": ["sleep", "insomnia"], "Pele": ["skin", "skincare"], "Beleza": ["beauty"]}},
+    "Saúde Geral/Nutrição": {"queries": ["nutrition health", "gut health", "immune health", "joint health"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamins", "immune", "joint"], "topics": {"Nutrição": ["nutrition", "vitamin", "supplement"], "Intestino": ["gut", "digestive"], "Imunidade": ["immune", "immunity"], "Articulações": ["joint", "collagen"]}},
+    "Pet": {"queries": ["dog joint health", "dog skin health", "pet nutrition", "dog collagen"], "must": ["dog", "dogs", "pet", "pets", "cat", "cats"], "topics": {"Articulações": ["joint", "mobility", "arthritis"], "Pele e pelagem": ["skin", "coat", "itch"], "Nutrição": ["nutrition", "food", "diet"], "Colágeno": ["collagen"]}},
 }
+
+
+def topic_of(rec, cfg):
+    hay = ((rec.get("caption") or "") + " " + " ".join(rec.get("hashtags") or [])).lower()
+    for topic, terms in cfg.get("topics", {}).items():
+        if any(term in hay for term in terms):
+            return topic
+    return "Geral"
+
+
+def brand_signal(author):
+    """Sinal conservador de perfil comercial; não equivale a marca verificada."""
+    bio = str(author.get("signature") or author.get("bio") or "").lower()
+    return bool(author.get("isBusinessAccount") or any(term in bio for term in
+        ("official store", "shop our", "our products", "supplement brand", "shop now")))
 
 
 # =============================== HTTP ======================================
@@ -167,6 +183,7 @@ def norm_tikwm(v, nicho):
         "nome": caption[:90] or f"@{au.get('unique_id','')}",
         "caption": caption,
         "autor": au.get("unique_id") or "", "autorNome": au.get("nickname") or "",
+        "perfilMarca": brand_signal(au),
         "url": f"https://www.tiktok.com/@{au.get('unique_id','')}/video/{vid}",
         "thumb": v.get("cover") or v.get("origin_cover") or "",   # rehospedado depois
         "thumbOrig": v.get("cover") or v.get("origin_cover") or "",
@@ -251,6 +268,7 @@ def norm_apify(v, nicho):
         "nome": caption[:90] or f"@{name}",
         "caption": caption,
         "autor": name, "autorNome": au.get("nickName") or "",
+        "perfilMarca": brand_signal(au),
         "seguidores": int(au.get("fans") or 0),
         "url": v.get("webVideoUrl") or f"https://www.tiktok.com/@{name}/video/{vid}",
         "thumb": cover, "thumbOrig": cover,
@@ -360,6 +378,28 @@ def insert_new_via_github(rows):
     return result["inserted"]
 
 
+def reset_radar_via_github():
+    """Limpa somente offers.data.kind=tiktok, via identidade deste workflow."""
+    request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+    request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+    if not request_url or not request_token:
+        raise RuntimeError("identidade OIDC do GitHub ausente; Radar não foi limpo")
+    separator = "&" if "?" in request_url else "?"
+    oidc = http_json(request_url + separator + "audience=swipe-feg-netlify-automation",
+                     headers={"Authorization": f"bearer {request_token}"}).get("value")
+    if not oidc:
+        raise RuntimeError("identidade OIDC do GitHub não foi emitida")
+    req = urllib.request.Request(
+        "https://benchmarkinggrupofeg.site/.netlify/functions/github-tiktok-ingest",
+        data=json.dumps({"action": "reset", "confirm": "DELETE_ALL_TIKTOK"}).encode("utf-8"),
+        method="POST", headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=35) as response:
+        result = json.loads(response.read().decode("utf-8", "replace"))
+    if not result.get("ok") or not result.get("reset") or result.get("scope") != "kind=tiktok":
+        raise RuntimeError("limpeza do Radar não foi confirmada")
+    print("Radar TikTok limpo: somente registros kind=tiktok removidos")
+
+
 def load_existing(token):
     """videoId -> {id, data} da geração atual, sem truncar na página 1000."""
     out = {}
@@ -405,10 +445,10 @@ def hosted_url(video_id):
 
 # =============================== Coleta ====================================
 def collect(niches=None):
-    niches = niches or NICHES
+    niches = niches or BRAND_NICHES
     seen = {}       # videoId -> record (dedup global, 1º nicho ganha)
     per_niche = {n: [] for n in niches}
-    # Seis execuções independentes do Apify cabem em três ondas; a classificação
+    # Uma execução por divisão do Apify cabe em ondas; a classificação
     # continua na ordem fixa dos nichos para a deduplicação ser reproduzível.
     prefetched = {}
     if PROVIDER == "apify" and len(niches) > 1:
@@ -432,6 +472,7 @@ def collect(niches=None):
             if not relevant(rec, must):    # filtro de relevância por nicho
                 off += 1
                 continue
+            rec["subnicho"] = topic_of(rec, cfg) if isinstance(cfg, dict) else "Geral"
             vid = rec["videoId"]
             if vid in seen:                # já num nicho -> não duplica
                 continue
@@ -454,16 +495,17 @@ def main():
     if "--list-taxonomy" in sys.argv:
         print(json.dumps({"legacy": list(NICHES), "brands_prepared": BRAND_NICHES, "provider_calls": 0}, ensure_ascii=False, indent=2))
         return
+    if "--reset" in sys.argv:
+        reset_radar_via_github()
+        return
     dry = "--dry" in sys.argv
-    brand_enabled = os.environ.get("ENABLE_BRAND_NICHES", "").lower() in ("1", "true", "yes")
-    # Brands substitui a taxonomia legada: não mistura o Radar nem gasta créditos
-    # em consultas que não correspondem às Ofertas Brands.
-    active_niches = BRAND_NICHES if brand_enabled else NICHES
+    # Não há caminho de produção para a taxonomia legada: o Radar segue Ofertas.
+    active_niches = BRAND_NICHES
     print(f"TikTok mining — provider={PROVIDER}  dry={dry}\n")
     per_niche = collect(active_niches)
     total = sum(len(v) for v in per_niche.values())
     print(f"\nTotal coletado: {total} vídeos em {len(per_niche)} nichos")
-    if not total or (brand_enabled and any(not videos for videos in per_niche.values())):
+    if not total or any(not videos for videos in per_niche.values()):
         raise RuntimeError("Radar não foi atualizado: ao menos um nicho ficou sem vídeos relevantes")
 
     # amostra

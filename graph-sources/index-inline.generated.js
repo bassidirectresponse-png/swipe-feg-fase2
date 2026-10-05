@@ -8,6 +8,8 @@ const LEGACY_SUPABASE_REFS=["ppaajtzbhjixhyfidojd"];
 const HIGH_VOLUME=1000;
 const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
 const BRAND_NICHE_ORDER=["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"];
+const RADAR_TOPICS={"Saúde masculina":["Testosterona","Libido","Próstata","Geral"],"Saúde feminina":["Menopausa","Hormônios","Geral"],"Saúde Cardiovascular":["Coração","Pressão arterial","Colesterol","Geral"],"Saúde íntima / libido":["Libido","Saúde sexual","Saúde íntima","Geral"],"Sono/ Beleza":["Sono","Pele","Beleza","Geral"],"Saúde Geral/Nutrição":["Nutrição","Intestino","Imunidade","Articulações","Geral"],"Pet":["Articulações","Pele e pelagem","Nutrição","Colágeno","Geral"]};
+const RADAR_NICHES=[...BRAND_NICHE_ORDER,"Pet"];
 const BRAND_NICHE_REVIEW="Pendente de revisão";
 const SECTIONS=[
   {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
@@ -28,10 +30,9 @@ const SECTIONS=[
 function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
 function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
-const RADAR_GENERATION="brands-2026-10-05";
-let activeRadarGeneration="";
-function syncRadarGeneration(rows){activeRadarGeneration=rows.some(row=>row?.data?.kind==="tiktok"&&row.data.radarGeneration===RADAR_GENERATION)?RADAR_GENERATION:"";}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&activeRadarGeneration&&d.radarGeneration!==activeRadarGeneration)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+const RADAR_GENERATION="offers-topics-2026-10-05";
+function syncRadarGeneration(rows){return rows.some(row=>row?.data?.kind==="tiktok"&&row.data.radarGeneration===RADAR_GENERATION);}
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=true;
@@ -72,7 +73,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let editingTagOfferId=null,tagDraft=[];
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", tiktokSubniche="", tiktokAuthor="", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
 let updates=[],updatesTotal=0;
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysSalesMin="",fegsysSalesMax="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
@@ -496,7 +497,8 @@ function filtered(){
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
-  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
+  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
+  if(activeSection==="tiktok"){if(tiktokSubniche)list=list.filter(o=>sameNiche((o.data||{}).subnicho||"Geral",tiktokSubniche));if(tiktokAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===tiktokAuthor);}
   if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
   if(activeSection==="brandsvalidated"&&offerTagFilter&&(isAdmin||BRAND_TAGS_PUBLISHED))list=list.filter(o=>offerTagsOf(isAdmin?brandHubAdminData(o):o.data).includes(offerTagFilter));
@@ -567,9 +569,10 @@ function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
   if(slug==="sem-nicho")return NO_NICHE;
   const source=section==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===section);
-  const present=new Set(source.map(o=>section==="brandcreative"?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(section==="noticia"||section==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
+  const present=new Set(source.map(o=>section==="brandcreative"?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):section==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
   if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
-  if((section==="noticia"||section==="tiktok")&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
+  if(section==="tiktok"){const configured=RADAR_NICHES.find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
+  if(section==="noticia"&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   const hit=[...present].find(n=>nicheRouteKey(n)===slug);
   if(hit)return canonicalNiche(hit);
   if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy){const mapped=section==="brandcreative"?brandHubNicheOf(legacy):section==="brandsvalidated"?insiderNicheOf(legacy):brandNicheCanonical(nicheOf(legacy));return mapped===BRAND_NICHE_REVIEW?NO_NICHE:mapped;}}
@@ -581,7 +584,7 @@ function qsFromState(){
   const p=new URLSearchParams();
   if(searchTerm)p.set("q",searchTerm);
   if((BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")&&activeBrand)p.set("marca",activeBrand);
-  if(activeSection==="tiktok"&&tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);
+  if(activeSection==="tiktok"){if(tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);if(tiktokSubniche)p.set("tema",tiktokSubniche);if(tiktokAuthor)p.set("perfil",tiktokAuthor);}
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   if(activeSection==="megabrainfegsys"){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);if(fegsysSalesMin!=="")p.set("vendas_min",fegsysSalesMin);if(fegsysSalesMax!=="")p.set("vendas_max",fegsysSalesMax);}
@@ -664,7 +667,7 @@ function applyRoute(){
     offerDirection=r.q.get("direction")==="asc"?"asc":"desc";
     offerTagFilter=activeSection==="brandsvalidated"&&OFFER_TAGS[r.q.get("tag")]?r.q.get("tag"):"";
   }
-  if(activeSection==="tiktok")tiktokSort=r.q.get("ordem")||"views";
+  if(activeSection==="tiktok"){tiktokSort=r.q.get("ordem")||"views";tiktokSubniche=(RADAR_TOPICS[activeNiche]||[]).find(topic=>sameNiche(topic,r.q.get("tema")))||"";tiktokAuthor=r.q.get("perfil")||"";}else{tiktokSubniche="";tiktokAuthor="";}
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
     brainSort=r.q.get("ordem")||"metrica";brainAuthor=activeSection==="megabrain"?(r.q.get("autor")||""):"";
     if(activeSection==="megabrainfegsys"){brainPeriod=["today","yesterday","7d","14d","30d","90d","custom"].includes(r.q.get("periodo"))?r.q.get("periodo"):"7d";brainDateFrom=r.q.get("de")||"";brainDateTo=r.q.get("ate")||"";fegsysSalesMin=r.q.get("vendas_min")||"";fegsysSalesMax=r.q.get("vendas_max")||"";}
@@ -715,13 +718,14 @@ function renderSideNav(){
   if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
     const secOffers=activeSection==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
-    secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(activeSection==="noticia"||activeSection==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
+    secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
-    if(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin)){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
+    if(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||activeSection==="noticia"&&isAdmin){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
+    if(activeSection==="tiktok")RADAR_NICHES.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});
     if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
-    const ordered=(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin))
+    const ordered=activeSection==="tiktok"?RADAR_NICHES:(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||activeSection==="noticia"&&isAdmin)
       ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
@@ -737,7 +741,7 @@ function renderSideNav(){
     };
     nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
-    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected)nicheHtml+=productMenu(n);});
+    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected){nicheHtml+=productMenu(n);if(activeSection==="tiktok")nicheHtml+='<div class="snav__brands">'+(RADAR_TOPICS[n]||[]).map(topic=>{const count=secOffers.filter(o=>sameNiche(nicheOf(o),n)&&sameNiche((o.data||{}).subnicho||"Geral",topic)).length;return '<a class="snav__brand'+(sameNiche(tiktokSubniche,topic)?' active':'')+'" data-nav href="'+esc(listPath("tiktok",n)+'?tema='+encodeURIComponent(topic))+'"><span>'+esc(topic)+'</span><span class="cnt">'+count+'</span></a>';}).join('')+'</div>';}});
     if(none){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
@@ -1250,12 +1254,12 @@ function renderGrid(skipNav){
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
   const pageResult=$("#pageResult");if(pageResult)pageResult.textContent=`${list.length.toLocaleString("pt-BR")} ${list.length===1?"resultado":"resultados"}`;
-  const filtering=!!(activeNiche||activeBrand||searchTerm||((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor)||(activeSection==="megabrainfegsys"&&(fegsysSalesMin!==""||fegsysSalesMax!=="")));
+  const filtering=!!(activeNiche||activeBrand||searchTerm||(activeSection==="tiktok"&&(tiktokSubniche||tiktokAuthor))||((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor)||(activeSection==="megabrainfegsys"&&(fegsysSalesMin!==""||fegsysSalesMax!=="")));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
   if(secCount===0){
-    const help=activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
+    const help=activeSection==="tiktok"?"O Radar foi reiniciado. Novos vídeos orgânicos aparecerão após a próxima mineração por nicho.":activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
     area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>${help}</p></div>`;return;
   }
   if(list.length===0){
@@ -1264,6 +1268,7 @@ function renderGrid(skipNav){
     return;
   }
   if(activeSection==="tiktok"){
+    const profiles=tiktokProfiles(list);
     const sorted=[...list].sort(ttSortFn);
     const TIERS=[["viral","★ VIRAL — 1M+ views"],["high","🔥 HIGH — 100k–1M views"],["mid","📊 MID — 10k–100k views"],["low","🌱 LOW — <10k views"]];
     const tierMap=new Map(TIERS.map(([key])=>[key,[]]));sorted.forEach(o=>{const key=(o.data||{}).faixa||faixaOf((o.data||{}).views);if(tierMap.has(key))tierMap.get(key).push(o);});
@@ -1274,7 +1279,7 @@ function renderGrid(skipNav){
       if(!arr.length)return;
       gh+=`<div class="ttgroup ttgroup--${key}"><div class="ttgroup__head"><span class="ttgroup__lbl">${esc(lbl)}</span><span class="ttgroup__cnt">${totals.get(key)}</span></div><div class="grid grid--tt">${arr.map(cardFor).join("")}</div></div>`;
     });
-    area.innerHTML=gh?gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
+    area.innerHTML=gh?profiles+gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
   }else if(activeSection==="brandcreative"){
     area.innerHTML=renderAdminBrandHub(list);
   }else if(isInsiderAdminArea()){
@@ -2443,7 +2448,10 @@ function renderSubFilter(){
   if(activeSection==="tiktok"){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
-    el.innerHTML=`<div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div>`;
+    const scoped=offers.filter(o=>sectionOf(o)==="tiktok"&&(!activeNiche||sameNiche(nicheOf(o),activeNiche))&&(!tiktokSubniche||sameNiche((o.data||{}).subnicho||"Geral",tiktokSubniche)));
+    const authors=[...new Set(scoped.map(o=>String((o.data||{}).autor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    el.innerHTML=`<div class="subfilter__row"><label class="brainfilter"><span>Perfil orgânico</span><select id="tiktokAuthorFilter" aria-label="Filtrar perfil orgânico"><option value="">Todos os perfis</option>${authors.map(author=>`<option value="${esc(author)}"${tiktokAuthor===author?" selected":""}>@${esc(author)}</option>`).join("")}</select></label><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div></div>`;
+    $("#tiktokAuthorFilter",el).addEventListener("change",e=>{tiktokAuthor=e.target.value;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);});
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);}));
     return;
   }
@@ -3923,6 +3931,13 @@ function megabrainCard(o){
 }
 
 /* ===== RADAR TIKTOK ===== */
+function tiktokProfiles(items){
+  const byAuthor=new Map();
+  items.forEach(o=>{const d=o.data||{},author=String(d.autor||"").trim();if(!author)return;const item=byAuthor.get(author)||{name:d.autorNome||author,posts:0,views:0,likes:0,brand:false};item.posts++;item.views+=Number(d.views)||0;item.likes+=Number(d.likes)||0;item.brand=item.brand||!!d.perfilMarca;byAuthor.set(author,item);});
+  const ranked=[...byAuthor.entries()].sort((a,b)=>Number(b[1].brand)-Number(a[1].brand)||b[1].views-a[1].views).slice(0,8);
+  if(!ranked.length)return"";
+  return `<section class="ttgroup" aria-label="Perfis orgânicos em destaque"><div class="ttgroup__head"><span class="ttgroup__lbl">Perfis orgânicos em destaque</span><span class="ttgroup__cnt">${byAuthor.size}</span></div><p style="color:var(--muted-fg);font-size:.82rem;margin:8px 0 12px">Análise por perfil: vídeos, visualizações e curtidas. “Sinal de marca” indica perfil comercial provável, não verificação da marca.</p><div class="grid">${ranked.map(([author,p])=>`<a class="kcard" href="https://www.tiktok.com/@${encodeURIComponent(author)}" target="_blank" rel="noopener noreferrer" style="padding:16px;text-decoration:none"><strong>${esc(p.name)}</strong><div>@${esc(author)}${p.brand?' · Sinal de marca':''}</div><div>${p.posts} ${p.posts===1?'vídeo':'vídeos'} · ${kfmt(p.views)} views · ${kfmt(p.likes)} curtidas</div></a>`).join("")}</div></section>`;
+}
 function faixaOf(v){v=Number(v)||0;return v>=1e6?"viral":v>=1e5?"high":v>=1e4?"mid":"low";}
 function ttDate(unix){const t=Number(unix)||0;if(!t)return"";return relDate(new Date(t*1000).toISOString());}
 function ttDur(s){s=Number(s)||0;if(!s)return"";const m=Math.floor(s/60);return m+":"+String(s%60).padStart(2,"0");}
@@ -3947,7 +3962,7 @@ function tiktokCard(o){
     extra:`<div class="ttstats">${ttStat("eye",d.views)}${ttStat("heart",d.likes)}${ttStat("message",d.comentarios)}${ttStat("share",d.shares)}</div>`
       +`<div class="ttcaption">${esc(d.caption||d.nome||"")}</div>`
       +`<div class="ttfoot"><span class="ttauthor">@${esc(d.autor||"")}</span><span class="ttdate">${ttDate(d.dataPub)}</span></div>`
-      +nicheChip(d),
+      +nicheChip(d)+(d.subnicho?`<span class="chip niche">${esc(d.subnicho)}</span>`:""),
     actions:qbtn("Abrir no TikTok",d.url,"external")
   });
 }
