@@ -914,11 +914,33 @@ function brandReportsStaticHtml(d){
     return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(report.label||"Período")}</div><div class="bm-report__range">${esc(report.range||"")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary">${summary}</div>${table}</article>`;
   }).join("")}</div>`;
 }
+function bmPrintPeriod(print){
+  const name=String(print&&print.nome||""),key=String(print&&print.periodKey||"").toLowerCase();
+  if(/\b7\s*dias\b|\b7d\b/.test(`${name.toLowerCase()} ${key}`))return["7d","Últimos 7 dias"];
+  if(/\b14\s*dias\b|\b14d\b/.test(`${name.toLowerCase()} ${key}`))return["14d","Últimos 14 dias"];
+  if(/\b30\s*dias\b|\b30d\b/.test(`${name.toLowerCase()} ${key}`))return["30d","Últimos 30 dias"];
+  if(/\bontem\b|\b1d\b/.test(`${name.toLowerCase()} ${key}`))return["1d","Ontem"];
+  const date=name.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
+  if(date)return[`date-${date[0]}`,`Leitura de ${date[0]}`];
+  if(/configura[çc][ãa]o/i.test(name))return["settings","Configuração da BM"];
+  return["other","Período não identificado"];
+}
+function bmEvidenceHtml(d,id){
+  const prints=(Array.isArray(d&&d.bmPrints)?d.bmPrints:[]).filter(print=>print&&print.img);
+  if(!prints.length)return`<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3></div><p class="bm-evidence__note">Nenhum print salvo para este produto.</p></div>`;
+  const groups=new Map();for(const print of prints){const [key,label]=bmPrintPeriod(print);if(!groups.has(key))groups.set(key,{label,prints:[]});groups.get(key).prints.push(print);}
+  const order={"1d":0,"7d":1,"14d":2,"30d":3,"settings":8,"other":9};
+  const html=[...groups.entries()].sort(([a],[b])=>(order[a]??5)-(order[b]??5)).map(([key,group])=>{
+    const shots=group.prints.map((print,index)=>`<a class="bm-evidence__shot" href="${esc(print.img)}" data-lightbox="${esc(print.img)}" data-lightbox-group="bm-${esc(id)}" aria-label="Ampliar ${esc(print.nome||`Print ${index+1}`)}"><img loading="lazy" decoding="async" src="${esc(print.img)}" alt="${esc(print.nome||`Print da BM ${index+1}`)}"><span>${esc(print.nome||`Print ${index+1}`)}</span></a>`).join("");
+    return `<div class="bm-evidence__group"><div class="bm-evidence__group-head">${esc(group.label)} <small>· ${group.prints.length} ${group.prints.length===1?"print":"prints"}</small></div><div class="bm-evidence__carousel"><button class="bm-evidence__arrow" type="button" data-bm-evidence-step="-1" aria-label="Print anterior de ${esc(group.label)}">‹</button><div class="bm-evidence__rail" aria-label="Prints: ${esc(group.label)}">${shots}</div><button class="bm-evidence__arrow" type="button" data-bm-evidence-step="1" aria-label="Próximo print de ${esc(group.label)}">›</button></div></div>`;
+  }).join("");
+  return `<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3><span>${prints.length} ${prints.length===1?"evidência":"evidências"}</span></div><p class="bm-evidence__note">Organizados pelo período indicado no arquivo. Toque em um print para ampliar e navegar com as setas.</p>${html}</div>`;
+}
 function brandDraftCardSnapshot(d){
   const latest=bmReportGroups(d)[0];if(!latest)return"";
   const report=latest.reports.find(item=>bmReportWindowKey(item)==="7d")||latest.reports[0],totals=report.totals||{};
   const resultLabel=/compras|vendas/i.test(String(totals.results||""))?"Vendas":"Resultados";
-  return `<div class="brand-bm-state is-ready">${ic("trending")}Leitura de ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">ROAS</span><strong class="brand-metric__value">${esc(bmHasValue(totals.roas)?totals.roas:"Não informado")}</strong></div></div>`;
+  return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">ROAS</span><strong class="brand-metric__value">${esc(bmHasValue(totals.roas)?totals.roas:"Não informado")}</strong></div></div>`;
 }
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
@@ -1264,7 +1286,7 @@ function openView(id,useAdminDraft=true){
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     const bmCore=interactiveInsider
-      ?`${reportsHtml}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
+      ?`${reportsHtml}${isAdmin?bmEvidenceHtml(d,id):""}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
       :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${bmCore}
@@ -1342,6 +1364,11 @@ function openView(id,useAdminDraft=true){
       buttons[next].focus();buttons[next].click();
     });
   }
+  const bmEvidence=$("#viewBody .bm-evidence");if(bmEvidence)bmEvidence.addEventListener("click",event=>{
+    const arrow=event.target.closest("[data-bm-evidence-step]");if(!arrow)return;
+    const rail=arrow.parentElement.querySelector(".bm-evidence__rail"),shot=rail&&rail.querySelector(".bm-evidence__shot");if(!rail||!shot)return;
+    rail.scrollBy({left:Number(arrow.dataset.bmEvidenceStep)*(shot.getBoundingClientRect().width+10),behavior:"smooth"});
+  });
   wireLightboxLinks($("#viewBody"));
   wireCardPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
@@ -2025,7 +2052,7 @@ function lbReset(){lbScale=1;lbX=0;lbY=0;lbPaint();}
 function lbShow(index){if(!lbItems.length)return;lbIndex=(index+lbItems.length)%lbItems.length;const it=lbItems[lbIndex],src=it.src;$("#lightboxImg").src=src;$("#lightboxImg").alt=it.alt||"Print ampliado";$("#lightboxOpen").href=src;$("#lightboxCount").textContent=lbItems.length>1?`${lbIndex+1} / ${lbItems.length}`:"";$("#lightboxPrev").hidden=lbItems.length<2;$("#lightboxNext").hidden=lbItems.length<2;lbReset();}
 function openLightbox(srcOrItems,index=0,trigger=null){lbItems=Array.isArray(srcOrItems)?srcOrItems:[{src:String(srcOrItems||""),alt:""}];lbTrigger=trigger||document.activeElement;lbShow(index);const box=$("#lightbox");box.classList.add("open");box.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";$("#lightboxClose").focus();}
 function closeLightbox(){const box=$("#lightbox");if(!box.classList.contains("open"))return;box.classList.remove("open");box.setAttribute("aria-hidden","true");$("#lightboxImg").src="";document.body.style.overflow="";if(lbTrigger&&lbTrigger.focus)lbTrigger.focus();}
-function wireLightboxLinks(root){const links=$$("a[data-lightbox]",root);const items=links.map(a=>({src:a.getAttribute("href")||a.dataset.lightbox,alt:($("img",a)||{}).alt||""}));links.forEach((a,i)=>a.addEventListener("click",e=>{e.stopPropagation();if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();openLightbox(items,i,a);}));}
+function wireLightboxLinks(root){const links=$$("a[data-lightbox]",root);links.forEach(a=>a.addEventListener("click",e=>{e.stopPropagation();if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();const group=a.dataset.lightboxGroup||"",siblings=links.filter(link=>(link.dataset.lightboxGroup||"")===group),items=siblings.map(link=>({src:link.getAttribute("href")||link.dataset.lightbox,alt:($("img",link)||{}).alt||""}));openLightbox(items,siblings.indexOf(a),a);}));}
 $("#lightboxClose").addEventListener("click",closeLightbox);
 $("#lightboxPrev").addEventListener("click",()=>lbShow(lbIndex-1));
 $("#lightboxNext").addEventListener("click",()=>lbShow(lbIndex+1));
