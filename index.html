@@ -2657,7 +2657,9 @@ function bmImportPeriod(file){
 }
 async function importBmEvidence(offerId,button){
   const offer=itemById(offerId);if(!isAdmin||!offer||!sb)return;
-  const input=document.createElement("input");input.type="file";input.accept="image/jpeg,image/png,image/webp";input.multiple=true;input.webkitdirectory=true;
+  // A pasta inclui bm-data.json; restringir o seletor a imagens impede a escolha
+  // do diretório no Brave/macOS e omite o manifesto em alguns navegadores.
+  const input=document.createElement("input");input.type="file";input.multiple=true;input.webkitdirectory=true;
   input.addEventListener("change",async()=>{
     const files=[...input.files].filter(file=>/\.(jpe?g|png|webp)$/i.test(file.name)),manifestFile=[...input.files].find(file=>file.name==="bm-data.json");if(!files.length)return;
     const expected=String(offer.data?.nomeMarca||offer.data?.nomeOferta||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
