@@ -210,6 +210,7 @@ function normalize(raw){
   if(typeof d.printSemrushThumb!=="string")d.printSemrushThumb=d.printSemrush||"";
   if(!Array.isArray(d.bmPrints))d.bmPrints=d.bmPrint?[{nome:"Business Manager",img:d.bmPrint}]:[];
   if(!Array.isArray(d.brandTopAds))d.brandTopAds=[];
+  if(!Array.isArray(d.brandArchivedAds))d.brandArchivedAds=[];
   if(!Array.isArray(d.bmReports))d.bmReports=[];
   [["7d","bmSpend7d"],["14d","bmSpend14d"],["30d","bmSpend30d"]].forEach(([period,key])=>{if(!String(d[key]||"").trim()){const report=d.bmReports.find(item=>String((item&&item.key)||"").toLowerCase()===period);if(report&&report.totals&&report.totals.spend)d[key]=report.totals.spend;}});
   if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
@@ -1106,9 +1107,9 @@ function brandDraftCardSnapshot(d){
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
   if(clean){d.nicho=insiderNicheOf(o);d.nomeOferta=insiderProductName(o);}
-  const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
+  const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link)),archivedAds=d.brandArchivedAds.filter(x=>x&&Array.isArray(x.media)&&x.media.some(media=>media.url));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!clean&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!clean&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!clean&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!clean&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!clean&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!clean&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:"",validated&&archivedAds.length?`<span class="chip accent">${archivedAds.length} anúncio${archivedAds.length===1?"":"s"} arquivado${archivedAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
@@ -1447,17 +1448,19 @@ function openView(id,useAdminDraft=true){
   }
   let bmSection="";
   if(section==="brandsvalidated"){
-    const interactiveInsider=true, bmPrints=interactiveInsider?[]:d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link));
+    const interactiveInsider=true, bmPrints=interactiveInsider?[]:d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link)),archivedAds=d.brandArchivedAds.filter(x=>x&&Array.isArray(x.media)&&x.media.some(media=>media.url));
     const reportsHtml=interactiveInsider?brandReportsHtml(d,id):brandReportsStaticHtml(d);
     const topAdName=(ad,index)=>interactiveInsider?topAdDisplayName(ad,index):(ad.nome||`Top ad ${index+1}`);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const archivedHtml=archivedAds.length?`<div class="taboola-grid">${archivedAds.map((ad,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(ad.title||`Anúncio ${ad.adArchiveId}`)}</span></div><div class="brand-ad-meta"><span class="chip accent">${ad.media.length} arquivo${ad.media.length===1?"":"s"} salvo${ad.media.length===1?"":"s"}</span><span class="chip">Meta ID ${esc(ad.adArchiveId)}</span></div>${ad.media.map((media,index)=>`<div style="margin-top:12px">${media.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(media.url)}"></video></div>`:shotView(`Arquivo ${index+1}`,media.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn(`Baixar ${media.quality==="hd"||media.quality==="original"?"original":"cópia disponível"}`,media.url,false,"file")}</div></div>`).join("")}<div class="linkbtns" style="margin-top:12px">${linkbtn("Ver anúncio na Meta",ad.link,true,"play")}</div></div>`).join("")}</div>`:"";
     const bmCore=interactiveInsider
       ?`${reportsHtml}${bmEvidenceHtml(d,id)}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
       :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${bmCore}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Top ads</span><span class="sec__line"></span></div>${topAdsHtml}
+      ${archivedAds.length?`<div class="sec__head" style="margin-top:26px"><span class="sec__title">Anúncios arquivados · ${archivedAds.length}</span><span class="sec__line"></span></div><p class="muted-empty">Arquivos salvos no Swipe; continuam disponíveis mesmo se o anúncio sair do ar.</p>${archivedHtml}`:""}
     </section>`;
   }
 
