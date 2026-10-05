@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { isDeepStrictEqual } from "node:util";
 import { SUPABASE_URL } from "./_security.mjs";
 import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 import { mergeSupabaseOfferData, supabaseAdminAuth } from "./_supabase-admin.mjs";
@@ -87,8 +88,11 @@ export default async request => {
       if (!response.ok) throw new Error(`inserção da oferta falhou (HTTP ${response.status})`);
     }
     const written = await offerById(id, headers);
-    if (!written || Object.entries(delta).some(([field, value]) => JSON.stringify(written.data?.[field]) !== JSON.stringify(value))) {
-      throw new Error("conferência pós-publicação falhou");
+    const mismatches = !written ? ["registro ausente"] : Object.entries(delta)
+      .filter(([field, value]) => !isDeepStrictEqual(written.data?.[field], value))
+      .map(([field]) => field);
+    if (mismatches.length) {
+      throw new Error(`conferência pós-publicação falhou: ${mismatches.join(", ")}`);
     }
     const updated = { ...draft, published_at: new Date().toISOString(), published_update_at: draft.updated_at,
       published_run_id: String(claims.run_id || "") };

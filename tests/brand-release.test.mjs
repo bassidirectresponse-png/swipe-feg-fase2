@@ -38,3 +38,8 @@ test("nova oferta publicada recebe Nova e Insider; rascunho publicado não reapl
   assert.equal(draftIsPublished({ updated_at: "a", published_at: "b", published_update_at: "a" }), true);
   assert.equal(draftIsPublished({ updated_at: "c", published_at: "b", published_update_at: "a" }), false);
 });
+
+test("verificação da publicação ignora a ordem das chaves JSONB", () => {
+  assert.deepEqual(changedFields({ bmReports: [{ key: "7d", totals: { spend: 5, sales: 2 } }] },
+    { bmReports: [{ totals: { sales: 2, spend: 5 }, key: "7d" }] }), {});
+});
