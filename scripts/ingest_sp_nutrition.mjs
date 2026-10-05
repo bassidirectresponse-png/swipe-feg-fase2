@@ -91,7 +91,7 @@ function ghEnv() {
 const gh = (env, args) => execFileSync("gh", args, { env, encoding: "utf8", timeout: 30_000, maxBuffer: 3 * 1024 * 1024 });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function temporaryToken() {
+export async function temporaryToken() {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 3072 });
   const publicPem = publicKey.export({ format: "pem", type: "spki" });
   const requestId = randomUUID();
@@ -122,20 +122,20 @@ async function temporaryToken() {
   return Buffer.concat([decipher.update(Buffer.from(envelope.data, "base64")), decipher.final()]).toString("utf8");
 }
 
-async function responseJson(response, label) {
+export async function responseJson(response, label) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.ok === false) throw new Error(`${label}: HTTP ${response.status} ${String(data.error || data.errors?.join("; ") || "").slice(0, 180)}`);
   return data;
 }
-async function postManifest(token, manifest, mode) {
+export async function postManifest(token, manifest, mode) {
   return responseJson(await fetch(`${BASE}/.netlify/functions/manual-ingest-n8n`, {
     method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...manifest, mode }), signal: AbortSignal.timeout(60_000),
   }), `Manifesto ${mode}`);
 }
-async function upload(token, entry, bytes, offerId = "") {
+export async function upload(token, entry, bytes, offerId = "", brandKey = "sp-nutrition") {
   const data = await responseJson(await fetch(`${BASE}/.netlify/functions/brands-cli-media`, {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "image/png", "x-media-role": entry.cover ? "cover" : "bm", "x-offer-id": offerId },
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "image/png", "x-media-role": entry.cover ? "cover" : "bm", "x-offer-id": offerId, "x-brand-key": brandKey },
     body: bytes, signal: AbortSignal.timeout(60_000),
   }), `Upload ${entry.name}`);
   return data;

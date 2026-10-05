@@ -7,7 +7,11 @@ import { changedFields, mergeBrandDraft } from "../../lib/brand-release.mjs";
 
 const WORKFLOWS = new Set(["brands-cli-token.yml"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const IMAGE = /^brands\/sp-nutrition\/cover-[a-f0-9]{20}\.png$/;
+const BRANDS = Object.freeze({
+  "sp-nutrition": { name: "SP Nutrition", prints: 11 },
+  "healthy-petz": { name: "Healthy Petz", prints: 10 },
+});
+const IMAGE = /^brands\/(sp-nutrition|healthy-petz)\/cover-[a-f0-9]{20}\.png$/;
 const MAX_IMAGE = 4 * 1024 * 1024;
 const ALLOWED_PATCH = new Set(["bmReports", "bmPrints", "bmSpend7d", "bmSpend14d", "bmSpend30d", "bmRoas", "bmUpdatedAt", "bmNotes", "brandTopAds", "offerTags"]);
 
@@ -31,6 +35,9 @@ export default async req => {
     await auth(req);
     const admin = await supabaseAdminAuth();
     if (admin.mode !== "service_role") throw new Error("chave de serviço indisponível");
+    const brandKey = String(req.headers.get("x-brand-key") || "sp-nutrition");
+    const brand = BRANDS[brandKey];
+    if (!brand) return reply(400, { ok: false, error: "marca inválida" });
     if (req.method === "POST") {
       const role = String(req.headers.get("x-media-role") || "");
       const offerId = String(req.headers.get("x-offer-id") || "");
@@ -38,7 +45,7 @@ export default async req => {
       if (!png(bytes) || !bytes.length || bytes.length > MAX_IMAGE) return reply(415, { ok: false, error: "PNG inválido ou acima de 4 MB" });
       const hash = createHash("sha256").update(bytes).digest("hex");
       if (role === "cover") {
-        const path = `brands/sp-nutrition/cover-${hash.slice(0, 20)}.png`;
+        const path = `brands/${brandKey}/cover-${hash.slice(0, 20)}.png`;
         if (!IMAGE.test(path)) return reply(400, { ok: false, error: "caminho inválido" });
         const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`, {
           method: "POST", headers: { apikey: admin.apikey, Authorization: `Bearer ${admin.token}`, "Content-Type": "image/png", "x-upsert": "true" },
@@ -49,7 +56,7 @@ export default async req => {
       }
       if (role !== "bm" || !UUID.test(offerId)) return reply(400, { ok: false, error: "papel ou oferta inválida" });
       const row = await offerById(offerId);
-      if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== "SP Nutrition") return reply(409, { ok: false, error: "oferta SP Nutrition não encontrada" });
+      if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== brand.name) return reply(409, { ok: false, error: "oferta da marca não encontrada" });
       const ref = `blob:${offerId}:${hash}:png`;
       await getStore({ name: "admin-bm-evidence", consistency: "strong" }).set(`${offerId}/${hash}.png`, new Blob([bytes], { type: "image/png" }), { metadata: { mime: "image/png", offerId } });
       return reply(200, { ok: true, ref: `admin-bm:${ref}` });
@@ -59,9 +66,9 @@ export default async req => {
     if (!UUID.test(id) || !body.patch || typeof body.patch !== "object" || Array.isArray(body.patch)) return reply(400, { ok: false, error: "patch inválido" });
     if (Object.keys(body.patch).some(key => !ALLOWED_PATCH.has(key))) return reply(400, { ok: false, error: "campo não autorizado" });
     const row = await offerById(id);
-    if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== "SP Nutrition") return reply(409, { ok: false, error: "oferta SP Nutrition não encontrada" });
+    if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== brand.name) return reply(409, { ok: false, error: "oferta da marca não encontrada" });
     const reports = body.patch.bmReports, prints = body.patch.bmPrints;
-    if (!Array.isArray(reports) || reports.length !== 4 || !Array.isArray(prints) || prints.length !== 11 ||
+    if (!Array.isArray(reports) || reports.length !== 4 || !Array.isArray(prints) || prints.length !== brand.prints ||
         prints.some(print => !String(print.img || "").startsWith(`admin-bm:blob:${id}:`))) return reply(400, { ok: false, error: "relatórios ou prints incompletos" });
     const merged = mergeBrandDraft(row.data, body.patch);
     const delta = changedFields(row.data, merged);
@@ -76,13 +83,13 @@ export default async req => {
     const creatives = (await creativeResponse.json()).filter(item => item?.data?.kind === "criativo" && item.data.sourceOfferId === id);
     if (creatives.length < 3) throw new Error("criativos vinculados incompletos");
     for (const creative of creatives) {
-      const fields = { division: "fegbrands", marca: "SP Nutrition" };
+      const fields = { division: "fegbrands", marca: brand.name };
       if (creative.data.division !== fields.division || creative.data.marca !== fields.marca) {
         await mergeSupabaseOfferData(creative.id, fields, { ...creative.data, ...fields });
       }
     }
     const written = await offerById(id);
-    if (!written || written.data?.bmReports?.length < 4 || written.data?.bmPrints?.filter(p => p.img).length < 11) throw new Error("conferência pós-gravação incompleta");
+    if (!written || written.data?.bmReports?.length < 4 || written.data?.bmPrints?.filter(p => p.img).length < brand.prints) throw new Error("conferência pós-gravação incompleta");
     return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, creatives: creatives.length, tags: written.data.offerTags });
   } catch (error) {
     console.error("brands-cli-media:", String(error?.message || error).slice(0, 180));
