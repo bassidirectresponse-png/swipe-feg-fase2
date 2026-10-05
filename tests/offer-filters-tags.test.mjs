@@ -34,8 +34,11 @@ test("Ofertas oferecem ranking por gasto e vendas e filtro de tag no painel",()=
 test("Logo vetorial preserva monograma e respeita movimento reduzido",()=>{
   assert.match(logo,/<svg /);
   assert.match(logo,/Monograma Grupo FEG/);
-  assert.match(html,/login-logo-sweep/);
-  assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.login-logo-wrap::after/);
+  assert.match(html,/class="login-atmosphere__trace"/);
+  assert.match(html,/class="login-atmosphere__trace-line" pathLength="1000"/);
+  assert.match(html,/@keyframes login-mark-trace/);
+  assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.login-atmosphere__trace\{display:none\}\}/);
+  assert.doesNotMatch(html,/\.login-logo-wrap\{[^}]*overflow:hidden/);
 });
 
 test("Leitura de bibliotecas está agendada duas vezes ao dia e preserva histórico",()=>{
