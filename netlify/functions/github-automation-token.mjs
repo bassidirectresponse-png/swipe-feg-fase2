@@ -63,10 +63,12 @@ async function signIn(password) {
 
 export default async function handler(request) {
   if (request.method !== "POST") return json(405, { error: "método não permitido" });
+  let verified = false;
   try {
     const authorization = String(request.headers.get("authorization") || "");
     const oidcToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
     const claims = await verifyGithubAutomationToken(oidcToken);
+    verified = true;
     const password = randomBytes(36).toString("base64url");
     await ensureAutomationBot(password);
     const session = await signIn(password);
@@ -77,6 +79,8 @@ export default async function handler(request) {
     });
   } catch (error) {
     console.error("github-automation-token:", String(error?.message || error).slice(0, 240));
-    return json(401, { error: "automação não autorizada" });
+    return verified
+      ? json(503, { error: "sessão interna de automação indisponível" })
+      : json(401, { error: "automação não autorizada" });
   }
 }
