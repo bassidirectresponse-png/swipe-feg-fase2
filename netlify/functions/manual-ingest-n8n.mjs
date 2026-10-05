@@ -10,6 +10,7 @@ import {
   trustedOrigin,
 } from "./_security.mjs";
 import { supabaseAdminHeaders } from "./_supabase-admin.mjs";
+import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 
 const METHODS = "POST, OPTIONS";
 const ALLOWED_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated", "presell", "criativo"]);
@@ -200,8 +201,18 @@ export default async req => {
   const pre = preflight(req, METHODS); if (pre) return pre;
   if (req.method !== "POST") return json(req, 405, { ok: false, error: "método não permitido" }, METHODS);
   const webhook = WEBHOOK_SECRET && secureEqual(bearer(req), WEBHOOK_SECRET);
+  // O CLI recebe um token OIDC curto, assinado pelo GitHub Actions, sem
+  // precisar abrir o navegador nem expor a credencial de serviço no computador.
+  let githubCli = false;
+  const credential = bearer(req);
+  if (!webhook && credential.split(".").length === 3) {
+    try {
+      await verifyGithubAutomationToken(credential, new Set(["brands-cli-token.yml"]));
+      githubCli = true;
+    } catch { /* A autenticação administrativa normal continua abaixo. */ }
+  }
   let user = null;
-  if (!webhook) {
+  if (!webhook && !githubCli) {
     if (!trustedOrigin(req)) return json(req, 403, { ok: false, error: "origem não autorizada" }, METHODS);
     user = await authenticate(req);
     if (!isAdmin(user)) return json(req, 403, { ok: false, error: "somente o administrador pode importar materiais" }, METHODS);

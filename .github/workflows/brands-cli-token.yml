@@ -1,0 +1,46 @@
+name: Sessão temporária para ingestão Brands pelo terminal
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: "Identificador local da solicitação"
+        required: true
+      public_key:
+        description: "Chave RSA pública (PEM em base64) para cifrar a sessão"
+        required: true
+
+run-name: Brands CLI ${{ inputs.request_id }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Emitir sessão OIDC cifrada
+        env:
+          PUBLIC_KEY_B64: ${{ inputs.public_key }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_TOKEN="$(jq -r '.value' <<< "$OIDC_RESPONSE")"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+          export OIDC_TOKEN
+          node --input-type=module <<'NODE'
+          import { createCipheriv, publicEncrypt, randomBytes, constants } from 'node:crypto';
+          const publicKey = Buffer.from(process.env.PUBLIC_KEY_B64, 'base64').toString('utf8');
+          const key = randomBytes(32), iv = randomBytes(12);
+          const cipher = createCipheriv('aes-256-gcm', key, iv);
+          const ciphertext = Buffer.concat([cipher.update(process.env.OIDC_TOKEN, 'utf8'), cipher.final()]);
+          const envelope = {
+            key: publicEncrypt({ key: publicKey, oaepHash: 'sha256', padding: constants.RSA_PKCS1_OAEP_PADDING }, key).toString('base64'),
+            iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), data: ciphertext.toString('base64'),
+          };
+          console.log(`TOKEN_ENVELOPE=${JSON.stringify(envelope)}`);
+          NODE
