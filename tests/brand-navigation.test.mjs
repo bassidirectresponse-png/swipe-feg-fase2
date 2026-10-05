@@ -48,7 +48,8 @@ test("Radar TikTok de Brands limita a coleta diária e preserva a taxonomia Insi
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_BOT_PASSWORD/);
   assert.match(html, /function syncRadarGeneration\(rows\)/);
   assert.match(html, /if\(d\.kind==="tiktok"&&d\.radarGeneration!==RADAR_GENERATION\)return"tiktok-archive"/);
-  assert.match(html, /tiktokProfiles\(list\)/);
+  assert.doesNotMatch(html, /Marcas e perfis orgânicos em destaque|tiktokProfiles\(list\)/);
+  assert.match(html, /arr\.map\(cardFor\)\.join\(""\)/);
   assert.match(miner, /active_niches = BRAND_NICHES/);
   assert.match(miner, /rec\["radarGeneration"\] = RADAR_GENERATION/);
   assert.match(miner, /\[:MAX_PER_NICHE\]/);

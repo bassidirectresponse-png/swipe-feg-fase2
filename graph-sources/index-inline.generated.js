@@ -1268,7 +1268,6 @@ function renderGrid(skipNav){
     return;
   }
   if(activeSection==="tiktok"){
-    const profiles=tiktokProfiles(list);
     const sorted=[...list].sort(ttSortFn);
     const TIERS=[["viral","★ VIRAL — 1M+ views"],["high","🔥 HIGH — 100k–1M views"],["mid","📊 MID — 10k–100k views"],["low","🌱 LOW — <10k views"]];
     const tierMap=new Map(TIERS.map(([key])=>[key,[]]));sorted.forEach(o=>{const key=(o.data||{}).faixa||faixaOf((o.data||{}).views);if(tierMap.has(key))tierMap.get(key).push(o);});
@@ -1279,7 +1278,7 @@ function renderGrid(skipNav){
       if(!arr.length)return;
       gh+=`<div class="ttgroup ttgroup--${key}"><div class="ttgroup__head"><span class="ttgroup__lbl">${esc(lbl)}</span><span class="ttgroup__cnt">${totals.get(key)}</span></div><div class="grid grid--tt">${arr.map(cardFor).join("")}</div></div>`;
     });
-    area.innerHTML=gh?profiles+gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
+    area.innerHTML=gh?gh+gridPager(page):`<div class="empty"><h2>Nenhum vídeo neste filtro</h2></div>`;
   }else if(activeSection==="brandcreative"){
     area.innerHTML=renderAdminBrandHub(list);
   }else if(isInsiderAdminArea()){
@@ -3931,18 +3930,6 @@ function megabrainCard(o){
 }
 
 /* ===== RADAR TIKTOK ===== */
-function tiktokKnownBrand(author,name){
-  const keys=[author,name].map(nicheRouteKey).filter(Boolean);
-  const known=offers.filter(o=>BRAND_OFFER_SECTIONS.has(sectionOf(o))).flatMap(o=>{const d=o.data||{};return [d.nomeMarca,d.marca,d.nomeOferta].filter(Boolean);});
-  return known.find(brand=>keys.includes(nicheRouteKey(brand)))||"";
-}
-function tiktokProfiles(items){
-  const byAuthor=new Map();
-  items.forEach(o=>{const d=o.data||{},author=String(d.autor||"").trim();if(!author)return;const item=byAuthor.get(author)||{name:d.autorNome||author,posts:0,views:0,likes:0,brand:"",signal:false};item.posts++;item.views+=Number(d.views)||0;item.likes+=Number(d.likes)||0;item.brand=item.brand||tiktokKnownBrand(author,d.autorNome);item.signal=item.signal||!!d.perfilMarca;byAuthor.set(author,item);});
-  const ranked=[...byAuthor.entries()].sort((a,b)=>Number(!!b[1].brand)-Number(!!a[1].brand)||Number(b[1].signal)-Number(a[1].signal)||b[1].views-a[1].views).slice(0,8);
-  if(!ranked.length)return"";
-  return `<section class="ttgroup" aria-label="Perfis orgânicos em destaque"><div class="ttgroup__head"><span class="ttgroup__lbl">Marcas e perfis orgânicos em destaque</span><span class="ttgroup__cnt">${byAuthor.size}</span></div><p style="color:var(--muted-fg);font-size:.82rem;margin:8px 0 12px">Análise por perfil: vídeos, visualizações e curtidas. A correspondência com marcas das Ofertas usa o nome exato; “sinal de marca” não é verificação.</p><div class="grid">${ranked.map(([author,p])=>`<a class="kcard" href="https://www.tiktok.com/@${encodeURIComponent(author)}" target="_blank" rel="noopener noreferrer" style="padding:16px;text-decoration:none"><strong>${esc(p.name)}</strong><div>@${esc(author)}${p.brand?' · Marca do acervo: '+esc(p.brand):p.signal?' · Sinal de marca':''}</div><div>${p.posts} ${p.posts===1?'vídeo':'vídeos'} · ${kfmt(p.views)} views · ${kfmt(p.likes)} curtidas</div></a>`).join("")}</div></section>`;
-}
 function faixaOf(v){v=Number(v)||0;return v>=1e6?"viral":v>=1e5?"high":v>=1e4?"mid":"low";}
 function ttDate(unix){const t=Number(unix)||0;if(!t)return"";return relDate(new Date(t*1000).toISOString());}
 function ttDur(s){s=Number(s)||0;if(!s)return"";const m=Math.floor(s/60);return m+":"+String(s%60).padStart(2,"0");}
