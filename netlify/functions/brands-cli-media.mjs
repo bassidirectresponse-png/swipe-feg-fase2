@@ -12,8 +12,9 @@ const BRANDS = Object.freeze({
   "healthy-petz": { name: "Healthy Petz", prints: 10, reports: 4 },
   "pomegranate": { name: "Pomegranate", prints: 9, reports: 3 },
   "tryclover": { name: "Tryclover", prints: 13, reports: 4 },
+  "auniva-amla": { name: "AMLA", prints: 10, reports: 4 },
 });
-const IMAGE = /^brands\/(sp-nutrition|healthy-petz|pomegranate|tryclover)\/cover-[a-f0-9]{20}\.png$/;
+const IMAGE = /^brands\/(sp-nutrition|healthy-petz|pomegranate|tryclover|auniva-amla)\/cover-[a-f0-9]{20}\.png$/;
 const MAX_IMAGE = 4 * 1024 * 1024;
 const ALLOWED_PATCH = new Set(["bmReports", "bmPrints", "bmSpend7d", "bmSpend14d", "bmSpend30d", "bmRoas", "bmUpdatedAt", "bmNotes", "brandTopAds", "offerTags"]);
 
