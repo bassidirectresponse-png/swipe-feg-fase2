@@ -44,4 +44,6 @@ test("vendas e ROAS calculados só viram total quando as campanhas cobrem todo o
   assert.equal(full.results,"5 compras");assert.equal(full.roas,"≈ 1,33");assert.equal(full.partial,false);
   const partial=display({totals:{spend:"US$ 500,00",results:"—",roas:"—"},campaigns:[{spend:"US$ 100,00",results:"2 compras",roas:"2,00"},{spend:"US$ 200,00",results:"3 compras",roas:"1,00"}]});
   assert.equal(partial.results,"5 compras · parcial");assert.equal(partial.roas,"≈ 1,33 · parcial");assert.equal(partial.partial,true);
+  const missingMetric=display({totals:{spend:"US$ 300,00",results:"—",roas:"—"},campaigns:[{spend:"US$ 100,00",results:"2 compras",roas:"2,00"},{spend:"US$ 200,00",results:"",roas:""}]});
+  assert.equal(missingMetric.results,"2 compras · parcial");assert.equal(missingMetric.roas,"≈ 2,00 · parcial");assert.equal(missingMetric.partial,true);
 });
