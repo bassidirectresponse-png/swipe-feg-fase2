@@ -492,7 +492,7 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /<div id="brandBmFields">/);
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
   assert.match(html, /data-edit-tags=/);
-  assert.match(html, /admin_offer_drafts"\)\.upsert\(/);
+  assert.match(html, /saveAdminOfferDraft\(/);
   assert.doesNotMatch(html, /offerTags:fOfferTags/);
   assert.match(html, /const OFFER_TAGS=/);
 });

@@ -1715,9 +1715,8 @@ async function saveTagEditor(){
   const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:[...tagDraft]};
   const button=$("#tagEditorSave");button.disabled=true;
   try{
-    const result=await sb.from("admin_offer_drafts").upsert({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch},{onConflict:"target_offer_id"}).select("target_offer_id,data_patch,label,updated_at").single();
-    if(result.error)throw result.error;
-    adminOfferDrafts[offer.id]=result.data;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
+    const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch});
+    adminOfferDrafts[offer.id]=draft;closeOverlay("#tagOverlay");renderGrid(true);toast("Tags salvas no painel admin");
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
@@ -1958,13 +1957,18 @@ async function loadUpdates(){
 async function loadAdminOfferDrafts(){
   if(!isAdmin||!sb)return;
   try{
-    const result=await sb.from("admin_offer_drafts").select("target_offer_id,data_patch,label,updated_at");
-    if(result.error)throw result.error;
-    const drafts={};for(const draft of result.data||[])if(draft&&draft.target_offer_id)drafts[draft.target_offer_id]=draft;
+    const token=await adminBmToken(),response=await fetch("/.netlify/functions/admin-offer-drafts",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+    const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"Rascunhos indisponíveis");
+    const drafts={};for(const draft of result.drafts||[])if(draft&&draft.target_offer_id)drafts[draft.target_offer_id]=draft;
     adminOfferDrafts=drafts;
   }catch(error){
-    if(String(error&&error.code||"")!=="42P01")console.warn("Não foi possível carregar os rascunhos administrativos",error);
+    console.warn("Não foi possível carregar os rascunhos administrativos",error);
   }
+}
+async function saveAdminOfferDraft(draft){
+  const token=await adminBmToken(),response=await fetch("/.netlify/functions/admin-offer-drafts",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(draft),cache:"no-store"});
+  const result=await response.json();if(!response.ok||!result.ok||!result.draft)throw new Error(result.error||"Falha ao salvar rascunho");
+  return result.draft;
 }
 async function loadAdminBmHistory(){
   if(!isAdmin||!sb)return;
@@ -2680,9 +2684,8 @@ async function importBmEvidence(offerId,button){
         if(status)status.textContent=`Importando ${index+1} de ${files.length} prints…`;
       }
       patch.bmPrints=prints;
-      const result=await sb.from("admin_offer_drafts").upsert({target_offer_id:offerId,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch},{onConflict:"target_offer_id"}).select("target_offer_id,data_patch,label,updated_at").single();
-      if(result.error)throw result.error;
-      adminOfferDrafts[offerId]=result.data;openView(offerId,true);toast(`${files.length} prints salvos apenas no painel admin.`);
+      const draft=await saveAdminOfferDraft({target_offer_id:offerId,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch});
+      adminOfferDrafts[offerId]=draft;openView(offerId,true);toast(`${files.length} prints salvos apenas no painel admin.`);
     }catch(error){console.warn("Falha ao importar prints",error);toast(`Importação incompleta: ${error.message||"tente novamente"}`,true);if(status)status.textContent="Importação incompleta; repita a operação para concluir.";}
     finally{button.disabled=false;}
   },{once:true});input.click();
