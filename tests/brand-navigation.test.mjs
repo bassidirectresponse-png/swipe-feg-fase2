@@ -40,6 +40,10 @@ test("Radar TikTok de Brands limita a coleta diária e preserva a taxonomia Insi
   assert.match(workflow, /MAX_PER_NICHE: "50"/);
   assert.match(workflow, /RADAR_GENERATION: "brands-2026-10-05"/);
   assert.match(workflow, /PER_KEYWORD: "20"/);
+  assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /github-automation-token/);
+  assert.match(workflow, /SUPABASE_BOT_ACCESS_TOKEN=/);
+  assert.doesNotMatch(workflow, /secrets\.SUPABASE_BOT_PASSWORD/);
   assert.match(html, /function syncRadarGeneration\(rows\)/);
   assert.match(html, /if\(d\.kind==="tiktok"&&activeRadarGeneration&&d\.radarGeneration!==activeRadarGeneration\)return"tiktok-archive"/);
   assert.match(miner, /active_niches = BRAND_NICHES if brand_enabled else NICHES/);

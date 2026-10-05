@@ -35,6 +35,7 @@ ANON = os.environ.get("SUPABASE_ANON_KEY",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrdnp3dHN0aWR0b2JwZG5neG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4MTM1MTUsImV4cCI6MjEwMTM4OTUxNX0.UvV333OkHrp5Yvxn3vyxnkF_KXMBTu-82qFx-Jocc-0")
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "")
 PROVIDER = os.environ.get("PROVIDER", "tikwm").lower()
 # Volume/custo é configurável pelo workflow. O padrão busca margem suficiente
 # para filtrar e deduplicar antes de guardar até 50 vídeos por nicho.
@@ -325,6 +326,8 @@ def sb(method, path, token=None, body=None, prefer=None, raw=None, ctype="applic
 
 
 def bot_login():
+    if BOT_ACCESS_TOKEN:
+        return BOT_ACCESS_TOKEN
     st, txt = sb("POST", "/auth/v1/token?grant_type=password",
                  body={"email": BOT_EMAIL, "password": BOT_PASSWORD})
     if st != 200:
@@ -449,8 +452,8 @@ def main():
     if dry:
         print("\n(--dry: nada gravado)")
         return
-    if not (BOT_EMAIL and BOT_PASSWORD):
-        print("ERRO: defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD.", file=sys.stderr); sys.exit(2)
+    if not BOT_ACCESS_TOKEN and not (BOT_EMAIL and BOT_PASSWORD):
+        print("ERRO: sessão temporária do bot ausente.", file=sys.stderr); sys.exit(2)
 
     token = bot_login()
     existing = load_existing(token)
