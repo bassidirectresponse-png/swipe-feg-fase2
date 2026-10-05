@@ -4,7 +4,7 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const netlify = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 
 if (!/^<!doctype html>/i.test(html.trim())) throw new Error("index.html inválido");
-if (!/publish\s*=\s*"\."/.test(netlify)) throw new Error("diretório de publicação estática inválido");
+if (!/publish\s*=\s*"dist"/.test(netlify)) throw new Error("diretório de publicação estática inválido");
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
   .map(match => match[1])

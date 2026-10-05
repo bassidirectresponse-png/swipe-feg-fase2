@@ -43,7 +43,7 @@ export function trustedOrigin(req) {
 export function corsHeaders(req, methods = "GET, POST, OPTIONS") {
   const origin = String(req.headers.get("origin") || "").trim();
   const headers = {
-    "Access-Control-Allow-Headers": "authorization, content-type, x-feg-auth",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-feg-auth, x-offer-id",
     "Access-Control-Allow-Methods": methods,
     "Cache-Control": "no-store",
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",

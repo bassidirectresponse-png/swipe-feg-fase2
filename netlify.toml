@@ -1,13 +1,16 @@
-# Site estático de arquivo único — nada para buildar.
-# A Netlify publica a raiz do repositório diretamente.
+# Publicar apenas os arquivos necessários ao navegador. Dados e código interno
+# (incluindo relatórios administrativos da BM) ficam fora da pasta publicada.
 [build]
-  publish = "."
-  command = ""
+  publish = "dist"
+  command = "npm run build"
 
 # Função serverless de transcrição instantânea (Groq)
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+[functions.admin-bm-evidence]
+  included_files = ["assets/ultima-peak/print-*.jpeg", "assets/primal-viking/print-*.jpeg", "assets/ancestral-supplements/print-*.jpeg", "assets/mars-men/print-*.jpeg", "assets/joymode/print-*.b64"]
 
 # SPA fallback: qualquer rota (ex.: /ofertas/emagrecimento) serve o index.html
 # com status 200, para que deep-links e F5 funcionem. Arquivos reais e funções
@@ -29,7 +32,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-  Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-EChNNsiXl3eD9sjRwbTOVWQEwtLQ4uvLJbJ3jeKXXYc=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://assets.replocdn.com https://*.tiktokcdn.com https://*.tiktokcdn-us.com https://*.tiktokcdn-eu.com https://drive.google.com https://*.googleusercontent.com; media-src 'self' blob: data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://drive.google.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+  Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-KrEbr5Q+CP2p3lxCZ87A6oq3AAsgrkQOMoTPM+RJX7M=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://assets.replocdn.com https://*.tiktokcdn.com https://*.tiktokcdn-us.com https://*.tiktokcdn-eu.com https://drive.google.com https://*.googleusercontent.com; media-src 'self' blob: data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://drive.google.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/index.html"

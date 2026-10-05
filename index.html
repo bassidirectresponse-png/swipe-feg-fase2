@@ -489,9 +489,10 @@
   .confirm-actions .btn{width:100%;}
 
   .view-grid{display:grid;grid-template-columns:1fr 330px;gap:32px;align-items:start;}
-  body.admin-preview .view-grid{grid-template-columns:minmax(0,1fr) 330px;}
+  body.admin-preview .view-grid{grid-template-columns:minmax(0,1fr) minmax(240px,330px);gap:clamp(16px,2.5vw,32px);min-width:0;max-width:100%;}
   body.admin-preview .view-grid>div,body.admin-preview .view-grid>.sidebar,body.admin-preview .bm-report,body.admin-preview .bm-report__summary,body.admin-preview .bm-campaigns{min-width:0;max-width:100%;}
-  @media(max-width:920px){.view-grid,body.admin-preview .view-grid{grid-template-columns:minmax(0,1fr);}.sidebar{position:static !important;order:-1;}}
+  @media(max-width:1100px){body.admin-preview .view-grid{grid-template-columns:minmax(0,1fr);}body.admin-preview .sidebar{position:static !important;order:-1;}}
+  @media(max-width:920px){.view-grid{grid-template-columns:minmax(0,1fr);}.sidebar{position:static !important;order:-1;}}
 
   .sec{margin-bottom:38px;}
   .sec__head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
@@ -539,6 +540,10 @@
   body.admin-preview .bm-evidence__heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
   body.admin-preview .bm-evidence__heading h3{font-size:1rem;font-weight:700;}
   body.admin-preview .bm-evidence__heading span,body.admin-preview .bm-evidence__note{font-size:.75rem;color:var(--muted-fg);}
+  body.admin-preview .bm-evidence__import{min-height:36px;padding:0 12px;border:1px solid var(--border-2);border-radius:9px;background:var(--surface);color:var(--fg);font-size:.72rem;font-weight:650;}
+  body.admin-preview .bm-evidence__import:hover{border-color:var(--accent);}
+  body.admin-preview .bm-evidence__import:disabled{opacity:.55;cursor:wait;}
+  body.admin-preview .bm-evidence__shot.is-loading{cursor:progress;}
   body.admin-preview .bm-evidence__group{margin-top:16px;min-width:0;}
   body.admin-preview .bm-evidence__group-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--fg);font-size:.8rem;font-weight:700;}
   body.admin-preview .bm-evidence__group-head small{color:var(--muted-fg);font-size:.7rem;font-weight:500;}
@@ -1976,8 +1981,14 @@ async function loadAdminBmHistory(){
 function adminOfferPatch(id){
   if(!isAdmin)return null;
   const versioned=adminBmHistoryPatches[id],draft=adminOfferDrafts[id]?.data_patch;
-  if(versioned&&draft)return mergeAdminOfferDraftData(versioned,draft);
-  return draft||versioned||null;
+  const patch=versioned&&draft?mergeAdminOfferDraftData(versioned,draft):draft||versioned||null;
+  if(!patch||id!=="23681d5a-89f6-4f41-8afb-ba3c8ab9bed9")return patch;
+  const wrongBrand=(patch.bmReports||[]).some(report=>(report.campaigns||[]).some(row=>/\|\s*BnB\s*\|/i.test(String(row.name||""))));
+  if(!wrongBrand)return patch;
+  const safe={...patch};
+  for(const key of ["bmReports","bmSpend7d","bmSpend14d","bmSpend30d","bmAvgConversion","bmCpc","bmCpcLink","bmCpm","bmCtr","bmCostUnique","bmCostIc","bmRoas","bmUpdatedAt","adsLibraryCheckedAt","bmNotes"])delete safe[key];
+  if(Array.isArray(safe.bmPrints)&&!safe.bmPrints.length)delete safe.bmPrints;
+  return safe;
 }
 function updateSeenAt(){try{return localStorage.getItem(UPDATE_SEEN_KEY)||"";}catch(_){return"";}}
 function unreadUpdates(){const seen=updateSeenAt();return updates.filter(item=>!seen||String(item.created_at||"")>seen).length;}
@@ -2533,6 +2544,21 @@ function bmReportTabLabel(report){
   return String(report&&report.label||"Período").replace(/^.*?·\s*/,"" )||"Período";
 }
 function bmHasValue(value){return value!=null&&String(value).trim()!==""&&String(value).trim()!=="—";}
+function bmNumeric(value){
+  const match=String(value??"").match(/-?\d[\d.,]*/);if(!match)return null;
+  const raw=match[0],normalized=raw.includes(",")?raw.replaceAll(".","").replace(",","."):raw.replaceAll(".","");
+  const number=Number(normalized);return Number.isFinite(number)?number:null;
+}
+function bmReportDisplayTotals(report){
+  const totals=report?.totals||{},rows=Array.isArray(report?.campaigns)?report.campaigns:[];
+  const spend=bmNumeric(totals.spend),lines=rows.map(row=>({spend:bmNumeric(row.spend),roas:bmNumeric(row.roas),purchases:/visitas|não compras/i.test(String(row.results||""))?null:bmNumeric(row.results),nonPurchase:/visitas|não compras/i.test(String(row.results||""))}));
+  const recordedSpend=lines.reduce((sum,row)=>sum+(row.spend||0),0),complete=spend!=null&&lines.length>0&&Math.abs(recordedSpend-spend)<0.1;
+  const salesKnown=lines.length>0&&lines.every(row=>row.purchases!=null||row.nonPurchase),sales=lines.reduce((sum,row)=>sum+(row.purchases||0),0);
+  const roasKnown=lines.length>0&&lines.every(row=>row.spend!=null&&(row.roas!=null||row.nonPurchase));
+  const calculatedRoas=roasKnown&&recordedSpend>0?lines.reduce((sum,row)=>sum+row.spend*(row.roas||0),0)/recordedSpend:null;
+  const directSales=bmHasValue(totals.results)&&bmNumeric(totals.results)!=null,directRoas=bmHasValue(totals.roas)&&bmNumeric(totals.roas)!=null,partial=!complete;
+  return {results:directSales?String(totals.results):salesKnown?`${sales.toLocaleString("pt-BR")} compras${partial?" · parcial":""}`:"Não informado",resultsLabel:directSales?/compras|vendas/i.test(String(totals.results))?"Vendas":"Resultados":salesKnown?partial?"Vendas parciais":"Vendas":"Resultados",roas:directRoas?String(totals.roas):calculatedRoas!=null?`≈ ${calculatedRoas.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}${partial?" · parcial":""}`:"Não informado",roasLabel:directRoas?"ROAS":calculatedRoas!=null&&partial?"ROAS parcial":"ROAS",derivedSales:!directSales&&salesKnown,derivedRoas:!directRoas&&calculatedRoas!=null,partial,sourceCount:rows.length};
+}
 function bmReportMetric(label,value,compact=false){
   const ready=bmHasValue(value),tag=compact?"bm-campaign__metric":"bm-report__metric";
   return `<div class="${tag}"><span>${esc(label)}</span><strong${ready?"":' class="is-empty"'}>${esc(ready?String(value):"Não informado")}</strong></div>`;
@@ -2543,16 +2569,16 @@ function bmReportSecondaryMetrics(source){
 }
 function brandReportPane(report){
   if(!report)return`<div class="muted-empty">Nenhum relatório por campanha cadastrado.</div>`;
-  const rows=Array.isArray(report.campaigns)?report.campaigns:[],totals=report.totals||{};
-  const isPurchase=/compras|vendas/i.test(String(totals.results||""));
-  const primary=bmReportMetric("Gasto",totals.spend)+bmReportMetric(isPurchase?"Vendas":"Resultados",totals.results)+bmReportMetric("ROAS",totals.roas);
+  const rows=Array.isArray(report.campaigns)?report.campaigns:[],totals=report.totals||{},display=bmReportDisplayTotals(report);
+  const primary=bmReportMetric("Gasto",totals.spend)+bmReportMetric(display.resultsLabel,display.results)+bmReportMetric(display.roasLabel,display.roas);
   const secondary=bmReportSecondaryMetrics(totals).map(([label,value])=>bmReportMetric(label,value)).join("");
   const campaigns=rows.length?`<div class="bm-campaigns__list">${rows.map(row=>{
     const campaignPurchase=/compras|vendas/i.test(String(row.results||"")),core=[["Gasto",row.spend],[campaignPurchase?"Vendas":"Resultados",row.results],["ROAS",row.roas]];
     const metrics=[...core,...bmReportSecondaryMetrics(row)].filter(([label,value])=>label==="Gasto"||bmHasValue(value));
     return `<article class="bm-campaign"><div class="bm-campaign__name">${esc(row.name||"Campanha")}</div><div class="bm-campaign__metrics">${metrics.map(([label,value])=>bmReportMetric(label,value,true)).join("")}</div></article>`;
   }).join("")}</div>`:`<div class="muted-empty">Nenhuma campanha informada neste período.</div>`;
-  return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(bmReportTabLabel(report))} · leitura de ${esc(bmReportDateLabel(bmReportDateKey(report)))}</div><div class="bm-report__range">${esc(report.range||"")} · ${esc(report.currency||"USD")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary bm-report__summary--primary">${primary}</div>${secondary?`<div class="bm-report__summary bm-report__summary--secondary">${secondary}</div>`:""}${totals.otherResults?`<div class="bm-report__other">Outros resultados: ${esc(totals.otherResults)}</div>`:""}<div class="bm-campaigns"><div class="bm-campaigns__head"><h4>Campanhas</h4><span>${rows.length} ${rows.length===1?"campanha":"campanhas"}</span></div>${campaigns}</div></article>`;
+  const derivation=display.derivedSales||display.derivedRoas?`<div class="bm-report__other">${display.partial?`Cálculo parcial das ${display.sourceCount} campanhas cadastradas neste recorte; o print não mostra todas as campanhas nem permite obter o total completo.`:`Cálculo das ${display.sourceCount} campanhas; o ROAS é aproximado porque os índices por campanha aparecem arredondados.`}</div>`:"";
+  return `<article class="bm-report"><div class="bm-report__head"><div><div class="bm-report__title">${esc(bmReportTabLabel(report))} · leitura de ${esc(bmReportDateLabel(bmReportDateKey(report)))}</div><div class="bm-report__range">${esc(report.range||"")} · ${esc(report.currency||"USD")}</div></div><span class="bm-report__level">${esc(report.level||"Campanhas")}</span></div><div class="bm-report__summary bm-report__summary--primary">${primary}</div>${secondary?`<div class="bm-report__summary bm-report__summary--secondary">${secondary}</div>`:""}${derivation}${totals.otherResults?`<div class="bm-report__other">Outros resultados: ${esc(totals.otherResults)}</div>`:""}<div class="bm-campaigns"><div class="bm-campaigns__head"><h4>Campanhas</h4><span>${rows.length} ${rows.length===1?"campanha":"campanhas"}</span></div>${campaigns}</div></article>`;
 }
 function brandReportsHtml(d,id){
   const groups=bmReportGroups(d),all=groups.flatMap(group=>group.reports);
@@ -2585,25 +2611,101 @@ function bmPrintPeriod(print){
   if(/\bontem\b|\b1d\b/.test(`${name.toLowerCase()} ${key}`))return["1d","Ontem"];
   const date=name.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
   if(date)return[`date-${date[0]}`,`Leitura de ${date[0]}`];
-  if(/configura[çc][ãa]o/i.test(name))return["settings","Configuração da BM"];
+  if(key==="settings"||/configura[çc][ãa]o/i.test(name))return["settings","Configuração da BM"];
   return["other","Período não identificado"];
+}
+function bmEvidenceRef(img){
+  const value=String(img||"");
+  if(value.startsWith("admin-bm:blob:"))return value.slice(9);
+  const match=value.match(/^\/assets\/(ultima-peak|primal-viking|ancestral-supplements|mars-men|joymode)\/(print-(?:0[1-9]|10)\.(?:jpeg|b64))$/);
+  return match?`legacy:${match[1]}/${match[2]}`:"";
+}
+const bmEvidenceObjectUrls=new Map();
+async function adminBmToken(){
+  const session=sb&&await sb.auth.getSession(),token=session?.data?.session?.access_token;
+  if(!isAdmin||!token)throw new Error("Sessão administrativa necessária");
+  return token;
+}
+async function hydrateBmEvidence(root){
+  const links=$$("a[data-bm-ref]",root);if(!links.length)return;
+  let token;try{token=await adminBmToken();}catch(_){return;}
+  for(const link of links){
+    if(!link.isConnected)return;
+    const ref=link.dataset.bmRef;
+    try{
+      let url=bmEvidenceObjectUrls.get(ref);
+      if(!url){
+        const response=await fetch(`/.netlify/functions/admin-bm-evidence?ref=${encodeURIComponent(ref)}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+        if(!response.ok)throw new Error(`Print indisponível (${response.status})`);
+        url=URL.createObjectURL(await response.blob());bmEvidenceObjectUrls.set(ref,url);
+      }
+      link.href=url;link.dataset.lightbox=url;link.dataset.bmReady="1";
+      const img=$("img",link);if(img)img.src=url;
+      link.classList.remove("is-loading");
+    }catch(error){console.warn("Falha ao carregar print da BM",error);link.classList.remove("is-loading");link.classList.add("is-unavailable");link.removeAttribute("data-lightbox");const label=$("span",link);if(label)label.textContent="Print indisponível";}
+  }
+}
+function bmImportPeriod(file){
+  const name=String(file.webkitRelativePath||file.name).toLowerCase();
+  if(/(?:^|[\s_\/.-])(?:ontem|1d)(?:[\s_\/.-]|$)/.test(name))return"1d";
+  for(const days of [7,14,30])if(new RegExp(`(?:^|[\\s_\\/.-])${days}(?:d|\\s*dias)(?:[\\s_\\/.-]|$)`).test(name))return`${days}d`;
+  return"other";
+}
+async function importBmEvidence(offerId,button){
+  const offer=itemById(offerId);if(!isAdmin||!offer||!sb)return;
+  const input=document.createElement("input");input.type="file";input.accept="image/jpeg,image/png,image/webp";input.multiple=true;input.webkitdirectory=true;
+  input.addEventListener("change",async()=>{
+    const files=[...input.files].filter(file=>/\.(jpe?g|png|webp)$/i.test(file.name)),manifestFile=[...input.files].find(file=>file.name==="bm-data.json");if(!files.length)return;
+    const expected=String(offer.data?.nomeMarca||offer.data?.nomeOferta||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+    const folder=String(files[0].webkitRelativePath||"").split("/")[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+    if(!folder||!expected||!folder.includes(expected)&&!expected.includes(folder)){toast("A pasta escolhida não corresponde à marca deste produto; importação cancelada.",true);return;}
+    if(files.some(file=>String(file.webkitRelativePath||"").split("/")[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"")!==folder)){toast("Selecione apenas uma pasta de marca.",true);return;}
+    button.disabled=true;const status=$(".bm-evidence__status",button.closest(".bm-evidence"));if(status){status.classList.remove("sr-only");status.textContent=`Importando 0 de ${files.length} prints…`;}
+    try{
+      const token=await adminBmToken(),previous=adminOfferDrafts[offerId]||{},patch={...(previous.data_patch||{})},prints=[...(Array.isArray(patch.bmPrints)?patch.bmPrints:[])];
+      let manifest=null;
+      if(manifestFile){
+        manifest=JSON.parse(await manifestFile.text());
+        if(manifest.offerId!==offerId||!manifest.patch||typeof manifest.patch!=="object"||Array.isArray(manifest.patch))throw new Error("Manifesto da marca não corresponde a este produto");
+        for(const key of ["bmReports","bmReportsReplace","bmReportsRemoveKeys","bmNotes","bmNotesReplace","bmSpend7d","bmSpend14d","bmSpend30d","bmRoas","bmUpdatedAt","adsLibraryCheckedAt"]){if(Object.prototype.hasOwnProperty.call(manifest.patch,key))patch[key]=manifest.patch[key];}
+      }
+      for(const [index,file] of files.entries()){
+        if(file.size>4*1024*1024)throw new Error(`${file.name}: imagem acima de 4 MB`);
+        const response=await fetch("/.netlify/functions/admin-bm-evidence",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":file.type||"application/octet-stream","x-offer-id":offerId},body:file});
+        const payload=await response.json();if(!response.ok||!payload.ok)throw new Error(`${file.name}: ${payload.error||"falha no envio"}`);
+        const img=`admin-bm:${payload.ref}`;
+        const relativePath=String(file.webkitRelativePath||file.name).split("/").slice(1).join("/");
+        const periodKey=manifest?.periods?.[relativePath]||bmImportPeriod(file);
+        if(!prints.some(print=>print.img===img))prints.push({nome:file.name,periodKey,img});
+        if(status)status.textContent=`Importando ${index+1} de ${files.length} prints…`;
+      }
+      patch.bmPrints=prints;
+      const result=await sb.from("admin_offer_drafts").upsert({target_offer_id:offerId,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),data_patch:patch},{onConflict:"target_offer_id"}).select("target_offer_id,data_patch,label,updated_at").single();
+      if(result.error)throw result.error;
+      adminOfferDrafts[offerId]=result.data;openView(offerId,true);toast(`${files.length} prints salvos apenas no painel admin.`);
+    }catch(error){console.warn("Falha ao importar prints",error);toast(`Importação incompleta: ${error.message||"tente novamente"}`,true);if(status)status.textContent="Importação incompleta; repita a operação para concluir.";}
+    finally{button.disabled=false;}
+  },{once:true});input.click();
 }
 function bmEvidenceHtml(d,id){
   const prints=(Array.isArray(d&&d.bmPrints)?d.bmPrints:[]).filter(print=>print&&print.img);
-  if(!prints.length)return`<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3></div><p class="bm-evidence__note">Nenhum print salvo para este produto.</p></div>`;
+  const importButton=`<button class="bm-evidence__import" type="button" data-bm-import="${esc(id)}">Importar pasta de prints</button>`;
+  if(!prints.length)return`<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3>${importButton}</div><p class="bm-evidence__note">Nenhum print salvo para este produto.</p><p class="bm-evidence__status sr-only" aria-live="polite"></p></div>`;
   const groups=new Map();for(const print of prints){const [key,label]=bmPrintPeriod(print);if(!groups.has(key))groups.set(key,{label,prints:[]});groups.get(key).prints.push(print);}
   const order={"1d":0,"7d":1,"14d":2,"30d":3,"settings":8,"other":9};
   const html=[...groups.entries()].sort(([a],[b])=>(order[a]??5)-(order[b]??5)).map(([key,group])=>{
-    const shots=group.prints.map((print,index)=>`<a class="bm-evidence__shot" href="${esc(print.img)}" data-lightbox="${esc(print.img)}" data-lightbox-group="bm-${esc(id)}" aria-label="Ampliar ${esc(print.nome||`Print ${index+1}`)}"><img loading="lazy" decoding="async" src="${esc(print.img)}" alt="${esc(print.nome||`Print da BM ${index+1}`)}"><span>${esc(print.nome||`Print ${index+1}`)}</span></a>`).join("");
+    const shots=group.prints.map((print,index)=>{const ref=bmEvidenceRef(print.img),source=ref?"":`src="${esc(print.img)}"`;
+      return `<a class="bm-evidence__shot${ref?" is-loading":""}" href="${ref?"#":esc(print.img)}" data-lightbox="${ref?"":esc(print.img)}" data-lightbox-group="bm-${esc(id)}" ${ref?`data-bm-ref="${esc(ref)}"`:""} aria-label="Ampliar ${esc(print.nome||`Print ${index+1}`)}"><img loading="lazy" decoding="async" ${source} alt="${esc(print.nome||`Print da BM ${index+1}`)}"><span>${esc(print.nome||`Print ${index+1}`)}</span></a>`;
+    }).join("");
     return `<div class="bm-evidence__group"><div class="bm-evidence__group-head">${esc(group.label)} <small>· ${group.prints.length} ${group.prints.length===1?"print":"prints"}</small></div><div class="bm-evidence__carousel"><button class="bm-evidence__arrow" type="button" data-bm-evidence-step="-1" aria-label="Print anterior de ${esc(group.label)}">‹</button><div class="bm-evidence__rail" aria-label="Prints: ${esc(group.label)}">${shots}</div><button class="bm-evidence__arrow" type="button" data-bm-evidence-step="1" aria-label="Próximo print de ${esc(group.label)}">›</button></div></div>`;
   }).join("");
-  return `<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3><span>${prints.length} ${prints.length===1?"evidência":"evidências"}</span></div><p class="bm-evidence__note">Organizados pelo período indicado no arquivo. Toque em um print para ampliar e navegar com as setas.</p>${html}</div>`;
+  return `<div class="bm-evidence"><div class="bm-evidence__heading"><h3>Prints da BM</h3><span>${prints.length} ${prints.length===1?"evidência":"evidências"}</span>${importButton}</div><p class="bm-evidence__note">Organizados pelo período indicado no arquivo. Toque em um print para ampliar e navegar com as setas.</p>${html}<p class="bm-evidence__status sr-only" aria-live="polite"></p></div>`;
 }
 function brandDraftCardSnapshot(d){
   const latest=bmReportGroups(d)[0];if(!latest)return"";
   const report=latest.reports.find(item=>bmReportWindowKey(item)==="7d")||latest.reports[0],totals=report.totals||{};
-  const resultLabel=/compras|vendas/i.test(String(totals.results||""))?"Vendas":"Resultados";
-  return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(resultLabel)}</span><strong class="brand-metric__value">${esc(bmHasValue(totals.results)?totals.results:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">ROAS</span><strong class="brand-metric__value">${esc(bmHasValue(totals.roas)?totals.roas:"Não informado")}</strong></div></div>`;
+  const display=bmReportDisplayTotals(report);
+  return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.resultsLabel)}</span><strong class="brand-metric__value">${esc(display.results)}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.roasLabel)}</span><strong class="brand-metric__value">${esc(display.roas)}</strong></div></div>`;
 }
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
@@ -2841,12 +2943,15 @@ $("#sideNavBackdrop").addEventListener("click",closeSideNav);
 function linkbtn(label,url,accent,icon){if(!url)return"";return `<a class="linkbtn${accent?' accent':''}" href="${esc(fixUrl(url))}" target="_blank" rel="noopener">${icon?ic(icon):""}<span class="lbtxt">${esc(label)}</span><span class="arr">${ic("external")}</span></a>`;}
 function mergeAdminOfferDraftData(base,patch){
   const merged=Object.assign({},base||{},patch||{});
-  if(patch&&patch.bmNotes)merged.bmNotes=[base&&base.bmNotes,patch.bmNotes].filter(Boolean).join("\n\n");
+  if(patch&&patch.bmNotesReplace===true)merged.bmNotes=String(patch.bmNotes||"");
+  else if(patch&&patch.bmNotes)merged.bmNotes=[base&&base.bmNotes,patch.bmNotes].filter(Boolean).join("\n\n");
   for(const key of ["bmReports","brandTopAds","bmPrints","bibliotecas","dominios"]){
-    const before=Array.isArray(base&&base[key])?base[key]:[],after=Array.isArray(patch&&patch[key])?patch[key]:[];
+    const removed=new Set(key==="bmReports"&&Array.isArray(patch?.bmReportsRemoveKeys)?patch.bmReportsRemoveKeys:[]);
+    const before=(Array.isArray(base&&base[key])?base[key]:[]).filter(item=>key!=="bmReports"||!removed.has(String(item&&item.key||""))),after=Array.isArray(patch&&patch[key])?patch[key]:[];
     if(key==="bmPrints"&&Array.isArray(patch&&patch[key])&&!after.length){merged[key]=[];continue;}
     if(!after.length)continue;
-    const identity=item=>key==="bmReports"?String(item&&item.key||""):key==="bibliotecas"?String(item&&item.link||""):key==="dominios"?String(item&&(item.linkDominio||item.nome)||""):key==="brandTopAds"?String(item&&item.link||item&&item.nome||""):String(item&&item.nome||"");
+    if(patch&&patch[`${key}Replace`]===true){merged[key]=after;continue;}
+    const identity=item=>key==="bmReports"?String(item&&item.key||""):key==="bibliotecas"?String(item&&item.link||""):key==="dominios"?String(item&&(item.linkDominio||item.nome)||""):key==="brandTopAds"?String(item&&item.link||item&&item.nome||""):String(item&&item.img||item&&item.nome||"");
     const updatedFirst=key==="bmReports"||key==="brandTopAds",updatedIds=new Set(after.map(identity).filter(Boolean));
     const sequence=updatedFirst?[...after,...before.filter(item=>!updatedIds.has(identity(item)))]:[...before,...after];
     const map=new Map();for(const item of sequence){const id=identity(item);map.set(id||`${key}-${map.size}`,item);}
@@ -3028,11 +3133,13 @@ function openView(id,useAdminDraft=true){
     });
   }
   const bmEvidence=$("#viewBody .bm-evidence");if(bmEvidence)bmEvidence.addEventListener("click",event=>{
+    const importButton=event.target.closest("[data-bm-import]");if(importButton){importBmEvidence(importButton.dataset.bmImport,importButton);return;}
     const arrow=event.target.closest("[data-bm-evidence-step]");if(!arrow)return;
     const rail=arrow.parentElement.querySelector(".bm-evidence__rail"),shot=rail&&rail.querySelector(".bm-evidence__shot");if(!rail||!shot)return;
     rail.scrollBy({left:Number(arrow.dataset.bmEvidenceStep)*(shot.getBoundingClientRect().width+10),behavior:"smooth"});
   });
   wireLightboxLinks($("#viewBody"));
+  if(bmEvidence)hydrateBmEvidence(bmEvidence);
   wireCardPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
 }
@@ -3715,7 +3822,7 @@ function lbReset(){lbScale=1;lbX=0;lbY=0;lbPaint();}
 function lbShow(index){if(!lbItems.length)return;lbIndex=(index+lbItems.length)%lbItems.length;const it=lbItems[lbIndex],src=it.src;$("#lightboxImg").src=src;$("#lightboxImg").alt=it.alt||"Print ampliado";$("#lightboxOpen").href=src;$("#lightboxCount").textContent=lbItems.length>1?`${lbIndex+1} / ${lbItems.length}`:"";$("#lightboxPrev").hidden=lbItems.length<2;$("#lightboxNext").hidden=lbItems.length<2;lbReset();}
 function openLightbox(srcOrItems,index=0,trigger=null){lbItems=Array.isArray(srcOrItems)?srcOrItems:[{src:String(srcOrItems||""),alt:""}];lbTrigger=trigger||document.activeElement;lbShow(index);const box=$("#lightbox");box.classList.add("open");box.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";$("#lightboxClose").focus();}
 function closeLightbox(){const box=$("#lightbox");if(!box.classList.contains("open"))return;box.classList.remove("open");box.setAttribute("aria-hidden","true");$("#lightboxImg").src="";document.body.style.overflow="";if(lbTrigger&&lbTrigger.focus)lbTrigger.focus();}
-function wireLightboxLinks(root){const links=$$("a[data-lightbox]",root);links.forEach(a=>a.addEventListener("click",e=>{e.stopPropagation();if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();const group=a.dataset.lightboxGroup||"",siblings=links.filter(link=>(link.dataset.lightboxGroup||"")===group),items=siblings.map(link=>({src:link.getAttribute("href")||link.dataset.lightbox,alt:($("img",link)||{}).alt||""}));openLightbox(items,siblings.indexOf(a),a);}));}
+function wireLightboxLinks(root){const links=$$("a[data-lightbox]",root);links.forEach(a=>a.addEventListener("click",e=>{e.stopPropagation();if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();if(a.dataset.bmRef&&!a.dataset.bmReady)return;const group=a.dataset.lightboxGroup||"",siblings=links.filter(link=>(link.dataset.lightboxGroup||"")===group&&(!link.dataset.bmRef||link.dataset.bmReady)),items=siblings.map(link=>({src:link.getAttribute("href")||link.dataset.lightbox,alt:($("img",link)||{}).alt||""}));openLightbox(items,siblings.indexOf(a),a);}));}
 $("#lightboxClose").addEventListener("click",closeLightbox);
 $("#lightboxPrev").addEventListener("click",()=>lbShow(lbIndex-1));
 $("#lightboxNext").addEventListener("click",()=>lbShow(lbIndex+1));
