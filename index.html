@@ -2028,6 +2028,13 @@ async function loadAdminEnhancements(){
     await load();
     if(routeReady)try{renderGrid(true);}catch(error){console.error("Falha ao atualizar painel admin",error);}
   }));
+  // A rota de detalhe pode ter sido aberta antes dos rascunhos privados chegarem.
+  // Atualizar também a leitura e a galeria, não apenas o card ao fundo.
+  const detail=parseLocation();
+  if(routeReady&&detail.id&&detail.section==="brandsvalidated"&&itemById(detail.id)){
+    delete activeBmPeriodByOffer[detail.id];
+    maybeOpenView(detail.id);
+  }
   setSync("ok","Sincronizado");
 }
 async function loadOffers(){
