@@ -38,8 +38,8 @@ test("BM guarda 10 prints e quatro recortes sem misturar produtos", () => {
 
 test("endpoint restringe a publicação às marcas explicitamente autorizadas", async () => {
   const source = await readFile(new URL("../netlify/functions/brands-cli-media.mjs", import.meta.url), "utf8");
-  assert.match(source, /"healthy-petz": \{ name: "Healthy Petz", prints: 10 \}/);
+  assert.match(source, /"healthy-petz": \{ name: "Healthy Petz", prints: 10, reports: 4 \}/);
   assert.match(source, /row\.data\?\.nomeOferta !== brand\.name/);
-  assert.match(source, /reports\.length !== 4/);
+  assert.match(source, /reports\.length !== brand\.reports/);
   assert.match(source, /prints\.length !== brand\.prints/);
 });

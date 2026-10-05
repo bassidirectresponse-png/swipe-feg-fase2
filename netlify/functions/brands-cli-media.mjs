@@ -8,10 +8,11 @@ import { changedFields, mergeBrandDraft } from "../../lib/brand-release.mjs";
 const WORKFLOWS = new Set(["brands-cli-token.yml"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BRANDS = Object.freeze({
-  "sp-nutrition": { name: "SP Nutrition", prints: 11 },
-  "healthy-petz": { name: "Healthy Petz", prints: 10 },
+  "sp-nutrition": { name: "SP Nutrition", prints: 11, reports: 4 },
+  "healthy-petz": { name: "Healthy Petz", prints: 10, reports: 4 },
+  "pomegranate": { name: "Pomegranate", prints: 9, reports: 3 },
 });
-const IMAGE = /^brands\/(sp-nutrition|healthy-petz)\/cover-[a-f0-9]{20}\.png$/;
+const IMAGE = /^brands\/(sp-nutrition|healthy-petz|pomegranate)\/cover-[a-f0-9]{20}\.png$/;
 const MAX_IMAGE = 4 * 1024 * 1024;
 const ALLOWED_PATCH = new Set(["bmReports", "bmPrints", "bmSpend7d", "bmSpend14d", "bmSpend30d", "bmRoas", "bmUpdatedAt", "bmNotes", "brandTopAds", "offerTags"]);
 
@@ -68,7 +69,7 @@ export default async req => {
     const row = await offerById(id);
     if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== brand.name) return reply(409, { ok: false, error: "oferta da marca não encontrada" });
     const reports = body.patch.bmReports, prints = body.patch.bmPrints;
-    if (!Array.isArray(reports) || reports.length !== 4 || !Array.isArray(prints) || prints.length !== brand.prints ||
+    if (!Array.isArray(reports) || reports.length !== brand.reports || !Array.isArray(prints) || prints.length !== brand.prints ||
         prints.some(print => !String(print.img || "").startsWith(`admin-bm:blob:${id}:`))) return reply(400, { ok: false, error: "relatórios ou prints incompletos" });
     const merged = mergeBrandDraft(row.data, body.patch);
     const delta = changedFields(row.data, merged);
@@ -89,7 +90,7 @@ export default async req => {
       }
     }
     const written = await offerById(id);
-    if (!written || written.data?.bmReports?.length < 4 || written.data?.bmPrints?.filter(p => p.img).length < brand.prints) throw new Error("conferência pós-gravação incompleta");
+    if (!written || written.data?.bmReports?.length < brand.reports || written.data?.bmPrints?.filter(p => p.img).length < brand.prints) throw new Error("conferência pós-gravação incompleta");
     return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, creatives: creatives.length, tags: written.data.offerTags });
   } catch (error) {
     console.error("brands-cli-media:", String(error?.message || error).slice(0, 180));
