@@ -335,6 +335,31 @@ def bot_login():
     return json.loads(txt)["access_token"]
 
 
+def insert_new_via_github(rows):
+    """Novos vídeos só entram pela função OIDC restrita a este workflow."""
+    request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+    request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+    if not request_url or not request_token:
+        raise RuntimeError("identidade OIDC do GitHub ausente; nenhum vídeo novo foi inserido")
+    separator = "&" if "?" in request_url else "?"
+    oidc = http_json(request_url + separator + "audience=swipe-feg-netlify-automation",
+                     headers={"Authorization": f"bearer {request_token}"}).get("value")
+    if not oidc:
+        raise RuntimeError("identidade OIDC do GitHub não foi emitida")
+    req = urllib.request.Request(
+        "https://benchmarkinggrupofeg.site/.netlify/functions/github-tiktok-ingest",
+        data=json.dumps(rows).encode("utf-8"), method="POST",
+        headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=35) as response:
+            result = json.loads(response.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"ingestão de novos vídeos recusada: HTTP {error.code}") from error
+    if not result.get("ok") or result.get("inserted") != len(rows):
+        raise RuntimeError("ingestão de novos vídeos não foi confirmada")
+    return result["inserted"]
+
+
 def load_existing(token):
     """videoId -> {id, data} da geração atual, sem truncar na página 1000."""
     out = {}
@@ -458,6 +483,7 @@ def main():
     token = bot_login()
     existing = load_existing(token)
     ins = upd = 0
+    new_rows = []
     for nicho, arr in per_niche.items():
         for r in arr:
             vid = r["videoId"]
@@ -480,9 +506,9 @@ def main():
                            token=token, body={"data": r}, prefer="return=minimal")
                 upd += 1 if st in (200, 204) else 0
             else:
-                st, _ = sb("POST", "/rest/v1/offers", token=token,
-                           body={"data": r}, prefer="return=minimal")
-                ins += 1 if st in (200, 201, 204) else 0
+                new_rows.append(r)
+    if new_rows:
+        ins = insert_new_via_github(new_rows)
     print(f"\nGravado: {ins} novos, {upd} atualizados")
 
 
