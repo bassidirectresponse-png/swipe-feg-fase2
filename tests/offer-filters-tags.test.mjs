@@ -34,8 +34,8 @@ test("Ofertas oferecem ranking por gasto e vendas e filtro de tag no painel",()=
 test("Logo vetorial preserva monograma e respeita movimento reduzido",()=>{
   assert.match(logo,/<svg /);
   assert.match(logo,/Monograma Grupo FEG/);
-  assert.match(html,/login-light-sweep/);
-  assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.login-atmosphere::after/);
+  assert.match(html,/login-logo-sweep/);
+  assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.login-logo-wrap::after/);
 });
 
 test("Leitura de bibliotecas está agendada duas vezes ao dia e preserva histórico",()=>{
