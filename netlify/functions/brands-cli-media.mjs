@@ -66,9 +66,24 @@ export default async req => {
     const merged = mergeBrandDraft(row.data, body.patch);
     const delta = changedFields(row.data, merged);
     if (Object.keys(delta).length) await mergeSupabaseOfferData(id, delta, merged);
+    // Um lote Brands deve aparecer em Swipe de Criativos, não na seção DR.
+    // Também corrige os anúncios criados antes desta classificação existir.
+    const params = new URLSearchParams({ select: "id,data", "data->>sourceOfferId": `eq.${id}` });
+    const creativeResponse = await fetch(`${SUPABASE_URL}/rest/v1/offers?${params}`, {
+      headers: await supabaseAdminHeaders(), signal: AbortSignal.timeout(12_000),
+    });
+    if (!creativeResponse.ok) throw new Error(`consulta dos criativos falhou (HTTP ${creativeResponse.status})`);
+    const creatives = (await creativeResponse.json()).filter(item => item?.data?.kind === "criativo" && item.data.sourceOfferId === id);
+    if (creatives.length < 3) throw new Error("criativos vinculados incompletos");
+    for (const creative of creatives) {
+      const fields = { division: "fegbrands", marca: "SP Nutrition" };
+      if (creative.data.division !== fields.division || creative.data.marca !== fields.marca) {
+        await mergeSupabaseOfferData(creative.id, fields, { ...creative.data, ...fields });
+      }
+    }
     const written = await offerById(id);
     if (!written || written.data?.bmReports?.length < 4 || written.data?.bmPrints?.filter(p => p.img).length < 11) throw new Error("conferência pós-gravação incompleta");
-    return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, tags: written.data.offerTags });
+    return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, creatives: creatives.length, tags: written.data.offerTags });
   } catch (error) {
     console.error("brands-cli-media:", String(error?.message || error).slice(0, 180));
     const unauthorized = /OIDC|workflow|token|assinatura|repositório|origem/.test(String(error?.message || ""));

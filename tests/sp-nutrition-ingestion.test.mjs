@@ -41,7 +41,9 @@ test("rota CLI mantém sessão cifrada e prints privados", async () => {
   assert.match(workflow, /createCipheriv\('aes-256-gcm'/);
   assert.match(workflow, /publicEncrypt/);
   assert.match(ingest, /verifyGithubAutomationToken\(credential, new Set\(\["brands-cli-token\.yml"\]\)\)/);
+  assert.match(ingest, /division: "fegbrands"/);
   assert.match(media, /name: "admin-bm-evidence"/);
   assert.match(media, /row\.data\?\.nomeOferta !== "SP Nutrition"/);
+  assert.match(media, /"data->>sourceOfferId"/);
   assert.doesNotMatch(media, /SUPABASE_SERVICE_ROLE_KEY\s*=/);
 });

@@ -176,10 +176,10 @@ async function main() {
     method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ offerId: offer.id, patch }), signal: AbortSignal.timeout(60_000),
   }), "Atualização BM");
-  if (updated.reports < 4 || updated.prints < 11) throw new Error("verificação da BM falhou");
+  if (updated.reports < 4 || updated.prints < 11 || updated.creatives < 3) throw new Error("verificação da BM ou dos criativos falhou");
   const checkCover = await fetch(coverUrl, { method: "HEAD", signal: AbortSignal.timeout(15_000) });
   if (!checkCover.ok) throw new Error(`capa pública indisponível (HTTP ${checkCover.status})`);
-  console.log(JSON.stringify({ ok: true, offerId: offer.id, action: validation.plan[0].action, creativeCards: applied.applied.filter(item => item.kind === "criativo").length, reports: updated.reports, prints: updated.prints, cover: coverUrl }, null, 2));
+  console.log(JSON.stringify({ ok: true, offerId: offer.id, action: validation.plan[0].action, creativeCards: updated.creatives, newCreativeCards: applied.applied.filter(item => item.kind === "criativo").length, reports: updated.reports, prints: updated.prints, cover: coverUrl }, null, 2));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main().catch(error => { console.error(error.message); process.exitCode = 1; });

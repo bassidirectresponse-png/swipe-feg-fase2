@@ -271,7 +271,8 @@ export default async req => {
         byIdentity.set(identity(item), row);
         for (const [index, ad] of item.ads.entries()) {
           const key = canonicalUrl(ad.url); if (!key || adUrls.has(key)) continue;
-          const creative = await createRow({ ...standaloneData({ ...item, kind: "criativo", name: ad.creativeName || `${item.name} · anúncio ${index + 1}` }, batchDate, ad), sourceOfferId: row.id, sourceOfferName: item.name });
+          const brandFields = item.kind === "brandsvalidated" ? { division: "fegbrands", marca: item.brand || item.name } : {};
+          const creative = await createRow({ ...standaloneData({ ...item, kind: "criativo", name: ad.creativeName || `${item.name} · anúncio ${index + 1}` }, batchDate, ad), ...brandFields, sourceOfferId: row.id, sourceOfferName: item.name });
           adUrls.add(key); applied.push({ id: creative.id, kind: "criativo", name: creative.data.nome });
         }
       } else {
