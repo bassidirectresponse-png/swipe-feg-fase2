@@ -117,7 +117,7 @@ BRAND_NICHES = {
     "Saúde Cardiovascular": {"queries": ["heart health", "blood pressure health", "cholesterol health"], "must": ["heart health", "cardiovascular", "blood pressure", "cholesterol"], "topics": {"Coração": ["heart", "cardiovascular"], "Pressão arterial": ["blood pressure", "hypertension"], "Colesterol": ["cholesterol"]}},
     "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"], "topics": {"Libido": ["libido", "sex drive"], "Saúde sexual": ["sexual health", "sexual wellness"], "Saúde íntima": ["intimate health", "intimate wellness"]}},
     "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness", "skin care"], "topics": {"Sono": ["sleep", "insomnia"], "Pele": ["skin", "skincare"], "Beleza": ["beauty"]}},
-    "Saúde Geral/Nutrição": {"queries": ["nutrition health", "gut health", "immune health", "joint health"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamins", "immune", "joint"], "topics": {"Nutrição": ["nutrition", "vitamin", "supplement"], "Intestino": ["gut", "digestive"], "Imunidade": ["immune", "immunity"], "Articulações": ["joint", "collagen"]}},
+    "Saúde Geral/Nutrição": {"queries": ["nutrition tips", "gut health", "supplements", "collagen benefits"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamin", "immune", "joint", "collagen"], "topics": {"Nutrição": ["nutrition", "vitamin", "supplement"], "Intestino": ["gut", "digestive"], "Imunidade": ["immune", "immunity"], "Articulações": ["joint", "collagen"]}},
     "Pet": {"queries": ["dog joint health", "dog skin health", "pet nutrition", "dog collagen"], "must": ["dog", "dogs", "pet", "pets", "cat", "cats"], "topics": {"Articulações": ["joint", "mobility", "arthritis"], "Pele e pelagem": ["skin", "coat", "itch"], "Nutrição": ["nutrition", "food", "diet"], "Colágeno": ["collagen"]}},
 }
 
@@ -206,6 +206,7 @@ APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "clockworks~tiktok-scraper")
 APIFY_SORT = os.environ.get("APIFY_SORT", "MOST_RELEVANT")   # MOST_RELEVANT|MOST_LIKED|LATEST
 APIFY_DATE = os.environ.get("APIFY_DATE", "ALL_TIME")        # ALL_TIME|PAST_24_HOURS|PAST_WEEK|PAST_MONTH...
 APIFY_RUN_MAX_SECONDS = int(os.environ.get("APIFY_RUN_MAX_SECONDS", "900"))
+REHOST_THUMBS = os.environ.get("REHOST_THUMBS", "0").lower() in ("1", "true", "yes")
 
 
 def apify_json(method, url, payload=None, retries=3):
@@ -469,8 +470,12 @@ def rehost_thumb(token, video_id, thumb_url):
     except Exception:
         return ""
     path = f"/storage/v1/object/{BUCKET}/tiktok/{video_id}.jpg"
-    st, msg = sb("POST", path, token=token, raw=img, ctype="image/jpeg",
-                 extra={"x-upsert": "true"})
+    try:
+        st, msg = sb("POST", path, token=token, raw=img, ctype="image/jpeg",
+                     extra={"x-upsert": "true"})
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        print(f"      ! rehost thumb {video_id}: {str(error)[:100]}", file=sys.stderr)
+        return ""
     pub = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/tiktok/{video_id}.jpg"
     if st in (200, 201, 409):
         return pub
@@ -588,14 +593,16 @@ def main():
         for r in arr:
             vid = r["videoId"]
             prev = existing.get(vid, {}).get("data") or {}
-            # thumb: preferir Storage (permanente); se o bot não puder subir,
-            # cai pro CDN do TikTok (renovado a cada rodada; liberado no CSP).
+            # A capa não bloqueia a gravação dos vídeos. O CDN é renovado a
+            # cada coleta; rehost no Storage é opcional e falha de forma segura.
             prev_thumb = prev.get("thumb") or ""
             if "/storage/v1/object/public/" in prev_thumb:
                 r["thumb"] = prev_thumb
-            else:
+            elif REHOST_THUMBS:
                 hosted = rehost_thumb(token, vid, r["thumbOrig"])
                 r["thumb"] = hosted or r["thumbOrig"]
+            else:
+                r["thumb"] = r["thumbOrig"]
             # histórico de views (crescimento ao longo dos dias)
             hist = prev.get("viewsHistory") or []
             hist.append({"d": NOW, "v": r["views"]})

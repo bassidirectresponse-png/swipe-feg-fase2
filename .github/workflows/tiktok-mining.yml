@@ -32,6 +32,7 @@ jobs:
       APIFY_SORT: MOST_LIKED  # prioriza referências com maior prova social
       APIFY_DATE: PAST_MONTH  # ALL_TIME | PAST_WEEK | PAST_MONTH | PAST_24_HOURS
       APIFY_RUN_MAX_SECONDS: "600" # run assíncrono; mantém margem para a sessão temporária do bot
+      REHOST_THUMBS: "0"       # capa do CDN; falhas de Storage não bloqueiam vídeos
       # Nichos de Ofertas Brands, inclusive Pet, até 50 vídeos únicos por nicho/dia.
       RADAR_GENERATION: "offers-topics-2026-10-05"
       MAX_PER_NICHE: "50"

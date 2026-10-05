@@ -54,3 +54,14 @@ print(json.dumps({'count':len(saved),'generation':saved[0]['radarGeneration']}))
   assert.equal(result.count,1);
   assert.equal(result.generation,"offers-topics-2026-10-05");
 });
+
+test("falha no Storage da capa não impede a gravação do vídeo",()=>{
+  const result=python(`import importlib.util,json
+s=importlib.util.spec_from_file_location('miner','scripts/tiktok_mining.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+m.http_bytes=lambda url:b'image'
+def fail(*args,**kwargs):raise TimeoutError('Storage lento')
+m.sb=fail
+print(json.dumps({'rehost':m.rehost_thumb('token','12345678901','https://example.com/cover.jpg'),'default_disabled':not m.REHOST_THUMBS}))`);
+  assert.equal(result.rehost,"");
+  assert.equal(result.default_disabled,true);
+});
