@@ -6,6 +6,7 @@ const REPOSITORY = "bassidirectresponse-png/swipe-feg-fase2";
 const ALLOWED_WORKFLOWS = new Set([
   "transcrever-videos.yml",
   "ads-ativos.yml",
+  "tiktok-mining.yml",
 ]);
 
 let cachedJwks = null;

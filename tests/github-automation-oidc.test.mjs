@@ -13,6 +13,7 @@ test("a sessão das automações é temporária, de baixo privilégio e restrita
   assert.match(oidc, /bassidirectresponse-png\/swipe-feg-fase2/);
   assert.match(oidc, /refs\/heads\/main/);
   assert.match(oidc, /ALLOWED_WORKFLOWS/);
+  assert.match(oidc, /"tiktok-mining\.yml"/);
   assert.match(oidc, /verifySignature/);
   assert.match(endpoint, /noticias-bot@swipefeg\.app/);
   assert.match(endpoint, /randomBytes\(36\)/);
