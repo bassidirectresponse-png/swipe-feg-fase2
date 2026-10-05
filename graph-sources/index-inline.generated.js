@@ -370,6 +370,7 @@ async function loadAdminEnhancements(){
   // Atualizar também a leitura e a galeria, não apenas o card ao fundo.
   const detail=parseLocation();
   if(routeReady&&detail.id&&detail.section==="brandsvalidated"&&itemById(detail.id)){
+    setDocTitle();
     delete activeBmPeriodByOffer[detail.id];
     maybeOpenView(detail.id);
   }
@@ -1386,10 +1387,12 @@ function openView(id,useAdminDraft=true){
     if(isBrand){
       const library=(d.bibliotecas.find(x=>x.link)||{}).link||"";
       const ah=adsHistOf(d);
-      const upd=d.adsUpdatedAt
+      const upd=o.adminPrivate
+        ?`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">Rascunho privado: o monitoramento automático começa após a publicação.</div>`
+        :d.adsUpdatedAt
         ?`<div class="adsmeta" style="margin-top:12px"><span class="adsauto">${ic("zap")}atualização automática</span><span class="adsupd">${ic("clock")}última leitura: ${esc(relTime(d.adsUpdatedAt))}</span></div>`
         :`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">O histórico começa na próxima leitura automática.</div>`;
-      adsSection=`<section class="sec brand-ads-history"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos · evolução diária</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div style="margin-top:18px">${adsChartSvg(ah)}</div>${upd}${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+      adsSection=`<section class="sec brand-ads-history"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos · evolução diária</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div style="margin-top:18px">${o.adminPrivate?'<div class="muted-empty">Sem leituras automáticas neste rascunho.</div>':adsChartSvg(ah)}</div>${upd}${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
     }else{
       const ah=adsHistOf(d);
       const upd=d.adsUpdatedAt

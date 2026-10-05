@@ -25,4 +25,6 @@ test("novas ofertas privadas não entram no banco público nem no cache local",a
   assert.match(html,/offers\.filter\(o=>!o\.adminPrivate\)\.map/);
   assert.match(html,/editingId&&offers\.find\(row=>row\.id===editingId\)\?\.adminPrivate/);
   assert.match(html,/if\(row&&!row\.adminPrivate\)await syncOfferCreatives\(row\)/);
+  assert.match(html,/#viewDeleteBtn\[hidden\],#viewEditBtn\[hidden\]\{display:none!important;\}/);
+  assert.match(html,/Rascunho privado: o monitoramento automático começa após a publicação/);
 });
