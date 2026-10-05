@@ -780,36 +780,45 @@ function sparkSvg(hist){
   const area=`M${X(0).toFixed(1)} ${h-pad} `+pts.map((p,i)=>"L"+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ")+` L${X(li).toFixed(1)} ${h-pad} Z`;
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(li).toFixed(1)}" cy="${Y(pts[li].n).toFixed(1)}" r="2.4" fill="var(--accent)" vector-effect="non-scaling-stroke"/></svg>`;
 }
+function adsRollingAverage(hist,windowSize=7){
+  return hist.map((_,i)=>{const start=Math.max(0,i-windowSize+1),slice=hist.slice(start,i+1);return slice.reduce((sum,point)=>sum+point.n,0)/slice.length;});
+}
+function adsChartPointLabel(point){
+  const date=fmtDateShort(point.d),time=Date.parse(point.at||"");
+  return Number.isFinite(time)?`${date} · ${new Intl.DateTimeFormat("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"}).format(time)}`:date;
+}
 function adsChartSvg(hist){
   const pts=hist;
   if(!pts.length)return`<div class="muted-empty">Sem histórico ainda — será preenchido automaticamente a cada atualização do robô.</div>`;
   if(pts.length<2)return`<div class="muted-empty">Apenas 1 leitura até agora (${fmtNum(pts[0].n)} anúncios em ${fmtDateShort(pts[0].d)}). O gráfico aparece a partir da 2ª leitura.</div>`;
-  const w=Math.max(720,pts.length*28),h=252,padL=54,padR=26,padT=30,padB=40;
-  const ns=pts.map(p=>p.n);let mn=Math.min(...ns),mx=Math.max(...ns);if(mn===mx){mn=Math.max(0,mn-1);mx=mx+1;}
-  const iw=w-padL-padR,ih=h-padT-padB,li=pts.length-1;
+  const w=1080,h=380,padL=64,padR=24,padT=28,padB=46,iw=w-padL-padR,ih=h-padT-padB,li=pts.length-1;
+  const averages=adsRollingAverage(pts),values=pts.map(p=>p.n),smallest=Math.min(...values,...averages),largest=Math.max(...values,...averages),spread=Math.max(1,largest-smallest);
+  const mn=Math.max(0,smallest-spread*.16),mx=largest+spread*.16;
   const X=i=>padL+i*iw/li,Y=n=>padT+ih-((n-mn)/(mx-mn))*ih;
-  let grid="",ylab="";const G=4;
-  for(let g=0;g<=G;g++){const v=mn+(mx-mn)*g/G,y=Y(v);grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="var(--border)"/>`;ylab+=`<text x="${padL-8}" y="${(y+4).toFixed(1)}" text-anchor="end" class="axl">${kfmt(v)}</text>`;}
-  // rótulos de valor/data só num subconjunto de pontos quando há muitos (evita poluição)
-  const step=pts.length<=12?1:Math.ceil(li/11);
-  const labeled=i=>i===0||i===li||i%step===0;
-  const line=pts.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ");
-  const area=`M${X(0).toFixed(1)} ${(padT+ih).toFixed(1)} `+pts.map((p,i)=>"L"+X(i).toFixed(1)+" "+Y(p.n).toFixed(1)).join(" ")+` L${X(li).toFixed(1)} ${(padT+ih).toFixed(1)} Z`;
-  // marca CADA análise no gráfico + rótulo do nº de ads e do dia da leitura
-  let marks="",vlab="",xlab="";
-  pts.forEach((p,i)=>{
-    const x=X(i),y=Y(p.n),last=i===li;
-    marks+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?4.2:3}" fill="${last?'var(--accent)':'var(--bg-2)'}" stroke="var(--accent)" stroke-width="1.6"><title>${fmtDateShort(p.d)}: ${fmtNum(p.n)} ads ativos</title></circle>`;
-    if(labeled(i)){
-      const edge=x>w-padR-30,near=x<padL+22;
-      const lx=edge?x-6:(near?x+6:x),anchor=edge?"end":(near?"start":"middle");
-      const ly=Math.max(padT-8,y-11);
-      vlab+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="axv${last?"":" axv--dim"}">${fmtNum(p.n)}</text>`;
-      xlab+=`<text x="${x.toFixed(1)}" y="${h-14}" text-anchor="middle" class="axl">${fmtDateShort(p.d)}</text>`;
-    }
+  const curve=series=>series.map((value,i)=>{
+    const x=X(i),y=Y(value);if(!i)return`M${x.toFixed(1)} ${y.toFixed(1)}`;
+    const px=X(i-1),py=Y(series[i-1]),bend=(x-px)*.34;
+    return`C${(px+bend).toFixed(1)} ${py.toFixed(1)} ${(x-bend).toFixed(1)} ${y.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+  const line=curve(values),average=curve(averages),base=padT+ih;
+  const area=`${line} L${X(li).toFixed(1)} ${base.toFixed(1)} L${X(0).toFixed(1)} ${base.toFixed(1)} Z`;
+  let grid="";for(let g=0;g<=4;g++){const v=mn+(mx-mn)*g/4,y=Y(v);grid+=`<line class="${g?"grid-line":"axis-line"}" x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}"/><text class="axl" x="${padL-11}" y="${(y+4).toFixed(1)}" text-anchor="end">${kfmt(v)}</text>`;}
+  const tickIndexes=[...new Set(Array.from({length:7},(_,i)=>Math.round(i*li/6)))];
+  const xlabels=tickIndexes.map(i=>`<text class="axl" x="${X(i).toFixed(1)}" y="${h-13}" text-anchor="${i===0?"start":i===li?"end":"middle"}">${fmtDateShort(pts[i].d)}</text>`).join("");
+  const latest=pts[li],difference=latest.n-pts[0].n,delta=`${difference>=0?"+":"−"}${fmtNum(Math.abs(difference))} ads desde a 1ª leitura`;
+  const coords=pts.map((point,i)=>({x:+X(i).toFixed(1),y:+Y(point.n).toFixed(1),n:point.n,label:adsChartPointLabel(point)}));
+  const chart=`<svg class="adschart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolução de anúncios ativos de ${fmtDateShort(pts[0].d)} a ${fmtDateShort(latest.d)} em ${pts.length} leituras. A linha rosa é a média móvel de sete leituras."><defs><linearGradient id="adsFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--chart-line)" stop-opacity=".25"/><stop offset="1" stop-color="var(--chart-line)" stop-opacity="0"/></linearGradient><filter id="adsGlow" x="-25%" y="-45%" width="150%" height="190%"><feGaussianBlur stdDeviation="5"/></filter></defs>${grid}<path d="${area}" fill="url(#adsFill)"/><path d="${average}" fill="none" stroke="var(--chart-average)" stroke-width="2.5" stroke-dasharray="8 7" opacity=".86"/><path d="${line}" fill="none" stroke="var(--chart-line)" stroke-width="9" opacity=".5" filter="url(#adsGlow)"/><path d="${line}" fill="none" stroke="var(--chart-line)" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><line class="adschart-crosshair" data-ads-cursor x1="${X(li).toFixed(1)}" y1="${padT}" x2="${X(li).toFixed(1)}" y2="${base.toFixed(1)}"/><circle class="adschart-focus" data-ads-focus cx="${X(li).toFixed(1)}" cy="${Y(latest.n).toFixed(1)}" r="7"/>${xlabels}</svg>`;
+  return `<div class="adschart-panel" data-ads-chart data-ads-points="${esc(JSON.stringify(coords))}" tabindex="0" role="group" aria-label="Gráfico de anúncios ativos. Use as setas esquerda e direita para consultar cada leitura."><div class="adschart-panel__head"><div><span class="adschart-panel__eyebrow">Monitoramento da biblioteca</span><h3 class="adschart-panel__title">Anúncios ativos ao longo do tempo</h3><p class="adschart-panel__range">${fmtDateShort(pts[0].d)} a ${fmtDateShort(latest.d)} · ${pts.length} leituras registradas</p></div><span class="adschart-panel__delta${difference<0?" is-down":""}">${delta}</span></div><div class="adschart-legend"><span><i aria-hidden="true"></i>Anúncios ativos</span><span class="is-average"><i aria-hidden="true"></i>Média móvel · 7 leituras</span></div><div class="adschart-scroll" role="region" aria-label="Gráfico completo de anúncios ativos; role horizontalmente em telas pequenas">${chart}</div><div class="adschart-panel__foot"><span>Cada ponto representa uma leitura real da biblioteca.</span><span class="adschart-panel__readout" data-ads-readout aria-live="polite">${esc(adsChartPointLabel(latest))} · ${fmtNum(latest.n)} anúncios</span></div></div>`;
+}
+function wireAdsChart(root){
+  $$("[data-ads-chart]",root).forEach(panel=>{
+    const points=JSON.parse(panel.dataset.adsPoints||"[]"),svg=$("svg",panel),cursor=$("[data-ads-cursor]",panel),focus=$("[data-ads-focus]",panel),readout=$("[data-ads-readout]",panel);
+    if(!points.length||!svg||!cursor||!focus||!readout)return;
+    let current=points.length-1;
+    const select=index=>{const next=Math.max(0,Math.min(points.length-1,index));if(next===current)return;current=next;const point=points[current];cursor.setAttribute("x1",point.x);cursor.setAttribute("x2",point.x);focus.setAttribute("cx",point.x);focus.setAttribute("cy",point.y);readout.textContent=`${point.label} · ${fmtNum(point.n)} anúncios`;};
+    svg.addEventListener("pointermove",event=>{const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)*1080/bounds.width;select(Math.round((x-64)/(1080-64-24)*(points.length-1)));});
+    panel.addEventListener("keydown",event=>{if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;event.preventDefault();select(event.key==="Home"?0:event.key==="End"?points.length-1:current+(event.key==="ArrowRight"?1:-1));});
   });
-  const chart=`<svg class="adschart"${isAdmin?` style="min-width:${w}px"`:""} viewBox="0 0 ${w} ${h}" role="img" aria-label="Anúncios ativos por análise"><defs><linearGradient id="adsFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--accent)" stop-opacity=".42"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".03"/></linearGradient><filter id="adsGlow" x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${grid}${ylab}<path d="${area}" fill="url(#adsFill)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.6" filter="url(#adsGlow)" vector-effect="non-scaling-stroke"/>${marks}${vlab}${xlab}</svg>`;
-  return isAdmin?`<div class="adschart-scroll" role="region" tabindex="0" aria-label="Histórico completo de anúncios ativos: ${pts.length} leituras">${chart}</div>`:chart;
 }
 
 function cardHtml(o){
@@ -1542,6 +1551,7 @@ function openView(id,useAdminDraft=true){
     rail.scrollBy({left:Number(arrow.dataset.bmEvidenceStep)*(shot.getBoundingClientRect().width+10),behavior:"smooth"});
   });
   wireLightboxLinks($("#viewBody"));
+  wireAdsChart($("#viewBody"));
   if(bmEvidence)hydrateBmEvidence(bmEvidence);
   wireCardPreviews($("#viewBody"));
   openOverlay("#viewOverlay");
