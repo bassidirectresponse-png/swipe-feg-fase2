@@ -3445,13 +3445,15 @@ function renderBibliotecas(){
     </div>`).join("");
 }
 function renderTaboola(){
-  $("#tabWrap").innerHTML=fTaboola.map((a,i)=>`
+  const wrap=$("#tabWrap");
+  if(!wrap)return;
+  wrap.innerHTML=fTaboola.map((a,i)=>`
     <div class="block-edit">
       <div class="behead"><span class="t"><span class="badge">${i+1}</span> Anúncio ${i+1}</span>${fTaboola.length>1?`<button type="button" class="rm-block" data-action="rm-tab" data-i="${i}">✕ Remover</button>`:""}</div>
       <div class="field"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-tab="${i}" data-k="nome" placeholder="Ex: Headline / variação encontrada" value="${esc(a.nome)}"></div>
       <div class="field" style="margin-bottom:0"><label class="lbl">Print do anúncio (cole, arraste ou clique)</label><div class="dz" data-zone="taboola|${i}" tabindex="0"></div></div>
     </div>`).join("");
-  wireZones($("#tabWrap"));
+  wireZones(wrap);
 }
 function renderBmPrints(){
   const wrap=$("#bmPrintsWrap");if(!wrap)return;
