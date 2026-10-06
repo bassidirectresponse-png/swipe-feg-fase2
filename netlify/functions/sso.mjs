@@ -10,6 +10,11 @@ const FEGSYS_ADMIN_EMAIL = "guilherme.bassi@grupofeg.com";
 const SWIPE_ADMIN_ID = "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3";
 const SWIPE_ADMIN_EMAIL = "adminswipefeg@swipefeg.app";
 
+function deny(request, stage, status) {
+  console.warn("Swipe SSO denied", { stage, ...(status ? { status } : {}) });
+  return json(request, 200, DENIED, METHODS);
+}
+
 export function verifyHandoffToken(token, secret, now = Math.floor(Date.now() / 1000)) {
   if (typeof token !== "string" || token.length > 4096 || typeof secret !== "string" || !secret) return null;
   const parts = token.split(".");
@@ -57,13 +62,14 @@ export default async function handler(request) {
     const body = await readJson(request, { maxBytes: 5_000 });
     const email = verifyHandoffToken(body?.token, process.env.ECOSYSTEM_SSO_SECRET_SWIPE);
     const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-    if (!email || !serviceKey) return json(request, 200, DENIED, METHODS);
+    if (!email) return deny(request, "handoff-verification");
+    if (!serviceKey) return deny(request, "service-key-missing");
     // The corporate IdP authenticates every reader. Only the one explicit
     // corporate admin identity is mapped to the pre-existing admin account.
     const targetEmail = email === FEGSYS_ADMIN_EMAIL
       ? (await findAdminUser(SUPABASE_URL, serviceKey))?.email
       : email;
-    if (!targetEmail) return json(request, 200, DENIED, METHODS);
+    if (!targetEmail) return deny(request, "admin-user-lookup");
 
     const response = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
       method: "POST",
@@ -71,10 +77,11 @@ export default async function handler(request) {
       body: JSON.stringify({ type: "magiclink", email: targetEmail }),
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) return json(request, 200, DENIED, METHODS);
+    if (!response.ok) return deny(request, "generate-link", response.status);
     const tokenHash = (await response.json())?.hashed_token;
+    if (typeof tokenHash !== "string" || !tokenHash) return deny(request, "generate-link-hash-missing");
     return json(request, 200, { tokenHash: typeof tokenHash === "string" ? tokenHash : null }, METHODS);
   } catch {
-    return json(request, 200, DENIED, METHODS);
+    return deny(request, "unexpected-error");
   }
 }
