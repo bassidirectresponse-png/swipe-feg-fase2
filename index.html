@@ -1584,13 +1584,8 @@
       Benchmarking <span class="lime">Grupo FEG</span>
     </div>
     <div class="login-sub">Além de um swipe de ofertas, um laboratório de análise de dados exclusivo.</div>
-    <form id="loginForm">
-      <div class="login-err" id="loginErr">Usuário ou senha incorretos.</div>
-      <div class="field"><label for="loginUser">Usuário</label><input type="text" id="loginUser" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Ex.: seu usuário"></div>
-      <div class="field"><label for="loginPass">Senha</label><input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="Digite sua senha"></div>
-      <button type="submit" class="btn btn--accent btn--lg">Entrar →</button>
-    </form>
-    <a class="login-sso" href="https://fegsys.com/sso/swipe">Entrar com o Google da FEG</a>
+    <div class="login-err" id="loginErr" role="alert">Não foi possível entrar com o Google da FEG. Tente novamente.</div>
+    <a class="login-sso" id="fegsysLoginLink" href="https://fegsys.com/sso/swipe">Entrar com o Google da FEG</a>
     <div class="login-foot">ACESSO RESTRITO · GRUPO FEG</div>
   </div>
 </div>
@@ -1956,7 +1951,6 @@ function normalize(raw){
 }
 
 /* ===== AUTH (Supabase Auth) ===== */
-const EMAIL_DOMAIN="swipefeg.app";
 /* Somente o admin pode criar/editar/excluir. Qualquer outro login só visualiza.
    Fonte da verdade real é o RLS no Supabase (abaixo é só a camada de UI). */
 const ADMIN_EMAILS=["adminswipefeg@swipefeg.app"];
@@ -1967,8 +1961,7 @@ function applyRole(user){
   const rp=$("#roPill");if(rp)rp.hidden=isAdmin;
 }
 function requireAdmin(){if(isAdmin)return true;toast("Somente leitura — apenas o admin pode alterar.",true);return false;}
-function toEmail(u){u=(u||"").trim().toLowerCase();return u.includes("@")?u:u+"@"+EMAIL_DOMAIN;}
-function showLogin(){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");setTimeout(()=>{const i=$("#loginUser");if(i)i.focus();},50);}
+function showLogin(ssoFailed=false){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");$("#loginErr").classList.toggle("show",ssoFailed);setTimeout(()=>{const i=$("#fegsysLoginLink");if(i)i.focus();},50);}
 function hideLogin(){$("#loginScreen").classList.remove("show");}
 function showWho(user){const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";applyRole(user);}
 
@@ -1991,30 +1984,22 @@ async function startAuth(){
   }catch(e){}
   const url=localStorage.getItem(LS.url)||DEFAULT_URL, key=localStorage.getItem(LS.key)||DEFAULT_KEY;
   if(!initSupabase(url,key)){showSetup();return;}
+  // Nunca reutilize a sessão anterior se o handoff corporativo falhar.
+  if(ssoPath){try{await sb.auth.signOut({scope:'local'});}catch(_){}}
+  let ssoFailed=!!ssoPath;
   if(ssoToken){
     try{
       const response=await fetch('/.netlify/functions/sso',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:ssoToken}),cache:'no-store'});
       if(response.ok){
         const data=await response.json();
-        if(data&&data.tokenHash)await sb.auth.verifyOtp({token_hash:data.tokenHash,type:'email'});
+        if(data&&data.tokenHash){const result=await sb.auth.verifyOtp({token_hash:data.tokenHash,type:'email'});if(!result.error)ssoFailed=false;}
       }
     }catch(_){} // Sem vínculo ou passe inválido: mantém o login por senha.
   }
   let session=null;
   try{const r=await sb.auth.getSession();session=r.data&&r.data.session;}catch(e){}
-  if(session){hideLogin();showWho(session.user);boot();}else showLogin();
+  if(session){hideLogin();showWho(session.user);boot();}else showLogin(ssoFailed);
 }
-$("#loginForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  if(!sb){toast("Conexão indisponível",true);return;}
-  const email=toEmail($("#loginUser").value), pass=$("#loginPass").value;
-  const btn=$("#loginForm button[type=submit]");if(btn)btn.disabled=true;
-  $("#loginErr").classList.remove("show");
-  let res;try{res=await sb.auth.signInWithPassword({email,password:pass});}catch(err){res={error:err};}
-  if(btn)btn.disabled=false;
-  if(res.error){$("#loginErr").textContent="Usuário ou senha incorretos.";$("#loginErr").classList.add("show");$("#loginPass").value="";$("#loginPass").focus();return;}
-  $("#loginPass").value="";hideLogin();showWho(res.data&&res.data.user);boot();
-});
 async function logout(){try{await sb.auth.signOut();}catch(e){}try{localStorage.removeItem(LS.cache);}catch(e){}location.reload();}
 document.addEventListener("click",e=>{if(e.target.closest("#logoutBtn")){if(confirm("Sair do painel?"))logout();}});
 

@@ -5,6 +5,10 @@ const METHODS = "POST";
 const MAX_TTL_SECONDS = 90;
 const CLOCK_SKEW_SECONDS = 30;
 const DENIED = { tokenHash: null };
+const FEGSYS_DOMAIN = "grupofeg.com";
+const FEGSYS_ADMIN_EMAIL = "guilherme.bassi@grupofeg.com";
+const SWIPE_ADMIN_ID = "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3";
+const SWIPE_ADMIN_EMAIL = "adminswipefeg@swipefeg.app";
 
 export function verifyHandoffToken(token, secret, now = Math.floor(Date.now() / 1000)) {
   if (typeof token !== "string" || token.length > 4096 || typeof secret !== "string" || !secret) return null;
@@ -26,32 +30,24 @@ export function verifyHandoffToken(token, secret, now = Math.floor(Date.now() / 
     if (!Number.isInteger(iat) || !Number.isInteger(exp)) return null;
     if (exp <= iat || exp - iat > MAX_TTL_SECONDS) return null;
     if (iat > now + CLOCK_SKEW_SECONDS || exp < now - CLOCK_SKEW_SECONDS) return null;
-    return email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+    const [localPart, domain, extra] = normalizedEmail.split("@");
+    if (!localPart || domain !== FEGSYS_DOMAIN || extra || /\s/.test(normalizedEmail)) return null;
+    return normalizedEmail;
   } catch {
     return null;
   }
 }
 
-export async function findLinkedUser(email, url, serviceKey, fetcher = fetch) {
+export async function findAdminUser(url, serviceKey, fetcher = fetch) {
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  let match = null;
-  // Read every page so a duplicate link cannot be hidden after the first page.
-  for (let page = 1; page <= 100; page += 1) {
-    const response = await fetcher(`${url}/auth/v1/admin/users?page=${page}&per_page=1000`, {
-      headers,
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) return null;
-    const users = (await response.json())?.users;
-    if (!Array.isArray(users)) return null;
-    for (const user of users) {
-      if (String(user?.app_metadata?.fegsys_email || "").trim().toLowerCase() !== email) continue;
-      if (match || !user?.email) return null;
-      match = user;
-    }
-    if (users.length < 1000) return match;
-  }
-  return null;
+  const response = await fetcher(`${url}/auth/v1/admin/users/${SWIPE_ADMIN_ID}`, {
+    headers,
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) return null;
+  const user = await response.json();
+  return user?.id === SWIPE_ADMIN_ID && String(user?.email || "").trim().toLowerCase() === SWIPE_ADMIN_EMAIL ? user : null;
 }
 
 export default async function handler(request) {
@@ -62,13 +58,17 @@ export default async function handler(request) {
     const email = verifyHandoffToken(body?.token, process.env.ECOSYSTEM_SSO_SECRET_SWIPE);
     const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
     if (!email || !serviceKey) return json(request, 200, DENIED, METHODS);
-    const user = await findLinkedUser(email, SUPABASE_URL, serviceKey);
-    if (!user) return json(request, 200, DENIED, METHODS);
+    // The corporate IdP authenticates every reader. Only the one explicit
+    // corporate admin identity is mapped to the pre-existing admin account.
+    const targetEmail = email === FEGSYS_ADMIN_EMAIL
+      ? (await findAdminUser(SUPABASE_URL, serviceKey))?.email
+      : email;
+    if (!targetEmail) return json(request, 200, DENIED, METHODS);
 
     const response = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-      body: JSON.stringify({ type: "magiclink", email: user.email }),
+      body: JSON.stringify({ type: "magiclink", email: targetEmail }),
       signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) return json(request, 200, DENIED, METHODS);
