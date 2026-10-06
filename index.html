@@ -309,6 +309,15 @@
   .brandhub--insider .brand-card--clean{height:100%;min-height:620px;align-self:stretch;}
   .brand-card--clean .brand-bm-state{min-height:2.7em;align-items:center;}
   .brand-card--clean .brand-metrics--snapshot{min-height:160px;grid-template-rows:repeat(2,minmax(0,1fr));}
+  .brand-ads-snapshot{display:grid;gap:8px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);min-height:102px;align-content:center;}
+  .brand-ads-snapshot__head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .brand-ads-snapshot__label{color:var(--muted-fg);font-size:.67rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
+  .brand-ads-snapshot__value{font-size:1.42rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;}
+  .brand-ads-snapshot__meta{color:var(--muted-fg);font-size:.7rem;line-height:1.4;}
+  .brand-ads-snapshot .spark{display:block;width:100%;height:34px;}
+  .brand-ads-snapshot__single{height:34px;display:flex;align-items:center;}
+  .brand-ads-snapshot__single::before{content:"";display:block;width:100%;height:1px;background:var(--border-strong);}
+  .brand-ads-snapshot__single::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:-8px;flex:none;}
   .brand-card--clean .card__actions{min-height:72px;align-content:flex-start;}
   .tag-picker{display:flex;gap:10px;flex-wrap:wrap}.tag-picker button{min-height:42px;cursor:pointer;opacity:.55}.tag-picker button[aria-pressed="true"]{opacity:1;box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor;transform:translateY(-1px)}.tag-editor{width:min(500px,calc(100vw - 32px));max-height:80vh;margin:auto;padding:24px;background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;box-shadow:var(--shadow-lg)}.tag-editor h2{font-size:1.2rem}.tag-editor p{color:var(--muted-fg);margin:7px 0 18px;line-height:1.5}.tag-editor #tagEditorSave{margin-top:22px}
   /* Item 5: link real "stretched" cobrindo o card; ações ficam acima do link */
@@ -1764,16 +1773,16 @@ function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
 function normalizeTagSelection(tags){const unique=[...new Set(tags.filter(key=>OFFER_TAGS[key]))];return unique.includes("scale")?unique.filter(key=>key!=="potential"):unique;}
 async function persistOfferTags(offer,tags){
-  const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection(["insider",...tags])};
+  const previous=adminOfferDrafts[offer.id]||{},isInsider=sectionOf(offer)==="brandsvalidated",patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection([...(isInsider?["insider"]:[]),...tags])};
   const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
   adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;renderGrid(true);toast("Tags salvas no painel admin");
 }
 function openTagEditor(id){
   if(!isAdmin||!sb)return;
-  const offer=offers.find(item=>item.id===id);if(!offer||sectionOf(offer)!=="brandsvalidated")return;
+  const offer=offers.find(item=>item.id===id);if(!offer||!BRAND_OFFER_SECTIONS.has(sectionOf(offer)))return;
   editingTagOfferId=id;tagDraft=offerTagsOf(brandHubAdminData(offer));
   const descriptions={insider:"Entramos na BM para coletar dados",new:"Nova oferta adicionada",potential:"Potencial para acompanhar · mínimo 200 ads ativos",scale:"Marca com mais de US$ 100 mil investidos na semana"};
-  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}"${key==="insider"?" disabled":""}>${ic(t.icon)}${t.label}</button>`).join("");
+  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).filter(([key])=>key!=="insider"||sectionOf(offer)==="brandsvalidated").map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}"${key==="insider"?" disabled":""}>${ic(t.icon)}${t.label}</button>`).join("");
   openOverlay("#tagOverlay");
 }
 async function saveTagEditor(){
@@ -2828,6 +2837,13 @@ function brandDraftCardSnapshot(d){
   const display=bmReportDisplayTotals(report);
   return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.resultsLabel)}</span><strong class="brand-metric__value">${esc(display.results)}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.roasLabel)}</span><strong class="brand-metric__value">${esc(display.roas)}</strong></div></div>`;
 }
+function brandAdsCardSnapshot(d){
+  const hist=adsHistOf(d),ads=getAds(d),latest=hist.at(-1),count=ads??latest?.n;
+  if(count==null)return `<div class="brand-ads-snapshot"><span class="brand-ads-snapshot__label">Anúncios ativos</span><span class="brand-ads-snapshot__meta">Aguardando primeira leitura da biblioteca</span></div>`;
+  const approximate=d.adsLibraryApprox?"≈ ":"",chart=hist.length>=2?sparkSvg(hist):`<div class="brand-ads-snapshot__single" aria-hidden="true"></div>`;
+  const reading=hist.length>=2?`${hist.length} leituras · última em ${fmtDateShort(latest.d)}`:hist.length===1?`1 leitura em ${fmtDateShort(latest.d)}`:d.adsLibraryCheckedAt?`Conferido em ${esc(d.adsLibraryCheckedAt)} · histórico em formação`:"Histórico em formação";
+  return `<div class="brand-ads-snapshot" role="img" aria-label="${approximate?"Aproximadamente ":""}${fmtNum(count)} anúncios ativos. ${esc(reading)}"><div class="brand-ads-snapshot__head"><span class="brand-ads-snapshot__label">Anúncios ativos</span><strong class="brand-ads-snapshot__value">${approximate}${fmtNum(count)}</strong></div>${chart}<span class="brand-ads-snapshot__meta">${reading}</span></div>`;
+}
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
   if(clean){d.nicho=insiderNicheOf(o);d.nomeOferta=insiderProductName(o);}
@@ -2837,12 +2853,12 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
+    top:(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Brands":"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:validated?(brandDraftCardSnapshot(d)||`<div class="brand-bm-state">${ic("clock")}Aguardando acesso à BM</div>`):"",
+    extra:validated?(brandDraftCardSnapshot(d)||brandAdsCardSnapshot(d)):brandAdsCardSnapshot(d),
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }

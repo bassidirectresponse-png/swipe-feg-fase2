@@ -15,6 +15,7 @@ import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 const METHODS = "POST, OPTIONS";
 const ALLOWED_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated", "presell", "criativo"]);
 const OFFER_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated"]);
+const BRAND_TAGS = new Set(["new", "potential", "scale"]);
 const WEBHOOK_SECRET = String(process.env.N8N_MANUAL_INGEST_SECRET || "").trim();
 
 const clean = (value, limit = 240) => String(value || "").trim().slice(0, limit);
@@ -86,9 +87,16 @@ function normalizeItem(raw, index) {
   const adUrl = clean(raw?.adUrl || raw?.linkAnuncio || ads[0]?.url, 1800);
   if (kind === "criativo" && !canonicalUrl(adUrl)) errors.push(`item ${index + 1}: link do anúncio obrigatório`);
   if ((raw?.activeAds ?? raw?.numAdsAtivos) != null && !Number.isFinite(Number(raw?.activeAds ?? raw?.numAdsAtivos))) errors.push(`item ${index + 1}: activeAds precisa ser numérico`);
+  const tags = list(raw?.offerTags).map(tag => clean(tag, 32).toLowerCase());
+  if (tags.some(tag => !BRAND_TAGS.has(tag)) || (tags.length && !["brandsgeneral", "brandsvalidated"].includes(kind))) errors.push(`item ${index + 1}: offerTags inválidas`);
+  const checkedAt = clean(raw?.activeAdsCheckedAt, 10);
+  if (checkedAt && !/^\d{4}-\d{2}-\d{2}$/.test(checkedAt)) errors.push(`item ${index + 1}: activeAdsCheckedAt precisa ser AAAA-MM-DD`);
+  if ((raw?.activeAdsApprox || checkedAt) && (raw?.activeAds ?? raw?.numAdsAtivos) == null) errors.push(`item ${index + 1}: informe activeAds para registrar a leitura`);
   return {
     kind, name, niche, brand: clean(raw?.brand || raw?.marca || raw?.nomeMarca, 140),
     activeAds: Number.isFinite(Number(raw?.activeAds ?? raw?.numAdsAtivos)) ? Math.max(0, Math.round(Number(raw.activeAds ?? raw.numAdsAtivos))) : null,
+    activeAdsApprox: raw?.activeAdsApprox === true, activeAdsCheckedAt: checkedAt,
+    offerTags: [...new Set(tags)],
     format: clean(raw?.format || raw?.formato, 80), image: clean(raw?.image || raw?.imagemProduto, 1800),
     platform: clean(raw?.platform || raw?.plataforma || "meta", 32).toLowerCase(),
     domains, libraries, ads,
@@ -153,10 +161,19 @@ function offerData(item, previous, batchDate) {
   const incomingDomains = item.domains.map(entry => ({ nome: entry.name, linkDominio: entry.offer, linkCheckout: entry.checkout, printPV: entry.pageImage, printCheckout: entry.checkoutImage, backRedirect: "", views: "", viewsPeriod: "" }));
   const incomingLibraries = item.libraries.map(entry => ({ nome: entry.name, link: entry.url }));
   const incomingAds = item.ads.map(entry => ({ nome: entry.name, link: entry.url, transcricao: "" }));
+  const checkedAt = item.activeAdsCheckedAt || batchDate;
+  const adsReading = item.activeAds == null ? {} : {
+    adsLibraryApprox: item.activeAdsApprox,
+    adsLibraryCheckedAt: `${checkedAt.slice(8, 10)}/${checkedAt.slice(5, 7)}/${checkedAt.slice(0, 4)}`,
+    adsUpdatedAt: `${checkedAt}T12:00:00.000Z`,
+    adsHistory: [...list(previous?.adsHistory).filter(point => point?.d !== checkedAt), { d: checkedAt, at: `${checkedAt}T12:00:00.000Z`, n: item.activeAds }],
+  };
   return {
     ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "",
     formato: item.format || previous?.formato || "", imagemProduto: item.image || previous?.imagemProduto || "",
     numAdsAtivos: item.activeAds == null ? previous?.numAdsAtivos || "" : String(item.activeAds),
+    ...adsReading,
+    offerTags: item.offerTags.length ? [...new Set([...(item.kind === "brandsvalidated" ? ["insider"] : []), ...item.offerTags])] : previous?.offerTags || [],
     dominios: mergeDomains(previous?.dominios, incomingDomains),
     bibliotecas: uniqueLinks(previous?.bibliotecas, incomingLibraries, "link"),
     criativos: uniqueLinks(previous?.criativos, incomingAds, "link"),
@@ -165,6 +182,8 @@ function offerData(item, previous, batchDate) {
     analysisAttempts: item.libraries.length ? 0 : previous?.analysisAttempts || 0,
   };
 }
+
+export { normalizeItem, offerData };
 
 function standaloneData(item, batchDate, ad) {
   const isCreative = item.kind === "criativo";

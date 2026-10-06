@@ -387,7 +387,7 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /role="group" aria-label="Datas das leituras da Business Manager"/);
   assert.match(html, /role="tablist" aria-label="Períodos da leitura selecionada"/);
   assert.match(html, /function brandReportPane\(report\)/);
-  assert.match(html, /Aguardando acesso à BM/);
+  assert.match(html, /Aguardando primeira leitura da biblioteca/);
   assert.match(html, /Resumo da Business Manager/);
   assert.match(html, /bmPrints=interactiveInsider\?\[\]:/);
   assert.match(html, /Top ads/);
@@ -494,7 +494,8 @@ test("Ofertas Brands mantém métricas do Gerenciador e permite tags no admin", 
   assert.match(html, /if\(fBrandStage==="brandsvalidated"\)Object\.assign\(payload/);
   assert.match(html, /data-edit-tags=/);
   assert.match(html, /id="tagOverlay"/);
-  assert.match(html, /top:validated&&\(isAdmin\|\|BRAND_TAGS_PUBLISHED\)\?`<div class="offer-tags">\$\{offerTagsHtml\(d\)\}/);
+  assert.match(html, /top:\(isAdmin\|\|BRAND_TAGS_PUBLISHED\)\?`<div class="offer-tags">\$\{offerTagsHtml\(d\)\}/);
+  assert.match(html, /brandAdsCardSnapshot\(d\)/);
   assert.match(html, /const BRAND_TAGS_PUBLISHED=true/);
   assert.doesNotMatch(html, /Rascunho admin/);
   assert.match(html, /saveAdminOfferDraft\(/);

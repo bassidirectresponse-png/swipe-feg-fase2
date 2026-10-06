@@ -1,0 +1,57 @@
+{
+  "batchDate": "2026-10-06",
+  "items": [
+    {
+      "kind": "brandsgeneral",
+      "name": "KittySupps Taurine",
+      "brand": "KittySupps",
+      "niche": "Pet",
+      "format": "Taurina · suporte felino",
+      "image": "https://benchmarkinggrupofeg.site/assets/brands/kittysupps/taurine.png",
+      "offerTags": ["new", "potential"],
+      "activeAds": 4200,
+      "activeAdsApprox": true,
+      "activeAdsCheckedAt": "2026-10-06",
+      "domains": [
+        {
+          "name": "KittySupps · Taurine",
+          "offer": "https://kittysupps.com/products/taurine"
+        }
+      ],
+      "libraries": [
+        {
+          "name": "KittySupps · busca por domínio",
+          "url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&q=kittysupps.com&search_type=keyword_unordered&sort_data[direction]=desc&sort_data[mode]=total_impressions"
+        }
+      ]
+    },
+    {
+      "kind": "brandsgeneral",
+      "name": "Everwell Fermented Garlic",
+      "brand": "Everwell",
+      "niche": "Saúde Cardiovascular",
+      "format": "Black Garlic Extract + CoQ10 Ubiquinol",
+      "image": "https://benchmarkinggrupofeg.site/assets/brands/everwell/fermented-garlic.png",
+      "offerTags": ["new", "potential"],
+      "activeAds": 480,
+      "activeAdsApprox": true,
+      "activeAdsCheckedAt": "2026-10-06",
+      "domains": [
+        {
+          "name": "Everwell · Fermented Black Garlic",
+          "offer": "https://tryeverwellhealth.com/products/everwell%C2%AE-fermented-black-garlic-extract-coq10-ubiquinol-6000mg-odorless-softgels"
+        }
+      ],
+      "libraries": [
+        {
+          "name": "Everwell · biblioteca 1 · ~220 ativos",
+          "url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&view_all_page_id=1332384533285866"
+        },
+        {
+          "name": "Everwell · biblioteca 2 · ~260 ativos",
+          "url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&view_all_page_id=1089313590942720"
+        }
+      ]
+    }
+  ]
+}

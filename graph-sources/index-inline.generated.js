@@ -40,16 +40,16 @@ function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
 function normalizeTagSelection(tags){const unique=[...new Set(tags.filter(key=>OFFER_TAGS[key]))];return unique.includes("scale")?unique.filter(key=>key!=="potential"):unique;}
 async function persistOfferTags(offer,tags){
-  const previous=adminOfferDrafts[offer.id]||{},patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection(["insider",...tags])};
+  const previous=adminOfferDrafts[offer.id]||{},isInsider=sectionOf(offer)==="brandsvalidated",patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection([...(isInsider?["insider"]:[]),...tags])};
   const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
   adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;renderGrid(true);toast("Tags salvas no painel admin");
 }
 function openTagEditor(id){
   if(!isAdmin||!sb)return;
-  const offer=offers.find(item=>item.id===id);if(!offer||sectionOf(offer)!=="brandsvalidated")return;
+  const offer=offers.find(item=>item.id===id);if(!offer||!BRAND_OFFER_SECTIONS.has(sectionOf(offer)))return;
   editingTagOfferId=id;tagDraft=offerTagsOf(brandHubAdminData(offer));
   const descriptions={insider:"Entramos na BM para coletar dados",new:"Nova oferta adicionada",potential:"Potencial para acompanhar · mínimo 200 ads ativos",scale:"Marca com mais de US$ 100 mil investidos na semana"};
-  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}"${key==="insider"?" disabled":""}>${ic(t.icon)}${t.label}</button>`).join("");
+  $("#tagEditorOptions").innerHTML=Object.entries(OFFER_TAGS).filter(([key])=>key!=="insider"||sectionOf(offer)==="brandsvalidated").map(([key,t])=>`<button type="button" class="offer-tag offer-tag--${t.className}" data-tag-choice="${key}" aria-pressed="${tagDraft.includes(key)}" title="${esc(descriptions[key])}"${key==="insider"?" disabled":""}>${ic(t.icon)}${t.label}</button>`).join("");
   openOverlay("#tagOverlay");
 }
 async function saveTagEditor(){
@@ -1104,6 +1104,13 @@ function brandDraftCardSnapshot(d){
   const display=bmReportDisplayTotals(report);
   return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot"><div class="brand-metric"><span class="brand-metric__label">Gasto</span><strong class="brand-metric__value">${esc(bmHasValue(totals.spend)?totals.spend:"Não informado")}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.resultsLabel)}</span><strong class="brand-metric__value">${esc(display.results)}</strong></div><div class="brand-metric"><span class="brand-metric__label">${esc(display.roasLabel)}</span><strong class="brand-metric__value">${esc(display.roas)}</strong></div></div>`;
 }
+function brandAdsCardSnapshot(d){
+  const hist=adsHistOf(d),ads=getAds(d),latest=hist.at(-1),count=ads??latest?.n;
+  if(count==null)return `<div class="brand-ads-snapshot"><span class="brand-ads-snapshot__label">Anúncios ativos</span><span class="brand-ads-snapshot__meta">Aguardando primeira leitura da biblioteca</span></div>`;
+  const approximate=d.adsLibraryApprox?"≈ ":"",chart=hist.length>=2?sparkSvg(hist):`<div class="brand-ads-snapshot__single" aria-hidden="true"></div>`;
+  const reading=hist.length>=2?`${hist.length} leituras · última em ${fmtDateShort(latest.d)}`:hist.length===1?`1 leitura em ${fmtDateShort(latest.d)}`:d.adsLibraryCheckedAt?`Conferido em ${esc(d.adsLibraryCheckedAt)} · histórico em formação`:"Histórico em formação";
+  return `<div class="brand-ads-snapshot" role="img" aria-label="${approximate?"Aproximadamente ":""}${fmtNum(count)} anúncios ativos. ${esc(reading)}"><div class="brand-ads-snapshot__head"><span class="brand-ads-snapshot__label">Anúncios ativos</span><strong class="brand-ads-snapshot__value">${approximate}${fmtNum(count)}</strong></div>${chart}<span class="brand-ads-snapshot__meta">${reading}</span></div>`;
+}
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
   if(clean){d.nicho=insiderNicheOf(o);d.nomeOferta=insiderProductName(o);}
@@ -1113,12 +1120,12 @@ function brandCard(o){
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
-    top:validated&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
+    top:(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Brands":"Spy"}</span>`,
     media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
-    extra:validated?(brandDraftCardSnapshot(d)||`<div class="brand-bm-state">${ic("clock")}Aguardando acesso à BM</div>`):"",
+    extra:validated?(brandDraftCardSnapshot(d)||brandAdsCardSnapshot(d)):brandAdsCardSnapshot(d),
     actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
