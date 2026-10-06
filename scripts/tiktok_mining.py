@@ -206,7 +206,7 @@ APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "clockworks~tiktok-scraper")
 APIFY_SORT = os.environ.get("APIFY_SORT", "MOST_RELEVANT")   # MOST_RELEVANT|MOST_LIKED|LATEST
 APIFY_DATE = os.environ.get("APIFY_DATE", "ALL_TIME")        # ALL_TIME|PAST_24_HOURS|PAST_WEEK|PAST_MONTH...
 APIFY_RUN_MAX_SECONDS = int(os.environ.get("APIFY_RUN_MAX_SECONDS", "900"))
-REHOST_THUMBS = os.environ.get("REHOST_THUMBS", "0").lower() in ("1", "true", "yes")
+REHOST_THUMBS = os.environ.get("REHOST_THUMBS", "1").lower() in ("1", "true", "yes")
 
 
 def apify_json(method, url, payload=None, retries=3):
@@ -469,9 +469,19 @@ def rehost_thumb(token, video_id, thumb_url):
         img = http_bytes(thumb_url)
     except Exception:
         return ""
+    if not img or len(img) > 3 * 1024 * 1024:
+        return ""
+    if img.startswith(b"\xff\xd8\xff"):
+        ctype = "image/jpeg"
+    elif img.startswith(b"\x89PNG\r\n\x1a\n"):
+        ctype = "image/png"
+    elif img.startswith(b"RIFF") and img[8:12] == b"WEBP":
+        ctype = "image/webp"
+    else:
+        return ""
     path = f"/storage/v1/object/{BUCKET}/tiktok/{video_id}.jpg"
     try:
-        st, msg = sb("POST", path, token=token, raw=img, ctype="image/jpeg",
+        st, msg = sb("POST", path, token=token, raw=img, ctype=ctype,
                      extra={"x-upsert": "true"})
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         print(f"      ! rehost thumb {video_id}: {str(error)[:100]}", file=sys.stderr)
@@ -598,8 +608,9 @@ def main():
         for r in arr:
             vid = r["videoId"]
             prev = existing.get(vid, {}).get("data") or {}
-            # A capa não bloqueia a gravação dos vídeos. O CDN é renovado a
-            # cada coleta; rehost no Storage é opcional e falha de forma segura.
+            # A CDN do TikTok expira: a cópia persistente é o caminho padrão.
+            # Se o download falhar, o endpoint tiktok-cover recupera a capa
+            # pelo oEmbed oficial quando o card for exibido.
             prev_thumb = prev.get("thumb") or ""
             if "/storage/v1/object/public/" in prev_thumb:
                 r["thumb"] = prev_thumb

@@ -1905,6 +1905,12 @@ const KNOWN_BRAND_COVERS={
   "balls n brains":"/assets/balls-n-brains/product-cover.png",
   "joymode":"/assets/joymode/product-cover.png",
   "joymode hard":"/assets/joymode/product-cover.png",
+  "kittysupps":"/assets/brands/kittysupps/taurine.png",
+  "kittysupps taurine":"/assets/brands/kittysupps/taurine.png",
+  "everwell":"/assets/brands/everwell/fermented-garlic.png",
+  "everwell fermented garlic":"/assets/brands/everwell/fermented-garlic.png",
+  "amla":"/assets/auniva/amla.png",
+  "pomegranate":"/assets/auniva/pomegranate.png",
   "primal viking":"/assets/primal-viking/product.jpg",
   "ancestral supplements":"/assets/ancestral-supplements/product.png",
   "mars men":"/assets/mars-men/product.png",
@@ -2866,7 +2872,7 @@ function brandCard(o){
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
     top:(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic(validated?"trending":"search")}${validated?"Brands":"Spy"}</span>`,
-    media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
+    media:clean&&d.imagemProduto?`<div class="cmedia"><img loading="lazy" decoding="async" width="640" height="400" src="${esc(d.imagemProduto)}"${KNOWN_BRAND_COVERS[mediaNameKey(d.nomeOferta)]?` data-local-cover="${esc(KNOWN_BRAND_COVERS[mediaNameKey(d.nomeOferta)])}"`:""} alt="Imagem de ${esc(d.nomeOferta||"Produto DTC")}"></div>`:clean?mediaThumb("",d.nomeOferta||"Produto DTC",!!fallbackVideo,fallbackVideo):mediaThumb(d.imagemProduto,d.nomeOferta||"Produto DTC"),
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
     extra:validated?(brandDraftCardSnapshot(d)||brandAdsCardSnapshot(d)):brandAdsCardSnapshot(d),
@@ -3221,7 +3227,7 @@ function openView(id,useAdminDraft=true){
     <div>
       <section class="sec">
         <div class="prod-head">
-          ${d.imagemProduto?`<img class="img" loading="lazy" decoding="async" width="160" height="160" src="${esc(d.imagemProduto)}" alt="Imagem de ${esc(d.nomeOferta||d.produto||"produto")}">`:""}
+          ${d.imagemProduto?`<img class="img" loading="lazy" decoding="async" width="160" height="160" src="${esc(d.imagemProduto)}"${KNOWN_BRAND_COVERS[mediaNameKey(d.nomeOferta)]?` data-local-cover="${esc(KNOWN_BRAND_COVERS[mediaNameKey(d.nomeOferta)])}"`:""} alt="Imagem de ${esc(d.nomeOferta||d.produto||"produto")}">`:""}
           <div class="info">
             <div class="brand">${esc(d.nomeMarca||"Sem marca")}</div>
             <h2>${esc(d.nomeOferta||"Oferta sem nome")}</h2>
@@ -3978,7 +3984,19 @@ document.addEventListener("paste",e=>{
   const file=item.getAsFile();const dz=$(`.dz[data-zone="${activeZone}"]`);
   if(file&&dz){handleZoneFile(file,dz);if(dz.dataset.zone!=="semrush")toast("Print colado");}
 });
-document.addEventListener("error",e=>{if(!(e.target instanceof HTMLImageElement))return;const frame=e.target.closest(".cmedia,.shot__media");if(frame)frame.classList.add("image-error");},true);
+document.addEventListener("error",e=>{
+  if(!(e.target instanceof HTMLImageElement))return;
+  const img=e.target,frame=img.closest(".cmedia,.shot__media");
+  const local=img.dataset.localCover;
+  if(local&&!img.dataset.localCoverTried&&new URL(img.src,location.href).pathname!==local){img.dataset.localCoverTried="1";frame?.classList.remove("image-error");img.src=local;return;}
+  if(!frame)return;
+  const videoId=img.dataset.tiktokId;
+  const repair=videoId?`/.netlify/functions/tiktok-cover?id=${encodeURIComponent(videoId)}`:"";
+  if(repair&&!img.dataset.tiktokRepairTried&&img.src!==new URL(repair,location.href).href){img.dataset.tiktokRepairTried="1";frame.classList.remove("image-error");img.src=repair;return;}
+  if(videoId){const dur=frame.querySelector(".ttdur");frame.classList.add("cmedia--empty");frame.innerHTML=`${ic("play")}<span>Prévia indisponível</span>${dur?dur.outerHTML:""}`;return;}
+  frame.classList.add("image-error");
+},true);
+document.addEventListener("load",e=>{if(e.target instanceof HTMLImageElement)e.target.closest(".cmedia,.shot__media")?.classList.remove("image-error");},true);
 
 /* ===== LIGHTBOX acessível: âncoras continuam nativas em Ctrl/⌘/meio-clique ===== */
 let lbItems=[],lbIndex=0,lbTrigger=null,lbScale=1,lbX=0,lbY=0,lbDrag=null;
@@ -5682,8 +5700,8 @@ function ve(o){return Number((o.data||{}).engajamento)||0;}
 function ttSortFn(a,b){return (TT_SORTS[tiktokSort]||TT_SORTS.views)(a,b);}
 function tiktokThumb(d){
   const dur=d.duracao?`<span class="ttdur">${ttDur(d.duracao)}</span>`:"";
-  const alt=(d.thumbOrig&&d.thumbOrig!==d.thumb)?` data-alt="${esc(d.thumbOrig)}"`:"";
-  if(d.thumb)return `<div class="cmedia ttmedia ttmedia--click"><img class="ttthumb" loading="lazy" decoding="async" fetchpriority="low" width="360" height="520" src="${esc(d.thumb)}"${alt} alt=""><span class="cmedia__play">${ic("play")}</span>${dur}</div>`;
+  const videoId=String(d.videoId||""),repair=/^[0-9]{10,25}$/.test(videoId)?`/.netlify/functions/tiktok-cover?id=${encodeURIComponent(videoId)}`:"";
+  if(d.thumb||repair)return `<div class="cmedia ttmedia ttmedia--click"><img class="ttthumb" loading="lazy" decoding="async" fetchpriority="low" width="360" height="520" src="${esc(d.thumb||repair)}"${repair?` data-tiktok-id="${esc(videoId)}"`:""} alt=""><span class="cmedia__play">${ic("play")}</span>${dur}</div>`;
   return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${dur}</div>`;
 }
 function tiktokCard(o){
@@ -5886,21 +5904,6 @@ function wireCardPreviews(root){
     const fail=()=>{
       if(img.dataset.did&&!img.dataset.did2){img.dataset.did2="1";img.src="https://lh3.googleusercontent.com/d/"+img.dataset.did+"=w1000";return;}
       const box=img.closest(".cmedia");if(box){box.classList.remove("cmedia--vid");box.classList.add("cmedia--empty");box.innerHTML=ic("film")+"<span>Vídeo — abra para assistir</span>";}
-    };
-    img.addEventListener("error",fail);
-    if(img.complete&&img.naturalWidth===0)fail();
-  });
-  /* capas do TikTok: as URLs do CDN expiram (~24h). Se a imagem quebrar,
-     tenta a capa original 1x e, senão, mostra um placeholder limpo em vez
-     do texto "alt" gigante. */
-  (root||document).querySelectorAll("img.ttthumb").forEach(img=>{
-    if(img.dataset.pw)return; img.dataset.pw="1";
-    const fail=()=>{
-      if(img.dataset.alt){const u=img.dataset.alt;delete img.dataset.alt;img.src=u;return;}
-      const box=img.closest(".cmedia");if(!box)return;
-      const dur=box.querySelector(".ttdur");const durHtml=dur?dur.outerHTML:"";
-      box.classList.add("cmedia--empty");
-      box.innerHTML=`${ic("play")}<span>Prévia indisponível</span>${durHtml}`;
     };
     img.addEventListener("error",fail);
     if(img.complete&&img.naturalWidth===0)fail();
