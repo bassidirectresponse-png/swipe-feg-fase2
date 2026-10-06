@@ -63,7 +63,7 @@ async function saveTagEditor(){
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
 const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
-const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
+const BRANDS_NAV_ORDER=["brandsvalidated","brandsgeneral","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
@@ -2406,7 +2406,7 @@ function wireFegsysPanel(el){
 function brandNavHtml(){
   if(!BRAND_SECTIONS.has(activeSection))return"";
   if(activeSection==="brandcreative")return"";
-  const entries=[["brandsvalidated","Ofertas Brands"]];
+  const entries=[["brandsvalidated","Ofertas Brands"],["brandsgeneral","Ofertas no Geral"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){

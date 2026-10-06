@@ -53,8 +53,9 @@ test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => 
 });
 
 test("navegação publica Brands sem apagar as rotas e registros antigos", () => {
-  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
+  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsvalidated","brandsgeneral","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
   assert.match(html, /brandsgeneral:"feg-brands-geral"/);
+  assert.match(html, /const entries=\[\["brandsvalidated","Ofertas Brands"\],\["brandsgeneral","Ofertas no Geral"\]\]/);
   assert.match(html, /\/\* As seções ocultas e seus registros permanecem no armazenamento\. \*\//);
   assert.doesNotMatch(html, /html\+=`<div class="snav__group snav__group--dr">FEG DR<\/div>`/);
   assert.doesNotMatch(html, /snav__group--updates">Histórico/);
