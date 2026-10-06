@@ -20,6 +20,7 @@ test("Escala e Potencial são mutuamente exclusivos sem perder Insider",()=>{
   assert.deepEqual(normalize(["insider","potential","scale","scale"]),["insider","scale"]);
   assert.deepEqual(tagsOf({kind:"brandsvalidated",offerTags:["potential","scale"]}),["insider","scale"]);
   assert.deepEqual(tagsOf({kind:"brandsvalidated",offerTags:["new"]}),["insider","new"]);
+  assert.deepEqual(tagsOf({kind:"brandsvalidated",bmAccess:false,offerTags:["new","potential"]}),["new","potential"]);
 });
 
 test("Ofertas oferecem ranking por gasto e vendas e filtro de tag no painel",()=>{

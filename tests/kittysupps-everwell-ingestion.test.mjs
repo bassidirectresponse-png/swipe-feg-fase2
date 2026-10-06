@@ -6,17 +6,18 @@ import { normalizeItem, offerData } from "../netlify/functions/manual-ingest-n8n
 const manifest = JSON.parse(readFileSync(new URL("../scripts/manifests/kittysupps-everwell-2026-10-06.json", import.meta.url), "utf8"));
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
-test("KittySupps e Everwell entram em Ofertas no Geral, com tags e sem métricas BM", () => {
+test("KittySupps e Everwell entram em FEG Brands, com tags e sem métricas BM", () => {
   assert.equal(manifest.items.length, 2);
   for (const [index, raw] of manifest.items.entries()) {
     const item = normalizeItem(raw, index);
     assert.deepEqual(item.errors, []);
-    assert.equal(item.kind, "brandsgeneral");
+    assert.equal(item.kind, "brandsvalidated");
     assert.deepEqual(item.offerTags, ["new", "potential"]);
     assert.equal(item.activeAdsApprox, true);
     assert.equal(item.activeAdsCheckedAt, "2026-10-06");
     const data = offerData(item, {}, manifest.batchDate);
     assert.deepEqual(data.offerTags, ["new", "potential"]);
+    assert.equal(data.bmAccess, false);
     assert.equal(data.adsHistory.length, 1);
     assert.equal(data.adsHistory[0].n, raw.activeAds);
     assert.equal(data.adsLibraryApprox, true);

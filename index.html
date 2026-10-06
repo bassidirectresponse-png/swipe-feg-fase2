@@ -1769,11 +1769,11 @@ function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGener
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=true;
-function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];const tags=[...new Set([...(d&&d.kind==="brandsvalidated"?["insider"]:[]),...list.map(x=>String(x).toLowerCase())].filter(x=>OFFER_TAGS[x]))];return tags.includes("scale")?tags.filter(x=>x!=="potential"):tags;}
+function offerTagsOf(d){const list=Array.isArray(d&&d.offerTags)?d.offerTags:[];const tags=[...new Set([...(d&&d.kind==="brandsvalidated"&&d.bmAccess!==false?["insider"]:[]),...list.map(x=>String(x).toLowerCase())].filter(x=>OFFER_TAGS[x]))];return tags.includes("scale")?tags.filter(x=>x!=="potential"):tags;}
 function offerTagsHtml(d){return offerTagsOf(d).map(key=>{const t=OFFER_TAGS[key];return `<span class="offer-tag offer-tag--${t.className}">${ic(t.icon)}${t.label}</span>`;}).join("");}
 function normalizeTagSelection(tags){const unique=[...new Set(tags.filter(key=>OFFER_TAGS[key]))];return unique.includes("scale")?unique.filter(key=>key!=="potential"):unique;}
 async function persistOfferTags(offer,tags){
-  const previous=adminOfferDrafts[offer.id]||{},isInsider=sectionOf(offer)==="brandsvalidated",patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection([...(isInsider?["insider"]:[]),...tags])};
+  const previous=adminOfferDrafts[offer.id]||{},isInsider=sectionOf(offer)==="brandsvalidated"&&offer.data?.bmAccess!==false,patch={...(previous.data_patch||{}),offerTags:normalizeTagSelection([...(isInsider?["insider"]:[]),...tags])};
   const draft=await saveAdminOfferDraft({target_offer_id:offer.id,label:previous.label||String(offer.data?.nomeOferta||offer.data?.nomeMarca||"Oferta Brands"),new_offer:!!offer.adminPrivate,data_patch:patch});
   adminOfferDrafts[offer.id]=draft;if(offer.adminPrivate)offer.data=patch;renderGrid(true);toast("Tags salvas no painel admin");
 }
@@ -1796,7 +1796,7 @@ async function saveTagEditor(){
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
 const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
-const BRANDS_NAV_ORDER=["brandsvalidated","brandsgeneral","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
+const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
@@ -3305,7 +3305,7 @@ function openForm(id){
   fTaboola=[];
   const sourceSection=id?sectionOf(offers.find(x=>x.id===id)):activeSection,isBrand=BRAND_OFFER_SECTIONS.has(sourceSection);
   $("#formTag").textContent=isBrand?(id?"Editar oferta · FEG Brands":"Nova oferta · FEG Brands"):(id?"Editar oferta":"Nova oferta");
-  fBrandStage=isBrand?sourceSection:"oferta";
+  fBrandStage=isBrand?"brandsvalidated":"oferta";
   fBmPrints=d.bmPrints.length?JSON.parse(JSON.stringify(d.bmPrints)):[{nome:"Business Manager",img:""}];
   fBrandTopAds=d.brandTopAds.length?JSON.parse(JSON.stringify(d.brandTopAds)):[{nome:"",link:"",img:""}];
   fBrandSemrush1m=d.brandSemrush1m||"";
@@ -3314,7 +3314,7 @@ function openForm(id){
   const brandForm=isBrand?`
     <div class="fsec">
       <div class="fsec__title"><span class="num">B</span> FEG Brands · classificação</div>
-      <div class="fsec__hint">Ofertas Brands reúne o acervo Insider com páginas, bibliotecas, métricas da BM e top ads. Os registros existentes permanecem intactos.</div>
+      <div class="fsec__hint">Todas as ofertas FEG Brands ficam nesta seção, inclusive as que ainda não têm métricas da BM.</div>
       <div id="brandBmFields">
       <div class="row3">
         <div class="field"><label class="lbl">Gasto nos últimos 7 dias</label><input type="text" id="f_bmSpend7d" placeholder="Ex: R$ 48.200" value="${esc(d.bmSpend7d||"")}"></div>
@@ -3500,7 +3500,12 @@ $("#formBody").addEventListener("click",e=>{
 
 /* ===== SAVE (explícito) ===== */
 function buildPayload(){
-  const legacy=editingId?Object.assign({},(offers.find(x=>x.id===editingId)||{}).data||{}):{};
+  const sourceOffer=editingId?offers.find(x=>x.id===editingId):null;
+  const legacy=sourceOffer?Object.assign({},sourceOffer.data||{}):{};
+  if(sourceOffer&&sectionOf(sourceOffer)==="brandsgeneral"){
+    legacy.offerTags=offerTagsOf(brandHubAdminData(sourceOffer)).filter(tag=>tag!=="insider");
+    legacy.bmAccess=false;
+  }
   const payload=Object.assign(legacy,{
     tipoTrafego:"meta",
     nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
@@ -4139,7 +4144,7 @@ function wireFegsysPanel(el){
 function brandNavHtml(){
   if(!BRAND_SECTIONS.has(activeSection))return"";
   if(activeSection==="brandcreative")return"";
-  const entries=[["brandsvalidated","Ofertas Brands"],["brandsgeneral","Ofertas no Geral"]];
+  const entries=[["brandsvalidated","Ofertas Brands"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
 function renderSubFilter(){

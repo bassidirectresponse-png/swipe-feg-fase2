@@ -171,10 +171,11 @@ function offerData(item, previous, batchDate) {
   };
   return {
     ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "",
+    ...(item.kind === "brandsvalidated" && !previous?.kind ? { bmAccess: false } : {}),
     formato: item.format || previous?.formato || "", imagemProduto: item.image || previous?.imagemProduto || "",
     numAdsAtivos: item.activeAds == null ? previous?.numAdsAtivos || "" : String(item.activeAds),
     ...adsReading,
-    offerTags: item.offerTags.length ? [...new Set([...(item.kind === "brandsvalidated" ? ["insider"] : []), ...item.offerTags])] : previous?.offerTags || [],
+    offerTags: item.offerTags.length ? [...new Set(item.offerTags)] : previous?.offerTags || [],
     dominios: mergeDomains(previous?.dominios, incomingDomains),
     bibliotecas: uniqueLinks(previous?.bibliotecas, incomingLibraries, "link"),
     criativos: uniqueLinks(previous?.criativos, incomingAds, "link"),
