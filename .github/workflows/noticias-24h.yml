@@ -41,7 +41,9 @@ jobs:
           ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
           test -n "$ACCESS_TOKEN"
           echo "::add-mask::$ACCESS_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
           echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+          echo "NEWS_INGEST_OIDC_TOKEN=$OIDC_TOKEN" >> "$GITHUB_ENV"
 
       - name: Ingerir notícias (RSS → Supabase)
         run: python3 scripts/noticias_ingest.py

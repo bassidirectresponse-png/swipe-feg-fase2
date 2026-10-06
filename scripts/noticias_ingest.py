@@ -16,6 +16,7 @@ Variáveis de ambiente:
   SUPABASE_URL           (default: projeto do Swipe FEG)
   SUPABASE_ANON_KEY      (default: anon pública)
   SUPABASE_BOT_ACCESS_TOKEN (sessão temporária emitida pelo workflow OIDC)
+  NEWS_INGEST_OIDC_TOKEN (autoriza somente a inserção de notícias no endpoint)
   SUPABASE_BOT_EMAIL/PASSWORD (alternativa manual)
   DRY_RUN=1              (não grava; só mostra o que faria)
   MAX_PER_NICHE=6        (limite de notícias por nicho por execução)
@@ -34,6 +35,8 @@ ANON = os.environ.get(
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
 BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
+NEWS_INGEST_OIDC_TOKEN = os.environ.get("NEWS_INGEST_OIDC_TOKEN", "").strip()
+NEWS_INGEST_URL = os.environ.get("NEWS_INGEST_URL", "https://swipe.fegsys.com/.netlify/functions/github-news-ingest")
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
 MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "8"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "14"))
@@ -303,14 +306,22 @@ def dedup_and_limit(by_niche, existing):
     return final, per_niche_counts
 
 def insert_rows(token, rows):
+    if not NEWS_INGEST_OIDC_TOKEN:
+        raise RuntimeError("NEWS_INGEST_OIDC_TOKEN é obrigatório para inserir notícias")
     total = 0
     for i in range(0, len(rows), 25):
         chunk = rows[i:i + 25]
         payload = [{"data": r} for r in chunk]
-        status, txt = sb_request("POST", "/rest/v1/offers", token=token,
-                                 body=payload, prefer="return=minimal")
-        if status not in (200, 201):
-            raise RuntimeError(f"INSERT falhou: HTTP {status} {txt[:200]}")
+        req = urllib.request.Request(NEWS_INGEST_URL,
+            data=json.dumps({"rows": payload}).encode(), method="POST",
+            headers={"Authorization": f"Bearer {NEWS_INGEST_OIDC_TOKEN}", "Content-Type": "application/json", "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                status = response.status
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(f"INSERT falhou: HTTP {error.code} {error.read().decode('utf-8', 'replace')[:200]}") from error
+        if status != 201:
+            raise RuntimeError(f"INSERT falhou: HTTP {status}")
         total += len(chunk)
     return total
 

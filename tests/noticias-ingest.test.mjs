@@ -8,6 +8,7 @@ const html = await readFile(new URL("index.html", root), "utf8");
 const script = await readFile(new URL("scripts/noticias_ingest.py", root), "utf8");
 const workflow = await readFile(new URL(".github/workflows/noticias-24h.yml", root), "utf8");
 const oidc = await readFile(new URL("netlify/functions/_github-oidc.mjs", root), "utf8");
+const endpoint = await readFile(new URL("netlify/functions/github-news-ingest.mjs", root), "utf8");
 const topics = JSON.parse(html.match(/const RADAR_TOPICS=(\{[^;]+\});/)[1]);
 
 test("notícias usa exatamente os sete nichos e temas de Ofertas/Radar", () => {
@@ -32,6 +33,12 @@ test("job diário usa sessão OIDC autorizada em vez da senha antiga", () => {
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /github-automation-token/);
   assert.match(workflow, /SUPABASE_BOT_ACCESS_TOKEN/);
+  assert.match(workflow, /NEWS_INGEST_OIDC_TOKEN/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_BOT_PASSWORD/);
   assert.match(oidc, /"noticias-24h\.yml"/);
+  assert.match(endpoint, /new Set\(\["noticias-24h\.yml"\]\)/);
+  assert.match(endpoint, /admin\.mode !== "service_role"/);
+  assert.match(endpoint, /TOPICS\[data\.nicho\]\?\.includes\(data\.subnicho\)/);
+  assert.match(script, /NEWS_INGEST_OIDC_TOKEN/);
+  assert.doesNotMatch(script, /sb_request\("POST", "\/rest\/v1\/offers"/);
 });
