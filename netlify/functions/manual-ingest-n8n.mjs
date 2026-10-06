@@ -162,11 +162,12 @@ function offerData(item, previous, batchDate) {
   const incomingLibraries = item.libraries.map(entry => ({ nome: entry.name, link: entry.url }));
   const incomingAds = item.ads.map(entry => ({ nome: entry.name, link: entry.url, transcricao: "" }));
   const checkedAt = item.activeAdsCheckedAt || batchDate;
+  const recordedAt = new Date().toISOString();
   const adsReading = item.activeAds == null ? {} : {
     adsLibraryApprox: item.activeAdsApprox,
     adsLibraryCheckedAt: `${checkedAt.slice(8, 10)}/${checkedAt.slice(5, 7)}/${checkedAt.slice(0, 4)}`,
-    adsUpdatedAt: `${checkedAt}T12:00:00.000Z`,
-    adsHistory: [...list(previous?.adsHistory).filter(point => point?.d !== checkedAt), { d: checkedAt, at: `${checkedAt}T12:00:00.000Z`, n: item.activeAds }],
+    adsUpdatedAt: recordedAt,
+    adsHistory: [...list(previous?.adsHistory).filter(point => point?.d !== checkedAt), { d: checkedAt, at: recordedAt, n: item.activeAds }],
   };
   return {
     ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "",
