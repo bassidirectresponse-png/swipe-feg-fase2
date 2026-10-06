@@ -1902,6 +1902,9 @@ const KNOWN_OFFER_MEDIA=[
   {names:["IQ Honey","Iq Honey"],root:"/assets/offers-july29/iq-honey",pv:"https://visiiq.site/bg/ih/vsl/07/ld07/",ck:"https://buygoods.com/secure/checkout.html?account_id=12857&product_codename=iqh6"}
 ];
 const KNOWN_BRAND_COVERS={
+  "balls n brains":"/assets/balls-n-brains/product-cover.png",
+  "joymode":"/assets/joymode/product-cover.png",
+  "joymode hard":"/assets/joymode/product-cover.png",
   "primal viking":"/assets/primal-viking/product.jpg",
   "ancestral supplements":"/assets/ancestral-supplements/product.png",
   "mars men":"/assets/mars-men/product.png",
@@ -1909,6 +1912,12 @@ const KNOWN_BRAND_COVERS={
 };
 function mediaNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi," ").trim().toLowerCase();}
 function mediaIsMissing(value){const v=String(value==null?"":value).trim();return !v||/^(?:·|-|—|n\/a|nao informado|não informado)$/i.test(v);}
+function isLegacyBrandCover(name,value){
+  const url=String(value||"").trim();
+  if(name==="balls n brains")return /^https:\/\/[^/]+\/storage\/v1\/object\/public\/criativos\/brands\/balls-n-brains\/product-cover\.png(?:\?.*)?$/i.test(url);
+  if(name==="joymode"||name==="joymode hard")return url==="https://assets.replocdn.com/projects/0e54a4ce-4105-4700-aab7-d46d0874071b/ec1bac99-e229-4b05-a664-e1d2f1c82259";
+  return false;
+}
 function mediaUrlKey(value){try{const u=new URL(fixUrl(value)),host=u.hostname.replace(/^www\./,"").toLowerCase(),base=(host+u.pathname.replace(/\/+$/,"")).toLowerCase();if(host==="buygoods.com"){const account=(u.searchParams.get("account_id")||"").toLowerCase(),product=(u.searchParams.get("product_codename")||"").toLowerCase();return account&&product?base+"?account_id="+account+"&product_codename="+product:"";}return base;}catch(_){return"";}}
 function mediaUrlMatches(value,target){const current=mediaUrlKey(value),expected=mediaUrlKey(target);return !!(current&&expected&&(current===expected||current.startsWith(expected+"/")||expected.startsWith(current+"/")));}
 function applyKnownMediaFallbacks(d){
@@ -1919,7 +1928,7 @@ function applyKnownMediaFallbacks(d){
       if(mediaIsMissing(domain.printPV)&&mediaUrlMatches(domain.linkDominio,known.pv))domain.printPV=known.root+"/pv.jpg";
       if(mediaIsMissing(domain.printCheckout)&&mediaUrlMatches(domain.linkCheckout,known.ck))domain.printCheckout=known.root+"/checkout.jpg";
     });
-  }else if(mediaIsMissing(d.imagemProduto)&&KNOWN_BRAND_COVERS[name])d.imagemProduto=KNOWN_BRAND_COVERS[name];
+  }else if(KNOWN_BRAND_COVERS[name]&&(mediaIsMissing(d.imagemProduto)||isLegacyBrandCover(name,d.imagemProduto)))d.imagemProduto=KNOWN_BRAND_COVERS[name];
   return d;
 }
 function normalize(raw){

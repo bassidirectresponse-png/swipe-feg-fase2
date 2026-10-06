@@ -53,7 +53,7 @@ const topAdLinks = [
 const html = await readFile(new URL("index.html", ROOT), "utf8");
 const supabaseUrl = html.match(/const DEFAULT_URL="([^"]+)"/)?.[1];
 if (!supabaseUrl) throw new Error("URL do Supabase não encontrada");
-const manifest = { batchDate: "2026-09-18", items: [{ kind: "brandsvalidated", name: "Balls N Brains", brand: "Balls N Brains", niche: "Saúde masculina", format: "Café de cogumelos com testosterona", image: `${supabaseUrl}/storage/v1/object/public/criativos/brands/balls-n-brains/product-cover.png`, libraries: [{ name: "Balls N Brains · Meta Ads Library", url: library }], domains: [{ name: "Página de vendas", offer: salesPage }] }] };
+const manifest = { batchDate: "2026-09-18", items: [{ kind: "brandsvalidated", name: "Balls N Brains", brand: "Balls N Brains", niche: "Saúde masculina", format: "Café de cogumelos com testosterona", image: "/assets/balls-n-brains/product-cover.png", libraries: [{ name: "Balls N Brains · Meta Ads Library", url: library }], domains: [{ name: "Página de vendas", offer: salesPage }] }] };
 function makeData(previous = {}) {
   return {
     ...previous,
