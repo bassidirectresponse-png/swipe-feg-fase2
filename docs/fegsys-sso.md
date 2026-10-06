@@ -15,7 +15,7 @@ preexistente do Swipe.
 2. Confirme que `SUPABASE_SERVICE_ROLE_KEY` está disponível às Functions. A
    função recusa o handoff sem ela; o login por senha permanece independente.
 3. A conta administrativa interna `adminswipefeg@swipefeg.app`, com o ID
-   `ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3`, deve continuar existente.
+   `58ae8365-0247-49c8-aa1d-0b38fcc92dca`, deve continuar existente.
    O SSO confere ID e e-mail antes de criar a sessão do administrador.
    Para leitores, o `generate_link` administrativo cria a conta corporativa
    na primeira entrada, quando necessário, sem enviar e-mail.

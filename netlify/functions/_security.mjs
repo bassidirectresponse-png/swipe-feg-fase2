@@ -7,7 +7,7 @@ const DEFAULT_SUPABASE_URL = "https://pkvzwtstidtobpdngxnd.supabase.co";
 // A chave anon do Supabase identifica o projeto e foi criada para uso público no browser.
 const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrdnp3dHN0aWR0b2JwZG5neG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4MTM1MTUsImV4cCI6MjEwMTM4OTUxNX0.UvV333OkHrp5Yvxn3vyxnkF_KXMBTu-82qFx-Jocc-0";
 const DEFAULT_ADMIN_EMAIL = "adminswipefeg@swipefeg.app";
-const DEFAULT_ADMIN_ID = "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3";
+const DEFAULT_ADMIN_ID = "58ae8365-0247-49c8-aa1d-0b38fcc92dca";
 
 export const SUPABASE_URL = (process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(/\/+$/, "");
 export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;

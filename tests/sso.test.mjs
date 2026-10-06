@@ -27,7 +27,7 @@ test("valida o passe FEGSYS e normaliza o e-mail", () => {
 });
 
 test("localiza somente a conta administrativa exata", async () => {
-  const id = "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3";
+  const id = "58ae8365-0247-49c8-aa1d-0b38fcc92dca";
   const fetcher = async url => {
     assert.equal(url, `https://example.invalid/auth/v1/admin/users/${id}`);
     return Response.json({ id, email: "adminswipefeg@swipefeg.app" });
@@ -46,7 +46,7 @@ test("endpoint provisiona leitor corporativo e reserva o admin para a identidade
   const requests = [];
   globalThis.fetch = async (url, options) => {
     requests.push({ url, options });
-    if (url.includes("/admin/users/")) return Response.json({ id: "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3", email: "adminswipefeg@swipefeg.app" });
+    if (url.includes("/admin/users/")) return Response.json({ id: "58ae8365-0247-49c8-aa1d-0b38fcc92dca", email: "adminswipefeg@swipefeg.app" });
     return Response.json({ hashed_token: "one-time-test-hash" });
   };
   try {

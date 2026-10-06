@@ -28,7 +28,7 @@ test("integração FEGSYS é horária, autenticada e não contém chave privada"
   assert.match(apiFn, /forceRefresh = url\.searchParams\.get\("refresh"\) === "1" && admin/);
   assert.match(securityFn, /ADMIN_EMAILS/);
   assert.match(securityFn, /ADMIN_IDS/);
-  assert.match(securityFn, /ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3/);
+  assert.match(securityFn, /58ae8365-0247-49c8-aa1d-0b38fcc92dca/);
   assert.match(securityFn, /x-feg-auth/);
   assert.match(html, /"X-Feg-Auth":"Bearer "\+accessToken/);
   assert.match(securityFn, /\/auth\/v1\/user/);

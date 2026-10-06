@@ -7,7 +7,7 @@ const CLOCK_SKEW_SECONDS = 30;
 const DENIED = { tokenHash: null };
 const FEGSYS_DOMAIN = "grupofeg.com";
 const FEGSYS_ADMIN_EMAIL = "guilherme.bassi@grupofeg.com";
-const SWIPE_ADMIN_ID = "ff9e002e-7ed1-4bc3-8571-18ffcb0c95c3";
+const SWIPE_ADMIN_ID = "58ae8365-0247-49c8-aa1d-0b38fcc92dca";
 const SWIPE_ADMIN_EMAIL = "adminswipefeg@swipefeg.app";
 
 function deny(request, stage, status) {
