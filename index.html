@@ -163,6 +163,8 @@
   .login-card .btn{width:100%;margin-top:8px;}
   .login-err{display:none;color:#ff8a8a;background:var(--red-soft);border:1px solid rgba(255,93,93,.4);border-radius:var(--radius-xs);padding:11px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;}
   .login-err.show{display:block;}
+  .login-sso{display:block;width:100%;margin-top:16px;padding:13px 16px;border:1px solid var(--border-2);border-radius:var(--radius-xs);color:var(--fg);background:var(--surface);font-size:.92rem;font-weight:700;text-align:center;text-decoration:none;transition:border-color .15s,background .15s;}
+  .login-sso:hover,.login-sso:focus-visible{border-color:var(--accent);background:var(--surface-2);}
   .login-foot{margin-top:22px;text-align:center;font-size:.72rem;color:var(--faint);letter-spacing:.05em;}
 
   /* ===== controle de acesso (somente leitura) ===== */
@@ -1588,6 +1590,7 @@
       <div class="field"><label for="loginPass">Senha</label><input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="Digite sua senha"></div>
       <button type="submit" class="btn btn--accent btn--lg">Entrar →</button>
     </form>
+    <a class="login-sso" href="https://fegsys.com/sso/swipe">Entrar com o Google da FEG</a>
     <div class="login-foot">ACESSO RESTRITO · GRUPO FEG</div>
   </div>
 </div>

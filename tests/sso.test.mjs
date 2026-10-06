@@ -77,4 +77,5 @@ test("boot consome o fragmento antes de buscar a sessão e mantém login por sen
   assert.ok(auth.indexOf("history.replaceState") < auth.indexOf("await fetch('/.netlify/functions/sso'"));
   assert.ok(auth.indexOf("verifyOtp") < auth.indexOf("sb.auth.getSession"));
   assert.match(html, /sb\.auth\.signInWithPassword/);
+  assert.match(html, /href="https:\/\/fegsys\.com\/sso\/swipe"[^>]*>Entrar com o Google da FEG<\/a>/);
 });
