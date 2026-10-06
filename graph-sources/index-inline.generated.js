@@ -237,6 +237,10 @@ function hideLogin(){$("#loginScreen").classList.remove("show");}
 function showWho(user){const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";applyRole(user);}
 
 async function startAuth(){
+  // O fragmento não deve permanecer na URL nem no histórico durante as chamadas assíncronas.
+  const ssoPath=location.pathname.replace(/\/+$/,'')==='/sso';
+  const ssoToken=ssoPath?new URLSearchParams(location.hash.slice(1)).get('t'):null;
+  if(ssoPath)history.replaceState(null,'','/');
   try{
     const savedUrl=localStorage.getItem(LS.url)||"";
     if(LEGACY_SUPABASE_REFS.some(ref=>savedUrl.includes(ref))){
@@ -251,6 +255,15 @@ async function startAuth(){
   }catch(e){}
   const url=localStorage.getItem(LS.url)||DEFAULT_URL, key=localStorage.getItem(LS.key)||DEFAULT_KEY;
   if(!initSupabase(url,key)){showSetup();return;}
+  if(ssoToken){
+    try{
+      const response=await fetch('/.netlify/functions/sso',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:ssoToken}),cache:'no-store'});
+      if(response.ok){
+        const data=await response.json();
+        if(data&&data.tokenHash)await sb.auth.verifyOtp({token_hash:data.tokenHash,type:'email'});
+      }
+    }catch(_){} // Sem vínculo ou passe inválido: mantém o login por senha.
+  }
   let session=null;
   try{const r=await sb.auth.getSession();session=r.data&&r.data.session;}catch(e){}
   if(session){hideLogin();showWho(session.user);boot();}else showLogin();
