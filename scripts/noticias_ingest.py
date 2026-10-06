@@ -3,8 +3,8 @@
 """
 Ingestão diária de "Notícias 24 Horas" para o dashboard Swipe FEG.
 
-Busca notícias por nicho em feeds RSS de veículos de qualidade (ScienceDaily,
-CNN Health, NBC News, TMZ, Page Six), monta linhas kind:"noticia", deduplica
+Busca notícias dos mesmos nichos de Ofertas/Radar TikTok em feeds RSS de
+saúde (ScienceDaily, CNN Health, NBC News), monta linhas kind:"noticia", deduplica
 por URL contra o que já existe no Supabase e insere via REST.
 
 Regra de ouro: SÓ INSERT (nunca delete/update). Deduplica por URL normalizada.
@@ -15,8 +15,8 @@ Autenticação: login do bot (baixo privilégio). A chave anon é pública.
 Variáveis de ambiente:
   SUPABASE_URL           (default: projeto do Swipe FEG)
   SUPABASE_ANON_KEY      (default: anon pública)
-  SUPABASE_BOT_EMAIL     (obrigatória para gravar)
-  SUPABASE_BOT_PASSWORD  (obrigatória para gravar)
+  SUPABASE_BOT_ACCESS_TOKEN (sessão temporária emitida pelo workflow OIDC)
+  SUPABASE_BOT_EMAIL/PASSWORD (alternativa manual)
   DRY_RUN=1              (não grava; só mostra o que faria)
   MAX_PER_NICHE=6        (limite de notícias por nicho por execução)
   MAX_AGE_DAYS=45        (descarta itens mais antigos que isso, se a data existir)
@@ -33,66 +33,81 @@ ANON = os.environ.get(
 )
 BOT_EMAIL = os.environ.get("SUPABASE_BOT_EMAIL", "")
 BOT_PASSWORD = os.environ.get("SUPABASE_BOT_PASSWORD", "")
+BOT_ACCESS_TOKEN = os.environ.get("SUPABASE_BOT_ACCESS_TOKEN", "").strip()
 DRY_RUN = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
 MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "8"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "14"))
 UA = "Mozilla/5.0 (compatible; SwipeFEG-Noticias/1.0; +https://github.com/bassidirectresponse-png/swipe-feg-fase2)"
 
-# --- feeds dedicados por nicho (já on-topic; não precisa filtrar por palavra) ---
+# Os sete nichos e respectivos temas espelham RADAR_TOPICS em index.html.
 SD = "https://www.sciencedaily.com/rss"
 NICHE_FEEDS = {
-    "Emagrecimento": [
-        (f"{SD}/health_medicine/obesity.xml", "ScienceDaily"),
-        (f"{SD}/health_medicine/diet_and_weight_loss.xml", "ScienceDaily"),
-        (f"{SD}/health_medicine/nutrition.xml", "ScienceDaily"),
-    ],
-    "Memória": [
-        (f"{SD}/mind_brain/dementia.xml", "ScienceDaily"),
-        (f"{SD}/mind_brain/memory.xml", "ScienceDaily"),
-        (f"{SD}/mind_brain/intelligence.xml", "ScienceDaily"),
-    ],
-    "Neuropatia": [
-        (f"{SD}/health_medicine/neuropathy.xml", "ScienceDaily"),
-        (f"{SD}/health_medicine/nervous_system.xml", "ScienceDaily"),
-    ],
-    "Disfunção Erétil": [
-        (f"{SD}/health_medicine/erectile_dysfunction.xml", "ScienceDaily"),
-        (f"{SD}/health_medicine/sexual_health.xml", "ScienceDaily"),
-    ],
-    "Diabetes / Glicose": [
-        (f"{SD}/health_medicine/diabetes.xml", "ScienceDaily"),
-    ],
+    "Saúde masculina": [(f"{SD}/health_medicine/men%27s_health.xml", "ScienceDaily"), (f"{SD}/health_medicine/prostate_health.xml", "ScienceDaily")],
+    "Saúde feminina": [(f"{SD}/health_medicine/women%27s_health.xml", "ScienceDaily")],
+    "Saúde Cardiovascular": [(f"{SD}/health_medicine/heart_disease.xml", "ScienceDaily"), (f"{SD}/health_medicine/hypertension.xml", "ScienceDaily")],
+    "Saúde íntima / libido": [(f"{SD}/health_medicine/sexual_health.xml", "ScienceDaily")],
+    "Sono/ Beleza": [(f"{SD}/health_medicine/sleep_disorders.xml", "ScienceDaily"), (f"{SD}/health_medicine/skin_care.xml", "ScienceDaily")],
+    "Saúde Geral/Nutrição": [(f"{SD}/health_medicine/nutrition.xml", "ScienceDaily"), (f"{SD}/health_medicine/immune_system.xml", "ScienceDaily")],
+    "Pet": [(f"{SD}/plants_animals/veterinary_medicine.xml", "ScienceDaily"), (f"{SD}/plants_animals/dogs.xml", "ScienceDaily"), (f"{SD}/plants_animals/cats.xml", "ScienceDaily")],
 }
 
-# --- pools cross-nicho (grandes veículos): roteados por palavra-chave ---
+# Pools amplos só entram após correspondência textual com um tema permitido.
 POOL_FEEDS = [
     ("http://rss.cnn.com/rss/cnn_health.rss", "CNN Health"),
     ("https://feeds.nbcnews.com/nbcnews/public/health", "NBC News"),
-    ("https://www.tmz.com/rss.xml", "TMZ"),
-    ("https://pagesix.com/feed/", "Page Six"),
 ]
-NICHE_KEYWORDS = {
-    "Emagrecimento": ["weight loss", "ozempic", "wegovy", "glp-1", "glp1", "semaglutide",
-                      "obesity", "obese", "dieting", "weight-loss", "mounjaro", "zepbound", "slimming"],
-    "Memória": ["memory", "dementia", "alzheimer", "cognitive decline", "cognition", "brain fog"],
-    "Neuropatia": ["neuropathy", "nerve pain", "peripheral neuropathy", "nerve damage", "neuropathic"],
-    "Disfunção Erétil": ["erectile", "impotence", "testosterone", "libido", "viagra", "ed drug", "men's sexual"],
-    "Diabetes / Glicose": ["diabetes", "diabetic", "blood sugar", "blood glucose", "insulin resistance", "a1c", "prediabetes"],
+TOPIC_TERMS = {
+    "Saúde masculina": {
+        "Testosterona": ["testosterone", "androgen", "male hormone"],
+        "Libido": ["male libido", "erectile dysfunction", "men's sexual", "impotence"],
+        "Próstata": ["prostate", "bph", "prostatitis"],
+        "Geral": ["men's health", "male health", "men's wellness"],
+    },
+    "Saúde feminina": {
+        "Menopausa": ["menopause", "perimenopause", "postmenopausal"],
+        "Hormônios": ["female hormone", "women's hormone", "estrogen", "progesterone"],
+        "Geral": ["women's health", "female health", "women's wellness"],
+    },
+    "Saúde Cardiovascular": {
+        "Coração": ["heart disease", "heart health", "cardiovascular", "cardiac", "heart attack"],
+        "Pressão arterial": ["blood pressure", "hypertension", "hypertensive"],
+        "Colesterol": ["cholesterol", "ldl", "hdl"],
+        "Geral": ["blood circulation", "vascular health", "circulatory health"],
+    },
+    "Saúde íntima / libido": {
+        "Libido": ["libido", "sex drive"],
+        "Saúde sexual": ["sexual health", "sexual wellness", "sexual function"],
+        "Saúde íntima": ["intimate health", "vaginal health", "vaginal microbiome"],
+        "Geral": ["sexual medicine", "reproductive health"],
+    },
+    "Sono/ Beleza": {
+        "Sono": ["sleep health", "sleep quality", "insomnia", "sleep disorder", "sleep apnea"],
+        "Pele": ["skin health", "skin care", "skincare", "dermatology"],
+        "Beleza": ["beauty health", "healthy aging skin", "hair growth"],
+        "Geral": ["sleep and skin", "beauty sleep"],
+    },
+    "Saúde Geral/Nutrição": {
+        "Nutrição": ["nutrition", "nutritional", "dietary supplement", "vitamin deficiency", "vitamin supplement", "healthy diet"],
+        "Intestino": ["gut health", "gut microbiome", "digestive health", "intestinal health"],
+        "Imunidade": ["immune health", "immune system", "immunity"],
+        "Articulações": ["joint health", "joint pain", "arthritis"],
+        "Geral": ["general health", "wellness supplement"],
+    },
+    "Pet": {
+        "Articulações": ["pet arthritis", "dog arthritis", "cat arthritis", "canine joint", "feline joint"],
+        "Pele e pelagem": ["pet skin", "dog skin", "cat skin", "pet coat", "dog coat", "cat coat"],
+        "Nutrição": ["pet nutrition", "dog nutrition", "cat nutrition", "pet diet", "dog diet", "cat diet"],
+        "Colágeno": ["pet collagen", "dog collagen", "cat collagen"],
+        "Geral": ["pet health", "dog health", "cat health", "veterinary", "canine health", "feline health"],
+    },
 }
 
-# Pronto para ativar depois da validação do admin. O job agendado não muda a
-# classificação pública enquanto ENABLE_BRAND_NICHES não for explicitamente 1.
-BRAND_NICHE_KEYWORDS = {
-    "Saúde masculina": ["men's health", "male health", "testosterone", "prostate health", "erectile dysfunction"],
-    "Saúde feminina": ["women's health", "female health", "menopause", "perimenopause", "hormonal health"],
-    "Saúde Cardiovascular": ["heart health", "cardiovascular health", "blood pressure", "cholesterol", "heart disease"],
-    "Saúde íntima / libido": ["sexual wellness", "sexual health", "libido", "intimate health"],
-    "Sono/ Beleza": ["sleep health", "sleep quality", "insomnia", "skin health", "beauty health"],
-    "Saúde Geral/Nutrição": ["nutrition", "nutritional health", "dietary supplements", "vitamins", "gut health"],
-}
-if os.environ.get("ENABLE_BRAND_NICHES", "").lower() in ("1", "true", "yes"):
-    NICHE_FEEDS.update({n: [] for n in BRAND_NICHE_KEYWORDS})
-    NICHE_KEYWORDS.update(BRAND_NICHE_KEYWORDS)
+def classify_topic(niche, item):
+    hay = (item["title"] + " " + item["summary"]).casefold()
+    for topic, terms in TOPIC_TERMS[niche].items():
+        if any(re.search(r"(?<![\w])" + re.escape(term) + r"(?![\w])", hay) for term in terms):
+            return topic
+    return None
 
 # =============================== helpers HTTP ================================
 def http_get(url, timeout=20):
@@ -218,11 +233,12 @@ def recent_enough(dt):
         return True  # sem data: aceita (feeds são reverse-chron)
     return dt >= datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
 
-def make_row(nicho, it, fonte, categoria):
+def make_row(nicho, subnicho, it, fonte, categoria):
     dt = it["date"]
     return {
         "kind": "noticia",
         "nicho": nicho,
+        "subnicho": subnicho,
         "nome": it["title"][:300],
         "link": it["link"],
         "fonte": fonte,
@@ -238,7 +254,7 @@ def collect():
     """Coleta candidatos por nicho a partir dos feeds dedicados + pools."""
     by_niche = {n: [] for n in NICHE_FEEDS}
 
-    # 1) feeds dedicados
+    # 1) feeds dedicados: ainda exigimos evidência textual do nicho/tema.
     for nicho, feeds in NICHE_FEEDS.items():
         for url, fonte in feeds:
             try:
@@ -247,8 +263,9 @@ def collect():
                 print(f"[aviso] feed falhou ({fonte} {url}): {e}", file=sys.stderr)
                 continue
             for it in items:
-                if recent_enough(it["date"]):
-                    by_niche[nicho].append(make_row(nicho, it, fonte, "portal"))
+                topic = classify_topic(nicho, it)
+                if topic and recent_enough(it["date"]):
+                    by_niche[nicho].append(make_row(nicho, topic, it, fonte, "portal"))
 
     # 2) pools cross-nicho, roteados por palavra-chave
     for url, fonte in POOL_FEEDS:
@@ -257,15 +274,13 @@ def collect():
         except Exception as e:
             print(f"[aviso] pool falhou ({fonte} {url}): {e}", file=sys.stderr)
             continue
-        celeb = fonte in ("TMZ", "Page Six")
         for it in items:
             if not recent_enough(it["date"]):
                 continue
-            hay = (it["title"] + " " + it["summary"]).lower()
-            for nicho, kws in NICHE_KEYWORDS.items():
-                if any(k in hay for k in kws):
-                    cat = "celebridade" if celeb else "portal"
-                    by_niche.setdefault(nicho, []).append(make_row(nicho, it, fonte, cat))
+            for nicho in NICHE_FEEDS:
+                topic = classify_topic(nicho, it)
+                if topic:
+                    by_niche[nicho].append(make_row(nicho, topic, it, fonte, "portal"))
                     break
     return by_niche
 
@@ -309,10 +324,10 @@ def main():
     token = None
     existing = set()
     if not DRY_RUN:
-        if not (BOT_EMAIL and BOT_PASSWORD):
-            print("ERRO: defina SUPABASE_BOT_EMAIL e SUPABASE_BOT_PASSWORD (ou use DRY_RUN=1).", file=sys.stderr)
+        if not (BOT_ACCESS_TOKEN or (BOT_EMAIL and BOT_PASSWORD)):
+            print("ERRO: defina SUPABASE_BOT_ACCESS_TOKEN ou credenciais do bot (ou use DRY_RUN=1).", file=sys.stderr)
             sys.exit(2)
-        token = bot_login()
+        token = BOT_ACCESS_TOKEN or bot_login()
         existing = fetch_existing_urls(token)
         print(f"notícias já no banco: {len(existing)}")
 

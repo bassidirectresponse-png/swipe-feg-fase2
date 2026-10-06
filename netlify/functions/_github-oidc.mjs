@@ -7,6 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
   "transcrever-videos.yml",
   "ads-ativos.yml",
   "tiktok-mining.yml",
+  "noticias-24h.yml",
   "brand-cover-repair.yml",
 ]);
 

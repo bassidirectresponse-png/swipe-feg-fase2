@@ -22,7 +22,7 @@ test("admin agrupa Geral, Insider e Criativos por nicho e produto sem descartar 
 });
 
 test("Radar usa as divisões de Brands e subnichos na coleta", () => {
-  assert.match(html, /function topicNicheOf\(o\)/);
+  assert.match(html, /function newsNicheOf\(o\)/);
   assert.match(html, /const RADAR_TOPICS=/);
   const radar = execFileSync("python3", ["scripts/tiktok_mining.py", "--list-taxonomy"], { cwd: fileURLToPath(new URL("..", import.meta.url)) });
   const info = JSON.parse(radar.toString());

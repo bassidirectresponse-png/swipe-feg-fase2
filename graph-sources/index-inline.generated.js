@@ -73,7 +73,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let editingTagOfferId=null,tagDraft=[];
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", tiktokSubniche="", tiktokAuthor="", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", tiktokSubniche="", tiktokAuthor="", newsSubniche="", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
 let updates=[],updatesTotal=0;
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysSalesMin="",fegsysSalesMax="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
@@ -482,7 +482,9 @@ function insiderNicheOf(o){const raw=(insiderOverride(o)||{}).niche||nicheOf(o);
 /* A estrutura por nicho/produto é pública; somente edição e manutenção exigem admin. */
 function isInsiderAdminArea(){return activeSection==="brandsvalidated";}
 function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
-function topicNicheOf(o){const raw=nicheOf(o),key=nicheRouteKey(raw);if(["disfuncao-eretil","prostata","energia-testosterona"].includes(key))return BRAND_NICHE_ORDER[0];if(key==="menopausa")return BRAND_NICHE_ORDER[1];if(key==="sono-ansiedade")return BRAND_NICHE_ORDER[4];return raw;}
+function newsNicheOf(o){return RADAR_NICHES.find(n=>sameNiche(n,nicheOf(o)))||"";}
+function newsTopicOf(o){const niche=newsNicheOf(o);return (RADAR_TOPICS[niche]||[]).find(t=>sameNiche(t,(o.data||{}).subnicho||"Geral"))||"Geral";}
+function newsItems(){return offers.filter(o=>sectionOf(o)==="noticia"&&newsNicheOf(o));}
 function catalogNiches(){const names=new Map(BRAND_NICHE_ORDER.map(n=>[nicheRouteKey(n),n]));offers.filter(o=>BRAND_OFFER_SECTIONS.has(sectionOf(o))).forEach(o=>{const raw=sectionOf(o)==="brandsvalidated"?insiderNicheOf(o):nicheOf(o),name=brandNicheCanonical(raw);if(raw&&name!==BRAND_NICHE_REVIEW)names.set(nicheRouteKey(name),name);});return [...names.values()];}
 function brandNicheCanonical(raw){
   const value=String(raw||"").trim(),key=value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
@@ -507,7 +509,7 @@ function brandHubNicheOf(o){
   return match?brandNicheCanonical(sectionOf(match)==="brandsvalidated"?insiderNicheOf(match):nicheOf(match)):BRAND_NICHE_REVIEW;
 }
 function filtered(){
-  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
+  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():offers.filter(o=>sectionOf(o)===activeSection);
   if(activeSection==="criativo"||activeSection==="brandcreative")list=list.filter(o=>((o.data||{}).plataforma||"meta")==="meta");
   if(activeSection==="megabrainfegsys"){
     const min=fegsysSalesMin===""?null:Number(fegsysSalesMin),max=fegsysSalesMax===""?null:Number(fegsysSalesMax);
@@ -516,14 +518,15 @@ function filtered(){
   if(activeSection==="megabrain"){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
-  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
+  if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"?newsNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
   if(activeSection==="tiktok"){if(tiktokSubniche)list=list.filter(o=>sameNiche((o.data||{}).subnicho||"Geral",tiktokSubniche));if(tiktokAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===tiktokAuthor);}
+  if(activeSection==="noticia"&&newsSubniche)list=list.filter(o=>sameNiche(newsTopicOf(o),newsSubniche));
   if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
   if(activeSection==="brandsvalidated"&&offerTagFilter&&(isAdmin||BRAND_TAGS_PUBLISHED))list=list.filter(o=>offerTagsOf(isAdmin?brandHubAdminData(o):o.data).includes(offerTagFilter));
   if(searchTerm){
     const t=searchTerm.toLowerCase();
-    list=list.filter(o=>{const d=o.data||{},topAds=Array.isArray(d.brandTopAds)?d.brandTopAds.flatMap(x=>[x&&x.nome,x&&x.link]):[];return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho,isInsiderAdminArea()?insiderProductName(o):"",isInsiderAdminArea()?insiderNicheOf(o):"",...topAds].some(v=>(v||"").toLowerCase().includes(t));});
+    list=list.filter(o=>{const d=o.data||{},topAds=Array.isArray(d.brandTopAds)?d.brandTopAds.flatMap(x=>[x&&x.nome,x&&x.link]):[];return [d.nomeOferta,d.nome,d.nomeMarca,d.marca,d.autor,d.formato,d.nicho,activeSection==="noticia"?d.subnicho:"",activeSection==="noticia"?d.resumo:"",isInsiderAdminArea()?insiderProductName(o):"",isInsiderAdminArea()?insiderNicheOf(o):"",...topAds].some(v=>(v||"").toLowerCase().includes(t));});
   }
   return list;
 }
@@ -586,16 +589,16 @@ function canonicalNiche(niche){
 function catSlug(niche){return niche===NO_NICHE?"sem-nicho":(niche?routeSlug(niche):"todos");}
 function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
+  if(section==="noticia")return RADAR_NICHES.find(n=>nicheRouteKey(n)===slug)||null;
   if(slug==="sem-nicho")return NO_NICHE;
   const source=section==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===section);
-  const present=new Set(source.map(o=>section==="brandcreative"?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):section==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o)).filter(Boolean));
+  const present=new Set(source.map(o=>section==="brandcreative"?brandHubNicheOf(o):section==="brandsvalidated"?insiderNicheOf(o):section==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):nicheOf(o)).filter(Boolean));
   if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   if(section==="tiktok"){const configured=RADAR_NICHES.find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
-  if(section==="noticia"&&isAdmin){const configured=catalogNiches().find(n=>nicheRouteKey(n)===slug);if(configured)return configured;}
   const hit=[...present].find(n=>nicheRouteKey(n)===slug);
   if(hit)return canonicalNiche(hit);
   if((BRAND_OFFER_SECTIONS.has(section)||section==="brandcreative")){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy){const mapped=section==="brandcreative"?brandHubNicheOf(legacy):section==="brandsvalidated"?insiderNicheOf(legacy):brandNicheCanonical(nicheOf(legacy));return mapped===BRAND_NICHE_REVIEW?NO_NICHE:mapped;}}
-  if((section==="noticia"||section==="tiktok")&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
+  if(section==="tiktok"&&isAdmin){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   if(section==="brandsvalidated"){const legacy=source.find(o=>nicheRouteKey(nicheOf(o))===slug);if(legacy)return nicheOf(legacy);}
   return null;   // null => categoria inexistente (404)
 }
@@ -604,6 +607,7 @@ function qsFromState(){
   if(searchTerm)p.set("q",searchTerm);
   if((BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")&&activeBrand)p.set("marca",activeBrand);
   if(activeSection==="tiktok"){if(tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);if(tiktokSubniche)p.set("tema",tiktokSubniche);if(tiktokAuthor)p.set("perfil",tiktokAuthor);}
+  if(activeSection==="noticia"&&newsSubniche)p.set("tema",newsSubniche);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   if(activeSection==="megabrainfegsys"){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);if(fegsysSalesMin!=="")p.set("vendas_min",fegsysSalesMin);if(fegsysSalesMax!=="")p.set("vendas_max",fegsysSalesMax);}
@@ -619,7 +623,7 @@ function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsy
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
   const sec=itemSection(o),base="/"+(SEC2PATH[sec]||"ofertas");
-  const niche=sec==="brandsvalidated"?insiderNicheOf(o):sec==="brandcreative"?brandHubNicheOf(o):sec==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):(sec==="noticia"||sec==="tiktok")&&isAdmin?topicNicheOf(o):nicheOf(o);
+  const niche=sec==="brandsvalidated"?insiderNicheOf(o):sec==="brandcreative"?brandHubNicheOf(o):sec==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):sec==="noticia"?newsNicheOf(o):nicheOf(o);
   const path=NICHE_SECTIONS.has(sec)?base+"/"+catSlug(niche)+"/"+o.id:base+"/"+o.id;
   return sec==="brandsvalidated"&&activeBrand===insiderProductKey(o)?path+"?marca="+encodeURIComponent(activeBrand):path;
 }
@@ -663,7 +667,7 @@ function renderNotFound(msg){
 }
 function maybeOpenView(id){
   const o=itemById(id);
-  const nicheOk=!!o&&(!activeNiche||(activeNiche===NO_NICHE?(!nicheOf(o)||BRAND_SECTIONS.has(activeSection)&&((activeSection==="brandsvalidated"?insiderNicheOf(o):activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)))===BRAND_NICHE_REVIEW)):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)||(activeSection==="brandsgeneral"&&sameNiche(brandNicheCanonical(nicheOf(o)),activeNiche))||(activeSection==="brandcreative"&&sameNiche(brandHubNicheOf(o),activeNiche))||((activeSection==="noticia"||activeSection==="tiktok")&&isAdmin&&sameNiche(topicNicheOf(o),activeNiche))));
+  const nicheOk=!!o&&(activeSection!=="noticia"||!!newsNicheOf(o))&&(!activeNiche||(activeNiche===NO_NICHE?(!nicheOf(o)||BRAND_SECTIONS.has(activeSection)&&((activeSection==="brandsvalidated"?insiderNicheOf(o):activeSection==="brandcreative"?brandHubNicheOf(o):brandNicheCanonical(nicheOf(o)))===BRAND_NICHE_REVIEW)):sameNiche(nicheOf(o),activeNiche)||isInsiderAdminArea()&&sameNiche(insiderNicheOf(o),activeNiche)||(activeSection==="brandsgeneral"&&sameNiche(brandNicheCanonical(nicheOf(o)),activeNiche))||(activeSection==="brandcreative"&&sameNiche(brandHubNicheOf(o),activeNiche))||(activeSection==="tiktok"&&isAdmin&&sameNiche(nicheOf(o),activeNiche))));
   if(!o||itemSection(o)!==activeSection||!nicheOk){if(routeReady)renderNotFound("Item não encontrado nesta seção ou categoria.");return;}
   openView(id);
 }
@@ -688,6 +692,7 @@ function applyRoute(){
     offerTagFilter=activeSection==="brandsvalidated"&&OFFER_TAGS[r.q.get("tag")]?r.q.get("tag"):"";
   }
   if(activeSection==="tiktok"){tiktokSort=r.q.get("ordem")||"views";tiktokSubniche=(RADAR_TOPICS[activeNiche]||[]).find(topic=>sameNiche(topic,r.q.get("tema")))||"";tiktokAuthor=r.q.get("perfil")||"";}else{tiktokSubniche="";tiktokAuthor="";}
+  newsSubniche=activeSection==="noticia"?(RADAR_TOPICS[activeNiche]||[]).find(topic=>sameNiche(topic,r.q.get("tema")))||"":"";
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
     brainSort=r.q.get("ordem")||"metrica";brainAuthor=activeSection==="megabrain"?(r.q.get("autor")||""):"";
     if(activeSection==="megabrainfegsys"){brainPeriod=["today","yesterday","7d","14d","30d","90d","custom"].includes(r.q.get("periodo"))?r.q.get("periodo"):"7d";brainDateFrom=r.q.get("de")||"";brainDateTo=r.q.get("ate")||"";fegsysSalesMin=r.q.get("vendas_min")||"";fegsysSalesMax=r.q.get("vendas_max")||"";}
@@ -729,23 +734,23 @@ function closeSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.cla
 function renderSideNav(){
   const nav=$("#sideNav");if(!nav)return;
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
-  offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});
+  offers.forEach(o=>{const k=sectionOf(o);if(k==="noticia"&&!newsNicheOf(o))return;counts[k]=(counts[k]||0)+1;});
   counts.megabrainfegsys=fegsysCards.length;
   counts.updates=updatesTotal;
 
   /* nichos somente nas seções que realmente usam essa taxonomia */
   let nicheHtml="";
   if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
-    const secOffers=activeSection==="brandcreative"?brandHubItems():offers.filter(o=>sectionOf(o)===activeSection);
+    const secOffers=activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
-    secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"&&isAdmin?topicNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
+    secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderNicheOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"?newsNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
-    if(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||activeSection==="noticia"&&isAdmin){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
-    if(activeSection==="tiktok")RADAR_NICHES.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});
+    if(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"){catalogNiches().forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});}
+    if(activeSection==="tiktok"||activeSection==="noticia")RADAR_NICHES.forEach(name=>{const key=nicheRouteKey(name);if(!ncByKey.has(key))ncByKey.set(key,{name,count:0});});
     if(activeNiche&&activeNiche!==NO_NICHE&&!ncByKey.has(nicheRouteKey(activeNiche)))activeNiche="";
     if(activeNiche===NO_NICHE&&!none)activeNiche="";
     const present=[...nc.keys()];
-    const ordered=activeSection==="tiktok"?RADAR_NICHES:(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative"||activeSection==="noticia"&&isAdmin)
+    const ordered=(activeSection==="tiktok"||activeSection==="noticia")?RADAR_NICHES:(BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")
       ?[...catalogNiches(),...present.filter(n=>!catalogNiches().some(c=>sameNiche(c,n))).sort((a,b)=>a.localeCompare(b,"pt-BR"))]
       :[...NICHOS.filter(n=>nc.has(n)),...present.filter(n=>!NICHOS.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
     const nitem=(key,label,count,active)=>`<a class="snav__niche${active?" active":""}" data-nav href="${esc(listPath(activeSection,key))}" data-niche="${esc(key)}"><span class="nl"><span class="ndot"></span><span>${esc(label)}</span></span><span class="cnt">${count}</span></a>`;
@@ -761,8 +766,8 @@ function renderSideNav(){
     };
     nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
-    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected){nicheHtml+=productMenu(n);if(activeSection==="tiktok")nicheHtml+='<div class="snav__brands">'+(RADAR_TOPICS[n]||[]).map(topic=>{const count=secOffers.filter(o=>sameNiche(nicheOf(o),n)&&sameNiche((o.data||{}).subnicho||"Geral",topic)).length;return '<a class="snav__brand'+(sameNiche(tiktokSubniche,topic)?' active':'')+'" data-nav href="'+esc(listPath("tiktok",n)+'?tema='+encodeURIComponent(topic))+'"><span>'+esc(topic)+'</span><span class="cnt">'+count+'</span></a>';}).join('')+'</div>';}});
-    if(none){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
+    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected){nicheHtml+=productMenu(n);if(activeSection==="tiktok"||activeSection==="noticia")nicheHtml+='<div class="snav__brands">'+(RADAR_TOPICS[n]||[]).map(topic=>{const count=secOffers.filter(o=>sameNiche(nicheOf(o),n)&&sameNiche(activeSection==="noticia"?newsTopicOf(o):((o.data||{}).subnicho||"Geral"),topic)).length;return '<a class="snav__brand'+(sameNiche(activeSection==="noticia"?newsSubniche:tiktokSubniche,topic)?' active':'')+'" data-nav href="'+esc(listPath(activeSection,n)+'?tema='+encodeURIComponent(topic))+'"><span>'+esc(topic)+'</span><span class="cnt">'+count+'</span></a>';}).join('')+'</div>';}});
+    if(none&&activeSection!=="noticia"){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
   /* anima o slide dos nichos só quando a SEÇÃO muda (não a cada clique de nicho) */
@@ -1164,7 +1169,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,brainSort,brainAuthor,offerSort,offerDirection,offerTagFilter,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,tiktokSubniche,newsSubniche,brainSort,brainAuthor,offerSort,offerDirection,offerTagFilter,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -1276,12 +1281,12 @@ function renderGrid(skipNav){
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   if(activeSection==="updates"){renderUpdates();return;}
   const cfg=sectionCfg(activeSection);
-  const manualSecCount=activeSection==="brandcreative"?brandHubItems().length:offers.filter(o=>sectionOf(o)===activeSection).length;
+  const manualSecCount=activeSection==="brandcreative"?brandHubItems().length:activeSection==="noticia"?newsItems().length:offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
   const pageResult=$("#pageResult");if(pageResult)pageResult.textContent=`${list.length.toLocaleString("pt-BR")} ${list.length===1?"resultado":"resultados"}`;
-  const filtering=!!(activeNiche||activeBrand||searchTerm||(activeSection==="tiktok"&&(tiktokSubniche||tiktokAuthor))||((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor)||(activeSection==="megabrainfegsys"&&(fegsysSalesMin!==""||fegsysSalesMax!=="")));
+  const filtering=!!(activeNiche||activeBrand||searchTerm||(activeSection==="tiktok"&&(tiktokSubniche||tiktokAuthor))||(activeSection==="noticia"&&newsSubniche)||((activeSection==="criativo"||activeSection==="brandcreative")&&critPlatform!=="all")||(activeSection==="megabrain"&&brainAuthor)||(activeSection==="megabrainfegsys"&&(fegsysSalesMin!==""||fegsysSalesMax!=="")));
   const shownWrap=$("#statShownWrap");
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
@@ -1314,9 +1319,9 @@ function renderGrid(skipNav){
     area.innerHTML=renderAdminGeneral(list);
   }else if(activeSection==="noticia"&&!activeNiche){
     const page=pagedItems(list),groups=new Map(),totals=new Map();
-    list.forEach(o=>{const n=isAdmin?topicNicheOf(o)||"Sem nicho":(o.data||{}).nicho||"Sem nicho";totals.set(n,(totals.get(n)||0)+1);});
-    page.items.forEach(o=>{const n=isAdmin?topicNicheOf(o)||"Sem nicho":(o.data||{}).nicho||"Sem nicho";if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
-    const priority=isAdmin?catalogNiches():NICHOS,order=[...priority.filter(n=>groups.has(n)),...[...groups.keys()].filter(n=>!priority.includes(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"))];
+    list.forEach(o=>{const n=newsNicheOf(o);totals.set(n,(totals.get(n)||0)+1);});
+    page.items.forEach(o=>{const n=newsNicheOf(o);if(!groups.has(n))groups.set(n,[]);groups.get(n).push(o);});
+    const order=RADAR_NICHES.filter(n=>groups.has(n));
     let gh="";
     order.forEach(n=>{const arr=groups.get(n);gh+=`<div class="newsgroup"><div class="newsgroup__head">${ic("layers")}<span>${esc(n)}</span><span class="newsgroup__cnt">${totals.get(n)||arr.length}</span><span class="newsgroup__line"></span></div><div class="grid">${arr.map(cardFor).join("")}</div></div>`;});
     if(isAdmin)gh+=`<div style="margin-top:6px"><button class="btn btn--outline btn--sm" id="addCard">${ic("plus")}${esc(cfg.newLabel)}</button></div>`;
@@ -4011,7 +4016,7 @@ function noticiaCard(o){
   const meta=(date||eng)?`<div class="ncard__meta">${date}${eng}</div>`:"";
   return card({
     id:o.id,variant:"ncard",
-    head:`${sourceBadge(d.fonte)}${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}`,
+    head:`${sourceBadge(d.fonte)}<span class="chip niche">${esc(newsNicheOf(o))}</span><span class="chip">${esc(newsTopicOf(o))}</span>`,
     title:d.nome||"(sem título)",
     extra:`${d.resumo?`<div class="ncard__snippet">${esc(d.resumo)}</div>`:""}${meta}`,
     actions:d.link?qbtn("Abrir notícia",d.link,"external"):""
@@ -4741,7 +4746,7 @@ function blankSimple(kind){
   if(kind==="presell")base.tipoTrafego="meta";
   if(kind==="criativo"||kind==="organic")Object.assign(base,{plataforma:kind==="organic"?"organic":"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
   if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
-  if(kind==="noticia")Object.assign(base,{fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
+  if(kind==="noticia")Object.assign(base,{subnicho:"Geral",fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
 }
 function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="organic"?"Ex: Hook orgânico 01":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
@@ -4978,7 +4983,7 @@ function openSimpleForm(kind,id){
 function renderSimpleForm(){
   const k=sKind, it=sItem;
   const nomeField=`<div class="field big"><label class="lbl">Nome / identificação *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>`;
-  const nichoField=`<div class="field"><label class="lbl">Nicho</label><input list="nichosGlobal" data-sk="nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(it.nicho)}"></div>`;
+  const nichoField=k==="noticia"?`<div class="field"><label class="lbl">Nicho de Ofertas *</label><select data-sk="nicho"><option value="">Selecione o nicho</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,it.nicho)?" selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label class="lbl">Nicho</label><input list="nichosGlobal" data-sk="nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(it.nicho)}"></div>`;
   const marcaField=`<div class="field"><label class="lbl">Marca / fonte (opcional)</label><input type="text" data-sk="marca" placeholder="Marca ou conta de origem" value="${esc(it.marca)}"></div>`;
   const comentField=`<div class="field"><label class="lbl">★ Comentário / orientação</label><textarea data-sk="comentario" placeholder="Observações, por que salvou, insights...">${esc(it.comentario)}</textarea></div>`;
   const printField=`<div class="field"><label class="lbl">Print / screenshot (cole, arraste ou clique)</label><div class="dz" data-zone="s|print" tabindex="0"></div></div>`;
@@ -5038,6 +5043,7 @@ function renderSimpleForm(){
       <div class="row">${nichoField}
         <div class="field"><label class="lbl">Fonte</label><input list="fontesGlobal" data-sk="fonte" placeholder="Reddit, YouTube, Web..." value="${esc(it.fonte||"")}"><datalist id="fontesGlobal"><option value="Reddit"><option value="YouTube"><option value="Hacker News"><option value="Web"><option value="X"><option value="Manual"></datalist></div>
       </div>
+      <div class="field"><label class="lbl">Tema</label><select data-sk="subnicho" id="newsTopicSelect">${(RADAR_TOPICS[it.nicho]||["Geral"]).map(topic=>`<option value="${esc(topic)}"${sameNiche(topic,it.subnicho||"Geral")?" selected":""}>${esc(topic)}</option>`).join("")}</select></div>
       <div class="row">
         <div class="field"><label class="lbl">Data (AAAA-MM-DD)</label><input type="text" data-sk="dataPub" placeholder="2026-07-03" value="${esc(it.dataPub||"")}"></div>
         <div class="field"><label class="lbl">Engajamento (opcional)</label><input type="text" data-sk="engajamento" placeholder="Ex: 317 upvotes" value="${esc(it.engajamento||"")}"></div>
@@ -5091,7 +5097,7 @@ function renderSimpleForm(){
   if(k==="criativo"||k==="organic"||k==="megabrain")wireVideoUpload();
 }
 $("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
-$("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
+$("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();if(sKind==="noticia"&&t.dataset.sk==="nicho"){sItem.subnicho="Geral";const topic=$("#newsTopicSelect");if(topic)topic.innerHTML=(RADAR_TOPICS[t.value]||["Geral"]).map(value=>`<option value="${esc(value)}"${value==="Geral"?" selected":""}>${esc(value)}</option>`).join("");}}});
 $("#simpleFormBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-saction]");if(!b)return;
   if(b.dataset.saction==="set-tipo"){sItem.tipoTrafego="meta";sMarkDirty();}
@@ -5108,6 +5114,7 @@ async function saveSimpleForm(){
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
   const p=Object.assign({},sItem);p.kind=sKind==="organic"?"criativo":sKind;if(sKind==="organic"){p.division="organic";p.plataforma="organic";p.nicho="";}
+  if(sKind==="noticia"){const canonical=RADAR_NICHES.find(n=>sameNiche(n,p.nicho));if(!canonical){sSaving=false;setSimpleSaveState("error");toast("Selecione um nicho de Ofertas.",true);return false;}p.nicho=canonical;p.subnicho=(RADAR_TOPICS[canonical]||[]).find(topic=>sameNiche(topic,p.subnicho))||"Geral";}
   if(sKind==="presell")p.tipoTrafego="meta";
   if(sKind==="criativo")p.plataforma="meta";
   const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||""),transcriptChanged=String(p.transcricao||"")!==String(old.transcricao||"");
