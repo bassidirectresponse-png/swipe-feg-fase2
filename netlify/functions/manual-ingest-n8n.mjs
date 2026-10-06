@@ -53,7 +53,8 @@ function linkObject(value, label, index) {
 }
 
 function normalizeItem(raw, index) {
-  const kind = clean(raw?.kind || raw?.type || "oferta", 32).toLowerCase();
+  const requestedKind = clean(raw?.kind || raw?.type || "oferta", 32).toLowerCase();
+  const kind = requestedKind === "brandsgeneral" ? "brandsvalidated" : requestedKind;
   const name = clean(raw?.name || raw?.nome || raw?.nomeOferta, 180);
   const errors = [];
   if (!ALLOWED_KINDS.has(kind)) errors.push(`item ${index + 1}: tipo não permitido`);
@@ -106,7 +107,7 @@ function normalizeItem(raw, index) {
   };
 }
 
-function sectionOf(row) { return clean(row?.data?.kind || "oferta", 32); }
+function sectionOf(row) { const kind = clean(row?.data?.kind || "oferta", 32); return kind === "brandsgeneral" ? "brandsvalidated" : kind; }
 function identity(item) { return `${item.kind}:${textKey(item.name)}`; }
 function uniqueLinks(current, added, field) {
   const seen = new Set();

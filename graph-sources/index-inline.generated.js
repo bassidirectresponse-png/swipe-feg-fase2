@@ -32,7 +32,7 @@ function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 const RADAR_GENERATION="offers-topics-2026-10-05";
 function syncRadarGeneration(rows){return rows.some(row=>row?.data?.kind==="tiktok"&&row.data.radarGeneration===RADAR_GENERATION);}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";if(k==="brandsgeneral")return"brandsvalidated";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=true;
@@ -651,6 +651,7 @@ function maybeOpenView(id){
 }
 function applyRoute(){
   if(!routeReady)return;
+  if(/^\/feg-brands-geral(?:\/|$)/.test(location.pathname))try{history.replaceState(history.state,"",location.pathname.replace(/^\/feg-brands-geral(?=\/|$)/,"/feg-brands-insider")+location.search+location.hash);}catch(_){}
   const r=parseLocation();
   if(r.notFound){renderNotFound();return;}
   if(ADMIN_SECTIONS.has(r.section)&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
@@ -1769,7 +1770,7 @@ $("#formBody").addEventListener("click",e=>{
 function buildPayload(){
   const sourceOffer=editingId?offers.find(x=>x.id===editingId):null;
   const legacy=sourceOffer?Object.assign({},sourceOffer.data||{}):{};
-  if(sourceOffer&&sectionOf(sourceOffer)==="brandsgeneral"){
+  if(sourceOffer&&sourceOffer.data?.kind==="brandsgeneral"){
     legacy.offerTags=offerTagsOf(brandHubAdminData(sourceOffer)).filter(tag=>tag!=="insider");
     legacy.bmAccess=false;
   }

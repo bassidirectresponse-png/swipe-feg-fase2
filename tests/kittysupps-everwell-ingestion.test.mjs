@@ -36,3 +36,11 @@ test("card sem BM mostra anúncios ativos, sem fabricar pontos de histórico", (
   assert.match(html, /1 leitura em/);
   assert.match(html, /offerTagsHtml\(d\)/);
 });
+
+test("importações antigas de Ofertas no Geral passam a usar FEG Brands", () => {
+  const item = normalizeItem({ kind: "brandsgeneral", name: "Produto legado", niche: "Pet", libraries: [{ url: "https://www.facebook.com/ads/library/?q=produto" }] }, 0);
+  assert.deepEqual(item.errors, []);
+  assert.equal(item.kind, "brandsvalidated");
+  assert.match(html, /if\(k==="brandsgeneral"\)return"brandsvalidated"/);
+  assert.match(html, /location\.pathname\.replace\(\/\^\\\/feg-brands-geral/);
+});
