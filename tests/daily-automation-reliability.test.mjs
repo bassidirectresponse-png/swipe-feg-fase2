@@ -48,3 +48,9 @@ print('ok')
 `,fileURLToPath(new URL('../scripts/ads_scraper.py',import.meta.url))],{encoding:'utf-8'});
   assert.equal(result.trim(),'ok');
 });
+test('manual recovery can target pending cards without narrowing daily coverage',()=>{
+  const workflow=read('.github/workflows/ads-ativos.yml'),ads=read('scripts/ads_scraper.py');
+  assert.match(workflow,/only_pending:[\s\S]*?default: false/);
+  assert.match(ads,/ONLY_PENDING = os\.environ\.get\("ONLY_PENDING", "0"\)/);
+  assert.match(ads,/if ONLY_PENDING and status not in \("pending", "processing", "retry_scheduled", "failed"\)/);
+});

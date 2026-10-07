@@ -18,7 +18,12 @@ on:
   schedule:
     - cron: "0 11 * * *"     # 08:00 America/Sao_Paulo
     - cron: "0 23 * * *"     # 20:00 America/Sao_Paulo
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      only_pending:
+        description: "Rever apenas cards pendentes, sem repetir os já concluídos"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -69,5 +74,6 @@ jobs:
           ANALYSIS_LOCK_MINUTES: "90"
           ANALYSIS_VERSION: "2"
           FORCE_REVIEW: "1"
+          ONLY_PENDING: ${{ inputs.only_pending && '1' || '0' }}
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/ads_scraper.py

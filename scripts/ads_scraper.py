@@ -42,6 +42,7 @@ MAX_ATTEMPTS = max(1, int(os.environ.get("MAX_ANALYSIS_ATTEMPTS", "6")))
 LOCK_MINUTES = max(10, int(os.environ.get("ANALYSIS_LOCK_MINUTES", "90")))
 ANALYSIS_VERSION = os.environ.get("ANALYSIS_VERSION", "1")
 FORCE_REVIEW = os.environ.get("FORCE_REVIEW", "1").lower() in ("1", "true", "yes")
+ONLY_PENDING = os.environ.get("ONLY_PENDING", "0").lower() in ("1", "true", "yes")
 RUN_ID = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
 
 
@@ -191,6 +192,8 @@ def eligible(row):
     if not links:
         return None
     status = str(d.get("analysisStatus") or "").lower()
+    if ONLY_PENDING and status not in ("pending", "processing", "retry_scheduled", "failed"):
+        return None
     attempts = max(0, int(d.get("analysisAttempts") or 0))
     now = datetime.now(timezone.utc)
     next_retry = parse_iso(d.get("analysisNextRetryAt"))
