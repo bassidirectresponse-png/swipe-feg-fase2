@@ -64,6 +64,8 @@ function normalizeItem(raw, index) {
   const libraries = sourceLibraries.map((entry, i) => linkObject(entry, "Biblioteca", i)).filter(entry => canonicalUrl(entry.url));
   if (libraries.length !== sourceLibraries.length) errors.push(`item ${index + 1}: há biblioteca com URL inválida`);
   const sourceAds = list(raw?.ads || raw?.criativos);
+  if (raw?.createCreativeCards != null && typeof raw.createCreativeCards !== "boolean") errors.push(`item ${index + 1}: createCreativeCards precisa ser booleano`);
+  if (raw?.createCreativeCards === false && !OFFER_KINDS.has(kind)) errors.push(`item ${index + 1}: anexar anúncios sem cards exige uma oferta`);
   const ads = sourceAds.map((entry, i) => ({
     ...linkObject(entry, "Anúncio", i),
     creativeName: clean(entry?.creativeName || entry?.cardName || entry?.nomeCard, 120),
@@ -100,7 +102,7 @@ function normalizeItem(raw, index) {
     offerTags: [...new Set(tags)],
     format: clean(raw?.format || raw?.formato, 80), image: clean(raw?.image || raw?.imagemProduto, 1800),
     platform: clean(raw?.platform || raw?.plataforma || "meta", 32).toLowerCase(),
-    domains, libraries, ads,
+    domains, libraries, ads, createCreativeCards: raw?.createCreativeCards !== false,
     adUrl,
     video: clean(raw?.video, 1800), copy: clean(raw?.copy || raw?.transcricao, 120000), copyLink: clean(raw?.copyLink, 1800),
     errors,
@@ -180,6 +182,9 @@ function offerData(item, previous, batchDate) {
     dominios: mergeDomains(previous?.dominios, incomingDomains),
     bibliotecas: uniqueLinks(previous?.bibliotecas, incomingLibraries, "link"),
     criativos: uniqueLinks(previous?.criativos, incomingAds, "link"),
+    ...(item.kind === "brandsvalidated" && item.createCreativeCards === false ? {
+      brandTopAds: uniqueLinks(previous?.brandTopAds, incomingAds.map(ad => ({ nome: ad.nome, link: ad.link })), "link"),
+    } : {}),
     ingestionSource: "n8n-manual", ingestionDate: batchDate,
     analysisStatus: item.libraries.length ? "pending" : previous?.analysisStatus || "",
     analysisAttempts: item.libraries.length ? 0 : previous?.analysisAttempts || 0,
@@ -265,6 +270,16 @@ export default async req => {
     const plan = [];
     for (const item of items) {
       const existing = byIdentity.get(identity(item));
+      if (!item.createCreativeCards && OFFER_KINDS.has(item.kind)) {
+        const existingLinks = new Set(list(existing?.data?.criativos).map(ad => canonicalUrl(ad.link)));
+        const linkedAds = item.ads.filter(ad => {
+          const key = canonicalUrl(ad.url);
+          if (!key || existingLinks.has(key)) return false;
+          existingLinks.add(key); return true;
+        }).length;
+        plan.push({ kind: item.kind, name: item.name, action: existing ? "update" : "create", newAds: 0, linkedAds, duplicatesSkipped: item.ads.length - linkedAds });
+        continue;
+      }
       const freshAds = item.ads.filter(ad => {
         const key = canonicalUrl(ad.url);
         if (!key || plannedAdUrls.has(key)) return false;
@@ -291,7 +306,7 @@ export default async req => {
           if (Object.values(additions).some(Number)) await logUpdated(row, batchDate, additions);
         }
         byIdentity.set(identity(item), row);
-        for (const [index, ad] of item.ads.entries()) {
+        for (const [index, ad] of (item.createCreativeCards ? item.ads : []).entries()) {
           const key = canonicalUrl(ad.url); if (!key || adUrls.has(key)) continue;
           const brandFields = item.kind === "brandsvalidated" ? { division: "fegbrands", marca: item.brand || item.name } : {};
           const creative = await createRow({ ...standaloneData({ ...item, kind: "criativo", name: ad.creativeName || `${item.name} · anúncio ${index + 1}` }, batchDate, ad), ...brandFields, sourceOfferId: row.id, sourceOfferName: item.name });
