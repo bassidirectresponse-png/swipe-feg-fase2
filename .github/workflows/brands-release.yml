@@ -40,7 +40,7 @@ jobs:
           OIDC_TOKEN="$(jq -r '.value' <<< "$OIDC_RESPONSE")"
           test -n "$OIDC_TOKEN"
           echo "::add-mask::$OIDC_TOKEN"
-          ENDPOINT="https://benchmarkinggrupofeg.site/.netlify/functions/brands-release"
+          ENDPOINT="https://swipe.fegsys.com/.netlify/functions/brands-release"
           PREVIEW="$(curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT")"
           SELECTED="$(jq --arg id "$OFFER_FILTER" '[.drafts[] | select(.pending and ($id == "" or .id == $id))]' <<< "$PREVIEW")"
           jq '{selected: length, drafts: [.[] | {id, name, newOffer, reports, prints, wrongBrand, patchKeys}]}' <<< "$SELECTED"

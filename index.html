@@ -2734,7 +2734,7 @@ function bmSummaryMetric(report,key){
   // Older reports store link CPC as cpc; newer reports separate it with cpcLink.
   const metricValue=source=>key==="cpcLink"&&!bmHasValue(source.cpcLink)?source.cpc:source[key];
   const totalValue=metricValue(totals);
-  if(bmNumeric(totalValue)!=null)return {value:String(totalValue),source:/parcial|amostra|campanhas/i.test(String(totalValue))?"Indicador parcial registrado na BM":"Total da BM"};
+  if(bmNumeric(totalValue)!=null)return {value:String(totalValue),source:report?.metricSources?.[key]||(/parcial|amostra|campanhas/i.test(String(totalValue))?"Indicador parcial registrado na BM":/≈|calculado/i.test(String(totalValue))?"Indicador calculado a partir da BM":"Total da BM")};
   if(key==="spend"){
     const values=rows.map(row=>bmNumeric(row.spend)).filter(value=>value!=null);
     return values.length?{value:`≈ ${currency} ${values.reduce((sum,value)=>sum+value,0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`,source:"Subtotal das campanhas registradas; total da BM indisponível"}:{value:"—",source:"Não informado na BM"};

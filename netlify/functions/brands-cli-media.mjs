@@ -4,6 +4,7 @@ import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 import { SUPABASE_URL } from "./_security.mjs";
 import { mergeSupabaseOfferData, supabaseAdminAuth, supabaseAdminHeaders } from "./_supabase-admin.mjs";
 import { changedFields, mergeBrandDraft } from "../../lib/brand-release.mjs";
+import { updateBrandReportSummaries } from "../../lib/brand-summary-update.mjs";
 
 const WORKFLOWS = new Set(["brands-cli-token.yml"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -66,6 +67,22 @@ export default async req => {
     }
     const body = await req.json().catch(() => ({}));
     const id = String(body.offerId || "");
+    if (Array.isArray(body.summaryUpdates)) {
+      if (!UUID.test(id) || Object.keys(body).some(key => !["offerId", "summaryUpdates"].includes(key))) return reply(400, { ok: false, error: "resumo inválido" });
+      const row = await offerById(id);
+      if (row?.data?.kind !== "brandsvalidated" || row.data?.nomeOferta !== brand.name) return reply(409, { ok: false, error: "oferta da marca não encontrada" });
+      let reports;
+      try { reports = updateBrandReportSummaries(row.data.bmReports, body.summaryUpdates); }
+      catch (error) { return reply(400, { ok: false, error: error.message }); }
+      await getStore({ name: "brands-summary-backups", consistency: "strong" }).setJSON(`${id}/${Date.now()}.json`, { reports: row.data.bmReports, prepared_at: new Date().toISOString() });
+      await mergeSupabaseOfferData(id, { bmReports: reports }, { ...row.data, bmReports: reports });
+      const written = await offerById(id);
+      if (JSON.stringify(written?.data?.bmReports) !== JSON.stringify(reports)) {
+        const { isDeepStrictEqual } = await import("node:util");
+        if (!isDeepStrictEqual(written?.data?.bmReports, reports)) throw new Error("conferência pós-gravação incompleta");
+      }
+      return reply(200, { ok: true, id, updatedReports: body.summaryUpdates.map(item => item.key) });
+    }
     if (!UUID.test(id) || !body.patch || typeof body.patch !== "object" || Array.isArray(body.patch)) return reply(400, { ok: false, error: "patch inválido" });
     if (Object.keys(body.patch).some(key => !ALLOWED_PATCH.has(key))) return reply(400, { ok: false, error: "campo não autorizado" });
     const row = await offerById(id);
