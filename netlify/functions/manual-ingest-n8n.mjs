@@ -15,7 +15,7 @@ import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 const METHODS = "POST, OPTIONS";
 const ALLOWED_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated", "presell", "criativo"]);
 const OFFER_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated"]);
-const BRAND_TAGS = new Set(["new", "potential", "scale"]);
+const BRAND_TAGS = new Set(["insider", "new", "potential", "scale"]);
 const WEBHOOK_SECRET = String(process.env.N8N_MANUAL_INGEST_SECRET || "").trim();
 
 const clean = (value, limit = 240) => String(value || "").trim().slice(0, limit);
