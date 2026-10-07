@@ -7,6 +7,10 @@ on:
         description: "Publicar os rascunhos pendentes no acervo compartilhado"
         type: boolean
         default: false
+      offer_id:
+        description: "ID de uma única oferta para publicar; vazio publica todos os pendentes"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -24,16 +28,22 @@ jobs:
       - name: Conferir e publicar rascunhos pendentes
         env:
           APPLY: ${{ inputs.apply }}
+          OFFER_FILTER: ${{ inputs.offer_id }}
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -n "$OFFER_FILTER" && ! "$OFFER_FILTER" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            echo "ID de oferta inválido. Nenhuma alteração realizada."
+            exit 1
+          fi
           OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
           OIDC_TOKEN="$(jq -r '.value' <<< "$OIDC_RESPONSE")"
           test -n "$OIDC_TOKEN"
           echo "::add-mask::$OIDC_TOKEN"
           ENDPOINT="https://benchmarkinggrupofeg.site/.netlify/functions/brands-release"
           PREVIEW="$(curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT")"
-          jq '{total, pending, drafts: [.drafts[] | select(.pending) | {id, name, newOffer, reports, prints, wrongBrand, patchKeys}]}' <<< "$PREVIEW"
+          SELECTED="$(jq --arg id "$OFFER_FILTER" '[.drafts[] | select(.pending and ($id == "" or .id == $id))]' <<< "$PREVIEW")"
+          jq '{selected: length, drafts: [.[] | {id, name, newOffer, reports, prints, wrongBrand, patchKeys}]}' <<< "$SELECTED"
           if [[ "$APPLY" != "true" ]]; then
             echo "Prévia concluída; nenhuma oferta foi alterada."
             exit 0
@@ -43,7 +53,7 @@ jobs:
             RESULT="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "Content-Type: application/json" --data "{\"offer_id\":\"$OFFER_ID\"}" "$ENDPOINT")"
             jq '{ok, id, newOffer, changedFields, reports, prints, tags, excludedMisattributedBm, backupKey}' <<< "$RESULT"
             jq -e '.ok == true' <<< "$RESULT" >/dev/null
-          done < <(jq -r '.drafts[] | select(.pending) | .id' <<< "$PREVIEW")
+          done < <(jq -r '.[].id' <<< "$SELECTED")
           FINAL="$(curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT")"
           jq '{total, pending}' <<< "$FINAL"
-          jq -e '.pending == 0' <<< "$FINAL" >/dev/null
+          jq -e --arg id "$OFFER_FILTER" '[.drafts[] | select(.pending and ($id == "" or .id == $id))] | length == 0' <<< "$FINAL" >/dev/null

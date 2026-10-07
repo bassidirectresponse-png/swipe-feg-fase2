@@ -18,7 +18,7 @@ test("Swipe Organic is directly below Swipe de Criativos and has no niche routes
 
 test("organic cards use a flat detail route and legacy links remain compatible", () => {
   assert.match(html, /FLAT_DETAIL_SECTIONS=new Set\(\["organic","transcritor"\]\)/);
-  assert.match(html, /const niche=sec==="brandsvalidated"\?insiderNicheOf\(o\):sec==="brandcreative"\?brandHubNicheOf\(o\):sec==="brandsgeneral"\?brandNicheCanonical\(nicheOf\(o\)\)/);
+  assert.match(html, /const niche=sec==="brandsvalidated"\?insiderCategoryOf\(o\):sec==="brandcreative"\?brandHubNicheOf\(o\):sec==="brandsgeneral"\?brandNicheCanonical\(nicheOf\(o\)\)/);
   assert.match(html, /NICHE_SECTIONS\.has\(sec\)\?base\+"\/"\+catSlug\(niche\)\+"\/"\+o\.id:base\+"\/"\+o\.id/);
   assert.match(html, /section==="organic"&&seg\.length===3&&seg\[1\]==="todos"/);
   assert.match(html, /r\.legacyOrganicDetail/);

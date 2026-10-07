@@ -28,7 +28,7 @@ test("Insider mostra capa limpa sem lightbox e preserva o histórico de ads no d
 test("cards Brands ocupam a mesma altura sem cortar métricas variáveis",()=>{
   assert.match(html,/\.brandhub--insider \.brandhub-products\{align-items:stretch;grid-auto-rows:1fr;\}/);
   assert.match(html,/\.brandhub--insider \.brand-card--clean\{height:100%;min-height:620px;align-self:stretch;\}/);
-  assert.match(html,/\.brand-card--clean \.brand-metrics--snapshot\{min-height:160px;grid-template-rows:repeat\(2,minmax\(0,1fr\)\);\}/);
+  assert.match(html,/\.brand-card--clean \.brand-metrics--snapshot\{min-height:0;grid-template-rows:none;\}/);
   assert.match(html,/\.brand-card--clean \.card__actions\{min-height:72px;align-content:flex-start;\}/);
   assert.doesNotMatch(html,/\.grid>\.brand-card--clean\{height:auto;align-self:start/);
 });

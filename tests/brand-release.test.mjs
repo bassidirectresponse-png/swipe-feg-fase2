@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { changedFields, draftIsPublished, mergeBrandDraft } from "../lib/brand-release.mjs";
+
+test("publicação direcionada não inclui rascunhos de outras ofertas",()=>{
+  const workflow=readFileSync(new URL("../.github/workflows/brands-release.yml",import.meta.url),"utf8");
+  assert.match(workflow,/OFFER_FILTER: \$\{\{ inputs\.offer_id \}\}/);
+  assert.match(workflow,/select\(\.pending and \(\$id == "" or \.id == \$id\)\)/);
+  assert.match(workflow,/done < <\(jq -r '\.\[\]\.id' <<< "\$SELECTED"\)/);
+});
 
 test("publicação mescla períodos e prints sem apagar o histórico automático", () => {
   const before = {
