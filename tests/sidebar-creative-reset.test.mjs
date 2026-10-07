@@ -69,6 +69,9 @@ test("lateral ocupa viewport e mantém navegação rolável com rodapé separado
   assert.match(html,/\.sidenav__body\{flex:1;min-height:0;overflow-y:auto/);
   assert.match(html,/aria-label="Navegação FEG Brands"/);
   assert.match(html,/sidenav__footer/);
+  assert.match(html,/n\.inert=mobile&&!opened/);
+  assert.match(html,/setAttribute\("aria-expanded",String\(mobile&&opened\)\)/);
+  assert.match(html,/event\.key==="Escape"\)\{event\.preventDefault\(\);closeSideNav\(\)/);
   assert.match(html,/\.sidenav__body",nav\)\.scrollTop=scrollTop/);
   assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.sidenav/);
   assert.match(html,/Acervo de top ads em preparação/);

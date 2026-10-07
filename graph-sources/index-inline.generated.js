@@ -754,8 +754,36 @@ window.addEventListener("popstate",applyRoute);
 const AI_SECTIONS=new Set(["transcritor","vsldissector"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
-function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
-function closeSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.remove("open");if(b)b.classList.remove("open");}
+let sideNavFocus=null,sideNavOverflow=null;
+function syncSideNavAccess(){
+  const n=$("#sideNav"),toggle=$("#nicheToggle");if(!n)return;
+  const mobile=isMobileNav(),opened=n.classList.contains("open");
+  n.inert=mobile&&!opened;
+  if(mobile&&!opened)n.setAttribute("aria-hidden","true");else n.removeAttribute("aria-hidden");
+  if(toggle){toggle.setAttribute("aria-controls","sideNav");toggle.setAttribute("aria-expanded",String(mobile&&opened));}
+}
+function openSideNav(){
+  const n=$("#sideNav"),b=$("#sideNavBackdrop");if(!n||!isMobileNav())return;
+  sideNavFocus=document.activeElement;sideNavOverflow=document.body.style.overflow;
+  n.classList.add("open");b?.classList.add("open");document.body.style.overflow="hidden";syncSideNavAccess();
+  $("#sideNavClose")?.focus({preventScroll:true});
+}
+function closeSideNav(){
+  const n=$("#sideNav"),b=$("#sideNavBackdrop"),opened=n?.classList.contains("open");
+  n?.classList.remove("open");b?.classList.remove("open");
+  if(opened){document.body.style.overflow=sideNavOverflow||"";sideNavOverflow=null;if(isMobileNav())sideNavFocus?.focus({preventScroll:true});sideNavFocus=null;}
+  syncSideNavAccess();
+}
+window.addEventListener("resize",()=>{if(!isMobileNav())closeSideNav();else syncSideNavAccess();});
+document.addEventListener("keydown",event=>{
+  const nav=$("#sideNav");if(!isMobileNav()||!nav?.classList.contains("open"))return;
+  if(event.key==="Escape"){event.preventDefault();closeSideNav();return;}
+  if(event.key!=="Tab")return;
+  const nodes=$$('a[href],button:not([disabled])',nav),first=nodes[0],last=nodes[nodes.length-1];if(!first)return;
+  if(!nav.contains(document.activeElement)){event.preventDefault();first.focus();}
+  else if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+});
 function renderSideNav(){
   const nav=$("#sideNav");if(!nav)return;
   const scrollTop=$(".sidenav__body",nav)?.scrollTop||0;
@@ -821,6 +849,7 @@ function renderSideNav(){
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
   const xb=$("#sideNavClose");if(xb)xb.addEventListener("click",closeSideNav);
+  syncSideNavAccess();
 }
 function qbtn(label,url,icon){if(!url)return"";return `<button class="qbtn" data-href="${esc(fixUrl(url))}" title="${esc(label)}">${ic(icon)}${esc(label)}</button>`;}
 

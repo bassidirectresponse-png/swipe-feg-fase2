@@ -207,7 +207,7 @@
   @media(max-width:760px){.theme-switch__btn{padding:0 8px}.page-identity{align-items:start;flex-direction:column;gap:8px}.sort-control{min-width:min(100%,260px)}.automation-health{margin-left:0}.sync{display:none;}}
   @media(hover:none){.card::before{display:none;}}
   .sidenav::-webkit-scrollbar{width:8px;}
-  .sidenav__head{display:none;align-items:center;gap:10px;padding:14px 10px 15px;margin-bottom:6px;border-bottom:1px solid var(--border);}
+  .sidenav__head{display:none;flex:none;align-items:center;gap:10px;padding:14px 10px 15px;margin-bottom:6px;border-bottom:1px solid var(--border);}
   .sidenav__head .logo-mark{width:34px;height:34px;}
   .sidenav__brand{font-weight:700;font-size:1.12rem;letter-spacing:-.02em;}
   .sidenav__brand .lime{color:var(--accent);}
@@ -1456,6 +1456,7 @@
   .sidenav .snav__niches-title{text-transform:none;letter-spacing:0;font-size:.75rem;font-weight:600;color:var(--muted-fg);padding-bottom:9px;}
   .sidenav .snav__niches{margin-bottom:20px;}
   .sidenav .snav__niche.active .ndot{box-shadow:none;}
+  :root[data-theme="light"] .sidenav .snav__group--brands,:root[data-theme="light"] .sidenav .snav__group--brands::after,:root[data-theme="light"] .sidenav__footer .ico{color:#176080;}
   @media(prefers-reduced-motion:reduce){.sidenav,.sidenav .snav__sec,.sidenav .snav__niche,.sidenav .snav__brands{transition:none;animation:none;}.snav__niches--in{animation:none;}}
   @media(min-width:981px){body.admin-preview .shell{grid-template-columns:292px minmax(0,1fr)}}
   @media(max-width:980px){body.admin-preview .sidenav{width:min(320px,88vw)}}
@@ -2496,8 +2497,36 @@ window.addEventListener("popstate",applyRoute);
 const AI_SECTIONS=new Set(["transcritor","vsldissector"]);
 let navPrevSection=null;
 function isMobileNav(){return window.matchMedia("(max-width:980px)").matches;}
-function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.add("open");if(b)b.classList.add("open");}
-function closeSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.remove("open");if(b)b.classList.remove("open");}
+let sideNavFocus=null,sideNavOverflow=null;
+function syncSideNavAccess(){
+  const n=$("#sideNav"),toggle=$("#nicheToggle");if(!n)return;
+  const mobile=isMobileNav(),opened=n.classList.contains("open");
+  n.inert=mobile&&!opened;
+  if(mobile&&!opened)n.setAttribute("aria-hidden","true");else n.removeAttribute("aria-hidden");
+  if(toggle){toggle.setAttribute("aria-controls","sideNav");toggle.setAttribute("aria-expanded",String(mobile&&opened));}
+}
+function openSideNav(){
+  const n=$("#sideNav"),b=$("#sideNavBackdrop");if(!n||!isMobileNav())return;
+  sideNavFocus=document.activeElement;sideNavOverflow=document.body.style.overflow;
+  n.classList.add("open");b?.classList.add("open");document.body.style.overflow="hidden";syncSideNavAccess();
+  $("#sideNavClose")?.focus({preventScroll:true});
+}
+function closeSideNav(){
+  const n=$("#sideNav"),b=$("#sideNavBackdrop"),opened=n?.classList.contains("open");
+  n?.classList.remove("open");b?.classList.remove("open");
+  if(opened){document.body.style.overflow=sideNavOverflow||"";sideNavOverflow=null;if(isMobileNav())sideNavFocus?.focus({preventScroll:true});sideNavFocus=null;}
+  syncSideNavAccess();
+}
+window.addEventListener("resize",()=>{if(!isMobileNav())closeSideNav();else syncSideNavAccess();});
+document.addEventListener("keydown",event=>{
+  const nav=$("#sideNav");if(!isMobileNav()||!nav?.classList.contains("open"))return;
+  if(event.key==="Escape"){event.preventDefault();closeSideNav();return;}
+  if(event.key!=="Tab")return;
+  const nodes=$$('a[href],button:not([disabled])',nav),first=nodes[0],last=nodes[nodes.length-1];if(!first)return;
+  if(!nav.contains(document.activeElement)){event.preventDefault();first.focus();}
+  else if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+});
 function renderSideNav(){
   const nav=$("#sideNav");if(!nav)return;
   const scrollTop=$(".sidenav__body",nav)?.scrollTop||0;
@@ -2563,6 +2592,7 @@ function renderSideNav(){
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
   const xb=$("#sideNavClose");if(xb)xb.addEventListener("click",closeSideNav);
+  syncSideNavAccess();
 }
 function qbtn(label,url,icon){if(!url)return"";return `<button class="qbtn" data-href="${esc(fixUrl(url))}" title="${esc(label)}">${ic(icon)}${esc(label)}</button>`;}
 
