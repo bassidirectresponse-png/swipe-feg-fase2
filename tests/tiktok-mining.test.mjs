@@ -41,7 +41,7 @@ print(json.dumps({'kept':len(out['A']),'failed':len(out['B']),'reason':failures.
   assert.match(result.reason,/HTTP 502/);
 });
 
-test("lote parcial ainda é enviado ao endpoint autenticado",()=>{
+test("lote parcial é salvo mas sinaliza pendência para recuperação diária",()=>{
   const result=python(`import importlib.util,json,sys
 s=importlib.util.spec_from_file_location('miner','scripts/tiktok_mining.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 m.BOT_ACCESS_TOKEN='test';m.BRAND_NICHES={'A':{},'B':{}}
@@ -49,10 +49,13 @@ row={'videoId':'12345678901','nome':'video','views':100,'likes':10,'comentarios'
 def collect(niches,failures):failures['B']='Apify HTTP 502';return {'A':[row],'B':[]}
 m.collect=collect;m.bot_login=lambda:'test';m.load_existing=lambda token:{};m.rehost_thumb=lambda token,vid,thumb:''
 saved=[];m.insert_new_via_github=lambda rows:saved.extend(rows) or len(rows)
-m.main()
-print(json.dumps({'count':len(saved),'generation':saved[0]['radarGeneration']}))`);
+pending=''
+try:m.main()
+except RuntimeError as error:pending=str(error)
+print(json.dumps({'count':len(saved),'generation':saved[0]['radarGeneration'],'pending':pending}))`);
   assert.equal(result.count,1);
   assert.equal(result.generation,"offers-topics-2026-10-05");
+  assert.match(result.pending,/atualizado parcialmente/);
 });
 
 test("falha no Storage da capa não impede a gravação do vídeo",()=>{
