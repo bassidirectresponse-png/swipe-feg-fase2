@@ -361,7 +361,7 @@ def main():
     targets = round_robin_targets(targets, MAX_OFFERS)
     log("library_analysis_scan", rows=len(rows), eligible=eligible_count, selected=len(targets), max_offers=MAX_OFFERS)
 
-    ok = fail = skipped = 0
+    ok = fail = skipped = zero_pending = 0
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=[
             "--disable-blink-features=AutomationControlled", "--no-sandbox",
@@ -444,6 +444,7 @@ def main():
                     merge_offer_data(token, row["id"], before_zero, data)
                 log("library_analysis_job_deferred", offer_id=row["id"], reason="zero_awaiting_confirmation", zero_reads=zero_reads + 1, preserved=stable)
                 skipped += 1
+                zero_pending += 1
                 continue
             before_completed = copy.deepcopy(data)
             data["analysisZeroReads"] = zero_reads + 1 if total == 0 else 0
@@ -472,14 +473,19 @@ def main():
 
         browser.close()
 
-    log("library_analysis_run_completed", completed=ok, failed=fail, dry_run=skipped, duration_ms=round((time.monotonic() - run_started) * 1000))
+    log("library_analysis_run_completed", completed=ok, failed=fail, dry_run=skipped, zero_awaiting_confirmation=zero_pending, duration_ms=round((time.monotonic() - run_started) * 1000))
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as report:
-            report.write(f"\nBibliotecas: {len(targets)} cards selecionados; {ok} concluídos; {fail} falhas; {skipped} adiados. Valores anteriores preservados em falhas.\n")
-    # Não reportar verde quando há cards pendentes; a próxima janela os revisa.
-    if not DRY_RUN and (fail or skipped):
+            report.write(f"\nBibliotecas: {len(targets)} cards selecionados; {ok} concluídos; {fail} falhas; {skipped} adiados ({zero_pending} aguardam confirmação de zero nas próximas leituras). Valores anteriores preservados em falhas.\n")
+    # Confirmação de zero é proteção normal, não erro técnico. Leituras
+    # incompletas e falhas de gravação continuam falhando a execução.
+    if library_run_failed(fail, skipped, zero_pending, DRY_RUN):
         sys.exit(1)
+
+
+def library_run_failed(failed, deferred, zero_pending, dry_run=False):
+    return not dry_run and (failed > 0 or deferred > zero_pending)
 
 
 if __name__ == "__main__":

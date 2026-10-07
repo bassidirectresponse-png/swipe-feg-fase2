@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('daily collectors use stable Netlify endpoint with bounded auth retries',()=>{
   for(const file of ['.github/workflows/ads-ativos.yml','.github/workflows/tiktok-mining.yml']){
@@ -24,8 +26,25 @@ test('TikTok recovery skips successful days and excludes reset runs',()=>{
 });
 test('collectors report partial writes as failures and publish daily summaries',()=>{
   const ads=read('scripts/ads_scraper.py'),radar=read('scripts/tiktok_mining.py');
-  assert.match(ads,/not DRY_RUN and \(fail or skipped\)/);
+  assert.match(ads,/library_run_failed\(fail, skipped, zero_pending, DRY_RUN\)/);
   assert.match(radar,/if update_failed or provider_failures:/);
   assert.match(radar,/update_failed \+= 1/);
   for(const source of [ads,radar])assert.match(source,/GITHUB_STEP_SUMMARY/);
+});
+test('zero confirmation is normal protection, but partial reads and write errors fail',()=>{
+  const result=execFileSync('python3',['-c',`
+import ast, sys
+source=open(sys.argv[1],encoding='utf-8').read()
+tree=ast.parse(source)
+node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='library_run_failed')
+ns={};exec(compile(ast.Module(body=[node],type_ignores=[]),'<test>','exec'),ns)
+f=ns['library_run_failed']
+assert not f(0,0,0)
+assert not f(0,1,1)
+assert f(0,2,1)
+assert f(1,1,1)
+assert not f(1,2,0,True)
+print('ok')
+`,fileURLToPath(new URL('../scripts/ads_scraper.py',import.meta.url))],{encoding:'utf-8'});
+  assert.equal(result.trim(),'ok');
 });
