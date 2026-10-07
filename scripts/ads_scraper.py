@@ -473,7 +473,12 @@ def main():
         browser.close()
 
     log("library_analysis_run_completed", completed=ok, failed=fail, dry_run=skipped, duration_ms=round((time.monotonic() - run_started) * 1000))
-    if targets and fail / len(targets) > 0.5:
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as report:
+            report.write(f"\nBibliotecas: {len(targets)} cards selecionados; {ok} concluídos; {fail} falhas; {skipped} adiados. Valores anteriores preservados em falhas.\n")
+    # Não reportar verde quando há cards pendentes; a próxima janela os revisa.
+    if not DRY_RUN and (fail or skipped):
         sys.exit(1)
 
 

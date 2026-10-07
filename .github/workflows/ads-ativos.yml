@@ -51,9 +51,9 @@ jobs:
       - name: Criar sessão temporária de baixo privilégio
         shell: bash
         run: |
-          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_RESPONSE="$(curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
           OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
-          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://swipefeg.netlify.app/.netlify/functions/github-automation-token)"
           ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
           test -n "$ACCESS_TOKEN"
           echo "::add-mask::$ACCESS_TOKEN"

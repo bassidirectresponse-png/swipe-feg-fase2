@@ -405,7 +405,7 @@ def insert_new_via_github(rows):
     if not oidc:
         raise RuntimeError("identidade OIDC do GitHub não foi emitida")
     req = urllib.request.Request(
-        "https://benchmarkinggrupofeg.site/.netlify/functions/github-tiktok-ingest",
+        "https://swipefeg.netlify.app/.netlify/functions/github-tiktok-ingest",
         data=json.dumps(rows).encode("utf-8"), method="POST",
         headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"})
     try:
@@ -430,7 +430,7 @@ def reset_radar_via_github():
     if not oidc:
         raise RuntimeError("identidade OIDC do GitHub não foi emitida")
     req = urllib.request.Request(
-        "https://benchmarkinggrupofeg.site/.netlify/functions/github-tiktok-ingest",
+        "https://swipefeg.netlify.app/.netlify/functions/github-tiktok-ingest",
         data=json.dumps({"action": "reset", "confirm": "DELETE_ALL_TIKTOK"}).encode("utf-8"),
         method="POST", headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=35) as response:
@@ -602,7 +602,7 @@ def main():
 
     token = bot_login()
     existing = load_existing(token)
-    ins = upd = 0
+    ins = upd = update_failed = 0
     new_rows = []
     for nicho, arr in per_niche.items():
         for r in arr:
@@ -627,12 +627,23 @@ def main():
             if vid in existing:
                 st, _ = sb("PATCH", f"/rest/v1/offers?id=eq.{existing[vid]['id']}",
                            token=token, body={"data": r}, prefer="return=minimal")
-                upd += 1 if st in (200, 204) else 0
+                if st in (200, 204):
+                    upd += 1
+                else:
+                    update_failed += 1
+                    print(f"::error::Radar: métricas do vídeo {vid} não foram gravadas (HTTP {st})", file=sys.stderr)
             else:
                 new_rows.append(r)
     if new_rows:
         ins = insert_new_via_github(new_rows)
     print(f"\nGravado: {ins} novos, {upd} atualizados")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as report:
+            report.write(f"\nRadar TikTok: {total} coletados; {ins} novos; {upd} atualizados; {update_failed} falhas de gravação.\n")
+    provider_failures = {n: reason for n, reason in failures.items() if reason != "nenhum vídeo orgânico relevante após os filtros"}
+    if update_failed or provider_failures:
+        raise RuntimeError("Radar atualizado parcialmente; a recuperação diária precisa concluir os itens pendentes")
 
 
 if __name__ == "__main__":

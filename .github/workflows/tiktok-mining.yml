@@ -1,4 +1,5 @@
 name: Radar TikTok (mineração diária)
+run-name: Radar TikTok — ${{ inputs.mode || 'mine' }}
 
 # Minera vídeos orgânicos do TikTok por nicho e grava no Supabase (kind:"tiktok").
 # Roda 1x/dia e também dá pra disparar na mão em Actions → Run workflow.
@@ -6,7 +7,8 @@ name: Radar TikTok (mineração diária)
 
 on:
   schedule:
-    - cron: "0 8 * * *"     # 05h BRT (08:00 UTC)
+    - cron: "13 8 * * *"    # 05h13 BRT: fora do pico da hora cheia
+    - cron: "13 18 * * *"   # recuperação: só minera se ainda não houve sucesso no dia
   workflow_dispatch:
     inputs:
       mode:
@@ -45,33 +47,52 @@ jobs:
       PER_KEYWORD: "20"
       PYTHONUNBUFFERED: "1"
     steps:
+      - name: Verificar se o Radar já foi atualizado hoje
+        id: daily
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          SHOULD_RUN=true
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "13 18 * * *" ]; then
+            TODAY="$(TZ=America/Sao_Paulo date +%Y-%m-%d)"
+            RUNS="$(gh api 'repos/${{ github.repository }}/actions/workflows/tiktok-mining.yml/runs?status=success&per_page=30')"
+            RECENT="$(python -c 'import json,sys; from datetime import datetime; from zoneinfo import ZoneInfo; today=sys.argv[1]; rows=json.load(sys.stdin)["workflow_runs"]; print(any("reset" not in r.get("display_title", "").lower() and datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")).astimezone(ZoneInfo("America/Sao_Paulo")).date().isoformat()==today for r in rows))' "$TODAY" <<< "$RUNS")"
+            if [ "$RECENT" = "True" ]; then SHOULD_RUN=false; fi
+          fi
+          echo "run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+          echo "Radar: executar=$SHOULD_RUN" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout
+        if: steps.daily.outputs.run == 'true'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup Python
+        if: steps.daily.outputs.run == 'true'
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
 
       - name: Criar sessão temporária de baixo privilégio
+        if: steps.daily.outputs.run == 'true'
         shell: bash
         run: |
-          OIDC_RESPONSE="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
+          OIDC_RESPONSE="$(curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=swipe-feg-netlify-automation")"
           OIDC_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$OIDC_RESPONSE")"
-          SESSION_RESPONSE="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://benchmarkinggrupofeg.site/.netlify/functions/github-automation-token)"
+          SESSION_RESPONSE="$(curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -X POST -H "Authorization: Bearer $OIDC_TOKEN" https://swipefeg.netlify.app/.netlify/functions/github-automation-token)"
           ACCESS_TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$SESSION_RESPONSE")"
           test -n "$ACCESS_TOKEN"
           echo "::add-mask::$ACCESS_TOKEN"
           echo "SUPABASE_BOT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
 
       - name: Limpar vídeos do Radar TikTok
-        if: inputs.mode == 'reset'
+        if: steps.daily.outputs.run == 'true' && inputs.mode == 'reset'
         run: python -u scripts/tiktok_mining.py --reset
 
       - name: Minerar TikTok
-        if: inputs.mode != 'reset'
+        if: steps.daily.outputs.run == 'true' && inputs.mode != 'reset'
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: python -u scripts/tiktok_mining.py
