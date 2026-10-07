@@ -74,6 +74,7 @@ jobs:
           ANALYSIS_LOCK_MINUTES: "90"
           ANALYSIS_VERSION: "2"
           FORCE_REVIEW: "1"
-          ONLY_PENDING: ${{ inputs.only_pending && '1' || '0' }}
+          # Publicação testa pendências; as duas janelas diárias seguem completas.
+          ONLY_PENDING: ${{ (github.event_name == 'push' || inputs.only_pending) && '1' || '0' }}
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/ads_scraper.py
