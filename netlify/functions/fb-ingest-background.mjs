@@ -9,6 +9,7 @@ import {
 } from "./_security.mjs";
 import { resolveFacebookMedia } from "./_facebook-media-resolver.mjs";
 import { applyArchivedMedia } from "./_creative-integrity.mjs";
+import { brandCreativeArchived } from "../../lib/brand-creative-policy.mjs";
 
 const MAX_BYTES = 60 * 1024 * 1024;
 const FB_MEDIA_HOSTS = ["facebook.com", "fbcdn.net", "fbsbx.com", "akamaihd.net"];
@@ -89,6 +90,15 @@ export const handler = async (event) => {
     if (!canAutomate(user)) throw new Error("usuário sem permissão de escrita");
     const quota = await rateLimit("fb-ingest", user.id, { limit: 80, windowMs: 60 * 60_000 });
     if (!quota.allowed) throw new Error("limite temporário de importações atingido");
+
+    // Recusar filas antigas antes de resolver/baixar/subir qualquer mídia.
+    const existing = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(id)}&select=data`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000),
+    });
+    if (!existing.ok) throw new Error("oferta não encontrada");
+    const rows = await existing.json();
+    if (!Array.isArray(rows) || rows.length !== 1) throw new Error("oferta não encontrada");
+    if (brandCreativeArchived(rows[0].data)) return { statusCode: 202, body: "" };
 
     if (body.batch === true) {
       const links = (Array.isArray(body.links) ? body.links : [sourceUrl])

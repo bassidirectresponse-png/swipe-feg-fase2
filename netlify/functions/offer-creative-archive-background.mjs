@@ -11,6 +11,7 @@ import {
   supabaseAdminHeaders,
 } from "./_supabase-admin.mjs";
 import { resolveFacebookMedia } from "./_facebook-media-resolver.mjs";
+import { brandCreativeArchived } from "../../lib/brand-creative-policy.mjs";
 import {
   applyArchivedMedia,
   hasStoredMedia,
@@ -105,6 +106,7 @@ export const handler = async event => {
     if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id) || !isFacebookUrl(body.adUrl)) throw new Error("requisição inválida");
 
     const current = await loadCreative(id);
+    if (brandCreativeArchived(current)) return { statusCode: 202, body: "" };
     if (current.kind !== "criativo" || !current.sourceOfferId || !isFacebookUrl(current.linkAnuncio)) {
       throw new Error("criativo não pertence a uma oferta do Facebook");
     }

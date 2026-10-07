@@ -89,6 +89,8 @@ def fetch_cards(token):
         data = row.get("data") or {}
         if data.get("kind") not in TRANSLATE_KINDS:
             continue
+        if data.get("kind") == "criativo" and data.get("division") == "fegbrands" and data.get("brandCreativeGeneration") != "offer-topads-2026-10-07":
+            continue  # Não retomar itens retirados do Swipe de Criativos.
         if not str(data.get("transcricao") or "").strip() or str(data.get("transcricaoPt") or "").strip():
             continue
         status_pt = str(data.get("transcricaoPtStatus") or "").lower()

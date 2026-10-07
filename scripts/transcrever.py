@@ -201,6 +201,8 @@ def fetch_pending(token):
         d = row.get("data") or {}
         if d.get("kind") not in TRANSCRIBE_KINDS:
             continue
+        if d.get("kind") == "criativo" and d.get("division") == "fegbrands" and d.get("brandCreativeGeneration") != "offer-topads-2026-10-07":
+            continue  # Acervo Brands anterior: arquivado, sem baixar mídia.
         v = video_source(d)
         if not v:
             continue

@@ -1,3 +1,5 @@
+import { brandCreativeArchived } from "../../lib/brand-creative-policy.mjs";
+
 const FACEBOOK_HOSTS = ["facebook.com", "fb.com", "fb.me", "fb.watch"];
 const STORAGE_VIDEO_MARK = "/storage/v1/object/public/criativos/";
 const VIDEO_EXTENSIONS = /\.(?:mp4|webm|mov|m4v|ogg)(?:\?|$)/i;
@@ -66,6 +68,7 @@ function isFreshWork(data, fields, now, staleMs) {
 }
 
 export function mediaArchiveDue(data = {}, now = Date.now()) {
+  if (brandCreativeArchived(data)) return false;
   if (data.kind !== "criativo" || !data.sourceOfferId || !isFacebookUrl(data.linkAnuncio) || hasStoredMedia(data)) return false;
   const retryAt = timestamp(data.mediaArchiveNextRetryAt);
   if (retryAt && retryAt > now) return false;
@@ -77,6 +80,7 @@ export function mediaArchiveDue(data = {}, now = Date.now()) {
 }
 
 export function transcriptionDue(data = {}, now = Date.now()) {
+  if (brandCreativeArchived(data)) return false;
   if (!["criativo", "megabrain"].includes(data.kind) || !isStorageVideo(data.video) || transcriptionComplete(data)) return false;
   const retryAt = timestamp(data.transcriptionNextRetryAt);
   if (retryAt && retryAt > now) return false;

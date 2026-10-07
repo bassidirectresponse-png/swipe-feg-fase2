@@ -8,6 +8,7 @@ import {
   rateLimit,
 } from "./_security.mjs";
 import { automationSigningSecret, supabaseAdminHeaders } from "./_supabase-admin.mjs";
+import { brandCreativeArchived } from "../../lib/brand-creative-policy.mjs";
 
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
@@ -171,6 +172,7 @@ export const handler = async (event) => {
       if (!quota.allowed) throw new Error("limite temporário de transcrições atingido");
     }
     const current = await loadOffer(id, token, internal);
+    if (brandCreativeArchived(current)) return { statusCode: 202, body: "" };
     const videoUrl = storageVideoUrl(internal ? current.video : body.videoUrl);
     if (!videoUrl || !["criativo", "megabrain"].includes(current.kind)) throw new Error("requisição inválida");
     await patchOffer(id, token, internal, data => {

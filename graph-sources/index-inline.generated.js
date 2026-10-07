@@ -22,7 +22,7 @@ const SECTIONS=[
   {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
   {key:"brandsvalidated",label:"Ofertas Brands",icon:"trending",newLabel:"Nova oferta Brands",statLabel:"Ofertas Brands",emptyTitle:"Nenhuma oferta Brands",searchPlaceholder:"Buscar produto Brands, marca ou categoria...",subHtml:'<b>FEG Brands · Ofertas Brands</b> — produtos organizados por categoria, com histórico de anúncios e métricas da BM quando disponíveis.'},
-  {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Criativos",emptyTitle:"Nenhum criativo de Brands",searchPlaceholder:"Buscar criativo ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — acervo de anúncios organizado por marca.'},
+  {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Top ads",emptyTitle:"Acervo de top ads em preparação",searchPlaceholder:"Buscar top ad ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — originais dos top ads das ofertas, organizados por marca.'},
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'}
@@ -31,8 +31,12 @@ function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
 function isChatSection(){return false;}
 function sectionCfg(key){return SECTIONS.find(s=>s.key===key)||SECTIONS[0];}
 const RADAR_GENERATION="offers-topics-2026-10-05";
+// Reinício recuperável: os criativos antigos continuam no banco e no Storage,
+// mas não entram no novo acervo de originais vinculados às ofertas.
+const BRAND_CREATIVE_GENERATION="offer-topads-2026-10-07";
+function brandCreativeArchived(d){return d?.kind==="criativo"&&d.division==="fegbrands"&&d.brandCreativeGeneration!==BRAND_CREATIVE_GENERATION;}
 function syncRadarGeneration(rows){return rows.some(row=>row?.data?.kind==="tiktok"&&row.data.radarGeneration===RADAR_GENERATION);}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";if(k==="brandsgeneral")return"brandsvalidated";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(brandCreativeArchived(d))return"brandcreative-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";if(k==="brandsgeneral")return"brandsvalidated";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=true;
@@ -754,6 +758,7 @@ function openSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.clas
 function closeSideNav(){const n=$("#sideNav"),b=$("#sideNavBackdrop");if(n)n.classList.remove("open");if(b)b.classList.remove("open");}
 function renderSideNav(){
   const nav=$("#sideNav");if(!nav)return;
+  const scrollTop=$(".sidenav__body",nav)?.scrollTop||0;
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
   offers.forEach(o=>{const k=sectionOf(o);if(k==="noticia"&&!newsNicheOf(o))return;counts[k]=(counts[k]||0)+1;});
   counts.megabrainfegsys=fegsysCards.length;
@@ -808,8 +813,11 @@ function renderSideNav(){
   };
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
+  html+=`<nav class="sidenav__body" aria-label="Navegação FEG Brands">`;
   BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
+  html+=`</nav><div class="sidenav__footer">${ic("trending")}<span><strong>Inteligência de mercado</strong>Grupo FEG · Brands</span></div>`;
   nav.innerHTML=html;
+  $(".sidenav__body",nav).scrollTop=scrollTop;
   /* seções e nichos agora são <a data-nav href> — a navegação é tratada pelo
      interceptor central (preserva Ctrl/⌘/meio-clique = nova aba nativa). */
   const xb=$("#sideNavClose");if(xb)xb.addEventListener("click",closeSideNav);
@@ -1351,7 +1359,7 @@ function renderGrid(skipNav){
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
   if(secCount===0){
-    const help=activeSection==="tiktok"?"O Radar foi reiniciado. Novos vídeos orgânicos aparecerão após a próxima mineração por nicho.":activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
+    const help=activeSection==="brandcreative"?"Os criativos anteriores foram retirados desta seção. Os top ads das ofertas aparecerão aqui depois que os vídeos originais forem baixados e enviados. Os anúncios nos cards das ofertas permanecem disponíveis.":activeSection==="tiktok"?"O Radar foi reiniciado. Novos vídeos orgânicos aparecerão após a próxima mineração por nicho.":activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
     area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>${help}</p></div>`;return;
   }
   if(list.length===0){
@@ -2458,8 +2466,8 @@ function setSectionHeader(){
   const si=$("#searchInput");if(si)si.placeholder=brandHub?"Buscar nicho, marca, oferta ou criativo...":cfg.searchPlaceholder;
   const title=$("#pageTitle"),description=$("#pageDescription");
   const adminBrands=activeSection==="brandsvalidated";
-  if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe por nicho e marca"):adminBrands?"Ofertas Brands":cfg.label;
-  if(description)description.innerHTML=selectedInsiderItem?esc(insiderCategoryOf(selectedInsiderItem))+" · produto do acervo Brands":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Criativos desta marca":"Criativos organizados por nicho e marca."):adminBrands?"<b>Ofertas Brands</b> — produtos por categoria, bibliotecas, histórico de anúncios e métricas da BM quando disponíveis.":cfg.subHtml||"";
+  if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe de Criativos"):adminBrands?"Ofertas Brands":cfg.label;
+  if(description)description.innerHTML=selectedInsiderItem?esc(insiderCategoryOf(selectedInsiderItem))+" · produto do acervo Brands":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Top ads desta marca":"Originais dos top ads das ofertas, organizados por marca."):adminBrands?"<b>Ofertas Brands</b> — produtos por categoria, bibliotecas, histórico de anúncios e métricas da BM quando disponíveis.":cfg.subHtml||"";
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
@@ -2513,8 +2521,23 @@ function brandNavHtml(){
   const entries=[["brandsvalidated","Ofertas Brands"]];
   return `<div class="seg" aria-label="Áreas da FEG Brands">${entries.map(([section,label])=>{const count=offers.filter(o=>sectionOf(o)===section).length;return `<a class="seg-btn${activeSection===section?" active":""}" data-nav href="${esc(listPath(section,""))}">${esc(label)} · ${count}</a>`;}).join("")}</div>`;
 }
+let renderedSubFilterSection="";
+const deferredFilterRefresh=new WeakSet();
+function preserveOpenFilter(el){
+  const focused=document.activeElement;
+  if(renderedSubFilterSection!==activeSection||!focused||focused.tagName!=="SELECT"||!el.contains(focused))return false;
+  if(!deferredFilterRefresh.has(focused)){
+    deferredFilterRefresh.add(focused);
+    focused.addEventListener("blur",()=>{deferredFilterRefresh.delete(focused);setTimeout(renderSubFilter,0);},{once:true});
+  }
+  return true;
+}
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
+  // Jobs atualizam a grade enquanto o menu nativo está aberto. Não substituir
+  // esse nó durante a seleção, seja por mouse, toque ou teclado.
+  if(preserveOpenFilter(el))return;
+  renderedSubFilterSection=activeSection;
   if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     el.style.display="";
@@ -2526,7 +2549,7 @@ function renderSubFilter(){
       ?`<button type="button" class="btn btn--outline btn--sm" id="offerBatchApply">${ic("pulse")}Aplicar lote consolidado</button>`:"";
     const tagControl=activeSection==="brandsvalidated"&&(isAdmin||BRAND_TAGS_PUBLISHED)?`<label class="sort-control sort-control--tag"><span>Filtrar por tag</span><select id="offerTagFilter" aria-label="Filtrar ofertas por tag"><option value="">Todas as tags</option>${Object.entries(OFFER_TAGS).map(([key,tag])=>`<option value="${key}"${offerTagFilter===key?" selected":""}>${tag.label}</option>`).join("")}</select></label>`:"";
     el.innerHTML=`<div class="subfilter__row sort-panel">${brandNav}<label class="sort-control"><span>Ordenar por</span><select id="offerSort" aria-label="Ordenar ofertas">${options.map(([value,label])=>`<option value="${value}"${offerSort===value?" selected":""}>${label}</option>`).join("")}</select></label><label class="sort-control" style="min-width:150px"><span>Direção</span><select id="offerDirection" aria-label="Direção da ordenação"><option value="desc"${offerDirection==="desc"?" selected":""}>Maior primeiro</option><option value="asc"${offerDirection==="asc"?" selected":""}>Menor primeiro</option></select></label>${tagControl}<div class="sort-reference" role="status" aria-live="polite">${reference?`Referência mais recente: ${esc(fmtDateShort(reference))}`:"Sem dados deste indicador"}</div>${healthHtml}${migrationButton}</div>`;
-    const changeSort=(key,value)=>{const panel=$(".sort-panel",el),message=$(".sort-reference",el);panel.setAttribute("aria-busy","true");if(message)message.textContent="Atualizando ordenação…";setTimeout(()=>{if(key==="sort")offerSort=value;else if(key==="tag")offerTagFilter=value;else offerDirection=value;navigate(currentPath(),{replace:true});},0);};
+    const changeSort=(key,value)=>{if(key==="sort")offerSort=value;else if(key==="tag")offerTagFilter=value;else offerDirection=value;navigate(currentPath(),{replace:true});const message=$(".sort-reference",el),updated=offerSortReference(offers.filter(o=>sectionOf(o)===activeSection));if(message)message.textContent=updated?`Referência mais recente: ${fmtDateShort(updated)}`:"Sem dados deste indicador";};
     $("#offerSort").addEventListener("change",event=>changeSort("sort",event.target.value));
     $("#offerDirection").addEventListener("change",event=>changeSort("direction",event.target.value));
     $("#offerTagFilter")?.addEventListener("change",event=>changeSort("tag",event.target.value));
@@ -2578,6 +2601,8 @@ function renderSubFilter(){
     return;
   }
   if(activeSection!=="criativo"&&activeSection!=="brandcreative"&&activeSection!=="organic"){el.innerHTML="";el.style.display="none";return;}
+  // Nesta etapa o acervo fica vazio, sem o importador legado de Balls n Brains.
+  if(activeSection==="brandcreative"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
   if(activeSection==="organic"){
     const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar pasta de orgânicos</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" multiple webkitdirectory directory hidden>`:"";
@@ -2587,7 +2612,7 @@ function renderSubFilter(){
     return;
   }
   const opts=[["meta","Meta Ads"]];
-  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}${activeSection==="brandcreative"?"Subir Balls n Brains":"Importar pasta"}</button><input id="creativeBatchFiles" type="file" accept="${activeSection==="brandcreative"?"video/*,image/*":"video/mp4,video/webm,video/quicktime,video/*,application/json,.json"}" multiple${activeSection==="brandcreative"?"":" webkitdirectory directory"} hidden>`:"";
+  const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar pasta</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*,application/json,.json" multiple webkitdirectory directory hidden>`:"";
   el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>${l}</span>`).join("")}</div>${bulk}</div>`;
   const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
   if(batchButton&&batchFiles){
@@ -3282,6 +3307,7 @@ const creativeTranslations=new Set();
 let creativeTranslationQueue=[],creativeTranslationActive=0;
 function creativeNeedsTranslation(o){
   const d=(o&&o.data)||{},status=String(d.transcricaoPtStatus||"").toLowerCase();
+  if(brandCreativeArchived(d))return false;
   const retryAt=Date.parse(d.transcricaoPtProximaTentativa||"");
   return d.kind==="criativo"&&String(d.transcricao||"").trim()&&!String(d.transcricaoPt||"").trim()&&!["working","processing"].includes(status)&&(!Number.isFinite(retryAt)||retryAt<=Date.now());
 }
@@ -4368,6 +4394,7 @@ function fbStatusOf(o){
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 function offerCreativeNeedsArchive(o){
   const d=(o&&o.data)||{},status=String(d.mediaArchiveStatus||d.fbIngestStatus||"").toLowerCase();
+  if(brandCreativeArchived(d))return false;
   if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
   if(String(d.video||d.print||"").trim())return false;
   if(["queued","working","processing"].includes(status))return fbArchiveIsStale(d);
@@ -5015,7 +5042,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
     offers.push(savedRow);existingSources.add(dedupeKey);if(record?.sourceHash)existingHashes.add(record.sourceHash);if(record?.linkAnuncio)existingLinks.add(canonicalCreativeUrl(record.linkAnuncio));imported++;
   }
   creativeBatchWorking=false;
-  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Subir Balls n Brains":"Importar pasta");}
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Importar top ads":"Importar pasta");}
   renderGrid();writeCache();
   toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
