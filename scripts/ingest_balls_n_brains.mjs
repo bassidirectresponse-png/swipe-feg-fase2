@@ -53,12 +53,12 @@ const topAdLinks = [
 const html = await readFile(new URL("index.html", ROOT), "utf8");
 const supabaseUrl = html.match(/const DEFAULT_URL="([^"]+)"/)?.[1];
 if (!supabaseUrl) throw new Error("URL do Supabase não encontrada");
-const manifest = { batchDate: "2026-09-18", items: [{ kind: "brandsvalidated", name: "Balls N Brains", brand: "Balls N Brains", niche: "Saúde masculina", format: "Café de cogumelos com testosterona", image: "/assets/balls-n-brains/product-cover.png", libraries: [{ name: "Balls N Brains · Meta Ads Library", url: library }], domains: [{ name: "Página de vendas", offer: salesPage }] }] };
+const manifest = { batchDate: "2026-09-18", items: [{ kind: "brandsvalidated", name: "Balls N Brains", brand: "Balls N Brains", niche: "Saúde masculina", format: "Café de cogumelos com testosterona", image: "/assets/balls-n-brains/product-cover.png", libraries: [{ name: "Funil Winner", url: library }], domains: [{ name: "Página de vendas", offer: salesPage }] }] };
 function makeData(previous = {}) {
   return {
     ...previous,
     kind: "brandsvalidated", tipoTrafego: "meta", nomeOferta: "Balls N Brains", nomeMarca: "Balls N Brains", nicho: "Saúde masculina", formato: "Café de cogumelos com testosterona", imagemProduto: manifest.items[0].image,
-    numAdsAtivos: "", adsLibraryCheckedAt: "18/09/2026", bibliotecas: [{ nome: "Balls N Brains · Meta Ads Library · Setembro 2026", link: library }],
+    numAdsAtivos: "", adsLibraryCheckedAt: "18/09/2026", bibliotecas: [{ nome: "Funil Winner", link: library }],
     dominios: [{ nome: "Página de vendas", linkDominio: salesPage, linkCheckout: "", backRedirect: "", views: "", viewsPeriod: "", vslLink: "", vslVideo: "" }],
     bmSpend7d: MONEY("8.379,11"), bmSpend14d: MONEY("16.027,54"), bmSpend30d: MONEY("34.397,81"), bmAvgConversion: MONEY("100,88"), bmCpc: MONEY("2,51"), bmCpcLink: "", bmCpm: MONEY("48,96"), bmCtr: "1,95%", bmCostUnique: "", bmCostIc: "Não exibido nos prints", bmRoas: "— (múltiplas conversões)", bmUpdatedAt: "18/09/2026",
     bmNotes: "Leitura de setembro de 2026. A campanha Aquec, no recorte de 30 dias, gerou 76 visitas à página/perfil e não foi contabilizada como compra.", bmReports: reports, bmPrints: [],

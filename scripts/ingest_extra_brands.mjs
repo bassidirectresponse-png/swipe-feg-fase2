@@ -181,7 +181,7 @@ const makeData = previous => {
   return ({ ...previous,
   kind: "brandsvalidated", tipoTrafego: "meta", nomeOferta: config.name, nomeMarca: config.name, nicho: config.niche,
   formato: config.format, numAdsAtivos: config.ads, adsLibraryApprox: config.approximate, adsLibraryCheckedAt: "17/07/2026", imagemProduto: config.image,
-  bibliotecas: [{ nome: `${config.name} · Meta Ads Library`, link: config.library }],
+  bibliotecas: [{ nome: "Funil Winner", link: config.library }],
   dominios: [{ nome: "Página principal", linkDominio: config.domain, views: "", viewsPeriod: "", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" }],
   brandTopAds,
   bmSpend7d: money(config.top.spend), bmSpend14d: config.reports.find(x => x.key === "14d")?.totals.spend || "", bmAvgConversion: money(config.top.average), bmCpc: money(config.top.cpc), bmCpcLink: money(config.top.cpcLink), bmCpm: money(config.top.cpm), bmCtr: config.top.ctr, bmCostUnique: money(config.top.unique), bmCostIc: "Não exibido nos prints", bmRoas: "— (múltiplas conversões)", bmUpdatedAt: "15/07/2026", bmNotes: "", bmReports: config.reports,

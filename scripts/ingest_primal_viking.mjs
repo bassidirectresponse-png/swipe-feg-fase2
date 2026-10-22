@@ -125,7 +125,7 @@ function makeData(previous={}){
     kind:"brandsvalidated",tipoTrafego:"meta",nomeOferta:"Primal Viking",nomeMarca:"Primal Viking",nicho:"Emagrecimento",
     formato:"Suplemento em cápsulas · órgãos de rena e ervas árticas",numAdsAtivos:"2400",adsLibraryApprox:true,adsLibraryCheckedAt:"17/07/2026",
     imagemProduto:"/assets/primal-viking/product.jpg",
-    bibliotecas:[{nome:"Primal Viking · Meta Ads Library",link:"https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&search_type=page&sort_data[direction]=desc&sort_data[mode]=total_impressions&source=page-transparency-widget&view_all_page_id=765890836605406"}],
+    bibliotecas:[{nome:"Funil Winner",link:"https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&search_type=page&sort_data[direction]=desc&sort_data[mode]=total_impressions&source=page-transparency-widget&view_all_page_id=765890836605406"}],
     dominios:[{nome:"Emoji Quiz · Reindeer Long",linkDominio:"https://primalviking.com/pages/emoji-quiz-reindeer-long",views:"",viewsPeriod:"",linkCheckout:"",backRedirect:"",printPV:"",printCheckout:""}],
     brandTopAds,
     bmSpend7d:money("542.266,62"),bmSpend14d:money("1.038.575,45"),bmAvgConversion:money("84,60"),bmCpc:money("1,60"),bmCpcLink:money("3,11"),bmCpm:money("25,14"),bmCtr:"1,57%",bmCostUnique:money("2,34"),bmCostIc:"Não exibido no print",bmRoas:"— (múltiplas conversões)",bmUpdatedAt:"15/07/2026",bmNotes:"",bmReports:reports,

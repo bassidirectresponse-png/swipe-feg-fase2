@@ -43,9 +43,11 @@ async function readOffer() {
   return rows[0];
 }
 
+const RESULTS_LIMIT = Math.max(5, Math.min(35, Number(process.env.APIFY_RESULTS_LIMIT) || 25));
+
 async function scrapeAds(libraryUrl) {
-  const input = { startUrls: [{ url: libraryUrl }], resultsLimit: 50, onlyTotal: false, includeAboutPage: false, isDetailsPerAd: false };
-  const started = await apifyJson(`acts/${ACTOR}/runs?timeout=30`, { method: "POST", body: JSON.stringify(input) });
+  const input = { startUrls: [{ url: libraryUrl }], resultsLimit: RESULTS_LIMIT, onlyTotal: false, includeAboutPage: false, isDetailsPerAd: false };
+  const started = await apifyJson(`acts/${ACTOR}/runs?timeout=120&memory=1024&maxItems=${RESULTS_LIMIT}`, { method: "POST", body: JSON.stringify(input) });
   let run = started.data;
   if (!run?.id) throw new Error("Apify não retornou ID da execução");
   const deadline = Date.now() + 8 * 60_000;
@@ -54,7 +56,7 @@ async function scrapeAds(libraryUrl) {
     run = (await apifyJson(`actor-runs/${run.id}?waitForFinish=30`)).data;
   }
   if (run?.status !== "SUCCEEDED" || !run.defaultDatasetId) throw new Error(`Apify terminou com status ${run?.status || "desconhecido"}`);
-  const rows = await apifyJson(`datasets/${run.defaultDatasetId}/items?clean=true&limit=100`);
+  const rows = await apifyJson(`datasets/${run.defaultDatasetId}/items?clean=true&limit=${RESULTS_LIMIT}`);
   if (!Array.isArray(rows)) throw new Error("dataset Apify inválido");
   return { runId: run.id, rows };
 }

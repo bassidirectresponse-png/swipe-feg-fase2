@@ -187,7 +187,9 @@ const KNOWN_BRAND_COVERS={
   "primal viking":"/assets/primal-viking/product.jpg",
   "ancestral supplements":"/assets/ancestral-supplements/product.png",
   "mars men":"/assets/mars-men/product.png",
-  "ultima peak":"/assets/ultima-peak/product.png"
+  "ultima peak":"/assets/ultima-peak/product.png",
+  "pulse flow":"/assets/brands/rootvana-pulse-flow/cover.png",
+  "rootvana pulse flow":"/assets/brands/rootvana-pulse-flow/cover.png"
 };
 function mediaNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi," ").trim().toLowerCase();}
 function mediaIsMissing(value){const v=String(value==null?"":value).trim();return !v||/^(?:·|-|—|n\/a|nao informado|não informado)$/i.test(v);}
@@ -210,6 +212,25 @@ function applyKnownMediaFallbacks(d){
   }else if(KNOWN_BRAND_COVERS[name]&&(mediaIsMissing(d.imagemProduto)||isLegacyBrandCover(name,d.imagemProduto)))d.imagemProduto=KNOWN_BRAND_COVERS[name];
   return d;
 }
+function hasBmHistoryData(d){
+  if(!d||d.bmAccess===false)return false;
+  if(Array.isArray(d.bmReports)&&d.bmReports.length>0)return true;
+  if(Array.isArray(d.bmPrints)&&d.bmPrints.some(x=>x&&(x.img||x.asset)))return true;
+  return ["bmSpend7d","bmSpend14d","bmSpend30d","bmAvgConversion","bmCtr","bmCpa","bmCpc","bmCpcLink","bmCpm","bmCostUnique","bmCostIc","bmRoas"].some(key=>{
+    const v=String(d[key]??"").trim();
+    return v!==""&&v!=="—"&&!/^n[ãa]o exibido/i.test(v);
+  });
+}
+function libraryDisplayName(d,b,index=0,total=1){
+  const rawName=String(b&&b.nome||"").trim();
+  if(hasBmHistoryData(d)){
+    if(!rawName||/^(?:biblioteca(?:\s+\d+)?|.*meta\s+ads\s+library.*|funil\s+winner(?:\s+\d+)?)$/i.test(rawName)||rawName.toLowerCase()===String(d.nomeOferta||d.nomeMarca||"").trim().toLowerCase()){
+      return total>1?`Funil Winner ${index+1}`:"Funil Winner";
+    }
+    return rawName;
+  }
+  return rawName||`Biblioteca ${index+1}`;
+}
 function normalize(raw){
   const d=Object.assign({},raw||{});
   if(typeof d.nicho!=="string")d.nicho="";
@@ -231,7 +252,12 @@ function normalize(raw){
   if(!Array.isArray(d.brandTopAds))d.brandTopAds=[];
   if(!Array.isArray(d.brandArchivedAds))d.brandArchivedAds=[];
   if(!Array.isArray(d.bmReports))d.bmReports=[];
+  if(!Array.isArray(d.discoveredLibraries))d.discoveredLibraries=[];
   [["7d","bmSpend7d"],["14d","bmSpend14d"],["30d","bmSpend30d"]].forEach(([period,key])=>{if(!String(d[key]||"").trim()){const report=d.bmReports.find(item=>String((item&&item.key)||"").toLowerCase()===period);if(report&&report.totals&&report.totals.spend)d[key]=report.totals.spend;}});
+  if(hasBmHistoryData(d)&&Array.isArray(d.bibliotecas)){
+    const total=d.bibliotecas.filter(x=>x&&x.link).length||d.bibliotecas.length;
+    d.bibliotecas=d.bibliotecas.map((b,i)=>Object.assign({},b,{nome:libraryDisplayName(d,b,i,total)}));
+  }
   if(typeof d.brandSemrush1m!=="string")d.brandSemrush1m="";
   if(typeof d.brandSemrush3m!=="string")d.brandSemrush3m="";
   if(typeof d.adsLibraryCheckedAt!=="string")d.adsLibraryCheckedAt="";
@@ -946,13 +972,14 @@ function cardHtml(o){
   const adsHist=adsHistOf(d);
   const adsExtra=native?"":`${adsHist.length>=2?sparkSvg(adsHist):""}${d.adsUpdatedAt?`<div class="adsmeta"><span class="adsauto">${ic("zap")}auto</span><span class="adsupd">${ic("clock")}${esc(relTime(d.adsUpdatedAt))}</span></div>`:""}`;
 
+  const libBtnLabel=hasBmHistoryData(d)?"Funil Winner":"Biblioteca";
   const quick=(native?[
     qbtn("Presell",presell,"newspaper"),
     qbtn("Domínio",(domLinks[0]||{}).linkDominio,"globe"),
     qbtn("Checkout",(coLinks[0]||{}).linkCheckout,"cart"),
     qbtn("Back redirect",brLink,"back")
   ]:[
-    qbtn("Biblioteca",(bibs[0]||{}).link,"library"),
+    qbtn(libBtnLabel,(bibs[0]||{}).link,"library"),
     qbtn("Anúncios",(crvs[0]||{}).link,"play"),
     qbtn("Presell",presell,"newspaper"),
     qbtn("Domínio",(domLinks[0]||{}).linkDominio,"globe"),
@@ -1217,14 +1244,15 @@ function bmEvidenceHtml(d,id){
 }
 function brandDraftCardSnapshot(d){
   const latest=bmReportGroups(d)[0];
+  const ads=getAds(d),adsBadge=ads!=null?` · ${(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR")} ads ativos`:"";
   if(!latest){
     const legacy=[["Gasto",d.bmSpend7d],["ROAS",d.bmRoas],["CPA",d.bmCpa],["AOV",d.bmAvgConversion],["CPM",d.bmCpm],["CTR link",d.bmCtr],["CPC link",d.bmCpcLink||d.bmCpc]];
     if(!legacy.some(([,value])=>bmHasValue(value)))return"";
-    return `<div class="brand-bm-state is-ready">${ic("trending")}Métricas da BM · ${esc(d.bmUpdatedAt||"data não informada")} · fonte legada</div><div class="brand-metrics brand-metrics--snapshot">${legacy.map(([label,value])=>`<div class="brand-metric"><span class="brand-metric__label">${esc(label)}</span><strong class="brand-metric__value">${esc(bmHasValue(value)?value:"—")}</strong></div>`).join("")}</div>`;
+    return `<div class="brand-bm-state is-ready">${ic("trending")}Métricas da BM · ${esc(d.bmUpdatedAt||"data não informada")} · fonte legada${adsBadge}</div><div class="brand-metrics brand-metrics--snapshot">${legacy.map(([label,value])=>`<div class="brand-metric"><span class="brand-metric__label">${esc(label)}</span><strong class="brand-metric__value">${esc(bmHasValue(value)?value:"—")}</strong></div>`).join("")}</div>`;
   }
   const report=latest.reports.find(item=>bmReportWindowKey(item)==="7d")||latest.reports[0];
   const metrics=BM_CARD_FIELDS.map(([label,key])=>{const metric=bmSummaryMetric(report,key);return `<div class="brand-metric" title="${esc(metric.source)}"><span class="brand-metric__label">${esc(label)}</span><strong class="brand-metric__value">${esc(metric.value)}</strong></div>`;}).join("");
-  return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}</div><div class="brand-metrics brand-metrics--snapshot">${metrics}</div>`;
+  return `<div class="brand-bm-state is-ready">${ic("trending")}Última leitura da BM · ${esc(bmReportDateLabel(latest.date))} · ${esc(bmReportTabLabel(report))}${adsBadge}</div><div class="brand-metrics brand-metrics--snapshot">${metrics}</div>`;
 }
 function brandAdsCardSnapshot(d){
   const hist=adsHistOf(d),ads=getAds(d),latest=hist.at(-1),count=ads??latest?.n;
@@ -1240,6 +1268,7 @@ function brandCard(o){
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
   const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!clean&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!clean&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!clean&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:"",validated&&archivedAds.length?`<span class="chip accent">${archivedAds.length} anúncio${archivedAds.length===1?"":"s"} arquivado${archivedAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
+  const libBtnLabel=hasBmHistoryData(d)?"Funil Winner":"Biblioteca";
   return card({
     id:o.id,variant:clean?"brand-card brand-card--clean":"brand-card",
     top:(isAdmin||BRAND_TAGS_PUBLISHED)?`<div class="offer-tags">${offerTagsHtml(d)}${isAdmin?`<button class="offer-tag__edit" type="button" data-edit-tags="${esc(o.id)}" aria-label="Editar tags de ${esc(d.nomeOferta||"oferta")}">${ic("edit")}Editar tags</button>`:""}</div>`:"",
@@ -1248,7 +1277,7 @@ function brandCard(o){
     body:`<div class="card__body">${cardIdentity(d.nomeMarca||"Marca não informada",d.nomeOferta||"Produto sem nome")}</div>`,
     chips:chips?`<div class="card__chips">${chips}</div>`:"",
     extra:validated?(brandDraftCardSnapshot(d)||brandAdsCardSnapshot(d)):brandAdsCardSnapshot(d),
-    actions:[qbtn("Biblioteca",firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
+    actions:[qbtn(libBtnLabel,firstLibrary,"library"),qbtn("Oferta",firstDomain,"globe"),qbtn(validated?"Top ad":"Anúncio",firstAd,"play")].filter(Boolean).join("")
   });
 }
 function cardFor(o){
@@ -1471,14 +1500,14 @@ function mergeAdminOfferDraftData(base,patch){
   const merged=Object.assign({},base||{},patch||{});
   if(patch&&patch.bmNotesReplace===true)merged.bmNotes=String(patch.bmNotes||"");
   else if(patch&&patch.bmNotes)merged.bmNotes=[base&&base.bmNotes,patch.bmNotes].filter(Boolean).join("\n\n");
-  for(const key of ["bmReports","brandTopAds","bmPrints","bibliotecas","dominios"]){
+  for(const key of ["bmReports","brandTopAds","bmPrints","bibliotecas","dominios","discoveredLibraries"]){
     const removed=new Set(key==="bmReports"&&Array.isArray(patch?.bmReportsRemoveKeys)?patch.bmReportsRemoveKeys:[]);
     const before=(Array.isArray(base&&base[key])?base[key]:[]).filter(item=>key!=="bmReports"||!removed.has(String(item&&item.key||""))),after=Array.isArray(patch&&patch[key])?patch[key]:[];
     if(key==="bmPrints"&&Array.isArray(patch&&patch[key])&&!after.length){merged[key]=[];continue;}
     if(!after.length)continue;
     if(patch&&patch[`${key}Replace`]===true){merged[key]=after;continue;}
-    const identity=item=>key==="bmReports"?String(item&&item.key||""):key==="bibliotecas"?String(item&&item.link||""):key==="dominios"?String(item&&(item.linkDominio||item.nome)||""):key==="brandTopAds"?String(item&&item.link||item&&item.nome||""):String(item&&item.img||item&&item.nome||"");
-    const updatedFirst=key==="bmReports"||key==="brandTopAds",updatedIds=new Set(after.map(identity).filter(Boolean));
+    const identity=item=>key==="bmReports"?String(item&&item.key||""):(key==="bibliotecas"||key==="discoveredLibraries")?String(item&&item.link||""):key==="dominios"?String(item&&(item.linkDominio||item.nome)||""):key==="brandTopAds"?String(item&&item.link||item&&item.nome||""):String(item&&item.img||item&&item.nome||"");
+    const updatedFirst=key==="bmReports"||key==="brandTopAds"||key==="discoveredLibraries",updatedIds=new Set(after.map(identity).filter(Boolean));
     const sequence=updatedFirst?[...after,...before.filter(item=>!updatedIds.has(identity(item)))]:[...before,...after];
     const map=new Map();for(const item of sequence){const id=identity(item);map.set(id||`${key}-${map.size}`,item);}
     merged[key]=[...map.values()];
@@ -1497,6 +1526,101 @@ function topAdDisplayName(ad,index){
   const range=String(ad&&((ad.bmRange||ad.analysisRange||ad.dataRange))||"").trim();
   const observed=String(ad&&((ad.sourceDate||ad.downloadedAt))||"").trim();
   return `Anúncio ${index+1} — ${monthLabel}${range?" — "+range:observed?" — registrado em "+observed:" — datas a confirmar"}`;
+}
+function adminOfferDiscoverySectionHtml(d,id,num){
+  if(!isAdmin)return"";
+  const list=Array.isArray(d.discoveredLibraries)?d.discoveredLibraries.filter(x=>x&&x.link):[];
+  const meta=d.discoveredLibrariesMeta&&typeof d.discoveredLibrariesMeta==="object"?d.discoveredLibrariesMeta:null;
+  const rawTime=meta&&(meta.updatedAt||meta.checkedAt)||d.discoveredLibrariesUpdatedAt||"";
+  const checkedLabel=rawTime?relTime(rawTime):"ainda não executado";
+  const queriesLabel=meta&&Array.isArray(meta.queries)&&meta.queries.length?meta.queries.join(" · "):"domínio e marca do card";
+  const rowsHtml=list.length?`<div class="doms" style="margin-top:14px">${list.map((item,i)=>{
+    const count=item.matchedAds||item.sampleAdsCount||0;
+    const domain=Array.isArray(item.matchedDomains)&&item.matchedDomains[0]||item.matchedDomain||"";
+    return `
+    <div class="dom">
+      <div class="dom__top">
+        <span class="dom__badge">${String(i+1).padStart(2,"0")}</span>
+        <span class="dom__name">${esc(item.pageName||item.nome||"Biblioteca descoberta "+(i+1))}</span>
+        ${count?`<span class="chip accent">${Number(count).toLocaleString("pt-BR")} ads na amostra</span>`:""}
+        ${domain?`<span class="chip">${esc(domain)}</span>`:""}
+      </div>
+      <div class="linkbtns" style="margin-top:10px">
+        ${linkbtn("Abrir biblioteca",item.link,true,"library")}
+        <button class="linkbtn" type="button" data-pin-discovered-lib="${i}" data-offer-id="${esc(id)}">${ic("plus")}<span class="lbtxt">Adicionar ao rascunho</span></button>
+      </div>
+    </div>`;}).join("")}</div>`:`<div class="muted-empty" style="margin-top:12px">Nenhuma biblioteca adicional descoberta ainda para este domínio/oferta.</div>`;
+  return `<section class="sec" id="adminDiscoverySec">
+    <div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Outras bibliotecas da oferta · MVP Admin</span><span class="sec__line"></span></div>
+    <div class="banner banner--warn" style="margin-bottom:14px">${ic("shield")}MVP exclusivo para administrador (não publicado para usuários). Busca controlada com limite de custo (máx. 2 buscas · 15 itens/busca · cooldown de 6h por card).</div>
+    <div class="ta-grid">
+      <div class="ta-metric"><div class="k">Bibliotecas encontradas</div><div class="v">${list.length}</div></div>
+      <div class="ta-metric"><div class="k">Última varredura</div><div class="v">${esc(checkedLabel)}</div></div>
+      <div class="ta-metric"><div class="k">Termos buscados</div><div class="v" style="font-size:.92rem">${esc(queriesLabel)}</div></div>
+    </div>
+    <div class="linkbtns" style="margin-top:14px">
+      <button class="btn primary" type="button" data-discover-libraries="${esc(id)}">${ic("search")}Buscar outras bibliotecas (MVP Admin)</button>
+      ${list.length?`<button class="btn" type="button" data-discover-libraries="${esc(id)}" data-discover-force="1">Atualizar busca</button>`:""}
+    </div>
+    <div id="adminDiscoveryStatus" class="fsec__hint" style="margin-top:8px" aria-live="polite"></div>
+    ${rowsHtml}
+  </section>`;
+}
+async function discoverOfferLibrariesAdmin(id,button){
+  if(!isAdmin||!sb||!id)return;
+  const status=$("#adminDiscoveryStatus"),force=button?.dataset?.discoverForce==="1";
+  try{
+    if(button)button.disabled=true;
+    if(status)status.textContent="Buscando outras bibliotecas do mesmo domínio/oferta (orçamento controlado)...";
+    const {data:{session}}=await sb.auth.getSession(),token=session&&session.access_token;
+    if(!token)throw new Error("Sessão administrativa expirada.");
+    const response=await fetch("/.netlify/functions/admin-offer-discovery",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+      body:JSON.stringify({offerId:id,force})
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok||payload.ok===false)throw new Error(payload.error||`Falha HTTP ${response.status}`);
+    if(payload.draft&&typeof payload.draft==="object"){
+      adminOfferDrafts.set(id,payload.draft);
+    }
+    toast(payload.cached||payload.reusedCooldown?"Resultado recente reutilizado (economia de créditos)":`Busca concluída: ${(payload.discoveredLibraries||[]).length} biblioteca(s) encontrada(s)`);
+    openView(id,true);
+  }catch(err){
+    const msg=String(err&&err.message||"Não foi possível buscar outras bibliotecas.");
+    if(status)status.textContent=msg;
+    toast(msg,"err");
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+async function pinDiscoveredLibraryAdmin(id,index,button){
+  if(!isAdmin||!sb||!id)return;
+  const o=itemById(id);if(!o)return;
+  const currentDraft=adminOfferPatch(id)||{},merged=normalize(mergeAdminOfferDraftData(o.data,currentDraft));
+  const candidate=(merged.discoveredLibraries||[])[Number(index)];
+  if(!candidate||!candidate.link)return;
+  try{
+    if(button)button.disabled=true;
+    const {data:{session}}=await sb.auth.getSession(),token=session&&session.access_token;
+    if(!token)throw new Error("Sessão administrativa expirada.");
+    const nextBibs=[...merged.bibliotecas.filter(x=>x&&x.link),{nome:candidate.nome||candidate.pageName||"Biblioteca adicional",link:candidate.link}];
+    const nextPatch={...currentDraft,bibliotecas:nextBibs,discoveredLibraries:merged.discoveredLibraries,discoveredLibrariesMeta:merged.discoveredLibrariesMeta};
+    const response=await fetch("/.netlify/functions/admin-offer-drafts",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+      body:JSON.stringify({target_offer_id:id,label:merged.nomeOferta||merged.nomeMarca||"Oferta Brands",data_patch:nextPatch})
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok||payload.ok===false)throw new Error(payload.error||`Falha HTTP ${response.status}`);
+    if(payload.draft)adminOfferDrafts.set(id,payload.draft);
+    toast("Biblioteca adicionada ao rascunho privado do admin");
+    openView(id,true);
+  }catch(err){
+    toast(String(err&&err.message||"Falha ao salvar biblioteca no rascunho."),"err");
+  }finally{
+    if(button)button.disabled=false;
+  }
 }
 function openView(id,useAdminDraft=true){
   const o=itemById(id);if(!o)return;
@@ -1547,7 +1671,7 @@ function openView(id,useAdminDraft=true){
   let headLinks="";
   if(!native){
     const bibs=d.bibliotecas.filter(x=>x.link);
-    const bs=bibs.map((b,i)=>linkbtn(b.nome||"Biblioteca "+(i+1),b.link,true,"library")).join("");
+    const bs=bibs.map((b,i)=>linkbtn(libraryDisplayName(d,b,i,bibs.length),b.link,true,"library")).join("");
     if(bs||d.advertorialLink)headLinks=`<div class="linkbtns" style="margin-top:18px">${bs}${linkbtn("Presell",d.advertorialLink,false,"newspaper")}</div>`;
   }else if(d.advertorialLink){
     headLinks=`<div class="linkbtns" style="margin-top:18px">${linkbtn("Presell",d.advertorialLink,false,"newspaper")}</div>`;
@@ -1565,7 +1689,7 @@ function openView(id,useAdminDraft=true){
         :d.adsUpdatedAt
         ?`<div class="adsmeta" style="margin-top:12px"><span class="adsauto">${ic("zap")}atualização automática</span><span class="adsupd">${ic("clock")}última leitura: ${esc(relTime(d.adsUpdatedAt))}</span></div>`
         :`<div class="muted-empty" style="margin-top:10px;font-size:.85rem">O histórico começa na próxima leitura automática.</div>`;
-      adsSection=`<section class="sec brand-ads-history"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos · evolução diária</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div style="margin-top:18px">${o.adminPrivate?'<div class="muted-empty">Sem leituras automáticas neste rascunho.</div>':adsChartSvg(ah)}</div>${upd}${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn("Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
+      adsSection=`<section class="sec brand-ads-history"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Ads ativos · evolução diária</span><span class="sec__line"></span></div><div class="ta-grid"><div class="ta-metric"><div class="k">Total ativo</div><div class="v">${ads!=null?(d.adsLibraryApprox?"≈ ":"")+ads.toLocaleString("pt-BR"):"—"}</div></div><div class="ta-metric"><div class="k">Conferido em</div><div class="v">${esc(d.adsLibraryCheckedAt||"—")}</div></div></div><div style="margin-top:18px">${o.adminPrivate?'<div class="muted-empty">Sem leituras automáticas neste rascunho.</div>':adsChartSvg(ah)}</div>${upd}${library?`<div class="linkbtns" style="margin-top:14px">${linkbtn(hasBmHistoryData(d)?"Abrir Funil Winner":"Conferir na biblioteca",library,true,"library")}</div>`:""}</section>`;
     }else{
       const ah=adsHistOf(d);
       const upd=d.adsUpdatedAt
@@ -1591,6 +1715,7 @@ function openView(id,useAdminDraft=true){
       ${archivedAds.length?`<div class="sec__head" style="margin-top:26px"><span class="sec__title">Anúncios arquivados · ${archivedAds.length}</span><span class="sec__line"></span></div><p class="muted-empty">Arquivos salvos no Swipe; continuam disponíveis mesmo se o anúncio sair do ar.</p>${archivedHtml}`:""}
     </section>`;
   }
+  const discoverySection=!native&&isAdmin?adminOfferDiscoverySectionHtml(d,id,num):"";
 
   $("#viewBody").innerHTML=`
   ${showingDraft?`<div class="banner banner--warn" style="margin:0 0 18px">${o.adminPrivate?"Oferta privada em revisão · visível somente no painel admin. Ainda não publicada.":"Histórico da BM em validação · visível somente no painel admin. Use “Ver dados publicados” para comparar com a versão atual."}</div>`:""}
@@ -1611,6 +1736,7 @@ function openView(id,useAdminDraft=true){
       </section>
       ${adsSection}
       ${bmSection}
+      ${discoverySection}
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Domínios & Checkouts</span><span class="sec__line"></span></div>${domsHtml}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${adsTitle}</span><span class="sec__line"></span></div>${adsInner}</section>
       <section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Funil de vendas</span><span class="sec__line"></span></div>
@@ -1667,6 +1793,10 @@ function openView(id,useAdminDraft=true){
     const arrow=event.target.closest("[data-bm-evidence-step]");if(!arrow)return;
     const rail=arrow.parentElement.querySelector(".bm-evidence__rail"),shot=rail&&rail.querySelector(".bm-evidence__shot");if(!rail||!shot)return;
     rail.scrollBy({left:Number(arrow.dataset.bmEvidenceStep)*(shot.getBoundingClientRect().width+10),behavior:"smooth"});
+  });
+  const discoverySec=$("#adminDiscoverySec");if(discoverySec)discoverySec.addEventListener("click",event=>{
+    const discoverBtn=event.target.closest("[data-discover-libraries]");if(discoverBtn){discoverOfferLibrariesAdmin(discoverBtn.dataset.discoverLibraries,discoverBtn);return;}
+    const pinBtn=event.target.closest("[data-pin-discovered-lib]");if(pinBtn){pinDiscoveredLibraryAdmin(pinBtn.dataset.offerId,pinBtn.dataset.pinDiscoveredLib,pinBtn);}
   });
   wireLightboxLinks($("#viewBody"));
   wireAdsChart($("#viewBody"));
@@ -1829,7 +1959,7 @@ function renderBibliotecas(){
     <div class="block-edit">
       <div class="behead"><span class="t"><span class="badge">${i+1}</span> Biblioteca ${i+1}</span>${fBibliotecas.length>1?`<button type="button" class="rm-block" data-action="rm-bib" data-i="${i}">✕ Remover</button>`:""}</div>
       <div class="row">
-        <div class="field" style="margin-bottom:0"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-bib="${i}" data-k="nome" placeholder="Ex: Marca / Conta secundária" value="${esc(b.nome)}"></div>
+        <div class="field" style="margin-bottom:0"><label class="lbl">Nome / identificação (opcional)</label><input type="text" data-bib="${i}" data-k="nome" placeholder="Ex: Funil Winner" value="${esc(b.nome)}"></div>
         <div class="field" style="margin-bottom:0"><label class="lbl">Link (Meta Ads Library)</label><input type="url" data-bib="${i}" data-k="link" placeholder="https://facebook.com/ads/library..." value="${esc(b.link)}"></div>
       </div>
     </div>`).join("");

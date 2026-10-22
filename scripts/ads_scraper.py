@@ -28,6 +28,11 @@ Env:
 """
 import copy, os, sys, re, json, time, urllib.request, urllib.error, uuid
 from datetime import datetime, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo
+    BRT = ZoneInfo("America/Sao_Paulo")
+except Exception:
+    BRT = timezone(timedelta(hours=-3))
 
 from playwright.sync_api import sync_playwright
 from runtime_config import supabase_public_config
@@ -44,6 +49,13 @@ ANALYSIS_VERSION = os.environ.get("ANALYSIS_VERSION", "1")
 FORCE_REVIEW = os.environ.get("FORCE_REVIEW", "1").lower() in ("1", "true", "yes")
 ONLY_PENDING = os.environ.get("ONLY_PENDING", "0").lower() in ("1", "true", "yes")
 RUN_ID = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
+
+
+def br_now(now=None):
+    target = now or datetime.now(timezone.utc)
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    return target.astimezone(BRT)
 
 
 def iso_now():
@@ -275,7 +287,7 @@ def normalize_history(points):
 
 
 def update_history(data, total, now):
-    today = now.strftime("%Y-%m-%d")
+    today = br_now(now).strftime("%Y-%m-%d")
     hist = normalize_history(data.get("adsHistory"))
     # Cards de Brands anteriores à automação já têm total/data conferidos à mão.
     # Preserva essa leitura como ponto inicial para o gráfico não perder contexto.
@@ -313,7 +325,7 @@ def round_robin_targets(targets, limit):
 
 def last_stable_ads(data, now):
     """Retorna o último total positivo anterior ao dia atual."""
-    today = now.strftime("%Y-%m-%d")
+    today = br_now(now).strftime("%Y-%m-%d")
     hist = normalize_history(data.get("adsHistory"))
     if hist:
         for point in reversed(hist):
@@ -459,7 +471,7 @@ def main():
             data["analysisLastError"] = ""
             data["analysisNextRetryAt"] = ""
             if data.get("kind") in ("brandsgeneral", "brandsvalidated"):
-                data["adsLibraryCheckedAt"] = now.strftime("%d/%m/%Y")
+                data["adsLibraryCheckedAt"] = br_now(now).strftime("%d/%m/%Y")
                 data["adsLibraryApprox"] = False
             print(f"   => total {total} ads (antes: {prev!r})")
 

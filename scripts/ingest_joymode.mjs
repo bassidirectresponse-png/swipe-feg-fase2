@@ -173,7 +173,7 @@ const data = {
   numAdsAtivos: "160",
   adsLibraryCheckedAt: "17/07/2026",
   imagemProduto: "/assets/joymode/product-cover.png",
-  bibliotecas: [{ nome: "Joymode · Meta Ads Library", link: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&source=page-transparency-widget&view_all_page_id=108435064861552" }],
+  bibliotecas: [{ nome: "Funil Winner", link: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&source=page-transparency-widget&view_all_page_id=108435064861552" }],
   dominios: [
     { nome: "Hard+ · Sexual Performance Booster", linkDominio: "https://www.tryjoymode.com/products/sexual-performance-booster", views: "31.5K", viewsPeriod: "3 meses", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },
     { nome: "PV1 · Home", linkDominio: "https://www.tryjoymode.com/", views: "38.2K", viewsPeriod: "3 meses", linkCheckout: "", backRedirect: "", printPV: "", printCheckout: "" },

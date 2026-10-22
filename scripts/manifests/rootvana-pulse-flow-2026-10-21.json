@@ -1,0 +1,26 @@
+{
+  "batchDate": "2026-10-20",
+  "sourceNotes": "Oferta Rootvana Nutrition · Pulse Flow (Listicle 2) enviada com capa do produto, 3 Top Ads (fb.me/adspreview) e 10 prints do Gerenciador de Anúncios cobrindo ontem, 7, 14 e 30 dias encerrados em 20/10/2026, mais 5 telas de configuração de campanha/conjunto.",
+  "items": [
+    {
+      "kind": "brandsvalidated",
+      "name": "Pulse Flow",
+      "brand": "Rootvana",
+      "niche": "SUPPLEMENTS",
+      "format": "Supports Healthy Blood Flow & Vitality · 60 Capsules",
+      "image": "https://swipe.fegsys.com/assets/brands/rootvana-pulse-flow/cover.png",
+      "offerTags": ["insider", "new", "scale"],
+      "createCreativeCards": false,
+      "libraries": [{
+        "name": "Funil Winner",
+        "url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&q=tryrootvana.com&search_type=keyword_unordered&sort_data[direction]=desc&sort_data[mode]=total_impressions"
+      }],
+      "domains": [{ "name": "Listicle 2 · Pulse Flow", "offer": "https://tryrootvana.com/pages/listicle-2" }],
+      "ads": [
+        { "name": "Pulse Flow · Anúncio 1", "url": "https://fb.me/adspreview/facebook/1UeM1RO1dqbK6ai", "creativeName": "Rootvana Pulse Flow — Anúncio 01 — Outubro 2026", "platform": "meta" },
+        { "name": "Pulse Flow · Anúncio 2", "url": "https://fb.me/adspreview/facebook/24RB2z5S7LOwlyd", "creativeName": "Rootvana Pulse Flow — Anúncio 02 — Outubro 2026", "platform": "meta" },
+        { "name": "Pulse Flow · Anúncio 3", "url": "https://fb.me/adspreview/facebook/1UkcmNa0tUQkJcQ", "creativeName": "Rootvana Pulse Flow — Anúncio 03 — Outubro 2026", "platform": "meta" }
+      ]
+    }
+  ]
+}

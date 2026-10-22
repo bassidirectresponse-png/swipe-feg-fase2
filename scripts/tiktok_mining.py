@@ -205,7 +205,10 @@ APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
 APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "clockworks~tiktok-scraper")
 APIFY_SORT = os.environ.get("APIFY_SORT", "MOST_RELEVANT")   # MOST_RELEVANT|MOST_LIKED|LATEST
 APIFY_DATE = os.environ.get("APIFY_DATE", "ALL_TIME")        # ALL_TIME|PAST_24_HOURS|PAST_WEEK|PAST_MONTH...
-APIFY_RUN_MAX_SECONDS = int(os.environ.get("APIFY_RUN_MAX_SECONDS", "900"))
+APIFY_RUN_MAX_SECONDS = int(os.environ.get("APIFY_RUN_MAX_SECONDS", "600"))
+APIFY_MAX_RESULTS_PER_QUERY = max(1, int(os.environ.get("APIFY_MAX_RESULTS_PER_QUERY", "12")))
+APIFY_MAX_ITEMS_PER_RUN = max(5, int(os.environ.get("APIFY_MAX_ITEMS_PER_RUN", "45")))
+APIFY_MEMORY_MB = max(512, min(4096, int(os.environ.get("APIFY_MEMORY_MB", "1024"))))
 REHOST_THUMBS = os.environ.get("REHOST_THUMBS", "1").lower() in ("1", "true", "yes")
 
 
@@ -235,13 +238,16 @@ def apify_json(method, url, payload=None, retries=3):
 
 
 def fetch_apify(keywords, per_kw):
-    """Inicia um run assíncrono por nicho, acompanha e lê o dataset final."""
+    """Inicia um run assíncrono por nicho, acompanha e lê o dataset final com controle de custo."""
     if not APIFY_TOKEN:
         raise RuntimeError("PROVIDER=apify precisa de APIFY_TOKEN")
+    effective_per_kw = max(1, min(int(per_kw or 1), APIFY_MAX_RESULTS_PER_QUERY))
+    max_items = max(1, min(APIFY_MAX_ITEMS_PER_RUN, max(1, len(keywords)) * effective_per_kw))
     inp = {
         "searchQueries": list(keywords),
         "searchSection": "/video",
-        "resultsPerPage": per_kw,
+        "resultsPerPage": effective_per_kw,
+        "maxItems": max_items,
         "videoSearchSorting": APIFY_SORT,
         "videoSearchDateFilter": APIFY_DATE,
         "shouldDownloadVideos": False,
@@ -252,12 +258,19 @@ def fetch_apify(keywords, per_kw):
     }
     actor = urllib.parse.quote(APIFY_ACTOR, safe="~")
     base = "https://api.apify.com/v2"
-    response = apify_json("POST", f"{base}/actors/{actor}/runs?timeout={APIFY_RUN_MAX_SECONDS}", inp)
+    response = apify_json(
+        "POST",
+        f"{base}/actors/{actor}/runs?timeout={APIFY_RUN_MAX_SECONDS}&memory={APIFY_MEMORY_MB}&maxItems={max_items}",
+        inp,
+    )
     run = response.get("data") or {}
     run_id = run.get("id")
     if not run_id:
         raise RuntimeError("Apify não retornou o ID do run")
-    print(f"      Apify run {run_id} iniciado", flush=True)
+    print(
+        f"      Apify run {run_id} iniciado (resultsPerPage={effective_per_kw}, maxItems={max_items}, memory={APIFY_MEMORY_MB}MB)",
+        flush=True,
+    )
     deadline = time.monotonic() + APIFY_RUN_MAX_SECONDS + 90
     while True:
         if time.monotonic() > deadline:
@@ -268,7 +281,7 @@ def fetch_apify(keywords, per_kw):
             dataset_id = state.get("defaultDatasetId") or run.get("defaultDatasetId")
             if not dataset_id:
                 raise RuntimeError(f"Apify run {run_id} terminou sem dataset")
-            out = apify_json("GET", f"{base}/datasets/{dataset_id}/items?clean=true&limit=500")
+            out = apify_json("GET", f"{base}/datasets/{dataset_id}/items?clean=true&limit={max_items}")
             if not isinstance(out, list):
                 raise RuntimeError(f"Apify run {run_id} retornou dataset inválido")
             print(f"      Apify run {run_id}: {len(out)} itens", flush=True)
@@ -393,29 +406,53 @@ def bot_login():
     return json.loads(txt)["access_token"]
 
 
-def insert_new_via_github(rows):
-    """Novos vídeos só entram pela função OIDC restrita a este workflow."""
+def insert_new_via_github(rows, retries=4, batch_size=50):
+    """Novos vídeos só entram pela função OIDC restrita a este workflow, com retentativa contra 503."""
     request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "")
     request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
     if not request_url or not request_token:
         raise RuntimeError("identidade OIDC do GitHub ausente; nenhum vídeo novo foi inserido")
     separator = "&" if "?" in request_url else "?"
-    oidc = http_json(request_url + separator + "audience=swipe-feg-netlify-automation",
-                     headers={"Authorization": f"bearer {request_token}"}).get("value")
-    if not oidc:
-        raise RuntimeError("identidade OIDC do GitHub não foi emitida")
-    req = urllib.request.Request(
-        "https://swipefeg.netlify.app/.netlify/functions/github-tiktok-ingest",
-        data=json.dumps(rows).encode("utf-8"), method="POST",
-        headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=35) as response:
-            result = json.loads(response.read().decode("utf-8", "replace"))
-    except urllib.error.HTTPError as error:
-        raise RuntimeError(f"ingestão de novos vídeos recusada: HTTP {error.code}") from error
-    if not result.get("ok") or result.get("inserted") != len(rows):
-        raise RuntimeError("ingestão de novos vídeos não foi confirmada")
-    return result["inserted"]
+
+    def get_oidc_token():
+        oidc = http_json(
+            request_url + separator + "audience=swipe-feg-netlify-automation",
+            headers={"Authorization": f"bearer {request_token}"},
+        ).get("value")
+        if not oidc:
+            raise RuntimeError("identidade OIDC do GitHub não foi emitida")
+        return oidc
+
+    total_inserted = 0
+    chunks = [rows[i:i + batch_size] for i in range(0, len(rows), batch_size)] if rows else []
+    for chunk in chunks:
+        result = None
+        for attempt in range(retries):
+            oidc = get_oidc_token()
+            req = urllib.request.Request(
+                "https://swipefeg.netlify.app/.netlify/functions/github-tiktok-ingest",
+                data=json.dumps(chunk).encode("utf-8"),
+                method="POST",
+                headers={"Authorization": f"Bearer {oidc}", "Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=45) as response:
+                    result = json.loads(response.read().decode("utf-8", "replace"))
+                break
+            except urllib.error.HTTPError as error:
+                if error.code in (429, 500, 502, 503, 504) and attempt + 1 < retries:
+                    time.sleep(min(20, 2 ** attempt * 3))
+                    continue
+                raise RuntimeError(f"ingestão de novos vídeos recusada: HTTP {error.code}") from error
+            except (urllib.error.URLError, TimeoutError) as error:
+                if attempt + 1 < retries:
+                    time.sleep(min(20, 2 ** attempt * 3))
+                    continue
+                raise RuntimeError(f"ingestão de novos vídeos falhou: {str(error)[:120]}") from error
+        if not result or not result.get("ok") or result.get("inserted") != len(chunk):
+            raise RuntimeError("ingestão de novos vídeos não foi confirmada")
+        total_inserted += int(result["inserted"])
+    return total_inserted
 
 
 def reset_radar_via_github():

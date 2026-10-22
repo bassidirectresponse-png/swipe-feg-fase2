@@ -14,8 +14,9 @@ const BRANDS = Object.freeze({
   "pomegranate": { name: "Pomegranate", prints: 9, reports: 3 },
   "tryclover": { name: "Tryclover", prints: 13, reports: 4 },
   "auniva-amla": { name: "AMLA", prints: 10, reports: 4 },
+  "rootvana-pulse-flow": { name: "Pulse Flow", prints: 10, reports: 4 },
 });
-const IMAGE = /^brands\/(sp-nutrition|healthy-petz|pomegranate|tryclover|auniva-amla)\/cover-[a-f0-9]{20}\.png$/;
+const IMAGE = /^brands\/(sp-nutrition|healthy-petz|pomegranate|tryclover|auniva-amla|rootvana-pulse-flow)\/cover-[a-f0-9]{20}\.png$/;
 const MAX_IMAGE = 4 * 1024 * 1024;
 const ALLOWED_PATCH = new Set(["bmReports", "bmPrints", "bmSpend7d", "bmSpend14d", "bmSpend30d", "bmRoas", "bmUpdatedAt", "bmNotes", "brandTopAds", "offerTags"]);
 
@@ -101,7 +102,8 @@ export default async req => {
     });
     if (!creativeResponse.ok) throw new Error(`consulta dos criativos falhou (HTTP ${creativeResponse.status})`);
     const creatives = (await creativeResponse.json()).filter(item => item?.data?.kind === "criativo" && item.data.sourceOfferId === id);
-    if (creatives.length < 3) throw new Error("criativos vinculados incompletos");
+    const linkedTopAds = Math.max(creatives.length, Array.isArray(merged.brandTopAds) ? merged.brandTopAds.length : 0, Array.isArray(merged.criativos) ? merged.criativos.length : 0);
+    if (linkedTopAds < 3) throw new Error("criativos vinculados incompletos");
     for (const creative of creatives) {
       const fields = { division: "fegbrands", marca: brand.name };
       if (creative.data.division !== fields.division || creative.data.marca !== fields.marca) {
@@ -110,7 +112,7 @@ export default async req => {
     }
     const written = await offerById(id);
     if (!written || written.data?.bmReports?.length < brand.reports || written.data?.bmPrints?.filter(p => p.img).length < brand.prints) throw new Error("conferência pós-gravação incompleta");
-    return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, creatives: creatives.length, tags: written.data.offerTags });
+    return reply(200, { ok: true, id, reports: written.data.bmReports.length, prints: written.data.bmPrints.filter(p => p.img).length, creatives: linkedTopAds, tags: written.data.offerTags });
   } catch (error) {
     console.error("brands-cli-media:", String(error?.message || error).slice(0, 180));
     const unauthorized = /OIDC|workflow|token|assinatura|repositório|origem/.test(String(error?.message || ""));
