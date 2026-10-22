@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { temporaryToken, postManifest, upload, responseJson } from "./ingest_sp_nutrition.mjs";
 
-const BASE = "https://benchmarkinggrupofeg.site";
+const BASE = "https://swipe.fegsys.com";
 const SUPABASE = "https://pkvzwtstidtobpdngxnd.supabase.co";
 const DATE = "2026-10-20";
 const BRAND_KEY = "rootvana-pulse-flow";

@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const BASE = "https://benchmarkinggrupofeg.site";
+const BASE = "https://swipe.fegsys.com";
 const SUPABASE = "https://pkvzwtstidtobpdngxnd.supabase.co";
 const DATE = "2026-10-05";
 const LIBRARY = "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&sort_data[mode]=total_impressions&sort_data[direction]=desc&view_all_page_id=100168256385357";
