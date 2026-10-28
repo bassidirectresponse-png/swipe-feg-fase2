@@ -2528,10 +2528,10 @@ function automationCounts(section){
    exibido nem simulado; as áreas mostram o estado vazio com aviso explícito.
    ============================================================ */
 const OI_BACKEND_READY=false;
-/* Áreas cujos endpoints já existem no backend (B2: investigations e job). As demais (descobertas, conexões,
-   funis, summary, evidence) ficam como "ainda não conectadas" mesmo com OI_BACKEND_READY=true. */
-const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta"]);
-const OI_SUMMARY_LIVE=false;
+/* Áreas cujos endpoints existem no backend (B2: investigations e job; B3: discoveries, relations, funnels, summary).
+   Uma área fora desta lista fica como "ainda não conectada" mesmo com OI_BACKEND_READY=true. */
+const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis"]);
+const OI_SUMMARY_LIVE=true;
 function oiAreaLive(area){return OI_BACKEND_READY&&OI_LIVE_AREAS.has(area);}
 const OI_OFFER_SECTIONS=new Set(["oferta","brandsvalidated","brandsgeneral"]);
 const OI_JOBS_KEY="feg-oi-jobs";

@@ -60,11 +60,11 @@ test("B2: POST de início usa os campos do contrato e 503 credentials_missing vi
   assert.equal(OI.formatJob(job).id, JOB.id);
 });
 
-test("B2: só as áreas com endpoint existente ficam ativas; descobertas, conexões e funis seguem 'não conectadas'", () => {
+test("B2/B3: só as áreas com endpoint existente ficam ativas", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /const OI_BACKEND_READY=false;/);
-  assert.match(html, /const OI_LIVE_AREAS=new Set\(\["historico","investigacao","investigar","oferta"\]\);/);
-  assert.match(html, /const OI_SUMMARY_LIVE=false;/);
+  assert.match(html, /const OI_LIVE_AREAS=new Set\(\["historico","investigacao","investigar","oferta","descobertas","conexoes","funis"\]\);/);
+  assert.match(html, /const OI_SUMMARY_LIVE=true;/);
   assert.match(html, /if\(!oiAreaLive\(route\.area\)\|\|!OI_LOADERS\[route\.area\]\)return;/);
   assert.match(html, /ctx\.offerId&&OI_SUMMARY_LIVE\?await oiApi\.summary/);
   assert.match(html, /lim\.domainAvailable===false\)off\("#oiOptDom"/);
