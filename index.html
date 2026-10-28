@@ -2631,7 +2631,8 @@ function oiApplyHeader(title,description){
   if(description)description.textContent=meta.description;
 }
 function oiOfferName(o){const d=(o&&o.data)||{};return String(d.nomeOferta||d.nomeMarca||d.nome||"Oferta sem nome").trim();}
-function oiOffers(){return offers.filter(o=>OI_OFFER_SECTIONS.has(sectionOf(o))).sort((a,b)=>oiOfferName(a).localeCompare(oiOfferName(b),"pt-BR"));}
+/* Só ofertas de seções presentes no menu atual (Brands); "Swipe de Ofertas" saiu do menu. */
+function oiOffers(){return offers.filter(o=>OI_OFFER_SECTIONS.has(sectionOf(o))&&BRANDS_NAV_ORDER.includes(sectionOf(o))).sort((a,b)=>oiOfferName(a).localeCompare(oiOfferName(b),"pt-BR"));}
 function oiOfferById(id){return offers.find(o=>String(o.id)===String(id))||null;}
 function oiRefKindOf(o){return o&&o.adminPrivate?"admin_draft":"offer";}
 /* Referência efetiva na rota: ?ref=admin_draft explícito vale também para oferta já publicada. */
