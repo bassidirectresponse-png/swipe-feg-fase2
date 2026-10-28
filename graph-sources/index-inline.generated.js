@@ -651,11 +651,19 @@ function oiScope(route){
   const q=route.query||{},id=q.job?"":(q.oferta||route.offerId||""),o=id?oiOfferById(id):null;
   return {jobId:q.job||"",offerId:id,offerRefKind:q.ref==="admin_draft"||oiRefKindOf(o)==="admin_draft"?"admin_draft":"offer"};
 }
+const OI_JOB_SCOPED=new Set(["descobertas","conexoes","funis"]);
+function oiNavScope(route){
+  const q=route.query||{},id=route.offerId||q.oferta||"",st=route.jobId&&oiStates.investigacao&&oiStates.investigacao.items&&oiStates.investigacao.items[0];
+  const jobOffer=!id&&st?st.offerId:"",ro=oiOfferById(id||jobOffer);
+  const refKind=(ro&&oiRefKindOf(ro)==="admin_draft")||(!id&&st&&st.offerRefKind==="admin_draft"&&jobOffer)?"admin_draft":"";
+  return OfferIntel.scopeOf(route,{jobOfferId:jobOffer,offerRefKind:refKind});
+}
+function oiAreaHref(areaKey,scope){return OfferIntel.buildPath({area:areaKey,query:{oferta:scope.oferta,ref:scope.ref,job:OI_JOB_SCOPED.has(areaKey)?scope.job:""}});}
 function oiSideNavHtml(){
-  const offer=oiRoute&&oiRoute.query?oiRoute.query.oferta:"",ref=oiRoute&&oiRoute.query?oiRoute.query.ref:"";
+  const scope=oiNavScope(oiRoute||{area:"descobertas",query:{}});
   return '<span class="snav__niches-title">Áreas</span>'+OfferIntel.AREAS.map(a=>{
     const active=!!oiRoute&&oiRoute.area===a.key;
-    return `<a class="snav__niche${active?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:offer,ref}}))}"${active?' aria-current="page"':""}><span class="nl"><span class="ndot"></span><span>${esc(a.label)}</span></span></a>`;
+    return `<a class="snav__niche${active?" active":""}" data-nav href="${esc(oiAreaHref(a.key,scope))}"${active?' aria-current="page"':""}><span class="nl"><span class="ndot"></span><span>${esc(a.label)}</span></span></a>`;
   }).join("");
 }
 
@@ -772,7 +780,7 @@ function oiSeedsSummary(o){
   return `Pontos de partida cadastrados: ${libs} ${libs===1?"biblioteca":"bibliotecas"} · ${doms} ${doms===1?"domínio":"domínios"}.`;
 }
 function oiOpenStart(ctx){
-  if(!OI_BACKEND_READY||!isAdmin)return;
+  if(!OI_BACKEND_READY||!isAdmin||$("#oiStartOverlay").classList.contains("open"))return;
   const o=ctx.offerId?oiOfferById(ctx.offerId):null;
   if(ctx.offerId&&!o)return;
   oiStartCtx=Object.assign({},ctx,{key:oiApi.newKey(),sig:""});
@@ -802,13 +810,14 @@ async function oiLoadLimits(ctx){
     if(lim.apifyAvailable===false){const ads=$("#oiOptAds");if(ads){ads.checked=false;ads.disabled=true;const label=ads.closest("label");label.classList.add("oi-opts__off");const small=$("small",label);if(small)small.textContent="Coleta de anúncios indisponível";}}
   }catch(_){if(oiStartCtx===ctx)box.textContent="";}
 }
+let oiStarting=false;
 async function oiSubmitStart(){
-  const ctx=oiStartCtx,msg=$("#oiStartMsg"),go=$("#oiStartGo");if(!ctx)return;
+  const ctx=oiStartCtx,msg=$("#oiStartMsg"),go=$("#oiStartGo");if(!ctx||oiStarting)return;
   const options={collect_ads:$("#oiOptAds").checked,explore_domains:$("#oiOptDom").checked};
   if(!options.collect_ads&&!options.explore_domains){msg.textContent="Selecione ao menos uma opção.";return;}
   const payload=ctx.offerId?{offerId:ctx.offerId,offerRefKind:ctx.refKind,options}:{url:ctx.url,options},sig=JSON.stringify(payload);
   if(sig!==ctx.sig){ctx.sig=sig;ctx.key=oiApi.newKey();}
-  msg.textContent="";go.disabled=true;
+  msg.textContent="";go.disabled=true;oiStarting=true;
   try{
     const r=await oiApi.startInvestigation(Object.assign({idempotencyKey:ctx.key},payload));
     closeOverlay("#oiStartOverlay");
@@ -816,7 +825,7 @@ async function oiSubmitStart(){
     toast(r.reused?"Já havia uma investigação em andamento; acompanhando.":"Investigação iniciada. Você pode continuar navegando.");
     if(activeSection==="inteligencia")renderOfferIntel();
   }catch(error){msg.textContent=error.message;}
-  finally{go.disabled=false;}
+  finally{go.disabled=false;oiStarting=false;}
 }
 
 /* ----- revisão de descobertas ----- */
@@ -1096,6 +1105,16 @@ function oiPendingBanner(route){
   if(OI_BACKEND_READY||route.area==="monitoramento")return"";
   return `<div class="banner banner--warn" role="note">${ic("shield")}Módulo em construção: a integração com o backend ainda não está conectada. Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
+/* Um único listener delegado em #gridArea (permanente); lê a rota atual no momento do clique. */
+let oiClickBound=false;
+function oiOnClick(event){
+  if(activeSection!=="inteligencia"||!oiRoute)return;
+  const act=event.target.closest("[data-oi-act]");if(act){oiReview(act.dataset.id,act.dataset.oiAct);return;}
+  const ract=event.target.closest("[data-oi-rel-act]");if(ract){oiReviewRelation(ract.dataset.id,ract.dataset.oiRelAct);return;}
+  if(event.target.closest("[data-oi-more]")){oiLoadMore(oiRoute);return;}
+  const start=event.target.closest("[data-oi-start]");if(start){const o=oiOfferById(start.dataset.oiStart);if(o)oiOpenStart({offerId:o.id,refKind:oiRefKindOf(o)});return;}
+  const ja=event.target.closest("[data-oi-job-action]");if(ja)oiJobAction(ja.dataset.id,ja.dataset.oiJobAction,ja);
+}
 function renderOfferIntel(){
   const area=$("#gridArea");if(!area)return;
   if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
@@ -1104,7 +1123,7 @@ function renderOfferIntel(){
   const q=route.query||{},list=oiOffers(),selected=q.oferta||"";
   const known=!selected||list.some(o=>String(o.id)===selected);
   const options=`<option value="">Todas as ofertas</option>`+list.map(o=>`<option value="${esc(o.id)}"${String(o.id)===selected?" selected":""}>${esc(oiOfferName(o))} · ${esc(SEC_SHORT[itemSection(o)]||"")}</option>`).join("")+(known?"":`<option value="${esc(selected)}" selected>Oferta não encontrada</option>`);
-  const tabs=OfferIntel.areaTabs(route.area).map(t=>`<a class="seg-btn${t.current?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:t.key,query:{oferta:selected,ref:q.ref}}))}"${t.current?' aria-current="page"':""}>${esc(t.label)}</a>`).join("");
+  const navScope=oiNavScope(route),tabs=OfferIntel.areaTabs(route.area).map(t=>`<a class="seg-btn${t.current?" active":""}" data-nav href="${esc(oiAreaHref(t.key,navScope))}"${t.current?' aria-current="page"':""}>${esc(t.label)}</a>`).join("");
   const warn=known?"":`<div class="banner banner--warn" role="note">${ic("shield")}A oferta indicada na URL não está no acervo carregado.</div>`;
   const scope=["descobertas","conexoes","funis","historico"].includes(route.area)?`<label class="sort-control oi-offer"><span>Oferta</span><select id="oiOffer" aria-label="Filtrar por oferta">${options}</select></label>`:"";
   const body=oiBodyHtml(route);
@@ -1117,13 +1136,7 @@ function renderOfferIntel(){
   if(select)select.addEventListener("change",()=>{const o=oiOfferById(select.value);go({oferta:select.value,ref:oiRefKindOf(o)==="admin_draft"?"admin_draft":"",job:""});});
   [["oiType","tipo"],["oiStatus","status"],["oiOrder","ordem"]].forEach(([id,key])=>{const el=$("#"+id,area);if(el)el.addEventListener("change",()=>go({[key]:el.value}));});
   area.querySelectorAll("img[data-oi-img]").forEach(img=>img.addEventListener("error",()=>img.remove(),{once:true}));
-  area.addEventListener("click",event=>{
-    const act=event.target.closest("[data-oi-act]");if(act){oiReview(act.dataset.id,act.dataset.oiAct);return;}
-    const ract=event.target.closest("[data-oi-rel-act]");if(ract){oiReviewRelation(ract.dataset.id,ract.dataset.oiRelAct);return;}
-    if(event.target.closest("[data-oi-more]")){oiLoadMore(route);return;}
-    const start=event.target.closest("[data-oi-start]");if(start){const o=oiOfferById(start.dataset.oiStart);if(o)oiOpenStart({offerId:o.id,refKind:oiRefKindOf(o)});return;}
-    const ja=event.target.closest("[data-oi-job-action]");if(ja)oiJobAction(ja.dataset.id,ja.dataset.oiJobAction,ja);
-  });
+  if(!oiClickBound){oiClickBound=true;area.addEventListener("click",oiOnClick);}
   if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);oiFunnelSheet(area,route);}else{oiSheetFor=null;if(oiResize){oiResize.disconnect();oiResize=null;}}
   const retry=$("[data-oi-retry]",area);
   if(retry)retry.addEventListener("click",()=>{delete oiStates[route.area];renderOfferIntel();});
@@ -1141,15 +1154,19 @@ function renderOfferIntel(){
   }
   if(OI_BACKEND_READY)oiPoller.schedule();
 }
+const oiBusy=new Set();
 async function oiJobAction(id,action,button){
+  const lock=id+":"+action;
+  if(oiBusy.has(lock))return;
   if(action==="cancel"&&!confirm("Cancelar esta investigação? Os resultados já coletados são mantidos."))return;
-  button.disabled=true;
+  oiBusy.add(lock);button.disabled=true;
   try{
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);
     oiJobs[id]=job;const st=oiStates.investigacao;if(st&&st.items[0]&&st.items[0].id===id)st.items[0]=job;
     if(job.active)oiTrack(id);
     toast(action==="cancel"?"Investigação cancelada":"Nova tentativa iniciada");
   }catch(error){toast(error.message,true);}
+  finally{oiBusy.delete(lock);}
   if(activeSection==="inteligencia")renderOfferIntel();
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
