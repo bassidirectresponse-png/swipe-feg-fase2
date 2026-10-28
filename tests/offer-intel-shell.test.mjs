@@ -177,12 +177,42 @@ test("QA-UI-R5-01/02: retry recarrega 'Todas as ofertas' e universo parcial é s
   assert.match(html, /more=oiStates\.descobertas\.truncated\?"\+":""/);
 });
 
-test("QA-UI-R5-03: mutações bem-sucedidas invalidam o resumo do cabeçalho sem apagar nem repetir fetch em loop", () => {
-  assert.match(html, /function oiInvalidateCtx\(\)\{Object\.keys\(oiCtxCache\)\.forEach\(k=>\{oiCtxCache\[k\]\.stale=true;\}\);\}/);
-  assert.match(html, /function oiInvalidateIntel\(\)\{oiTodas\.status="idle";oiInvalidateCtx\(\);\}/);
-  assert.match(html, /\(cached&&\(!cached\.stale\|\|cached\.fetching\)\)\)return;/);
+test("QA-UI-R5-03: invalidação por geração — nunca perdida durante um GET em voo, sem GET concorrente nem loop", async () => {
+  const start = html.indexOf("const oiCtxCache=Object.create(null);");
+  const end = html.indexOf("function oiContextHtml(route){");
+  const source = html.slice(start, end);
+  assert.ok(start > 0 && end > start);
+  const pending = [];
+  const context = {
+    OI_BACKEND_READY: true, OI_SUMMARY_LIVE: true, activeSection: "inteligencia",
+    oiRoute: { area: "descobertas", query: {} }, oiTodas: { status: "ready" },
+    oiNavScope: () => ({ oferta: "o1", ref: "" }),
+    oiApi: { summary: () => new Promise(resolve => pending.push(resolve)) },
+    renderCalls: 0, Promise, Object, String
+  };
+  context.renderOfferIntel = () => { context.renderCalls++; context.oiEnsureCtx(context.oiRoute); };
+  vm.runInNewContext(`${source}\nthis.ensure=oiEnsureCtx;this.invalidate=oiInvalidateCtx;this.cache=oiCtxCache;`, context);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  const route = context.oiRoute;
+  context.ensure(route); context.ensure(route);
+  assert.equal(pending.length, 1, "primeira carga: um GET só, mesmo com renders repetidos");
+  context.invalidate();
+  context.ensure(route);
+  assert.equal(pending.length, 1, "invalidação durante a primeira carga não abre GET concorrente");
+  pending[0]({ counts: { new: 2 } }); await tick();
+  assert.equal(pending.length, 2, "ao concluir, um follow-up porque a geração mudou");
+  context.invalidate();
+  context.ensure(route);
+  assert.equal(pending.length, 2, "segunda mutação com GET em voo não duplica");
+  pending[1]({ counts: { new: 1 } }); await tick();
+  assert.equal(pending.length, 3, "a invalidação posterior não é perdida: mais um refetch");
+  pending[2]({ counts: { new: 0 } }); await tick();
+  assert.equal(pending.length, 3, "sem nova mutação, nenhum loop");
+  assert.equal(context.cache["offer:o1"].summary.counts.new, 0);
+  context.ensure(route); context.ensure(route);
+  assert.equal(pending.length, 3);
   assert.match(html, /st\.items\[i\]=OfferIntel\.formatDiscovery\(r\);\n\s+oiInvalidateCtx\(\);/);
   assert.match(html, /st\.items\[i\]=OfferIntel\.formatConnection\(r\);oiInvalidateCtx\(\);/);
   assert.match(html, /if\(job\.active\)oiTrack\(id\);\n\s+oiInvalidateIntel\(\);/);
-  assert.doesNotMatch(html, /delete oiCtxCache\[k\]/);
+  assert.doesNotMatch(html, /\.stale/);
 });
