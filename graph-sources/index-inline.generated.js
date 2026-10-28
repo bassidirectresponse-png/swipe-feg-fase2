@@ -652,10 +652,10 @@ function oiScope(route){
   return {jobId:q.job||"",offerId:id,offerRefKind:q.ref==="admin_draft"||oiRefKindOf(o)==="admin_draft"?"admin_draft":"offer"};
 }
 function oiSideNavHtml(){
-  const offer=oiRoute&&oiRoute.query?oiRoute.query.oferta:"";
+  const offer=oiRoute&&oiRoute.query?oiRoute.query.oferta:"",ref=oiRoute&&oiRoute.query?oiRoute.query.ref:"";
   return '<span class="snav__niches-title">Áreas</span>'+OfferIntel.AREAS.map(a=>{
     const active=!!oiRoute&&oiRoute.area===a.key;
-    return `<a class="snav__niche${active?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:offer}}))}"${active?' aria-current="page"':""}><span class="nl"><span class="ndot"></span><span>${esc(a.label)}</span></span></a>`;
+    return `<a class="snav__niche${active?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:offer,ref}}))}"${active?' aria-current="page"':""}><span class="nl"><span class="ndot"></span><span>${esc(a.label)}</span></span></a>`;
   }).join("");
 }
 
@@ -702,7 +702,8 @@ async function oiFetch(route,key,cursor){
     oiStates[area]={status:"ready",key,items:(cursor?st.items:[]).concat(res.items),next:res.next||null,total:res.total==null?null:res.total,summary:res.summary||null,funnel:res.funnel||null};
   }catch(error){
     const st=oiStates[area];if(!st||st.key!==key)return;
-    oiStates[area]={status:"error",key,items:cursor?st.items:[],error:String(error&&error.message||"Não foi possível carregar.")};
+    if(error&&error.status===404&&(route.funnelId||route.jobId))oiStates[area]={status:"ready",key,items:[]};
+    else oiStates[area]={status:"error",key,items:cursor?st.items:[],error:String(error&&error.message||"Não foi possível carregar.")};
   }
   if(activeSection==="inteligencia")renderOfferIntel();
 }
@@ -869,14 +870,14 @@ function oiFunnelListHtml(route,st){
   if(st.needsOffer)return oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver os funis mapeados."});
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.funis);
-  return `<div class="oi-cards oi-cards--funnels">${st.items.map(f=>`<a class="oi-fcard" data-nav href="${esc(OfferIntel.buildPath({area:"funis",funnelId:f.id,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}"><span class="oi-fcard__title" title="${esc(f.title)}">${esc(f.title)}</span><span class="oi-meta">${esc(f.originLabel||"Origem desconhecida")}</span><span class="oi-meta">${f.finalLabel?"Final: "+esc(f.finalLabel):"&nbsp;"}</span><span class="oi-meta">${f.stepsCount} ${f.stepsCount===1?"etapa":"etapas"}${f.createdAt?" · "+esc(f.createdAt):""}</span><span class="oi-fcard__open">Abrir mapa →</span></a>`).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
+  return `<div class="oi-cards oi-cards--funnels">${st.items.map(f=>`<a class="oi-fcard" data-nav href="${esc(OfferIntel.buildPath({area:"funis",funnelId:f.id,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}"><span class="oi-fcard__title" title="${esc(f.title)}">${esc(f.title)}</span><span class="oi-meta">${esc(f.originLabel||"Origem desconhecida")}</span><span class="oi-meta">${f.finalLabel?"Final: "+esc(f.finalLabel):"&nbsp;"}</span><span class="oi-meta">${f.stepsCount==null?"Etapas: —":f.stepsCount+(f.stepsCount===1?" etapa":" etapas")}${f.createdAt?" · "+esc(f.createdAt):""}</span><span class="oi-fcard__open">Abrir mapa →</span></a>`).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
 }
 function oiStepHref(route,stepId){return OfferIntel.buildPath({area:"funis",funnelId:route.funnelId,query:Object.assign({},route.query,{etapa:stepId||""})});}
 function oiNodeLabelHtml(n){return `<span class="oi-node__kind">${esc(n.kindLabel)}</span><span class="oi-node__label" title="${esc(n.label)}">${esc(n.label)}</span><span class="oi-node__url">${esc(n.urlLabel||"Sem URL")}</span><span class="oi-node__ver oi-node__ver--${esc(n.verification)}"><b aria-hidden="true">${esc(n.verificationIcon)}</b> ${esc(n.verificationLabel)}</span>`;}
 function oiFunnelMapHtml(route,L){
   const sel=route.query.etapa;
   const cols=L.columns.map((ids,c)=>`<ol class="oi-fcol" aria-label="Coluna ${c+1}">${ids.map(id=>{const n=L.nodes.find(x=>x.id===id);return `<li><a id="oiStep-${esc(n.id)}" class="oi-node oi-node--${esc(n.verification)}${n.id===sel?" is-selected":""}${n.detached?" is-detached":""}" data-nav data-step="${esc(n.id)}" href="${esc(oiStepHref(route,n.id))}"${n.id===sel?' aria-current="step"':""}>${oiNodeLabelHtml(n)}</a></li>`;}).join("")}</ol>`).join("");
-  const edges=L.edges.map(e=>({from:e.from,to:e.to,back:e.back,kind:e.kind,verification:e.verification,label:e.label}));
+  const edges=L.edges.map(e=>({from:e.from,to:e.to,back:e.back,lateral:e.lateral,kind:e.kind,verification:e.verification,label:e.label}));
   return `<div class="oi-fmap" id="oiFmap" data-edges="${esc(JSON.stringify(edges))}"><div class="oi-fscroll" id="oiFscroll"><svg class="oi-fedges" id="oiFedges" aria-hidden="true"><defs><marker id="oiArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs></svg><div class="oi-fcols">${cols}</div></div></div>`;
 }
 function oiFunnelTreeHtml(route,L){
@@ -939,7 +940,7 @@ function oiDrawEdges(area){
       const a=document.getElementById("oiStep-"+e.from),b=document.getElementById("oiStep-"+e.to);if(!a||!b)return;
       const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect(),path=document.createElementNS("http://www.w3.org/2000/svg","path");
       let d;
-      if(e.back){const x1=ra.left-box.left+ra.width/2,y1=ra.bottom-box.top,x2=rb.left-box.left+rb.width/2,y2=rb.bottom-box.top,dy=28;d=`M${x1} ${y1}C${x1} ${y1+dy} ${x2} ${y2+dy} ${x2} ${y2}`;}
+      if(e.back||e.lateral){const x1=ra.left-box.left+ra.width/2,y1=ra.bottom-box.top,x2=rb.left-box.left+rb.width/2,y2=rb.bottom-box.top,dy=28;d=`M${x1} ${y1}C${x1} ${y1+dy} ${x2} ${y2+dy} ${x2} ${y2}`;}
       else{const x1=ra.right-box.left,y1=ra.top-box.top+ra.height/2,x2=rb.left-box.left,y2=rb.top-box.top+rb.height/2,dx=Math.max(24,(x2-x1)/2);d=`M${x1} ${y1}C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2-2} ${y2}`;}
       path.setAttribute("d",d);path.setAttribute("class","oi-edge"+(e.back?" oi-edge--back":"")+(e.verification!=="verified"?" oi-edge--soft":""));path.setAttribute("marker-end","url(#oiArrow)");
       const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=e.label||e.kind||"";path.appendChild(title);
