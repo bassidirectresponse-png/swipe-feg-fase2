@@ -475,7 +475,7 @@ test("Creative Review uses a valid allowlisted Claude model by default", async (
 });
 
 test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usage mapped, failures explained", async () => {
-  const { createWeeklyOpenRouter, OPENROUTER_IMAGE_TOKENS } = await import("../lib/offer-intel-weekly-worker.mjs");
+  const { createWeeklyOpenRouter, imageTokenBound } = await import("../lib/offer-intel-weekly-worker.mjs");
   const { AI_LIMITS } = await import("../lib/offer-intel-weekly.mjs");
   const calls = [];
   const FAKE_fetch = async (url, init) => {
@@ -484,7 +484,7 @@ test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usa
     return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":1}' } }], usage: { prompt_tokens: 900, completion_tokens: 120 } }));
   };
   const ai = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/gemini-3.8-flash", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
-  const ad = await ai({ prompt: "p", image: "https://x.supabase.co/a.png", maxTokens: 1500, kind: "ad" });
+  const ad = await ai({ prompt: "p", image: { url: "https://x.supabase.co/a.png", width: 1080, height: 1350 }, maxTokens: 1500, kind: "ad" });
   assert.deepEqual(ad.usage, { input_tokens: 900, output_tokens: 120 });
   await ai({ prompt: "p", maxTokens: 1200, kind: "week" });
   assert.equal(calls[0].model, "google/gemini-3.8-flash");
@@ -494,7 +494,9 @@ test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usa
   assert.equal(calls[1].messages[0].content.length, 1);
   await assert.rejects(ai({ prompt: "p", maxTokens: 10, kind: "ad" }), /OpenRouter HTTP 402 402: Insufficient credits/);
   assert.equal(ai.modelFor("product"), "anthropic/claude-sonnet-5.5");
-  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 1001 + 64 + OPENROUTER_IMAGE_TOKENS);
+  const img = { url: "https://x/a.png", width: 1080, height: 1350 };
+  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: img }), 1001 + 64 + imageTokenBound(img));
+  assert.equal(imageTokenBound("https://x/a.png"), 0, "an image without dimensions is never sent");
   assert.equal(await ai.countTokens({ prompt: "é🙂" }), 2 + 4 + 64, "UTF-8 bytes, not characters");
   const unknown = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/unknown-model", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
   await assert.rejects(unknown({ prompt: "p", maxTokens: 10, kind: "ad" }), /sem preço/);
@@ -534,4 +536,24 @@ test("worker: real AI usage above the estimated reservation is booked and the US
   assert.ok(ai.reduce((sum, l) => sum + Number(l.usd), 0) <= 10.0001, "ledger never above US$ 10");
   assert.ok(claude.calls.length < 22, "AI stops once the ceiling is reached");
   assert.equal(out.status, "partial");
+});
+
+test("image dimensions from archived bytes bound the image tokens; unknown or oversized images are not sent", async () => {
+  const { imageDimensions, analysisImage, imageTokenBound, createWeeklyOpenRouter } = await import("../lib/offer-intel-weekly-worker.mjs");
+  const png = Buffer.alloc(32); png.writeUInt32BE(0x89504e47, 0); png.writeUInt32BE(1080, 16); png.writeUInt32BE(1350, 20);
+  assert.deepEqual(imageDimensions(png), { width: 1080, height: 1350 });
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x02, 0xd0, 0x05, 0x00, 0x03, 0x01, 0x22, 0x00]);
+  assert.deepEqual(imageDimensions(jpeg), { width: 1280, height: 720 });
+  assert.equal(imageDimensions(Buffer.from("not an image at all, sorry")), null);
+  const media = { archived: true, thumb_url: "https://x.supabase.co/t.png", thumb_width: 1080, thumb_height: 1350 };
+  assert.deepEqual(analysisImage(media), { url: media.thumb_url, width: 1080, height: 1350 });
+  assert.equal(analysisImage({ ...media, thumb_width: undefined }), null);
+  assert.equal(analysisImage({ ...media, thumb_width: 4000 }), null);
+  const bound = imageTokenBound({ url: media.thumb_url, width: 2048, height: 2048 });
+  assert.ok(bound >= 4784 && bound >= Math.ceil(2048 * 2048 / 750), "≥ every documented per-image formula");
+  const calls = [];
+  const ai = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/gemini-3.8-flash", summaryModel: "anthropic/claude-sonnet-5.5",
+    fetcher: async (url, init) => { calls.push(JSON.parse(init.body)); return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }], usage: {} })); } });
+  await ai({ prompt: "p", image: "https://x/no-dims.png", maxTokens: 10, kind: "ad" });
+  assert.equal(calls[0].messages[0].content.length, 1, "string image without dimensions is not sent");
 });
