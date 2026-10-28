@@ -143,3 +143,25 @@ test("cancelar investigação avisa que uma coleta já aceita pelo provedor pode
   assert.match(html, /Uma coleta de anúncios já enviada ao provedor pode continuar até terminar e consumir a cota do dia\./);
   assert.match(html, /Novas etapas não serão iniciadas/);
 });
+
+test("Rodada 5: cabeçalho de contexto, ofertas investigadas, cards por tipo, aviso único e visão por Página", () => {
+  assert.match(html, /function oiContextHtml\(route\)/);
+  assert.match(html, /\$\{oiContextHtml\(route\)\}<div class="oi-bar">/);
+  assert.match(html, /Investigar novamente/);
+  assert.match(html, /Abrir ficha/);
+  assert.match(html, /function oiOverviewHtml\(route\)/);
+  assert.match(html, /oiApi\.listInvestigations\(\{\},\{cursor,limit:100\}\)/);
+  assert.match(html, /OfferIntel\.groupInvestigationsByOffer\(jobs\)/);
+  for (const fn of ["oiAdCard", "oiPageCard", "oiDomainCard"]) assert.match(html, new RegExp(`function ${fn}\\(`));
+  for (const label of ["Ver na Biblioteca", "Abrir destino", "Ver anúncios da Página", "Ver funil", "Abrir site"]) assert.ok(html.includes(label), label);
+  assert.match(html, /Ativo desde /);
+  assert.match(html, /data-oi-copy=/);
+  assert.equal([...html.matchAll(/Sugerido por similaridade — a semelhança não prova/g)].length, 1);
+  assert.doesNotMatch(html, /oi-dcard__url/);
+  assert.match(html, /OfferIntel\.groupByPage\(shown\)/);
+  assert.match(html, /OfferIntel\.filterDiscoveries\(st\.items,/);
+  assert.match(html, /for\(let page=0;page<5;page\+\+\)/);
+  assert.match(html, /\["confirmed","ignored","review"\]\.map\(s=>`<button type="button" class="btn btn--sm \$\{cls\[s\]\}/);
+  assert.match(html, /confirmed:"btn--accent",ignored:"btn--ghost",review:"btn--outline"/);
+  assert.match(html, /function oiCount\(value\)/);
+});
