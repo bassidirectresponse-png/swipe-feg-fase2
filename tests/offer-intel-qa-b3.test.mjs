@@ -103,3 +103,29 @@ test("QA B3 opaque cursor binds filter, scope and ordering, no overlap in handle
  }
  await response(await f.discoveries(request("discoveries?job_id="+randomUUID()+"&sort=ads&limit=2&cursor="+a.next_cursor)),400);
 });
+test("QA-B02 unknown ads remain null in real GET and POST projections",async()=>{
+ const f=fixture(),row=f.storage.entities.get(D);
+ for(const value of [null,undefined,-1,2.5,"3",Number.MAX_SAFE_INTEGER+1]){
+   row.data.ads_count=value;
+   const b=await response(await f.discoveries(request("discoveries?job_id="+JOB)));
+   assert.equal(b.items[0].ads_count,null);assertDiscoveryV1(b.items[0]);
+ }
+ row.data.ads_count=0;
+ const b=await response(await f.discovery(request("discovery",{id:D,status:"confirmed",expected_version:1,idempotency_key:randomUUID()})));
+ assert.equal(b.ads_count,0);assertDiscoveryV1(b);
+});
+test("QA-B03 real B2/B3 cursors retain microseconds; FAKE keyset boundary loses no row",async()=>{
+ const { encodeCursor,pagination }=await import("../lib/offer-intel-core.mjs");
+ for(const suffix of ["Z","+00:00"]){
+   const at="2026-10-27T00:00:00.123456"+suffix,canonical=at.replace("+00:00","Z");
+   const decoded=pagination(new URLSearchParams({cursor:encodeCursor({id:D,created_at:at})})).cursor;
+   assert.equal(decoded.created_at,canonical);
+   const f=fixture(),rows=["ffffffff-ffff-4fff-8fff-ffffffffffff","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"].map(id=>({...structuredClone(f.storage.entities.get(D)),id,created_at:at,rank:0}));
+   f.storage.read=async q=>({items:rows.filter(r=>!q.cursor||r.created_at.replace("+00:00","Z")<q.cursor.created_at||(r.created_at.replace("+00:00","Z")===q.cursor.created_at&&r.id<q.cursor.id))});
+   const url="discoveries?job_id="+JOB+"&limit=1";
+   const first=await response(await f.discoveries(request(url)));
+   assert.equal(JSON.parse(Buffer.from(first.next_cursor,"base64url")).created_at,canonical);
+   const second=await response(await f.discoveries(request(url+"&cursor="+first.next_cursor)));
+   assert.equal(second.items.length,1);assert.notEqual(first.items[0].id,second.items[0].id);assert.equal(second.next_cursor,null);
+ }
+});
