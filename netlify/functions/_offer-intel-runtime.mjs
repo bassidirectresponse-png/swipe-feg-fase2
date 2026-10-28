@@ -7,6 +7,7 @@ import { resolvePublicUrl } from "../../lib/offer-intel-url-safety.mjs";
 import { signedDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { unavailableCollectors } from "../../lib/offer-intel-collectors.mjs";
 import { IntelError } from "../../lib/offer-intel-core.mjs";
+import { createDomainExplorer } from "../../lib/offer-intel-domain.mjs";
 
 export function intelRuntime() {
   const serviceKey=String(process.env.SUPABASE_SERVICE_ROLE_KEY||"").trim();
@@ -21,9 +22,9 @@ export function intelRuntime() {
     },
   });
   return {
-    storage,reader,secret,collectors:unavailableCollectors,validateUrl:resolvePublicUrl,
+    storage,reader,secret,collectors:{...unavailableCollectors,domain_explorer:createDomainExplorer({storage})},validateUrl:resolvePublicUrl,
     // B2 exposes orchestration only. A token alone does not enable an unimplemented adapter.
-    capabilities: { apify: false, domain_explorer: false },
+    capabilities: { apify: false, domain_explorer: true },
     async dispatch(jobId,nonce) {
       const origin=new URL(process.env.URL||"https://benchmarkinggrupofeg.site").origin;
       const signed=signedDispatch(jobId,nonce,secret);

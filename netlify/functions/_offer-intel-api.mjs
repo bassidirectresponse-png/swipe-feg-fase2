@@ -141,13 +141,16 @@ export function createIntelHandlers(overrides={}) {
           source.status="running";
           await checkpoint({phase:source.name==="apify"?"collect_ads":"explore_domains",progress:Math.round(done/Math.max(1,tasks.length)*80),sources});
           let result;
-          try {result=await services.collectors[source.name].run(row);}
-          catch {result={status:"failed",result_count:0,error:{code:"provider_error",message:"Falha ao consultar a fonte."},retryable:true};}
+          try {result=await services.collectors[source.name].run(row,{checkpoint});}
+          catch(error) {
+            if(error?.code==="conflict")throw error;
+            result={status:"failed",result_count:0,error:{code:error instanceof IntelError?error.code:"provider_error",message:error instanceof IntelError?error.message:"Falha ao consultar a fonte."},retryable:true};
+          }
           source.status=result.status;
           source.result_count=result.result_count||0;
           if(result.error) source.error=result.error; else delete source.error;
           // Only adapters that persisted their own auxiliary records may report durable counts.
-          for(const key of Object.keys(counts)) counts[key]+=Number(result.counts?.[key])||0;
+          for(const key of Object.keys(counts)) counts[key]=result.counts_mode==="absolute"?(Number(result.counts?.[key])||0):counts[key]+(Number(result.counts?.[key])||0);
           done++;
           await checkpoint({sources,counts,progress_detail:{done,total:tasks.length},progress:Math.round(done/Math.max(1,tasks.length)*90)});
         }
