@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {fetchPublicPage} from '../lib/offer-intel-url-safety.mjs';
 import {extractScanPage,extractCtas,pixelIds,SCAN_LIMITS} from '../lib/offer-intel-scan-extract.mjs';
-import {discoverScanSources} from '../lib/offer-intel-scan-sources.mjs';
+import {discoverScanSources,probePaths} from '../lib/offer-intel-scan-sources.mjs';
 import {resolveVsl} from '../lib/offer-intel-scan-media.mjs';
 import {createDomainScansCollector} from '../lib/offer-intel-domain-scans.mjs';
 import {publicDomainScan} from '../lib/offer-intel-scan-public.mjs';
@@ -27,6 +27,7 @@ test('R6 anchored checkout/tech, all pixel IDs, hidden CTA timing and bounded as
  assert.ok(data.tech.some(t=>t.name==='VTurb'));assert.equal(data.vsl.find(v=>v.provider==='vturb').pitch_s,90);
  assert.equal(data.ctas.find(c=>c.href==='https://pay.kiwify.com.br/123').hidden,true);
  assert.equal(data.ctas.find(c=>c.href===root+'/checkout').show_on_s,120);
+ assert.equal(extractCtas('<button data-hide-on="20">Close offer</button>',root)[0].text,'Close offer');
  const assets=extractScanPage(Array.from({length:90},(_,i)=>`<img src="/${i}.jpg">`).join(''),root);assert.equal(assets.assets.images.length,60);
  assert.equal(extractScanPage('<script src="https://converteai.net.evil.example/player.js"></script>',root).tech.length,0);
 });
@@ -135,4 +136,18 @@ test('R6 cancelled scans never write snapshots or continue network; MP4 bounded 
  const body=Buffer.alloc(48);body.write('mvhd',4);body.writeUInt32BE(1000,20);body.writeUInt32BE(90000,24);
  const result=await resolveVsl({provider:'mp4',media_url:'https://cdn.example/video.mp4'},async(_u,o)=>{assert.equal(o.maxBytes,512*1024);return {body};});
  assert.equal(result.duration_s,90);
+});
+test('R6 listed pages and same-site scripts are capped; title/h1/site-name radicals include acronyms',async()=>{
+ assert.ok(probePaths('brand.example',[],['Herbal Health']).includes('/hh-v2'));
+ const j={id:randomUUID(),lease_token:randomUUID(),scope_key:'offer:FAKE',seed_url:root,seed_snapshot:{}};
+ const storage=createFAKEWorkerStorage(j),calls=[];
+ const page=FAKEPage(u=>{
+  if(u.href===root+'/')return {body:'<title>Brand</title>'+Array.from({length:12},(_,i)=>`<script src="/s${i}.js"></script>`).join('')};
+  if(u.hostname==='web.archive.org')return {body:Array.from({length:1500},(_,i)=>root+'/p'+i).join('\n')};
+  if(/\/s\d+\.js/.test(u.pathname))return {body:"fbq('init','111');"};
+  return {status:404};
+ },calls);
+ await createDomainScansCollector({storage,fetchPage:page}).run(j);
+ const row=[...storage.records.scans.values()][0];assert.equal(row.data.pages.length,400);
+ const scripts=calls.filter(c=>/\/s\d+\.js$/.test(c.url));assert.equal(scripts.length,6);assert.ok(scripts.every(c=>c.maxBytes===512*1024));
 });
