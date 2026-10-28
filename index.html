@@ -2528,6 +2528,11 @@ function automationCounts(section){
    exibido nem simulado; as áreas mostram o estado vazio com aviso explícito.
    ============================================================ */
 const OI_BACKEND_READY=false;
+/* Áreas cujos endpoints já existem no backend (B2: investigations e job). As demais (descobertas, conexões,
+   funis, summary, evidence) ficam como "ainda não conectadas" mesmo com OI_BACKEND_READY=true. */
+const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta"]);
+const OI_SUMMARY_LIVE=false;
+function oiAreaLive(area){return OI_BACKEND_READY&&OI_LIVE_AREAS.has(area);}
 const OI_OFFER_SECTIONS=new Set(["oferta","brandsvalidated","brandsgeneral"]);
 const OI_JOBS_KEY="feg-oi-jobs";
 const OI_TYPE_FILTER={anuncio:"ad",pagina:"page",dominio:"domain"};
@@ -2602,12 +2607,12 @@ const OI_LOADERS={
     return {items:(r.items||[]).map(OfferIntel.formatFunnelSummary),next:r.next_cursor||null};
   },
   investigacao:async route=>{const r=await oiApi.getJob(route.jobId);return {items:[OfferIntel.formatJob(r)]};},
-  oferta:async route=>{const o=oiOfferById(route.offerId);if(!o)return {items:[]};const r=await oiApi.summary(route.offerId,oiRouteRef(route,o));return {items:[],summary:r};}
+  oferta:async route=>{const o=oiOfferById(route.offerId);if(!o||!OI_SUMMARY_LIVE)return {items:[]};const r=await oiApi.summary(route.offerId,oiRouteRef(route,o));return {items:[],summary:r};}
 };
 function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,q.oferta,q.ref,q.job,q.tipo,q.status,q.ordem,searchTerm].join("|");}
 function oiNeedsScope(route){return (route.area==="descobertas"||route.area==="conexoes"||(route.area==="funis"&&!route.funnelId))&&!oiScope(route).offerId&&!oiScope(route).jobId;}
 function oiEnsure(route){
-  if(!OI_BACKEND_READY||!OI_LOADERS[route.area])return;
+  if(!oiAreaLive(route.area)||!OI_LOADERS[route.area])return;
   const key=oiKey(route),st=oiStates[route.area];
   if(st&&st.key===key)return;
   if(oiNeedsScope(route)){oiStates[route.area]={status:"ready",key,items:[],needsOffer:true};return;}
@@ -2717,11 +2722,14 @@ function oiOpenStart(ctx){
 async function oiLoadLimits(ctx){
   const box=$("#oiStartLimits");if(!box)return;
   try{
-    const r=ctx.offerId?await oiApi.summary(ctx.offerId,ctx.refKind):await oiApi.listInvestigations({},{limit:1});
+    const r=ctx.offerId&&OI_SUMMARY_LIVE?await oiApi.summary(ctx.offerId,ctx.refKind):await oiApi.listInvestigations({},{limit:1});
     if(oiStartCtx!==ctx)return;
     const lim=OfferIntel.formatLimits(r.limits);
     box.innerHTML=lim.lines.length?`<ul>${lim.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:"";
-    if(lim.apifyAvailable===false){const ads=$("#oiOptAds");if(ads){ads.checked=false;ads.disabled=true;const label=ads.closest("label");label.classList.add("oi-opts__off");const small=$("small",label);if(small)small.textContent="Coleta de anúncios indisponível";}}
+    const off=(id,text)=>{const input=$(id);if(!input)return;const had=document.activeElement===input;input.checked=false;input.disabled=true;const label=input.closest("label");label.classList.add("oi-opts__off");const small=$("small",label);if(small)small.textContent=text;if(had){const next=$("#oiOptAds:not(:disabled),#oiOptDom:not(:disabled)")||$("#oiStartCancel");if(next)next.focus();}};
+    if(lim.apifyAvailable===false)off("#oiOptAds","Coleta de anúncios indisponível");
+    if(lim.domainAvailable===false)off("#oiOptDom","Exploração de domínios indisponível nesta versão");
+    if(lim.apifyAvailable===false&&lim.domainAvailable===false){const msg=$("#oiStartMsg");if(msg)msg.textContent="Nenhuma fonte de investigação está disponível nesta versão.";const go=$("#oiStartGo");if(go){go.disabled=true;}}
   }catch(_){if(oiStartCtx===ctx)box.textContent="";}
 }
 let oiStarting=false;
@@ -2969,7 +2977,7 @@ function oiJobDetailHtml(route,st){
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.investigacao);
   const job=st.items[0],e=esc;
-  const sources=job.sources.length?`<div class="oi-tablewrap"><table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${src.name==="Captura de tela"&&src.status==="unavailable"?"Captura indisponível nesta versão":e(src.statusLabel)}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table></div>`:"";
+  const sources=job.sources.length?`<div class="oi-tablewrap"><table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${src.name==="Captura de tela"&&(src.status==="unavailable"||src.status==="skipped")?"Captura indisponível nesta versão":e(src.statusLabel)}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table></div>`:"";
   const err=job.error?`<div class="banner banner--warn" role="alert">${ic("alert")}${e(job.error.message||"A investigação falhou.")}${job.nextRetryAt?" Nova tentativa automática: "+e(job.nextRetryAt)+".":""}</div>`:"";
   const actions=[job.active?`<button type="button" class="btn btn--outline btn--sm" data-oi-job-action="cancel" data-id="${e(job.id)}">Cancelar investigação</button>`:"",(job.status==="failed"||job.status==="partial")&&(!job.error||job.error.retryable||job.status==="partial")?`<button type="button" class="btn btn--accent btn--sm" data-oi-job-action="retry" data-id="${e(job.id)}">Tentar novamente</button>`:"",`<a class="btn btn--outline btn--sm" data-nav href="${e(OfferIntel.buildPath({area:"descobertas",query:{job:job.id}}))}">Ver descobertas</a>`].join("");
   return `<div class="oi-card"><div class="oi-links">${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${e(oiJobOfferName(job))}</span></div>${oiProgressHtml(job)}<div class="oi-meta">${e(job.phaseLabel||job.statusLabel)}${job.progressTotal?` · ${job.progressDone||0} de ${job.progressTotal}`:""}</div>${err}
@@ -2982,7 +2990,7 @@ function oiHubHtml(route,st){
   const section=itemSection(offer),ref=oiRouteRef(route,offer)==="admin_draft"?"admin_draft":"";
   const links=OfferIntel.AREAS.filter(a=>a.key!=="monitoramento").map(a=>`<a class="btn btn--outline btn--sm" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:route.offerId,ref}}))}">${esc(a.label)}</a>`).join("");
   const sum=st&&st.summary;let summary="";
-  if(OI_BACKEND_READY){
+  if(OI_BACKEND_READY&&OI_SUMMARY_LIVE){
     if(!st||st.status==="loading")summary=oiStateHtml("loading");
     else if(st.status==="error")summary=oiStateHtml("error",{error:st.error});
     else if(sum){
@@ -3016,8 +3024,8 @@ function oiResultLabel(route){
   return kind==="loading"?"Carregando…":kind==="error"?"Erro ao carregar":`${n.toLocaleString("pt-BR")} ${n===1?"resultado":"resultados"}${st.next&&st.total==null?"+":""}`;
 }
 function oiPendingBanner(route){
-  if(OI_BACKEND_READY||route.area==="monitoramento")return"";
-  return `<div class="banner banner--warn" role="note">${ic("shield")}Módulo em construção: a integração com o backend ainda não está conectada. Nenhum dado, nem de demonstração, é exibido.</div>`;
+  if(oiAreaLive(route.area)||route.area==="monitoramento")return"";
+  return `<div class="banner banner--warn" role="note">${ic("shield")}${OI_BACKEND_READY?"Esta área ainda não está conectada ao backend.":"Módulo em construção: a integração com o backend ainda não está conectada."} Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
 /* Foco estável entre renders: chave por id ou ação+id (botões de revisão/ação não têm id).
    Botões ocupados usam aria-disabled (não disabled) para não perderem o foco. */
