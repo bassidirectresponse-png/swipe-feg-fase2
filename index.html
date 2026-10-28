@@ -2551,6 +2551,8 @@ function oiOfferName(o){const d=(o&&o.data)||{};return String(d.nomeOferta||d.no
 function oiOffers(){return offers.filter(o=>OI_OFFER_SECTIONS.has(sectionOf(o))).sort((a,b)=>oiOfferName(a).localeCompare(oiOfferName(b),"pt-BR"));}
 function oiOfferById(id){return offers.find(o=>String(o.id)===String(id))||null;}
 function oiRefKindOf(o){return o&&o.adminPrivate?"admin_draft":"offer";}
+/* Referência efetiva na rota: ?ref=admin_draft explícito vale também para oferta já publicada. */
+function oiRouteRef(route,o){return OfferIntel.refKindFor(route,!!(o&&o.adminPrivate));}
 function oiOfferPath(o,investigate){return OfferIntel.buildPath({area:"oferta",offerId:o.id,query:{ref:oiRefKindOf(o)==="admin_draft"?"admin_draft":"",investigar:!!investigate}});}
 function oiInvestigateLink(o,cls){
   if(!isAdmin||!o||!OI_OFFER_SECTIONS.has(sectionOf(o)))return"";
@@ -2599,7 +2601,7 @@ const OI_LOADERS={
     return {items:(r.items||[]).map(OfferIntel.formatFunnelSummary),next:r.next_cursor||null};
   },
   investigacao:async route=>{const r=await oiApi.getJob(route.jobId);return {items:[OfferIntel.formatJob(r)]};},
-  oferta:async route=>{const o=oiOfferById(route.offerId);if(!o)return {items:[]};const r=await oiApi.summary(route.offerId,oiRefKindOf(o));return {items:[],summary:r};}
+  oferta:async route=>{const o=oiOfferById(route.offerId);if(!o)return {items:[]};const r=await oiApi.summary(route.offerId,oiRouteRef(route,o));return {items:[],summary:r};}
 };
 function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,q.oferta,q.ref,q.job,q.tipo,q.status,q.ordem,searchTerm].join("|");}
 function oiNeedsScope(route){return (route.area==="descobertas"||route.area==="conexoes"||(route.area==="funis"&&!route.funnelId))&&!oiScope(route).offerId&&!oiScope(route).jobId;}
@@ -2974,7 +2976,7 @@ function oiJobDetailHtml(route,st){
 function oiHubHtml(route,st){
   const offer=oiOfferById(route.offerId);
   if(!offer)return oiStateHtml("empty",{title:"Oferta não encontrada",text:"Esta oferta não está no acervo carregado. Volte para a lista e escolha outra.",cta:`<a class="btn btn--outline" data-nav href="${esc(oiPathFor("descobertas",{oferta:""}))}" style="margin-top:18px">Voltar para Descobertas</a>`});
-  const section=itemSection(offer),ref=oiRefKindOf(offer)==="admin_draft"?"admin_draft":"";
+  const section=itemSection(offer),ref=oiRouteRef(route,offer)==="admin_draft"?"admin_draft":"";
   const links=OfferIntel.AREAS.filter(a=>a.key!=="monitoramento").map(a=>`<a class="btn btn--outline btn--sm" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:route.offerId,ref}}))}">${esc(a.label)}</a>`).join("");
   const sum=st&&st.summary;let summary="";
   if(OI_BACKEND_READY){
@@ -2986,7 +2988,7 @@ function oiHubHtml(route,st){
       summary=limHtml+`<div class="oi-links"><span class="oi-chip">${n("new")} novas</span><span class="oi-chip">${n("review")} em revisão</span><span class="oi-chip">${n("confirmed")} confirmadas</span><span class="oi-chip">${n("ignored")} ignoradas</span><span class="oi-chip">${n("relations_pending")} relações pendentes</span><span class="oi-chip">${n("funnels")} funis</span></div>`+(job?`<div class="oi-meta">Em andamento: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(job.phaseLabel||job.statusLabel)} · ${job.progressPercent}%</a></div>`:last?`<div class="oi-meta">Última investigação: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:last.id}))}">${esc(last.statusLabel)}${last.finishedAt?" em "+esc(last.finishedAt):""}</a></div>`:`<div class="oi-meta">Esta oferta ainda não foi investigada.</div>`);
     }
   }
-  const start=`<button type="button" class="btn btn--accent" data-oi-start="${esc(route.offerId)}"${OI_BACKEND_READY?"":' disabled aria-describedby="oiStartHint"'}>${ic("search")}Investigar oferta</button>${OI_BACKEND_READY?"":'<span class="oi-meta" id="oiStartHint">Disponível quando o backend estiver conectado.</span>'}`;
+  const start=`<button type="button" class="btn btn--accent" data-oi-start="${esc(route.offerId)}" data-oi-ref="${ref||"offer"}"${OI_BACKEND_READY?"":' disabled aria-describedby="oiStartHint"'}>${ic("search")}Investigar oferta</button>${OI_BACKEND_READY?"":'<span class="oi-meta" id="oiStartHint">Disponível quando o backend estiver conectado.</span>'}`;
   return `<div class="oi-card"><div class="eyebrow">${esc(SEC_SHORT[section]||"Oferta")}</div><h2 class="oi-offer-name">${esc(oiOfferName(offer))}</h2><div class="oi-links">${start}<a class="btn btn--outline btn--sm" data-nav href="${esc(offerPath(offer))}">Abrir ficha da oferta</a>${links}</div>${summary}</div>`;
 }
 function oiPathFor(area,query){return OfferIntel.buildPath({area,query:Object.assign({},oiRoute&&oiRoute.query,query)});}
@@ -3021,7 +3023,7 @@ function oiOnClick(event){
   const act=event.target.closest("[data-oi-act]");if(act){oiReview(act.dataset.id,act.dataset.oiAct);return;}
   const ract=event.target.closest("[data-oi-rel-act]");if(ract){oiReviewRelation(ract.dataset.id,ract.dataset.oiRelAct);return;}
   if(event.target.closest("[data-oi-more]")){oiLoadMore(oiRoute);return;}
-  const start=event.target.closest("[data-oi-start]");if(start){const o=oiOfferById(start.dataset.oiStart);if(o)oiOpenStart({offerId:o.id,refKind:oiRefKindOf(o)});return;}
+  const start=event.target.closest("[data-oi-start]");if(start){const o=oiOfferById(start.dataset.oiStart);if(o)oiOpenStart({offerId:o.id,refKind:oiRouteRef(oiRoute,o)});return;}
   const ja=event.target.closest("[data-oi-job-action]");if(ja)oiJobAction(ja.dataset.id,ja.dataset.oiJobAction,ja);
 }
 function renderOfferIntel(){
@@ -3059,7 +3061,7 @@ function renderOfferIntel(){
   }
   if(OI_BACKEND_READY&&route.area==="oferta"&&q.investigar&&oiOfferById(route.offerId)){
     try{history.replaceState(history.state,"",OfferIntel.buildPath(Object.assign({},route,{query:Object.assign({},q,{investigar:false})})));}catch(_){}
-    q.investigar=false;const o=oiOfferById(route.offerId);setTimeout(()=>oiOpenStart({offerId:o.id,refKind:oiRefKindOf(o)}),0);
+    q.investigar=false;const o=oiOfferById(route.offerId);setTimeout(()=>oiOpenStart({offerId:o.id,refKind:oiRouteRef(route,o)}),0);
   }
   if(OI_BACKEND_READY)oiPoller.schedule();
 }

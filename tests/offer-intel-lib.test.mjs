@@ -265,3 +265,19 @@ test("QA-01 (reaberto): scopeOf mantém oferta e tipo da referência ao trocar d
   assert.deepEqual(j(OI.scopeOf(jobPage, { offerRefKind: "admin_draft" })), { oferta: "", ref: "", job: "j9" });
   assert.deepEqual(j(OI.scopeOf(undefined)), { oferta: "", ref: "", job: "" });
 });
+
+test("QA-06: ?ref=admin_draft explícito vale para oferta já publicada em summary, hub e início", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const withRef = OI.parsePath(`/inteligencia/oferta/${id}`, "?ref=admin_draft&investigar=1");
+  const plain = OI.parsePath(`/inteligencia/oferta/${id}`, "");
+  assert.equal(OI.refKindFor(withRef, false), "admin_draft");
+  assert.equal(OI.refKindFor(plain, false), "offer");
+  assert.equal(OI.refKindFor(plain, true), "admin_draft");
+  assert.equal(OI.refKindFor(undefined, false), "offer");
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /oiApi\.summary\(route\.offerId,oiRouteRef\(route,o\)\)/);
+  assert.match(html, /refKind:oiRouteRef\(oiRoute,o\)/);
+  assert.match(html, /refKind:oiRouteRef\(route,o\)\}\),0\)/);
+  assert.match(html, /ref=oiRouteRef\(route,offer\)==="admin_draft"/);
+  assert.doesNotMatch(html, /refKind:oiRefKindOf\(o\)/);
+});
