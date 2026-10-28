@@ -170,3 +170,32 @@ test("etapas do funil seguem a forma v1: final_url, captura indisponível e tecn
   assert.equal(b.inaccessibleReason, "Exige login");
   assert.equal(layout.edges[0].kind, "redirect");
 });
+
+test("formatLimits mostra só o que vier e desabilita a coleta quando indisponível", () => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+  const full = OI.formatLimits({ apify: { available: true, daily_max_runs: 15, daily_used: 4, cooldown_hours: 6, cooldown_until: "2026-10-27T18:00:00Z", max_queries: 2, results_per_query: 15 }, domain_explorer: { available: true, max_pages: 20, max_depth: 2 }, screenshot: { available: false, reason: "x" } }, now);
+  assert.equal(full.apifyAvailable, true);
+  assert.deepEqual(j(full.lines), ["4 de 15 coletas de anúncios hoje", "Intervalo mínimo de 6 h entre coletas da mesma oferta", "Próxima coleta desta oferta após 27/10/2026, 15:00", "Até 2 consultas e 15 resultados por consulta", "Exploração de domínios: até 20 páginas, profundidade 2"]);
+  assert.equal(full.screenshotUnavailable, true);
+  const off = OI.formatLimits({ apify: { available: false } }, now);
+  assert.equal(off.apifyAvailable, false);
+  assert.deepEqual(j(off.lines), ["Coleta de anúncios indisponível"]);
+  const past = OI.formatLimits({ apify: { available: true, cooldown_until: "2026-10-27T10:00:00Z" } }, now);
+  assert.equal(past.lines.some(l => /Próxima coleta/.test(l)), false);
+  for (const bad of [undefined, null, "x", { apify: "x" }]) assert.deepEqual(j(OI.formatLimits(bad).lines), []);
+});
+
+test("formatFunnelSummary limita texto e sanitiza URLs", () => {
+  const f = OI.formatFunnelSummary({ id: "f1", investigation_id: "j1", title: "T".repeat(300), origin_url: "javascript:x", final_url: "https://a.com/p", steps_count: "7", created_at: "2026-10-27T12:00:00Z" });
+  assert.ok(f.title.length <= 100);
+  assert.equal(f.originUrl, "");
+  assert.equal(f.finalLabel, "a.com/p");
+  assert.equal(f.stepsCount, 7);
+  assert.equal(OI.formatFunnelSummary(null).title, "Funil sem título");
+});
+
+test("etapas trazem redirecionamentos e data de observação seguros", () => {
+  const layout = OI.layoutFunnel({ steps: [step("a", { redirects: [{ url: "https://r.com/1" }, "javascript:x", "https://r.com/2"], observed_at: "2026-10-27T12:00:00Z" })], edges: [] });
+  assert.deepEqual(j(layout.nodes[0].redirects), ["r.com/1", "r.com/2"]);
+  assert.match(layout.nodes[0].observedAt, /27\/10\/2026/);
+});
