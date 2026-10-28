@@ -465,3 +465,10 @@ test("migration: only new offer_intel_weekly_* objects, RLS admin select, servic
   assert.match(sql, /function public\.offer_intel_weekly_continue/);
   assert.match(sql, /to service_role;\s*commit;\s*$/);
 });
+
+test("Creative Review uses a valid allowlisted Claude model by default", async () => {
+  const { CREATIVE_REVIEW_MODEL } = await import("../netlify/functions/_offer-intel-weekly.mjs");
+  const { AI_LIMITS } = await import("../lib/offer-intel-weekly.mjs");
+  assert.equal(CREATIVE_REVIEW_MODEL, "claude-sonnet-5-5");
+  assert.ok(Object.hasOwn(AI_LIMITS.models, CREATIVE_REVIEW_MODEL));
+});

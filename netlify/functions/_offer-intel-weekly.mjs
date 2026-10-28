@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, SUPABASE_URL, safeRemoteFetch, boundedBuffer } from "./_security.mjs";
 import { automationSigningSecret } from "./_supabase-admin.mjs";
-import { AD_ANALYSIS_MODEL, ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
+import { ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
 import { IntelError, UUID } from "../../lib/offer-intel-core.mjs";
 import { signedDispatch, verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { reviewDate, isReviewDate, reviewTitle, publicReport, publicAd, publicProduct, validateBullets, isMoney } from "../../lib/offer-intel-weekly.mjs";
@@ -10,6 +10,8 @@ import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createW
 
 const METHODS = "GET, POST, OPTIONS";
 const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net"];
+// The shared AD_ANALYSIS_MODEL default ("claude-sonnet-5") is rejected by the API, so Creative Review pins its own id.
+export const CREATIVE_REVIEW_MODEL = String(process.env.CREATIVE_REVIEW_MODEL || "claude-sonnet-5-5").trim();
 // Domain separation: a weekly signature is never valid for the investigation worker and vice versa.
 export const weeklySecret = secret => secret ? createHmac("sha256", secret).update("offer-intel-weekly/v1").digest("hex") : "";
 
@@ -18,9 +20,9 @@ export function weeklyRuntime() {
   const storage = createWeeklyStorage({ url: SUPABASE_URL, serviceKey });
   const secret = weeklySecret(automationSigningSecret());
   return {
-    storage, secret, model: AD_ANALYSIS_MODEL,
+    storage, secret, model: CREATIVE_REVIEW_MODEL,
     apify: createWeeklyApify({ token: String(process.env.APIFY_TOKEN || "").trim() }),
-    claude: createWeeklyClaude({ key: process.env.ANTHROPIC_API_KEY || "", model: AD_ANALYSIS_MODEL, url: ANTHROPIC_URL }),
+    claude: createWeeklyClaude({ key: process.env.ANTHROPIC_API_KEY || "", model: CREATIVE_REVIEW_MODEL, url: ANTHROPIC_URL }),
     archive: createWeeklyArchive({
       publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
       async download(url, maxBytes) {
