@@ -1582,7 +1582,7 @@ async function discoverOfferLibrariesAdmin(id,button){
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||payload.ok===false)throw new Error(payload.error||`Falha HTTP ${response.status}`);
     if(payload.draft&&typeof payload.draft==="object"){
-      adminOfferDrafts.set(id,payload.draft);
+      adminOfferDrafts[id]=payload.draft;
     }
     toast(payload.cached||payload.reusedCooldown?"Resultado recente reutilizado (economia de créditos)":`Busca concluída: ${(payload.discoveredLibraries||[]).length} biblioteca(s) encontrada(s)`);
     openView(id,true);
@@ -1613,7 +1613,7 @@ async function pinDiscoveredLibraryAdmin(id,index,button){
     });
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||payload.ok===false)throw new Error(payload.error||`Falha HTTP ${response.status}`);
-    if(payload.draft)adminOfferDrafts.set(id,payload.draft);
+    if(payload.draft)adminOfferDrafts[id]=payload.draft;
     toast("Biblioteca adicionada ao rascunho privado do admin");
     openView(id,true);
   }catch(err){
