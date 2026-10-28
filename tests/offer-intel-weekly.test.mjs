@@ -238,8 +238,9 @@ test("worker: full run → Top 10 per product, media, analyses, 3-bullet product
   assert.ok(first.some(a => a.page_source === "encontrada") && first.some(a => a.page_source === "cadastrada"));
   assert.ok(!first.some(a => a.page_id === "70000"), "domain filter drops the stranger ad (i=0 lands elsewhere)");
   assert.ok(apify.starts.every(s => s.maxUsd > 0 && s.maxUsd <= 15));
-  const reserves = storage.calls.filter(c => c[0] === "reserve" && c[1] === "ai");
+  const reserves = storage.calls.filter(c => c[0] === "reserve" && c[1] === "ai" && !String(c[2]).startsWith("ai:headroom:"));
   assert.equal(reserves.length, claude.calls.length, "one reservation before every call");
+  assert.equal(storage.ledger.filter(l => String(l.reservation).startsWith("ai:headroom:")).length, 1, "headroom booked once");
   assert.equal(claude.counts.length, claude.calls.length, "exact count before every call");
   assert.ok(storage.calls.filter(c => c[0] === "settle").length === claude.calls.length, "settled down to real usage");
   assert.ok(storage.ledger.filter(l => l.kind === "ai").reduce((s, l) => s + l.usd, 0) <= 10);

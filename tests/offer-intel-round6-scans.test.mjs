@@ -10,6 +10,34 @@ import {publicDomainScan} from '../lib/offer-intel-scan-public.mjs';
 import {createFAKEWorkerStorage} from './offer-intel-FAKE-worker-storage.mjs';
 import {createIntelHandlers} from '../netlify/functions/_offer-intel-api.mjs';
 const root='https://brand.example',acc='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',mid='bbbbbbbbbbbbbbbbbbbbbbbb';
+test('QA-R6-B03 cached crawler preserves the same investigation scan observations',async()=>{
+ const j={id:randomUUID(),lease_token:randomUUID(),scope_key:'offer:FAKE',seed_url:root,seed_snapshot:{}};
+ const storage=createFAKEWorkerStorage(j),calls=[];
+ const fetchPage=FAKEPage(u=>u.href===root+'/'?{body:'<title>Brand</title><main><a href="/special-page">Discover offer</a></main>'}:u.href===root+'/special-page'?{body:'<title>Special offer</title><script>fbq("init","123456789");</script><img src="/special.jpg">'}:{status:404},calls);
+ const collector=createDomainScansCollector({storage,fetchPage});
+ await collector.run(j);
+ const first=structuredClone([...storage.records.scans.values()][0]);
+ assert.equal(first.data.pages.find(p=>p.url===root+'/special-page').verified,true);
+ assert.ok(first.data.pixels.some(p=>p.id==='123456789'));
+ await collector.run(j);
+ const second=[...storage.records.scans.values()][0];
+ assert.deepEqual(second.data.pixels,first.data.pixels);
+ assert.deepEqual(second.data.assets,first.data.assets);
+ assert.deepEqual(second.data.pages.find(p=>p.url===root+'/special-page'),first.data.pages.find(p=>p.url===root+'/special-page'));
+ assert.equal(calls.filter(c=>c.url===root+'/special-page').length,1);
+ assert.equal(calls.filter(c=>c.url===root+'/').length,1);
+ const before=calls.length;
+ storage.scanRead=async()=>{throw Error('FAKE read unavailable');};
+ await assert.rejects(()=>collector.run(j),/FAKE read unavailable/);
+ assert.equal(calls.length,before);assert.deepEqual([...storage.records.scans.values()][0],second);
+});
+test('QA-R6-B04 prose, commented scripts and JSON are not pixel installations',()=>{
+ const prose='<p>Manual: exemplo G-AAAA1234 e GTM-EXAMPLE, não instalados.</p>';
+ assert.deepEqual(extractScanPage(prose,root).pixels,[]);
+ assert.deepEqual(extractScanPage(prose+'<!-- <script>fbq("init","123");</script> --><script type="application/ld+json">{"example":"G-AAAA1234"}</script><script src="https://googletagmanager.com.evil.example/gtm.js?id=GTM-EXAMPLE"></script>',root).pixels,[]);
+ const installed=extractScanPage(prose+'<script>fbq("init","123");gtag("config","G-INSTALLED");</script><script src="https://www.googletagmanager.com/gtm.js?id=GTM-REAL"></script>',root).pixels;
+ assert.deepEqual(installed.map(p=>p.id),['123','G-INSTALLED','GTM-REAL']);
+});
 const html=`<title>Brand Offer</title><h1>Brand</h1><a href="https://pay.hotmart.com/O123">Buy</a><a href="https://hotmart.com.evil.example/">No</a>
 <script>fbq('init','111');fbq('init','222');ttq.load('TIKTOK123');gtag('config','G-AAAA');gtag('config','G-BBBB');</script>
 <script src="/pixels.js"></script><script src="https://www.googletagmanager.com/gtm.js?id=GTM-ABCD"></script>
@@ -156,4 +184,14 @@ test("ad-platform hosts are never scanned as offer domains", async () => {
   const { platformHost } = await import("../lib/offer-intel-domain-scans.mjs");
   for (const h of ["fb.com", "l.facebook.com", "www.instagram.com", "wa.me", "youtu.be"]) assert.equal(platformHost(h), true, h);
   for (const h of ["astavin.co", "shop.ultimapeak.com", "notfacebook.com"]) assert.equal(platformHost(h), false, h);
+});
+
+test("Apify landings on the ad platform itself do not become domain discoveries", async () => {
+  const { apifyRecords } = await import("../lib/offer-intel-apify.mjs");
+  const job = { id: "j", scope_key: "offer:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", offer_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", offer_ref_kind: "offer", seed_snapshot: { data: {} } };
+  const items = [{ adArchiveId: "111", pageId: "222", snapshot: { linkUrl: "https://fb.com/some-page" } },
+    { adArchiveId: "333", pageId: "222", snapshot: { linkUrl: "https://astavin.co/products/x" } }];
+  const out = apifyRecords(job, items, "run", [], new Date().toISOString());
+  const domains = out.discoveries.filter(d => d.type === "domain").map(d => d.data.domain);
+  assert.deepEqual(domains, ["astavin.co"]);
 });
