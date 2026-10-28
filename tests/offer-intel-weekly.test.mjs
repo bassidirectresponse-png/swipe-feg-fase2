@@ -185,12 +185,17 @@ test("worker: weekly reservations never exceed US$ 15, even across reruns and ma
   assert.ok(reserves >= apify.starts.length);
 });
 
-test("worker: unknown ledger balance fails closed with no reservation or POST", async () => {
-  const { storage, apify } = scenario(), { archive } = FAKEArchive();
-  storage.budgetUsage = async () => null;
-  const report = await claimed(storage);
-  await assert.rejects(runWeeklyReport({ report, storage, apify, archive, claude: okClaude, now: () => NOW }), { code: "capability_unavailable" });
-  assert.equal(apify.starts.length, 0); assert.equal(storage.ledger.length, 0);
+test("worker: unknown or malformed ledger balance fails closed with no reservation or POST", async () => {
+  const corpus = [null, undefined, [], "x", { week_start: "2026-10-20", used_usd: 0 }, { used_usd: 0 },
+    ...[null, "", "0", false, true, [], {}, NaN, Infinity, -1, undefined].map(used_usd => ({ week_start: WEEK, used_usd }))];
+  for (const usage of corpus) {
+    const { storage, apify } = scenario(), { archive } = FAKEArchive();
+    storage.budgetUsage = async () => usage;
+    const report = await claimed(storage);
+    await assert.rejects(runWeeklyReport({ report, storage, apify, archive, claude: okClaude, now: () => NOW }), { code: "capability_unavailable" }, JSON.stringify(usage));
+    assert.equal(apify.starts.length, 0, JSON.stringify(usage)); assert.equal(storage.ledger.length, 0);
+    assert.equal(storage.calls.filter(c => c[0] === "reserve").length, 0);
+  }
 });
 
 test("worker: Apify ok + IA failure = partial with ranking kept; rerun fills the analyses", async () => {
