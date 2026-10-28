@@ -4,6 +4,7 @@ import { resolveReference, validateReferenceInput } from "../../lib/offer-intel-
 import { publicLimits } from "../../lib/offer-intel-limits.mjs";
 import { verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { intelRuntime } from "./_offer-intel-runtime.mjs";
+import { resourceHandlers } from "./_offer-intel-read-api.mjs";
 
 const METHODS="GET, POST, OPTIONS";
 function objectBody(body) {
@@ -162,5 +163,5 @@ export function createIntelHandlers(overrides={}) {
       return deps.json(req,202,{ok:true},METHODS);
     } catch(error) {return errorResponse(req,error);}
   }
-  return {investigations,job,background};
+  return {investigations,job,background,...resourceHandlers({deps,auth,readQuota,errorResponse})};
 }
