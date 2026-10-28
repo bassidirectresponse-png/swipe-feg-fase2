@@ -1618,9 +1618,9 @@
   .oi-filters{display:flex;flex-wrap:wrap;gap:12px;}
   .oi-filters .sort-control{min-width:170px;}
   .oi-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
-  .oi-dcard{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:14px;display:grid;grid-template-rows:auto auto 2.8em auto auto auto auto auto auto 1fr;gap:8px;min-height:430px;}
+  .oi-dcard{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:14px;display:grid;grid-template-rows:auto auto 2.8em auto auto auto auto auto auto 1fr;gap:8px;min-height:400px;}
   .oi-dcard[aria-busy="true"]{opacity:.6;}
-  .oi-dcard__media{aspect-ratio:16/9;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);}
+  .oi-dcard__media{height:112px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);}
   .oi-thumb{width:100%;height:100%;object-fit:cover;display:block;}
   .oi-thumb--none{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:2rem;}
   .oi-dcard__chips{display:flex;gap:6px;flex-wrap:wrap;min-height:26px;}
@@ -2704,7 +2704,7 @@ function oiJobDetailHtml(route,st){
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.investigacao);
   const job=st.items[0],e=esc;
-  const sources=job.sources.length?`<table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${e(src.statusLabel)}${src.name==="Captura de tela"&&src.status==="unavailable"?" · Captura indisponível nesta versão":""}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table>`:"";
+  const sources=job.sources.length?`<table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${src.name==="Captura de tela"&&src.status==="unavailable"?"Captura indisponível nesta versão":e(src.statusLabel)}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table>`:"";
   const err=job.error?`<div class="banner banner--warn" role="alert">${ic("alert")}${e(job.error.message||"A investigação falhou.")}${job.nextRetryAt?" Nova tentativa automática: "+e(job.nextRetryAt)+".":""}</div>`:"";
   const actions=[job.active?`<button type="button" class="btn btn--outline btn--sm" data-oi-job-action="cancel" data-id="${e(job.id)}">Cancelar investigação</button>`:"",(job.status==="failed"||job.status==="partial")&&(!job.error||job.error.retryable||job.status==="partial")?`<button type="button" class="btn btn--accent btn--sm" data-oi-job-action="retry" data-id="${e(job.id)}">Tentar novamente</button>`:"",`<a class="btn btn--outline btn--sm" data-nav href="${e(OfferIntel.buildPath({area:"descobertas",query:{job:job.id}}))}">Ver descobertas</a>`].join("");
   return `<div class="oi-card"><div class="oi-links">${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${e(oiJobOfferName(job))}</span></div>${oiProgressHtml(job)}<div class="oi-meta">${e(job.phaseLabel||job.statusLabel)}${job.progressTotal?` · ${job.progressDone||0} de ${job.progressTotal}`:""}</div>${err}
