@@ -1323,26 +1323,12 @@ function oiDomainScanHtml(route,st){
   const ctaRows=s.ctas.slice().sort((a,b)=>Number(b.hidden)-Number(a.hidden));
   const ctas=oiDxSec("ctas","CTAs",s.ctas.length,s.ctas.length?`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Botões e chamadas para ação</caption><thead><tr><th scope="col">Texto</th><th scope="col">Destino</th><th scope="col">Aparece em</th><th scope="col">Página</th></tr></thead><tbody>${ctaRows.map(c=>`<tr class="${c.hidden?"is-hidden-cta":""}"><td data-label="Texto"><b>${e(c.text||"(sem texto)")}</b>${c.hidden?' <span class="oi-chip oi-chip--hi">Escondido</span>':""}</td><td data-label="Destino">${c.href?`<a href="${e(c.href)}" target="_blank" rel="noopener noreferrer">${e(c.hrefDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:"—"}</td><td data-label="Aparece em">${c.showOnLabel?e(c.showOnLabel):"—"}</td><td data-label="Página"><span class="oi-meta">${c.pageUrl?e(displayUrlSafe(c.pageUrl)):"—"}</span></td></tr>`).join("")}</tbody></table></div>`:oiDxEmpty("Nenhum CTA foi identificado."));
   const imgs=s.assets.images,vids=s.assets.videos;
-  const assets=oiDxSec("assets","Assets",imgs.length+vids.length,imgs.length||vids.length?(imgs.length?`<ul class="oi-dx__assets">${imgs.map((a,i)=>`<li><button type="button" class="oi-dx__asset" data-oi-lightbox="${e(a.url)}" aria-label="Ampliar imagem ${i+1}: ${e(a.display)}"><img data-oi-img data-oi-ph="image" src="${e(a.url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button><span class="oi-meta">${e(a.display)}</span></li>`).join("")}</ul>`:"")+(vids.length?`<h4>Vídeos</h4><ul class="oi-dx__vids">${vids.map(a=>`<li>${oiExtLink(a.url,a.display)}</li>`).join("")}</ul>`:""):oiDxEmpty("Nenhum asset foi identificado."));
+  const fileOf=u=>{try{const n=decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop()||"");return n||"(sem nome)";}catch(_){return "(sem nome)";}};
+  const assetRow=(a,kind)=>`<li class="oi-dx__file"><span class="oi-dx__ficon" aria-hidden="true">${ic(kind==="image"?"image":"film")}</span><div class="oi-dx__fmeta"><b title="${e(fileOf(a.url))}">${e(fileOf(a.url))}</b><span class="oi-meta">${e(oiHostOf(a.url))}${a.pageUrl?" · em "+e(displayUrlSafe(a.pageUrl)):""}</span></div>${oiExtLink(a.url,"Abrir")}</li>`;
+  const assets=oiDxSec("assets","Assets",imgs.length+vids.length,imgs.length||vids.length?`<p class="oi-note">As imagens e vídeos de sites externos não são carregados aqui; abra cada arquivo em outra aba.</p>`+(imgs.length?`<h4>Imagens</h4><ul class="oi-dx__files">${imgs.map(a=>assetRow(a,"image")).join("")}</ul>`:"")+(vids.length?`<h4>Vídeos</h4><ul class="oi-dx__files">${vids.map(a=>assetRow(a,"video")).join("")}</ul>`:""):oiDxEmpty("Nenhum asset foi identificado."));
   const subs=oiDxSec("subs","Subdomínios",s.subdomains.length,s.subdomains.length?`<div class="oi-links">${s.subdomains.map(h=>`<span class="oi-chip">${e(h)}</span>`).join("")}</div>`:oiDxEmpty("Nenhum subdomínio foi encontrado."));
   return head+pages+checkout+pixels+tech+vsl+ctas+assets+subs;
 }
-/* Lightbox simples: imagem ampliada, Esc/clique fora fecham, foco volta ao botão de origem. */
-function oiLightbox(url,opener){
-  if($("#oiLb"))return;
-  const el=document.createElement("div");el.id="oiLb";el.className="oi-lb";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Imagem ampliada");
-  el.innerHTML=`<button type="button" class="btn btn--outline oi-lb__close">Fechar</button><div class="oi-lb__stage"><img alt="" referrerpolicy="no-referrer"><p class="oi-lb__err" hidden>Não foi possível exibir esta imagem aqui (o navegador bloqueia imagens de sites externos). Abra o original em outra aba.</p></div><a class="btn btn--outline btn--sm oi-lb__open" target="_blank" rel="noopener noreferrer">Abrir original <span aria-hidden="true">↗</span></a>`;
-  const img=$("img",el);img.src=url;$(".oi-lb__open",el).href=url;
-  img.addEventListener("error",()=>{img.hidden=true;$(".oi-lb__err",el).hidden=false;});
-  const close=()=>{document.removeEventListener("keydown",onKey,true);el.remove();if(opener&&opener.isConnected)opener.focus();};
-  const onKey=ev=>{
-    if(ev.key==="Escape"){ev.preventDefault();ev.stopPropagation();close();return;}
-    if(ev.key==="Tab"){const f=[...el.querySelectorAll("button,a[href]")];if(!f.length)return;const i=f.indexOf(document.activeElement);ev.preventDefault();f[(i+(ev.shiftKey?-1:1)+f.length)%f.length].focus();}
-  };
-  el.addEventListener("click",ev=>{if(ev.target===el||ev.target.closest(".oi-lb__close"))close();});
-  document.addEventListener("keydown",onKey,true);document.body.appendChild(el);$(".oi-lb__close",el).focus();
-}
-
 /* ----- Relatório semanal ----- */
 const oiWkUi={group:"registered"};
 let oiWkTimer=null,oiPres=null;
@@ -1562,7 +1548,6 @@ let oiClickBound=false;
 function oiOnClick(event){
   if(activeSection!=="inteligencia"||!oiRoute)return;
   const copy=event.target.closest("[data-oi-copy]");if(copy){oiCopyText(copy.dataset.oiCopy,copy.dataset.oiCopyLabel);return;}
-  const lb=event.target.closest("[data-oi-lightbox]");if(lb){oiLightbox(lb.dataset.oiLightbox,lb);return;}
   if(event.target.closest("[data-oi-dx-more]")){oiDomUi.all=true;oiDxUpdatePages(event.currentTarget);return;}
   const wtab=event.target.closest("[data-oi-wk-tab]");if(wtab){oiWkSwitchTab(event.currentTarget,wtab.dataset.oiWkTab);return;}
   const wp=event.target.closest("[data-oi-wk-present]");if(wp){oiOpenPresentation(wp);return;}

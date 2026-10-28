@@ -9,7 +9,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const ctx = { URL, URLSearchParams, Intl, Date, Set, Map, Object, Array, Number, String, JSON, esc, ic: n => `<i data-ic="${n}"></i>`, window: { addEventListener() {} }, document: {},
   oiOfferById: id => id === "11111111-1111-4111-8111-111111111111" ? { id, data: { nomeOferta: "Oferta <A>" } } : null, offerPath: o => "/ofertas/" + o.id, oiOfferName: o => o.data.nomeOferta,
   oiStateHtml: (k, o) => `<div data-state="${k}">${esc(o && (o.title || o.error) || "")}</div>`, oiStatusChip: (l, s) => `<span class="oi-status--${esc(s)}">${esc(l)}</span>`,
-  oiExtLink: (h, l) => h ? `<a href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(l)}</a>` : "", displayUrlSafe: u => u, oiBusy: new Set() };
+  oiExtLink: (h, l) => h ? `<a href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(l)}</a>` : "", displayUrlSafe: u => u, oiHostOf: u => new URL(u).hostname, oiBusy: new Set() };
 vm.createContext(ctx);
 vm.runInContext(readFileSync(new URL("../lib/offer-intel.js", import.meta.url), "utf8"), ctx);
 vm.runInContext(readFileSync(new URL("../lib/offer-intel-api.js", import.meta.url), "utf8"), ctx);
@@ -33,6 +33,9 @@ test("Raio-X renderiza seções, escapa texto externo e não emite href inseguro
   assert.match(out, /data-oi-copy="123456789012345"/);
   assert.match(out, /Algumas fontes falharam: Wayback Machine \(timeout\)/);
   assert.match(out, /href="\/inteligencia\/descobertas\?oferta=o1"/);
+  assert.ok(!out.includes("<img"), "assets externos não carregam imagem");
+  assert.ok(!out.includes("data-oi-lightbox"));
+  assert.match(out, /hero\.jpg/); assert.match(out, /rel="noopener noreferrer">Abrir/);
   ctx.__tbl = run("oiDomUi.scan='scan-1';oiDxPagesHtml(__st.items[0])");
   assert.match(ctx.__tbl.count, /^5 de 5 páginas$/);
   assert.ok(!ctx.__tbl.table.includes("<script>x</script>"));
