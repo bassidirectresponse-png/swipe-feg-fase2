@@ -1,13 +1,30 @@
-import test from "node:test";
+import test, { mock } from "node:test";
+import https from "node:https";
+import { EventEmitter } from "node:events";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { identityKey, normalizeUrl, normalizeOptions, pagination, stableJson } from "../lib/offer-intel-core.mjs";
 import { resolveReference, createReferenceReader } from "../lib/offer-intel-reference.mjs";
-import { isGlobalAddress, resolvePublicUrl, fetchPublicPage } from "../lib/offer-intel-url-safety.mjs";
+import { isGlobalAddress, resolvePublicUrl, fetchPublicPage, pinnedRequest } from "../lib/offer-intel-url-safety.mjs";
 import { classifyStep } from "../lib/offer-intel-classifier.mjs";
 import { createSupabaseStorage } from "../lib/offer-intel-storage.mjs";
 
 const ID="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+test("QA-B01: IDs não-string são rejeitados antes de reader/fetch, inclusive null com URL",async()=>{
+  let reads=0;
+  const FAKE_reader={getOffer:async()=>{reads++;},getDraft:async()=>{reads++;}};
+  const reader=createReferenceReader({supabaseUrl:"https://example.invalid",serviceKey:"FAKE",fetcher:async()=>{reads++;},readDraft:async()=>{reads++;}});
+  for(const value of [[ID],{id:ID},null,123,true,undefined]) {
+    for(const kind of ["offer","admin_draft"]) {
+      await assert.rejects(()=>resolveReference({offer_id:value,offer_ref_kind:kind,url:"https://example.com"},FAKE_reader),e=>e.status===422&&e.code==="offer_not_found");
+    }
+    await assert.rejects(()=>resolveReference({offer_id:value,url:"https://example.com"},FAKE_reader),e=>e.status===422);
+    await assert.rejects(()=>reader.getOffer(value),e=>e.status===422);
+    await assert.rejects(()=>reader.getDraft(value),e=>e.status===422);
+    assert.throws(()=>identityKey("offer",value),e=>e.status===422);
+  }
+  assert.equal(reads,0);
+});
 test("identidades preservam Page ID como string e URLs funcionais; normalização versionada",()=>{
   assert.equal(identityKey("page","000123"),"meta:page:000123");
   assert.equal(identityKey("domain","https://EXAMPLE.com./a"),"domain:example.com");
@@ -60,6 +77,24 @@ test("classificação registra fundamento e distingue inferência de acesso bloq
   assert.equal(classifyStep({text:"Upgrade your order"}).kind,"upsell");
   assert.equal(classifyStep({http_status:403}).verification,"inaccessible");
 });
+test("transport Node fixa DNS validado e não envia cookies/Authorization",async()=>{
+  let optionsUsed;
+  const FAKE_request=mock.method(https,"request",(url,options,callback)=>{
+    optionsUsed=options;assert.equal(url.hostname,"public.example");
+    const request=new EventEmitter();
+    request.end=()=>{
+      const response=new EventEmitter();response.statusCode=200;response.headers={"content-type":"text/html"};
+      callback(response);response.emit("data",Buffer.from("<title>Public</title>"));response.emit("end");
+    };
+    return request;
+  });
+  try {
+    const result=await pinnedRequest(new URL("https://public.example"),[{address:"8.8.8.8",family:4}],{signal:AbortSignal.timeout(1000),maxBytes:1024});
+    assert.equal(result.status,200);assert.equal(optionsUsed.agent,false);
+    optionsUsed.lookup("public.example",{},(error,ip,family)=>{assert.equal(error,null);assert.equal(ip,"8.8.8.8");assert.equal(family,4);});
+    assert.equal(optionsUsed.headers.Authorization,undefined);assert.equal(optionsUsed.headers.Cookie,undefined);
+  } finally {FAKE_request.mock.restore();}
+});
 test("storage REST chama somente tabelas/RPCs novas; referência só lê offers; erros não vazam secrets",async()=>{
   const calls=[];
   const FAKE_fetch=async(url,options)=>{calls.push({url:String(url),options});return Response.json(String(url).includes("/offers?")?[{id:ID,data:{}}]:[]);};
@@ -74,6 +109,9 @@ test("storage REST chama somente tabelas/RPCs novas; referência só lê offers;
 });
 test("migration aditiva isola tabelas internas e review CAS; não executa alterações no legado",async()=>{
   const sql=await readFile(new URL("../supabase/migrations/202610270001_offer_intelligence.sql",import.meta.url),"utf8");
+  const tables=[...sql.matchAll(/^create table public\.(\w+)/gm)].map(m=>m[1]);
+  assert.equal(tables.length,11);assert.equal(new Set(tables).size,tables.length,"nenhuma definição duplicada");
+  assert.ok(sql.includes("seed_key ~ '^[a-f0-9]{64}$')))"),"CHECK da referência deve estar fechado");
   assert.doesNotMatch(sql,/(?:insert into|update|alter table|delete from)\s+(?:public\.)?(?:offers|admin_offer_drafts)\b/i);
   assert.match(sql,/expected_version/); assert.match(sql,/for update/);
   assert.match(sql,/unique \(scope_key,type,identity_key\)/);
