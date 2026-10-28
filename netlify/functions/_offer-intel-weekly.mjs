@@ -4,9 +4,9 @@ import { automationSigningSecret } from "./_supabase-admin.mjs";
 import { AD_ANALYSIS_MODEL, ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
 import { IntelError, UUID } from "../../lib/offer-intel-core.mjs";
 import { signedDispatch, verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
-import { weekStart, isWeekStart, publicWeeklyReport, publicWeeklyAd, validateSummary } from "../../lib/offer-intel-weekly.mjs";
+import { reviewDate, isReviewDate, reviewTitle, publicReport, publicAd, publicProduct, validateBullets, isMoney } from "../../lib/offer-intel-weekly.mjs";
 import { createWeeklyStorage } from "../../lib/offer-intel-weekly-storage.mjs";
-import { runWeeklyReport, createWeeklyApify, createWeeklyArchive, createWeeklyClaude } from "../../lib/offer-intel-weekly-worker.mjs";
+import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createWeeklyClaude } from "../../lib/offer-intel-weekly-worker.mjs";
 
 const METHODS = "GET, POST, OPTIONS";
 const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net"];
@@ -17,13 +17,12 @@ export function weeklyRuntime() {
   const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const storage = createWeeklyStorage({ url: SUPABASE_URL, serviceKey });
   const secret = weeklySecret(automationSigningSecret());
-  const publicUrl = path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path;
   return {
-    storage, secret,
+    storage, secret, model: AD_ANALYSIS_MODEL,
     apify: createWeeklyApify({ token: String(process.env.APIFY_TOKEN || "").trim() }),
     claude: createWeeklyClaude({ key: process.env.ANTHROPIC_API_KEY || "", model: AD_ANALYSIS_MODEL, url: ANTHROPIC_URL }),
     archive: createWeeklyArchive({
-      publicUrl,
+      publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
       async download(url, maxBytes) {
         const response = await safeRemoteFetch(url, { allowedHostSuffixes: FB_MEDIA_HOSTS, timeoutMs: 40_000 });
         if (!response.ok) throw new Error("download indisponível");
@@ -40,18 +39,18 @@ export function weeklyRuntime() {
       const origin = new URL(process.env.URL || "https://benchmarkinggrupofeg.site").origin;
       const response = await fetch(origin + "/.netlify/functions/offer-intel-weekly-background", {
         method: "POST", ...signedDispatch(reportId, nonce, secret), signal: AbortSignal.timeout(10000) });
-      if (!response.ok) throw new IntelError(503, "capability_unavailable", "Não foi possível iniciar o relatório.", true);
+      if (!response.ok) throw new IntelError(503, "capability_unavailable", "Não foi possível iniciar o Creative Review.", true);
     },
   };
 }
 
 export function createWeeklyHandlers(overrides = {}) {
-  const deps = { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, getServices: weeklyRuntime, now: () => new Date(), ...overrides };
+  const deps = { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, getServices: weeklyRuntime, now: () => new Date(), sliceMs: 12 * 60_000, ...overrides };
   function errorResponse(req, error) {
     const known = error instanceof IntelError;
     const status = known ? error.status : ([400, 413, 415].includes(error?.status) ? error.status : 503);
     const body = { ok: false, code: known ? error.code : (status === 503 ? "capability_unavailable" : "invalid_request"),
-      error: known ? error.message : (status === 503 ? "Relatório semanal indisponível." : "Requisição inválida."),
+      error: known ? error.message : (status === 503 ? "Creative Review indisponível." : "Requisição inválida."),
       retryable: known ? !!error.retryable : status === 503, ...(known && error.retryAfter ? { retry_after: Math.ceil(error.retryAfter) } : {}) };
     const res = deps.json(req, status, body, METHODS);
     if (body.retry_after) res.headers.set("Retry-After", String(body.retry_after));
@@ -66,10 +65,10 @@ export function createWeeklyHandlers(overrides = {}) {
     return user;
   }
   async function enqueue(services, { trigger, actor_id = null }) {
-    const week_start = weekStart(deps.now());
-    const result = await services.storage.enqueue({ week_start, trigger, actor_id });
-    if (result.nonce && result.report.status === "queued") await services.dispatch(result.report.id, result.nonce);
-    return { week_start, report: result.report, reused: !!result.reused };
+    const review_date = reviewDate(deps.now());
+    const result = await services.storage.enqueue({ review_date, trigger, actor_id });
+    await services.dispatch(result.report.id, result.nonce);
+    return { review_date, report: result.report };
   }
 
   async function api(req) {
@@ -83,29 +82,38 @@ export function createWeeklyHandlers(overrides = {}) {
         const quota = await deps.rateLimit("offer-intel-weekly-run", user.id, { limit: 6, windowMs: 3_600_000 });
         if (!quota.allowed) throw new IntelError(429, "rate_limited", "Execuções demais; aguarde.", true, quota.retryAfter || 60);
         const result = await enqueue(deps.getServices(), { trigger: "manual", actor_id: user.id });
-        return deps.json(req, result.reused ? 200 : 202, { ok: true, report_id: result.report.id, week_start: result.week_start,
-          status: result.report.status, reused: result.reused }, METHODS);
+        return deps.json(req, 202, { ok: true, report_id: result.report.id, review_date: result.review_date, title: reviewTitle(result.review_date),
+          status: result.report.status }, METHODS);
       }
       const quota = await deps.rateLimit("offer-intel-read", user.id, { limit: 180, windowMs: 60000 });
       if (!quota.allowed) throw new IntelError(429, "rate_limited", "Consultas demais; aguarde.", true, quota.retryAfter || 60);
-      const params = new URL(req.url).searchParams, week = params.get("week"), { storage } = deps.getServices();
-      if (week === null) {
+      const params = new URL(req.url).searchParams, date = params.get("date"), offerId = params.get("offer_id"), { storage } = deps.getServices();
+      if (date === null) {
+        if (offerId !== null) throw new IntelError(400, "invalid_request", "Informe date junto com offer_id.");
         const rows = await storage.listReports({ limit: 52 });
-        return deps.json(req, 200, { ok: true, items: rows.map(r => { const p = publicWeeklyReport(r);
-          return { id: p.id, week_start: p.week_start, status: p.status, finished_at: p.finished_at, cost: p.cost }; }) }, METHODS);
+        return deps.json(req, 200, { ok: true, items: rows.map(r => { const p = publicReport(r), c = r.cost || {};
+          return { id: p.id, review_date: p.review_date, title: p.title, status: p.status, active: p.active, phase: p.phase, progress: p.progress,
+            finished_at: p.finished_at, updated_at: p.updated_at, products_count: isMoney(c.products) ? c.products : 0,
+            ads_count: isMoney(c.ads_ranked) ? c.ads_ranked : 0, cost: p.cost }; }) }, METHODS);
       }
-      if (week !== "latest" && !isWeekStart(week)) throw new IntelError(400, "invalid_request", "Semana inválida (use YYYY-MM-DD de uma terça ou latest).");
-      const report = await storage.getReport(week === "latest" ? { latest: true } : { week });
-      if (!report) throw new IntelError(404, "not_found", "Relatório não encontrado.");
-      const ads = (await storage.listAds(report.id)).map(publicWeeklyAd);
-      const summary = validateSummary(report.summary);
-      return deps.json(req, 200, { ok: true, report: publicWeeklyReport(report),
-        registered: ads.filter(a => a.group === "registered").sort((a, b) => a.rank - b.rank),
-        discovered: ads.filter(a => a.group === "discovered").sort((a, b) => a.rank - b.rank),
-        summary: summary ? { ...summary, generated_at: typeof report.summary.generated_at === "string" ? report.summary.generated_at : null } : null }, METHODS);
+      if (date !== "latest" && !isReviewDate(date)) throw new IntelError(400, "invalid_request", "Data inválida (use AAAA-MM-DD de uma quarta-feira ou latest).");
+      if (offerId !== null && (!UUID.test(offerId))) throw new IntelError(400, "invalid_request", "offer_id inválido.");
+      const report = await storage.getReport(date === "latest" ? { latest: true } : { date });
+      if (!report) throw new IntelError(404, "not_found", "Creative Review não encontrado.");
+      const ads = (await storage.listAds(report.id)).map(publicAd), products = (await storage.listProducts(report.id)).map(p => publicProduct(p, ads));
+      const head = publicReport(report);
+      if (offerId !== null) {
+        const product = products.find(p => p.offer_id === offerId.toLowerCase());
+        if (!product) throw new IntelError(404, "not_found", "Produto não encontrado nesta pasta.");
+        const index = products.indexOf(product);
+        return deps.json(req, 200, { ok: true, report: head, product: { ...product, prev_offer_id: products[index - 1]?.offer_id || null,
+          next_offer_id: products[index + 1]?.offer_id || null }, ads: ads.filter(a => a.offer_id === product.offer_id).sort((a, b) => a.rank - b.rank) }, METHODS);
+      }
+      return deps.json(req, 200, { ok: true, report: head, summary: validateBullets(report.summary, 5), products }, METHODS);
     } catch (error) { return errorResponse(req, error); }
   }
 
+  /** One signed slice; when work remains, releases the lease and re-dispatches itself with a fresh nonce. */
   async function background(req) {
     try {
       if (req.method !== "POST") throw new IntelError(405, "invalid_request", "Método inválido.");
@@ -117,13 +125,18 @@ export function createWeeklyHandlers(overrides = {}) {
       if (!signed) throw new IntelError(403, "forbidden", "Assinatura interna inválida.");
       const report = await services.storage.claim({ report_id: signed.job_id, nonce: signed.nonce });
       if (!report || !UUID.test(report.lease_token || "")) return deps.json(req, 202, { ok: true }, METHODS);
+      const fence = { report_id: report.id, lease_token: report.lease_token };
       try {
-        await runWeeklyReport({ report, storage: services.storage, apify: services.apify, archive: services.archive,
-          claude: services.claude, now: deps.now, deadline: Date.now() + 13 * 60_000 });
+        const result = await runCreativeReviewSlice({ report, storage: services.storage, apify: services.apify, archive: services.archive,
+          claude: services.claude, model: services.model, now: deps.now, deadline: Date.now() + (typeof deps.sliceMs === "function" ? deps.sliceMs() : deps.sliceMs) });
+        if (!result.done) {
+          const next = await services.storage.continue(fence);
+          await services.dispatch(report.id, next.nonce);
+        }
       } catch (error) {
-        if (error?.code !== "conflict") await services.storage.checkpoint({ report_id: report.id, lease_token: report.lease_token,
+        if (error?.code !== "conflict") await services.storage.checkpoint({ ...fence,
           patch: { status: "failed", phase: "done", progress: 100, error: { code: error instanceof IntelError ? error.code : "provider_error",
-            message: error instanceof IntelError ? error.message : "Falha no processamento do relatório.", retryable: true } } }).catch(() => {});
+            message: error instanceof IntelError ? error.message : "Falha no processamento do Creative Review.", retryable: true } } }).catch(() => {});
       }
       return deps.json(req, 202, { ok: true }, METHODS);
     } catch (error) { return errorResponse(req, error); }
@@ -132,7 +145,7 @@ export function createWeeklyHandlers(overrides = {}) {
   async function scheduled() {
     try {
       const result = await enqueue(deps.getServices(), { trigger: "schedule" });
-      return Response.json({ ok: true, week_start: result.week_start, status: result.report.status, reused: result.reused });
+      return Response.json({ ok: true, review_date: result.review_date, status: result.report.status });
     } catch (error) {
       const code = error instanceof IntelError ? error.code : "capability_unavailable";
       console.error("offer-intel-weekly scheduled:", code);
