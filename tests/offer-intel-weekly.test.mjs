@@ -493,7 +493,7 @@ test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usa
   assert.equal(calls[1].messages[0].content.length, 1);
   await assert.rejects(ai({ prompt: "p", maxTokens: 10, kind: "ad" }), /OpenRouter HTTP 402 402: Insufficient credits/);
   assert.equal(ai.modelFor("product"), "anthropic/claude-sonnet-5.5");
-  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 501 + OPENROUTER_IMAGE_TOKENS);
+  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 1001 + OPENROUTER_IMAGE_TOKENS);
   const unknown = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/unknown-model", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
   await assert.rejects(unknown({ prompt: "p", maxTokens: 10, kind: "ad" }), /sem preço/);
 });
@@ -517,4 +517,19 @@ test("first Creative Review folder marks nothing as new; DCO placeholders are st
   assert.equal(withoutTemplateTokens("{{product.brand}}"), null);
   assert.equal(withoutTemplateTokens("Try {{ product.name }} today"), "Try today");
   assert.equal(publicAd({ id: "a", ad_archive_id: "1", ad_text: "{{product.brand}}", score: 1, media: {} }).ad_text, null);
+});
+
+test("worker: real AI usage above the estimated reservation is booked and the US$ 10 ceiling stops further calls", async () => {
+  const { storage, apify } = scenario({ products: 2 });
+  const claude = okClaude();
+  claude.countTokens = async () => 10;                       // estimate far below reality
+  const base = claude;
+  const heavy = async args => ({ ...(await base(args)), usage: { input_tokens: 600_000, output_tokens: 300 } }); // ≈ US$3 each
+  heavy.countTokens = claude.countTokens; heavy.calls = claude.calls; heavy.counts = claude.counts;
+  const out = await runAll(storage, { apify, archive: FAKEArchive(), claude: heavy });
+  const ai = storage.ledger.filter(l => l.kind === "ai");
+  assert.ok(ai.some(l => l.reservation.endsWith(":extra")), "extra reservation booked");
+  assert.ok(ai.reduce((sum, l) => sum + Number(l.usd), 0) <= 10.0001, "ledger never above US$ 10");
+  assert.ok(claude.calls.length < 22, "AI stops once the ceiling is reached");
+  assert.equal(out.status, "partial");
 });

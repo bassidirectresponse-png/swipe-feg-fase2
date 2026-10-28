@@ -151,3 +151,9 @@ test('R6 listed pages and same-site scripts are capped; title/h1/site-name radic
  const row=[...storage.records.scans.values()][0];assert.equal(row.data.pages.length,400);
  const scripts=calls.filter(c=>/\/s\d+\.js$/.test(c.url));assert.equal(scripts.length,6);assert.ok(scripts.every(c=>c.maxBytes===512*1024));
 });
+
+test("ad-platform hosts are never scanned as offer domains", async () => {
+  const { platformHost } = await import("../lib/offer-intel-domain-scans.mjs");
+  for (const h of ["fb.com", "l.facebook.com", "www.instagram.com", "wa.me", "youtu.be"]) assert.equal(platformHost(h), true, h);
+  for (const h of ["astavin.co", "shop.ultimapeak.com", "notfacebook.com"]) assert.equal(platformHost(h), false, h);
+});
