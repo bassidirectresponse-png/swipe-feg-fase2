@@ -1,4 +1,4 @@
-import { IntelError, UUID, hash, stableJson, actionKey, pagination, publicJob } from "../../lib/offer-intel-core.mjs";
+import { IntelError, UUID, hash, stableJson, actionKey, pagination, publicJob, cursorTimestamp } from "../../lib/offer-intel-core.mjs";
 import { resolveReference, validateReferenceInput } from "../../lib/offer-intel-reference.mjs";
 import { publicLimits } from "../../lib/offer-intel-limits.mjs";
 import { publicDiscovery, publicRelation, publicFunnel, publicEvidence } from "../../lib/offer-intel-public.mjs";
@@ -60,7 +60,7 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
       const project=resource==="discoveries"?publicDiscovery:resource==="relations"?publicRelation:r=>({id:r.id,investigation_id:r.investigation_id,title:r.title,
         origin_url:r.origin_url,final_url:r.final_url,steps_count:r.steps_count,created_at:r.created_at});
       const items=result.items.slice(0,query.limit),last=items.at(-1);
-      const next_cursor=result.items.length>query.limit?Buffer.from(JSON.stringify({id:last.id,created_at:new Date(last.created_at).toISOString(),rank:last.rank||0,fingerprint:query.fingerprint})).toString("base64url"):null;
+      const next_cursor=result.items.length>query.limit?Buffer.from(JSON.stringify({id:last.id,created_at:cursorTimestamp(last.created_at),rank:last.rank||0,fingerprint:query.fingerprint})).toString("base64url"):null;
       return deps.json(req,200,{ok:true,items:items.map(project),next_cursor,limits},methods);
     }catch(error){return errorResponse(req,error);}
   }]));
