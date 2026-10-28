@@ -2943,7 +2943,8 @@ function oiProgressHtml(job){
 function oiStatusChip(label,status){return `<span class="oi-status oi-status--${esc(status)}">${esc(label)}</span>`;}
 function oiDiscoveryCard(d){
   const e=esc,existing=d.existingOfferId&&oiOfferById(d.existingOfferId);
-  const media=d.thumbnail?`<img class="oi-thumb" data-oi-img src="${e(d.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<div class="oi-thumb oi-thumb--none" aria-hidden="true">${ic(d.type==="domain"?"globe":d.type==="ad"?"play":"search")}</div>`;
+  const phIcon=d.type==="domain"?"globe":d.type==="ad"?"play":"search";
+  const media=d.thumbnail?`<img class="oi-thumb" data-oi-img data-oi-ph="${phIcon}" src="${e(d.thumbnail)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<div class="oi-thumb oi-thumb--none" aria-hidden="true">${ic(phIcon)}</div>`;
   const evidence=d.evidenceCount?`<details class="oi-evidence"><summary>${d.evidenceCount} ${d.evidenceCount===1?"evidência":"evidências"}</summary><ul>${d.evidence.map(ev=>`<li><b>${e(ev.verificationLabel)}</b> · ${e(ev.source)}${ev.observedAt?" · "+e(ev.observedAt):""}${ev.urlLabel?` · <a href="${e(ev.url)}" target="_blank" rel="noopener noreferrer">${e(ev.urlLabel)}</a>`:""}${ev.detail?`<br><span>${e(ev.detail)}</span>`:""}</li>`).join("")}</ul></details>`:`<div class="oi-meta">Sem evidências registradas</div>`;
   const swipe=d.alreadyInSwipe?(existing?`<a class="oi-chip oi-chip--link" data-nav href="${e(offerPath(existing))}">Já no Swipe: ${e(oiOfferName(existing))}</a>`:`<span class="oi-chip">Já no Swipe${d.existingMatches.length?": "+e(d.existingMatches[0].label):""}</span>`):"";
   const metrics=[d.adsLabel,d.firstSeen?"1ª vez: "+d.firstSeen:"",d.lastSeen?"Última: "+d.lastSeen:""].filter(Boolean).join(" · ");
@@ -3039,6 +3040,13 @@ function oiPendingBanner(route){
   if(oiAreaLive(route.area)||route.area==="monitoramento")return"";
   return `<div class="banner banner--warn" role="note">${ic("shield")}${OI_BACKEND_READY?"Esta área ainda não está conectada ao backend.":"Módulo em construção: a integração com o backend ainda não está conectada."} Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
+/* URLs assinadas do fbcdn expiram: se a miniatura falhar, volta ao placeholder do card (mesma altura fixa). */
+function oiImgFallback(img){
+  if(!img.isConnected)return;
+  const ph=img.dataset.oiPh;
+  if(!ph){img.remove();return;}
+  const box=document.createElement("div");box.className="oi-thumb oi-thumb--none";box.setAttribute("aria-hidden","true");box.innerHTML=ic(ph);img.replaceWith(box);
+}
 /* Foco estável entre renders: chave por id ou ação+id (botões de revisão/ação não têm id).
    Botões ocupados usam aria-disabled (não disabled) para não perderem o foco. */
 let oiPendingFocus="";
@@ -3095,7 +3103,7 @@ function renderOfferIntel(){
   const select=$("#oiOffer",area);
   if(select)select.addEventListener("change",()=>{const o=oiOfferById(select.value);go({oferta:select.value,ref:oiRefKindOf(o)==="admin_draft"?"admin_draft":"",job:""});});
   [["oiType","tipo"],["oiStatus","status"],["oiOrder","ordem"]].forEach(([id,key])=>{const el=$("#"+id,area);if(el)el.addEventListener("change",()=>go({[key]:el.value}));});
-  area.querySelectorAll("img[data-oi-img]").forEach(img=>img.addEventListener("error",()=>img.remove(),{once:true}));
+  area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
   if(!oiClickBound){oiClickBound=true;area.addEventListener("click",oiOnClick);}
   if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);oiFunnelSheet(area,route);}else{oiSheetFor=null;if(oiResize){oiResize.disconnect();oiResize=null;}}
   const retry=$("[data-oi-retry]",area);

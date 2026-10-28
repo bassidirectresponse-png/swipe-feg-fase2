@@ -104,3 +104,17 @@ test("ingestão do Facebook usa somente a mídia pública e não depende de cole
   assert.doesNotMatch(resolver, /APIFY_TOKEN|api\.apify\.com|FB_ADS_ACTOR|apify~/i);
   assert.doesNotMatch(html, /APIFY_TOKEN|api\.apify\.com|FB_ADS_ACTOR/);
 });
+
+test("CSP libera miniaturas do fbcdn só em img-src", () => {
+  const policy = netlify.match(/Content-Security-Policy = "([^"]+)"/)?.[1] || "";
+  const directive = name => policy.match(new RegExp(`${name}[^;]+`))?.[0] || "";
+  assert.match(directive("img-src"), /https:\/\/\*\.fbcdn\.net/);
+  for (const name of ["script-src", "connect-src", "media-src", "frame-src", "default-src", "style-src"]) assert.doesNotMatch(directive(name), /fbcdn/, name);
+});
+
+test("miniatura do card de descoberta: no-referrer, lazy, async e fallback para o placeholder", () => {
+  assert.match(html, /<img class="oi-thumb" data-oi-img data-oi-ph="\$\{phIcon\}" src="\$\{e\(d\.thumbnail\)\}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">/);
+  assert.match(html, /function oiImgFallback\(img\)/);
+  assert.match(html, /box\.className="oi-thumb oi-thumb--none"/);
+  assert.match(html, /img\.addEventListener\("error",\(\)=>oiImgFallback\(img\),\{once:true\}\)/);
+});
