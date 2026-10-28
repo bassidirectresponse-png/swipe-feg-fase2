@@ -2,6 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {extractScanPage,pixelIds} from '../lib/offer-intel-scan-extract.mjs';
 const page='https://brand.example/';
+test('QA-R6-B04 regex literals and different identifiers do not install pixels',()=>{
+  for(const source of [
+    'const example = /gtag("config","G-AAAA1234")/;',
+    'mygtag("config","G-AAAA1234");',
+    '$gtag("config","G-AAAA1234");',
+    'égtag("config","G-AAAA1234");',
+    'const example = /[/]gtag("config","G-AAAA1234")/gi;',
+    String.raw`const example = /a\/gtag("config","G-AAAA1234")/;`,
+    'function example(){return /fbq("init","123456789")/;}',
+  ]){
+    assert.deepEqual(pixelIds(source,page),[],source);
+    assert.deepEqual(extractScanPage(`<script>${source}</script>`,page).pixels,[],source);
+  }
+  assert.deepEqual(pixelIds('const ratio=10/2; gtag("config","G-REAL1234"); const other=ratio/2;',page).map(p=>p.id),['G-REAL1234']);
+});
 test('QA-R6-B04 comments and example strings are not installations, inline or external',()=>{
   const fixtures=[
     '// gtag("config","G-AAAA1234");\n/* fbq("init","123456789"); */',
