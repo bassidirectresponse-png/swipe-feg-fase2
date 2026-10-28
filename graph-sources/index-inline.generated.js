@@ -1138,9 +1138,6 @@ function oiEnsureTodas(){
     if(activeSection==="inteligencia")renderOfferIntel();
   })();
 }
-/* Invalida sem apagar: o cabeçalho segue mostrando o resumo antigo enquanto um único GET atualiza (sem piscar nem loop). */
-function oiInvalidateCtx(){Object.keys(oiCtxCache).forEach(k=>{oiCtxCache[k].stale=true;});}
-function oiInvalidateIntel(){oiTodas.status="idle";oiInvalidateCtx();}
 function oiOverviewHtml(route){
   oiEnsureTodas();
   if(oiTodas.status==="loading"||oiTodas.status==="idle")return oiStateHtml("loading");
@@ -1160,14 +1157,20 @@ function oiOverviewHtml(route){
 
 /* ----- Cabeçalho de contexto da oferta (Descobertas, Conexões, Funis e Histórico filtrado) ----- */
 const oiCtxCache=Object.create(null);
+/* Geração do resumo: cada mutação incrementa oiCtxGen. Um GET guarda a geração em que começou; se ela mudou
+   quando a resposta chega, o cache fica defasado e o próximo render faz UM novo GET (sem loop, sem perder invalidação). */
+let oiCtxGen=0;
+function oiInvalidateCtx(){oiCtxGen++;}
+function oiInvalidateIntel(){oiTodas.status="idle";oiInvalidateCtx();}
 function oiCtxKey(route){const sc=oiNavScope(route);return sc.oferta?(sc.ref||"offer")+":"+sc.oferta:"";}
 function oiEnsureCtx(route){
   const key=oiCtxKey(route);
-  const cached=key&&oiCtxCache[key];
-  if(!key||!OI_BACKEND_READY||!OI_SUMMARY_LIVE||(cached&&(!cached.stale||cached.fetching)))return;
-  const sc=oiNavScope(route);
-  if(cached)cached.fetching=true;else oiCtxCache[key]={status:"loading"};
-  oiApi.summary(sc.oferta,sc.ref==="admin_draft"?"admin_draft":"offer").then(r=>{oiCtxCache[key]={status:"ready",summary:r};}).catch(error=>{oiCtxCache[key]={status:"error",error:String(error&&error.message||"")};}).then(()=>{if(activeSection==="inteligencia"&&oiRoute&&oiCtxKey(oiRoute)===key)renderOfferIntel();});
+  if(!key||!OI_BACKEND_READY||!OI_SUMMARY_LIVE)return;
+  const cached=oiCtxCache[key];
+  if(cached&&(cached.fetching||cached.gen===oiCtxGen))return;
+  const sc=oiNavScope(route),gen=oiCtxGen;
+  if(cached)cached.fetching=true;else oiCtxCache[key]={status:"loading",fetching:true,gen};
+  oiApi.summary(sc.oferta,sc.ref==="admin_draft"?"admin_draft":"offer").then(r=>{oiCtxCache[key]={status:"ready",summary:r,gen};}).catch(error=>{oiCtxCache[key]={status:"error",error:String(error&&error.message||""),gen};}).then(()=>{if(activeSection==="inteligencia"&&oiRoute&&oiCtxKey(oiRoute)===key)renderOfferIntel();});
 }
 function oiContextHtml(route){
   if(!["descobertas","conexoes","funis","historico"].includes(route.area)||route.funnelId)return"";
