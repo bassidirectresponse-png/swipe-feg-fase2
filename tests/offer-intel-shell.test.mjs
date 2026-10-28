@@ -176,3 +176,13 @@ test("QA-UI-R5-01/02: retry recarrega 'Todas as ofertas' e universo parcial é s
   assert.match(html, /oiTodas\.truncated=!!cursor/);
   assert.match(html, /more=oiStates\.descobertas\.truncated\?"\+":""/);
 });
+
+test("QA-UI-R5-03: mutações bem-sucedidas invalidam o resumo do cabeçalho sem apagar nem repetir fetch em loop", () => {
+  assert.match(html, /function oiInvalidateCtx\(\)\{Object\.keys\(oiCtxCache\)\.forEach\(k=>\{oiCtxCache\[k\]\.stale=true;\}\);\}/);
+  assert.match(html, /function oiInvalidateIntel\(\)\{oiTodas\.status="idle";oiInvalidateCtx\(\);\}/);
+  assert.match(html, /\(cached&&\(!cached\.stale\|\|cached\.fetching\)\)\)return;/);
+  assert.match(html, /st\.items\[i\]=OfferIntel\.formatDiscovery\(r\);\n\s+oiInvalidateCtx\(\);/);
+  assert.match(html, /st\.items\[i\]=OfferIntel\.formatConnection\(r\);oiInvalidateCtx\(\);/);
+  assert.match(html, /if\(job\.active\)oiTrack\(id\);\n\s+oiInvalidateIntel\(\);/);
+  assert.doesNotMatch(html, /delete oiCtxCache\[k\]/);
+});
