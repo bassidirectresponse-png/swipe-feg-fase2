@@ -2373,15 +2373,25 @@ async function loadOffers(){
   return true;
 }
 let joymodeSeedWorking=false;
+const JOYMODE_OFFER_ID="4b878728-fa39-4512-815a-762507835dc0";
+/* A oferta Joymode já existe em produção, às vezes com outro nome ("Joymode · ..."): reconhece por id ou por nome
+   em qualquer seção de oferta, para o seed opcional nunca tentar recriá-la. */
+function joymodeOfferExists(){
+  return offers.some(o=>{
+    if(String(o.id)===JOYMODE_OFFER_ID)return true;
+    if(!["oferta","brandsvalidated","brandsgeneral"].includes(sectionOf(o)))return false;
+    const d=o.data||{};return /joymode/i.test(String(d.nomeOferta||"")+" "+String(d.nomeMarca||""));
+  });
+}
 async function ensureJoymodeInsider(){
   if(!isAdmin||joymodeSeedWorking)return;
-  const current=offers.find(o=>sectionOf(o)==="brandsvalidated"&&String((o.data||{}).nomeOferta||"").trim().toLowerCase()==="joymode");
+  const current=joymodeOfferExists();
   if(current){
     try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}
     return;
   }
   let lock="";try{lock=localStorage.getItem("feg_joymode_seed_v1")||"";}catch(e){}
-  if(lock==="working")return;
+  if(lock==="working"||lock==="done")return;
   joymodeSeedWorking=true;try{localStorage.setItem("feg_joymode_seed_v1","working");}catch(e){}
   try{
     const seedRes=await fetch("/assets/joymode/seed.json",{cache:"no-store"});if(!seedRes.ok)throw new Error("seed indisponível");
@@ -2391,7 +2401,7 @@ async function ensureJoymodeInsider(){
     data.bmPrints=await Promise.all((data.bmPrints||[]).map(async p=>{const b64=await fetch(p.asset,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error("print indisponível");return r.text();});return{nome:p.nome,img:"data:image/jpeg;base64,"+b64.trim()};}));
     const {data:rows,error}=await sb.from("offers").insert({data}).select();if(error)throw error;
     const row=rows&&rows[0];if(row){offers.push(row);renderGrid();renderSubfilter();writeCache();try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(e){}toast("Joymode adicionada em Ofertas Insider ✓");}
-  }catch(e){console.error("seed Joymode falhou",e);try{localStorage.removeItem("feg_joymode_seed_v1");}catch(_){}toast("Não foi possível adicionar a Joymode automaticamente.",true);}
+  }catch(e){console.warn("seed Joymode opcional não concluído",e);try{localStorage.setItem("feg_joymode_seed_v1","done");}catch(_){}}
   finally{joymodeSeedWorking=false;}
 }
 async function deleteOffer(id){
