@@ -165,3 +165,14 @@ test("Rodada 5: cabeçalho de contexto, ofertas investigadas, cards por tipo, av
   assert.match(html, /confirmed:"btn--accent",ignored:"btn--ghost",review:"btn--outline"/);
   assert.match(html, /function oiCount\(value\)/);
 });
+
+test("QA-UI-R5-01/02: retry recarrega 'Todas as ofertas' e universo parcial é sinalizado em todos os ramos", () => {
+  assert.match(html, /retry\.addEventListener\("click",\(\)=>\{delete oiStates\[route\.area\];oiInvalidateIntel\(\);renderOfferIntel\(\);\}\)/);
+  assert.match(html, /function oiInvalidateIntel\(\)\{oiTodas\.status="idle";/);
+  assert.match(html, /Universo parcial: só as primeiras 500 descobertas/);
+  assert.match(html, /if\(!shown\.length\)return filters\+jobChip\+partial\+oiStateHtml\(/);
+  assert.match(html, /return filters\+jobChip\+partial\+banner\+body;/);
+  assert.match(html, /Universo parcial: só as 300 investigações mais recentes/);
+  assert.match(html, /oiTodas\.truncated=!!cursor/);
+  assert.match(html, /more=oiStates\.descobertas\.truncated\?"\+":""/);
+});
