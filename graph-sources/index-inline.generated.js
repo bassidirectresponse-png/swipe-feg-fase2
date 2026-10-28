@@ -634,7 +634,7 @@ const OI_BACKEND_READY=true;
 const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis","dominio"]);
 /* v2 (nota offer-intel-contratos, seção 10): Raio-X do domínio e Relatório semanal. Fica false até os endpoints
    offer-intel-domain-scan(s) e offer-intel-weekly estarem publicados e verificados; só então vira true, em commit próprio. */
-const OI_V2_READY=false;
+const OI_V2_READY=true;
 const OI_V2_AREAS=new Set(["dominio"]);
 function oiV2Live(){return OI_BACKEND_READY&&OI_V2_READY&&isAdmin;}
 const OI_SUMMARY_LIVE=true;
@@ -1397,7 +1397,7 @@ function crFolderHtml(route){
   const d=st.data,m=d.meta,n=v=>v==null?"—":v.toLocaleString("pt-BR");
   const allKnown=d.products.length>0&&d.products.every(p=>p.adsCollected!=null),total=m.adsCount!=null?m.adsCount:allKnown?d.products.reduce((t,p)=>t+p.adsCollected,0):null;
   const adsTxt=total==null?"":" · "+n(total)+" anúncios";
-  const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?"Pasta parcial: parte da análise de IA não terminou, mas o ranking está completo.":"A geração desta pasta falhou."}${m.error?" "+esc(m.error):""}</div>`:"";
+  const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?(String(m.error||"").trim()==="Parte das mídias não foi arquivada."?"Pasta parcial — o ranking está completo. Alguns vídeos grandes não foram guardados no Swipe; use \"Ver na Biblioteca\".":"Pasta parcial — o ranking está completo."+(m.error?" "+esc(m.error):"")):"A geração desta pasta falhou."+(m.error?" "+esc(m.error):"")}</div>`:"";
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn()}</div></div>
     <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
