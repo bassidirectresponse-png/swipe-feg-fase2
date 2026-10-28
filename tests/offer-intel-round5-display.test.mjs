@@ -4,11 +4,29 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {apifyRecords} from '../lib/offer-intel-apify.mjs';
 import {publicDiscovery} from '../lib/offer-intel-public.mjs';
-import {discoveryDisplay,startedAt} from '../lib/offer-intel-display.mjs';
+import {discoveryDisplay,startedAt,landingUrl} from '../lib/offer-intel-display.mjs';
 import {createFAKEWorkerStorage} from './offer-intel-FAKE-worker-storage.mjs';
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/offer-intel-apify-display-FAKE.json',import.meta.url),'utf8'));
 const job=()=>({id:randomUUID(),lease_token:randomUUID(),scope_key:'offer:FAKE',created_at:'2026-10-28T00:00:00Z'});
 const at='2026-10-28T00:00:00Z';
+test('QA-R5-01 sensitive query aliases never enter normalized or public landing URLs',()=>{
+  for(const key of ['apiKey','accessToken','API_KEY','access-token','access%54oken','refreshToken','clientSecret','password','authorization']) {
+    const url='https://example.com/?'+key+'=FAKE_PRIVATE';
+    assert.equal(landingUrl(url),null);
+    assert.deepEqual(discoveryDisplay('ad',{landing_url:url}),{});
+    assert.ok(!('landing_url' in publicDiscovery({type:'ad',data:{landing_url:url}})));
+    assert.ok(!('page_picture_url' in publicDiscovery({type:'page',data:{page_picture_url:'https://scontent.xx.fbcdn.net/a?'+key+'=FAKE_PRIVATE'}})));
+  }
+  assert.equal(landingUrl('https://example.com/?utm_source=facebook'),'https://example.com/?utm_source=facebook');
+});
+test('QA-R5-02 validates source calendar before timezone conversion without rejecting valid UTC day crossings',()=>{
+  for(const value of ['2026-02-30T12:00:00+01:00','2025-02-29T00:00:00-03:00','1900-02-29T12:00:00+01:00','2026-04-31T12:00:00Z','2026-01-01T24:00:00+01:00']) {
+    assert.equal(startedAt(value),null);
+    assert.ok(!('started_at' in publicDiscovery({type:'ad',data:{started_at:value}})));
+  }
+  assert.equal(startedAt('2024-02-29T00:30:00+01:00'),'2024-02-28T23:30:00.000Z');
+  assert.equal(startedAt('2000-02-29T23:30:00-02:00'),'2000-03-01T01:30:00.000Z');
+});
 test('R5 realistic identified FAKE Apify snake/camel fields flatten through allowlist',()=>{
   const rows=apifyRecords(job(),fixture,'FAKErun',[],at).discoveries;
   const ad=publicDiscovery(rows.find(d=>d.identity_key==='meta:ad:111111111'));
