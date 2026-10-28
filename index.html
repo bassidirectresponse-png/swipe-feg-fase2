@@ -1609,6 +1609,7 @@
   .oi-chip--off{color:var(--muted-fg);border-style:dashed;}
   .oi-chip--bad{border-color:var(--red);background:var(--red-soft);}
   .oi-chip--hi{border-color:var(--accent);background:var(--accent);color:var(--on-accent);}
+  .oi-filters input[type="search"]{min-height:44px;min-width:220px;padding:0 12px;border:1px solid var(--border-2);border-radius:var(--radius-xs);background:var(--surface);color:var(--fg);font:inherit;}
   .oi-dx__tech{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
   .oi-dx__vsl{display:flex;flex-direction:column;gap:12px;padding:12px 0;border-top:1px solid var(--border);}
   .oi-dx__vsl:first-of-type{border-top:0;padding-top:0;}
@@ -1635,6 +1636,7 @@
   .oi-wk__top h2{font-size:clamp(1.3rem,3vw,1.9rem);}
   .oi-wk__actions{display:flex;flex-wrap:wrap;gap:8px;}
   .oi-wk__head>*{align-self:stretch;}
+  .oi-wk__meta{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));}
   .oi-wk__sum ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;}
   .oi-wk__sum{align-items:stretch;}
   .oi-wk__tabs{display:flex;gap:8px;flex-wrap:wrap;}
@@ -1648,7 +1650,7 @@
   .oi-wk__chg{font-size:.8rem;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--border-2);}
   .oi-wk__chg--up{color:var(--accent);border-color:var(--accent);}
   .oi-wk__chg--down{color:var(--red);border-color:var(--red);}
-  .oi-wk__media{width:100%;aspect-ratio:4/5;max-height:420px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);display:grid;place-items:center;}
+  .oi-wk__media{width:100%;aspect-ratio:1/1;max-height:340px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);display:grid;place-items:center;}
   .oi-wk__media video,.oi-wk__media>img{width:100%;height:100%;object-fit:contain;background:#000;}
   .oi-wk__media--none{color:var(--muted-fg);gap:6px;align-content:center;}
   .oi-wk__media--none .ico{width:34px;height:34px;}
@@ -3504,9 +3506,10 @@ async function oiWeeklyRun(button){
 }
 /* Enquanto o relatório está em execução, recarrega em silêncio (sem voltar ao esqueleto). */
 function oiWkSchedule(route){
-  if(oiWkTimer){clearTimeout(oiWkTimer);oiWkTimer=null;}
-  const st=oiStates.semanal,rep=st&&st.status==="ready"&&st.items[0];
-  if(route.area!=="semanal"||!rep||!rep.meta.active)return;
+  const st=oiStates.semanal,rep=st&&st.status==="ready"&&st.items[0],want=route.area==="semanal"&&!!rep&&rep.meta.active;
+  /* Re-renders por outros motivos não reiniciam a contagem (senão o relógio nunca dispara). */
+  if(!want){if(oiWkTimer){clearTimeout(oiWkTimer);oiWkTimer=null;}return;}
+  if(oiWkTimer)return;
   oiWkTimer=setTimeout(async()=>{
     oiWkTimer=null;
     if(activeSection!=="inteligencia"||!oiRoute||oiRoute.area!=="semanal")return;

@@ -1414,9 +1414,10 @@ async function oiWeeklyRun(button){
 }
 /* Enquanto o relatório está em execução, recarrega em silêncio (sem voltar ao esqueleto). */
 function oiWkSchedule(route){
-  if(oiWkTimer){clearTimeout(oiWkTimer);oiWkTimer=null;}
-  const st=oiStates.semanal,rep=st&&st.status==="ready"&&st.items[0];
-  if(route.area!=="semanal"||!rep||!rep.meta.active)return;
+  const st=oiStates.semanal,rep=st&&st.status==="ready"&&st.items[0],want=route.area==="semanal"&&!!rep&&rep.meta.active;
+  /* Re-renders por outros motivos não reiniciam a contagem (senão o relógio nunca dispara). */
+  if(!want){if(oiWkTimer){clearTimeout(oiWkTimer);oiWkTimer=null;}return;}
+  if(oiWkTimer)return;
   oiWkTimer=setTimeout(async()=>{
     oiWkTimer=null;
     if(activeSection!=="inteligencia"||!oiRoute||oiRoute.area!=="semanal")return;
