@@ -100,3 +100,19 @@ test("bandeja, polling e revisão com expected_version tratam 409 recarregando",
   assert.match(html, /if\(error\.status===409\)\{delete oiStates\.descobertas;\}/);
   assert.match(html, /role="progressbar"/);
 });
+
+test("Conexões e Mapa de Funis: ações com expected_version, mapa sem biblioteca, lista mobile e deep link de etapa", () => {
+  assert.match(html, /oiApi\.setRelationStatus\(id,status,item\.version\)/);
+  assert.match(html, /if\(error\.status===409\)delete oiStates\.conexoes/);
+  assert.match(html, /data-oi-rel-act="\$\{s\}"[^>]*aria-pressed=/);
+  assert.match(html, /em_andamento:"active"/);
+  assert.match(html, /oiApi\.getFunnel\(route\.funnelId\)/);
+  assert.match(html, /OfferIntel\.layoutFunnel\(r\)/);
+  assert.match(html, /@media\(max-width:980px\)\{\.oi-fmap\{display:none;\}\.oi-flist\{display:block;\}/);
+  assert.match(html, /aria-current="step"/);
+  assert.match(html, /new ResizeObserver\(draw\)/);
+  assert.match(html, /oiStepHref\(route,n\.id\)/);
+  assert.match(html, /OfferIntel\.formatLimits\(r\.limits\)/);
+  assert.match(html, /Coleta de anúncios indisponível/);
+  assert.doesNotMatch(html, /r\.job\|\|r|r\.discovery\|\|r/);
+});
