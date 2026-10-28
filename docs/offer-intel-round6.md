@@ -42,3 +42,23 @@ foi copiado. Testes de rede usam fetch/transport/storage explicitamente FAKE.
 soft-404/redirect/403/429/tempo, pixels, checkout/tech, CTA oculto, assets,
 VTurb/HLS/MP4, SSRF incluindo hosts externos, endpoints admin e cancelamento.
 Sem chamadas pagas, deploy, escrita SQL ou captura visual nesta tarefa.
+
+## Apify ampliado
+
+Até seis consultas de trinta resultados. Ordem: Page IDs, domínios registráveis,
+nomes; se sobrar capacidade, um segundo run consulta domínios de destino novos
+do primeiro lote. Máximo dois runs, seis consultas somadas e 180 itens lidos,
+sem recursão. Cada run reserva quota diária antes do POST. Runs desconhecidos
+permanecem somente em reconciliação, e o input persistido de versões anteriores
+é restaurado para não mudar a chave de deduplicação após deploy. Retry explícito
+de recusa definitiva mantém o contrato 8d.
+
+Campos novos por anúncio: collation_count observado, days_active calculado entre
+started_at e a observação (omitido se início ausente/futuro), video_url,
+video_preview_url e ad_library_url. Só URLs públicas http(s), sem credenciais ou
+chaves de token. Vídeos não são baixados pelo adapter.
+
+`tests/offer-intel-round6-apify.test.mjs` usa fetch FAKE para ordem/tetos, dois
+saltos, replay, unknown legado e projeção dos campos. Dois testes antigos foram
+ajustados ao contrato 6×30; o caso de replay sem salto agora informa o domínio
+de destino como já cadastrado.

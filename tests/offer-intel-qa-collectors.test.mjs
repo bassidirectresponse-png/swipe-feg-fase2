@@ -51,7 +51,8 @@ test("QA classifier only claims verified for observed document signals",()=>{
  assert.equal(classifyStep({text:"Payment method",http_status:403}).verification,"inaccessible");
 });
 test("QA same Apify investigation twice: one POST, stable identities, decisions and legacy snapshots unchanged",async()=>{
- const j=job(),s=createFAKEWorkerStorage(j),legacy={offers:{[j.offer_id]:structuredClone(j.seed_snapshot.data)},drafts:{FAKE:{note:"keep"}}},original=structuredClone(legacy);
+ const j=job();j.seed_snapshot.data.dominios=[{linkDominio:'https://public.example/'}]; // Already searched; this case tests replay, not new second-hop domains.
+ const s=createFAKEWorkerStorage(j),legacy={offers:{[j.offer_id]:structuredClone(j.seed_snapshot.data)},drafts:{FAKE:{note:"keep"}}},original=structuredClone(legacy);
  let posts=0,reservations=0;const rows=Array.from({length:3},()=>({adArchiveId:"456",pageId:"123",pageName:"FAKE",snapshot:{linkUrl:"https://public.example/"}}));
  const collector=createApifyCollector({storage:s,token:randomUUID(),budget:{reserve:async()=>{reservations++;return {};}},
  fetcher:async(url,o)=>{if(o.method==="POST"){posts++;return Response.json({data:{id:"FAKERUN",status:"SUCCEEDED",defaultDatasetId:"FAKEDS"}});}
