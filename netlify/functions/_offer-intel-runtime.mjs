@@ -17,10 +17,7 @@ export function intelRuntime() {
   // No bot fallback: only service_role can write the auxiliary schema.
   const storage=createSupabaseStorage({url:SUPABASE_URL,serviceKey});
   const apifyToken=String(process.env.APIFY_TOKEN||"").trim();
-  const budget=createDailyBudget({store:{
-    getWithMetadata:(...args)=>getStore({name:"offer-intel-budget",consistency:"strong"}).getWithMetadata(...args),
-    setJSON:(...args)=>getStore({name:"offer-intel-budget",consistency:"strong"}).setJSON(...args),
-  }});
+  const budget=createDailyBudget({storage});
   const reader=createReferenceReader({
     supabaseUrl:SUPABASE_URL,serviceKey,
     readDraft:async id=>{

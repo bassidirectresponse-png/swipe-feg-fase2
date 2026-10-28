@@ -4,22 +4,17 @@ import { randomUUID } from "node:crypto";
 import { createDailyBudget } from "../lib/offer-intel-budget.mjs";
 import { createApifyCollector, apifyPlan } from "../lib/offer-intel-apify.mjs";
 import { createFAKEWorkerStorage } from "./offer-intel-FAKE-worker-storage.mjs";
+import { createFAKEBudgetStorage } from "./offer-intel-FAKE-budget-storage.mjs";
 const fixture=()=>({id:randomUUID(),lease_token:randomUUID(),offer_id:randomUUID(),offer_ref_kind:"offer",scope_key:"offer:FAKE",
   seed_snapshot:{data:{nomeOferta:"FAKE Brand",bibliotecas:[{link:"https://www.facebook.com/ads/library/?view_all_page_id=123"}],dominios:[{linkDominio:"https://example.com"}]}}});
-function FAKEBlobs() {
-  const data=new Map();let version=0;
-  return {data,async getWithMetadata(key){const r=data.get(key);return r?structuredClone(r):null;},
-    async setJSON(key,value,options){const current=data.get(key),allowed=options.onlyIfNew?!current:current?.etag===options.onlyIfMatch;
-      if(!allowed)return {modified:false};data.set(key,{etag:String(++version),data:structuredClone(value)});return {modified:true};}};
-}
 const json=data=>Response.json(data),token=["FAKE","provider","fixture"].join("-");
 const items=[{adArchiveId:"456",pageId:"123",pageName:"Page",snapshot:{title:"Ad",linkUrl:"https://example.com/offer"}},
   {adArchiveId:"456",pageId:"123",pageName:"Page",snapshot:{title:"Ad",linkUrl:"https://example.com/offer"}}];
-test("B3 budget CAS admits exactly 15 concurrent reservations and reuses known key",async()=>{
-  const store=FAKEBlobs(),budget=createDailyBudget({store,now:()=>new Date("2026-10-28T12:00:00Z")});
+test("budget RPC FAKE admits exactly 15 concurrent reservations and reuses known key",async()=>{
+  const storage=createFAKEBudgetStorage(),budget=createDailyBudget({storage});
   const results=await Promise.allSettled(Array.from({length:20},(_,i)=>budget.reserve("reservation-"+i)));
   assert.equal(results.filter(r=>r.status==="fulfilled").length,15);
-  const used=[...store.data.values()][0].data.reservations.length;
+  const used=storage.reservations.size;
   assert.ok(used<=15);
   const reused=await budget.reserve("reservation-0");assert.equal(reused.reused,true);assert.equal(reused.daily_used,used);
   for(let i=used;i<15;i++)await budget.reserve("fill-"+i);
@@ -27,9 +22,17 @@ test("B3 budget CAS admits exactly 15 concurrent reservations and reuses known k
 });
 test("B3 budget failure is closed; no fallback and no provider POST",async()=>{
   const job=fixture(),storage=createFAKEWorkerStorage(job);let calls=0;
-  const budget=createDailyBudget({store:{getWithMetadata:async()=>{throw Error("FAKE outage");}}});
+  const budget=createDailyBudget({storage:{budgetReserve:async()=>{throw Error("FAKE outage");}}});
   await assert.rejects(()=>createApifyCollector({storage,budget,token,fetcher:async()=>{calls++;}}).run(job),e=>e.status===503);
   assert.equal(calls,0);
+});
+test("Postgres budget daily_limit prevents the sixteenth provider POST",async()=>{
+  const job=fixture(),storage=createFAKEWorkerStorage(job),budgetStorage=createFAKEBudgetStorage();
+  const budget=createDailyBudget({storage:budgetStorage});let calls=0;
+  for(let i=0;i<15;i++)await budget.reserve("filled-"+i);
+  await assert.rejects(()=>createApifyCollector({storage,budget,token,fetcher:async()=>{calls++;}}).run(job),
+    e=>e.status===429&&e.code==="daily_limit");
+  assert.equal(calls,0);assert.equal(budgetStorage.reservations.size,15);
 });
 test("B3 Apify reserves before POST, persists run immediately, known-page seeds and Meta dedupe",async()=>{
   const job=fixture(),storage=createFAKEWorkerStorage(job),calls=[],events=[];
