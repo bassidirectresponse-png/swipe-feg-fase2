@@ -1577,7 +1577,8 @@
   /* Inteligência de Ofertas */
   .oi{display:flex;flex-direction:column;gap:16px;padding-bottom:40px;}
   .oi-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;}
-  .oi-tabs{max-width:100%;}
+  .oi-tabs{max-width:100%;flex-wrap:nowrap;overflow-x:auto;}
+  .oi-tabs .seg-btn{white-space:nowrap;flex:none;}
   .oi-tabs .seg-btn{min-height:44px;}
   .oi-offer{flex:0 1 360px;min-width:min(100%,220px);}
   .oi-offer select{width:100%;}
@@ -1591,7 +1592,8 @@
   .oi-links{display:flex;gap:10px;flex-wrap:wrap;}
   .oi-form input{width:100%;max-width:560px;height:46px;border:1px solid var(--border-2);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--fg);padding:0 14px;}
   .oi-form input[aria-invalid="true"]{border-color:var(--red);}
-  .oi .empty{padding:56px 20px;}
+  .oi .empty{padding:48px 20px;}
+  .oi .empty h2{font-size:clamp(1.25rem,2.4vw,1.6rem);}
   .oi-body .empty{border:1px dashed var(--border-2);border-radius:var(--radius-sm);}
   .oi .btn[disabled]{opacity:.5;cursor:not-allowed;}
 </style>
