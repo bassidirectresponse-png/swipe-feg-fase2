@@ -1,6 +1,6 @@
 import { IntelError, UUID, hash, stableJson, actionKey, pagination, publicJob, cursorTimestamp } from "../../lib/offer-intel-core.mjs";
 import { resolveReference, validateReferenceInput } from "../../lib/offer-intel-reference.mjs";
-import { publicLimits } from "../../lib/offer-intel-limits.mjs";
+import { publicLimits, refreshBudgetUsage } from "../../lib/offer-intel-limits.mjs";
 import { publicDiscovery, publicRelation, publicFunnel, publicEvidence } from "../../lib/offer-intel-public.mjs";
 
 const kinds={discoveries:["ad","page","domain"],relations:["same_page","same_domain","same_destination_url","similar_creative","redirect"]};
@@ -44,7 +44,9 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
         }
       }
       await readQuota(user);
-      const services=deps.getServices(),limits=publicLimits(services.capabilities);
+      const services=deps.getServices();
+      await refreshBudgetUsage(services);
+      const limits=publicLimits(services.capabilities);
       if(query.reference){query.scope=(await resolveReference(query.reference,services.reader)).scope_key;delete query.reference;}
       if(method==="POST") {
         const review={entity_type:resource,id:query.id,status:body.status,expected_version:body.expected_version,reason:body.reason||null};

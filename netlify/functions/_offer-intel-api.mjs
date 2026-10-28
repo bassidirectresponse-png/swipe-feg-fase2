@@ -1,7 +1,7 @@
 import { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit } from "./_security.mjs";
 import { IntelError, UUID, LIMITS, hash, stableJson, normalizeOptions, actionKey, publicJob, pagination } from "../../lib/offer-intel-core.mjs";
 import { resolveReference, validateReferenceInput } from "../../lib/offer-intel-reference.mjs";
-import { publicLimits } from "../../lib/offer-intel-limits.mjs";
+import { publicLimits, refreshBudgetUsage } from "../../lib/offer-intel-limits.mjs";
 import { verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { intelRuntime } from "./_offer-intel-runtime.mjs";
 import { resourceHandlers } from "./_offer-intel-read-api.mjs";
@@ -70,6 +70,7 @@ export function createIntelHandlers(overrides={}) {
         const services=deps.getServices();
         const ref=await resolveReference(body,services.reader);
         if(ref.seed_url) await services.validateUrl(ref.seed_url);
+        await refreshBudgetUsage(services);
         const request_hash=hash(stableJson({scope:ref.scope_key,url:ref.seed_url,options:opts}));
         const limits=publicLimits(services.capabilities);
         let result;
@@ -91,6 +92,7 @@ export function createIntelHandlers(overrides={}) {
         const ref=await resolveReference(Object.fromEntries(params),services.reader); scope=ref.scope_key;
       }
       const result=await services.storage.list({...page,scope,status});
+      await refreshBudgetUsage(services);
       return deps.json(req,200,{ok:true,items:result.items.map(row=>({...publicJob(row),limits:publicLimits(services.capabilities,row.created_at)})),next_cursor:result.next_cursor,limits:publicLimits(services.capabilities)},METHODS);
     } catch(error) {return errorResponse(req,error);}
   }
@@ -104,6 +106,7 @@ export function createIntelHandlers(overrides={}) {
         const services=deps.getServices();
         const row=await services.storage.get(id);
         if(!row) throw new IntelError(404,"not_found","Investigação não encontrada.");
+        await refreshBudgetUsage(services);
         return deps.json(req,200,{ok:true,...publicJob(row),limits:publicLimits(services.capabilities,row.created_at)},METHODS);
       }
       const body=objectBody(await deps.readJson(req,{maxBytes:8192}));
@@ -111,6 +114,7 @@ export function createIntelHandlers(overrides={}) {
       if(!["retry","cancel"].includes(body.action)) throw new IntelError(400,"invalid_request","Ação inválida.");
       const services=deps.getServices();
       const result=await services.storage.action({actor_id:user.id,job_id,action:body.action,idempotency_key:key,request_hash:hash(stableJson({job_id,action:body.action}))});
+      await refreshBudgetUsage(services);
       await dispatchResult(services,result);
       return deps.json(req,body.action==="retry"?202:200,{ok:true,...publicJob(result.job),limits:publicLimits(services.capabilities,result.job.created_at),reused:result.reused},METHODS);
     } catch(error) {return errorResponse(req,error);}
