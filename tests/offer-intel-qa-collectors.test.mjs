@@ -215,7 +215,7 @@ test("QA truncated retry replaces old oversized checkpoint and renders public wa
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  vm.runInContext(html.slice(html.indexOf("function oiStatusChip("),html.indexOf("function oiFilterSelect(")),ctx);
  const discovery=publicDiscovery({...storage.records.discoveries.values().next().value,evidence:[proof]});
- const rendered=ctx.oiDiscoveryCard(ctx.OfferIntel.formatDiscovery(discovery));
+ const rendered=ctx.oiDiscoveryCard(ctx.OfferIntel.formatDiscovery(discovery),{area:"descobertas",query:{oferta:j.offer_id}});
  assert.match(rendered,/html_truncated: prefixo HTML observado/);
  assert.match(rendered,/<details class="oi-evidence">/);
 });

@@ -11,7 +11,20 @@ export function createFAKEWorkerStorage(job) {
       for(const [table,rows] of Object.entries(p.batch))for(const row of rows) {
         const old=records[table].get(row.id);
         if(table==="steps"&&old&&row.classification_basis?.method==="unvisited_link")continue;
-        records[table].set(row.id,{...old,...structuredClone(row),...(table==="discoveries"?{status:old?.status||"new",version:old?.version||1}:{})});
+        records[table].set(row.id,{...old,...structuredClone(row),...(table==="discoveries"?{scope_key:job.scope_key,data:{...old?.data,...structuredClone(row.data)},status:old?.status||"new",version:old?.version||1}:{}),
+          ...(table==="funnels"?{scope_key:job.scope_key,created_at:old?.created_at||job.created_at||new Date().toISOString()}: {})});
+      }
+      // FAKE of migration 005: exact scope counts and latest entry-domain funnel.
+      for(const d of records.discoveries.values())if(d.scope_key===job.scope_key) {
+        if(d.type==='page'&&d.data.page_id)d.data.ads_found=[...records.discoveries.values()].filter(a=>a.scope_key===job.scope_key&&a.type==='ad'&&a.data.page_id===d.data.page_id).length;
+        if(d.type==='domain') {
+          const funnels=[...records.funnels.values()].filter(f=>{
+            if(f.scope_key!==job.scope_key)return false;
+            const s=records.steps.get(f.start_step_id);
+            return [s?.original_url,s?.final_url].some(url=>{try{return new URL(url).hostname===d.data.domain;}catch{return false;}});
+          }).sort((a,b)=>b.created_at.localeCompare(a.created_at)||b.id.localeCompare(a.id));
+          if(funnels[0])d.data.funnel_id=funnels[0].id;
+        }
       }
       return counts();
     },

@@ -1619,15 +1619,15 @@
   .oi-filters{display:flex;flex-wrap:wrap;gap:12px;}
   .oi-filters .sort-control{min-width:170px;}
   .oi-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
-  .oi-dcard{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:14px;display:grid;grid-template-rows:auto auto 2.8em auto auto auto auto auto auto 1fr;gap:8px;min-height:400px;}
+  .oi-dcard{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;}
   .oi-dcard[aria-busy="true"]{opacity:.6;}
   .oi-dcard__media{height:112px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);}
+  .oi-dcard__media--ad{height:auto;aspect-ratio:3/2;}
   .oi-thumb{width:100%;height:100%;object-fit:cover;display:block;}
   .oi-thumb--none{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:2rem;}
   .oi-dcard__chips{display:flex;gap:6px;flex-wrap:wrap;min-height:26px;}
   .oi-dcard__title{font-size:1rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
-  .oi-dcard__url{font-size:.8rem;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .oi-dcard__actions{display:flex;gap:6px;flex-wrap:wrap;align-self:end;}
+  .oi-dcard__actions{display:flex;gap:6px;flex-wrap:wrap;align-self:stretch;}
   .oi-meta{font-size:.78rem;color:var(--muted-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .oi-chip{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;padding:4px 8px;border-radius:7px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--fg);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .oi-chip--link:hover{border-color:var(--accent);}
@@ -1711,7 +1711,7 @@
     .oi select,.oi .sort-control select{min-height:44px;height:44px;}
     .oi .btn--sm,.oi-start .btn{min-height:44px;height:44px;}
     .oi-evidence summary{min-height:44px;display:flex;align-items:center;}
-    .oi-dcard__url,.oi-chip--link,.oi-panel a.oi-link,.oi-flist a.oi-refl{display:inline-flex;align-items:center;min-height:44px;}
+    .oi-chip--link,.oi-panel a.oi-link,.oi-flist a.oi-refl{display:inline-flex;align-items:center;min-height:44px;}
     .oi-lref a,.oi-panel li a,.oi-note a,.oi-table td a{display:inline-flex;align-items:center;min-height:44px;}
     .oi-opts label{min-height:44px;align-items:center;}
     .oi-opts input{width:24px;height:24px;}
@@ -1719,14 +1719,81 @@
     .oi-filters .sort-control{flex:1 1 140px;min-width:0;}
     .oi-offer{flex:1 1 100%;}
     .oi-cards{grid-template-columns:minmax(0,1fr);}
-    .oi-dcard{min-height:0;grid-template-rows:none;}
     .oi-table th,.oi-table td{padding:10px;}
     .oi-panel{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-modal);max-height:82vh;overflow:auto;border-radius:18px 18px 0 0;border-bottom:0;box-shadow:0 -20px 60px -20px rgba(0,0,0,.8);background:var(--bg-2);}
     .oi-backdrop{position:fixed;inset:0;z-index:calc(var(--z-modal) - 1);background:var(--overlay);}
     .oi-lnode{min-height:44px;}
   }
+  /* Rodada 5: cabeçalho de contexto, cards por tipo, visão por Página, ofertas investigadas */
+  .oi-ctx{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"img main actions" "chips chips chips";gap:14px 18px;align-items:center;padding:16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);}
+  .oi-ctx__img{grid-area:img;width:72px;height:72px;border-radius:var(--radius-xs);object-fit:cover;background:var(--surface-2);flex:none;}
+  .oi-ctx__img--none{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:1.8rem;}
+  .oi-ctx__main{grid-area:main;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .oi-ctx__name{font-size:1.35rem;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .oi-ctx__status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .oi-ctx__status .oi-meta,.oi-ctx__main .oi-meta{white-space:normal;}
+  .oi-ctx__actions{grid-area:actions;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-width:260px;}
+  .oi-ctx__actions .oi-meta{text-align:right;}
+  .oi-ctx__chips{grid-area:chips;display:flex;gap:8px;flex-wrap:wrap;}
+  .oi-count{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:var(--radius-sm);background:var(--surface-2);font-size:.82rem;font-weight:600;}
+  .oi-count b{font-size:1rem;}
+  .oi-count:hover{border-color:var(--accent);}
+  .oi-count.is-active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
+  .oi-count:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .oi-banner{background:var(--surface-2);border:1px solid var(--border-2);color:var(--fg);font-weight:500;}
+  .oi-cards{grid-template-columns:repeat(auto-fill,minmax(270px,1fr));align-items:stretch;}
+  .oi-banner{margin:4px 0 10px;}
+  .oi-filters{margin-bottom:4px;}
+  .oi-dcard--ad{min-height:0;}
+  .oi-dcard__page{display:flex;gap:10px;align-items:center;min-height:44px;}
+  .oi-dcard__page--big{min-height:56px;}
+  .oi-dcard__pagetxt{min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+  .oi-dcard__pagetxt b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;}
+  .oi-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted-fg);}
+  .oi-avatar--lg{width:52px;height:52px;font-size:1.2rem;}
+  .oi-avatar--icon{font-size:1.4rem;}
+  .oi-dcard__text{font-size:.86rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;min-height:4.35em;}
+  .oi-dcard__line{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-height:26px;}
+  .oi-dcard__links{display:flex;gap:8px;flex-wrap:wrap;min-height:38px;align-content:flex-start;}
+  .oi-dcard--ad .oi-dcard__links{min-height:84px;}
+  .oi-dcard__line--plat{justify-content:flex-start;}
+  .oi-dcard__big{font-size:.95rem;min-height:2.6rem;}
+  .oi-dcard__big b{font-size:2rem;letter-spacing:-.02em;margin-right:4px;}
+  .oi-dcard__domain{font-size:1.25rem;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:1.6em;}
+  .oi-dcard__actions{margin-top:auto;padding-top:4px;}
+  .oi-dcard .btn.is-current{box-shadow:inset 0 0 0 2px var(--accent);}
+  .oi-dcard .btn--ghost{border:1px solid var(--border-2);}
+  .oi-platforms{display:flex;gap:4px;list-style:none;}
+  .oi-platforms li{font-size:.62rem;font-weight:800;letter-spacing:.04em;padding:3px 6px;border-radius:5px;border:1px solid var(--border-2);color:var(--muted-fg);}
+  .oi-copy{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 8px;border:1px dashed var(--border-strong);border-radius:6px;font-size:.74rem;font-weight:600;color:var(--muted-fg);}
+  .oi-copy:hover{color:var(--fg);border-color:var(--accent);}
+  .oi-copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .oi-group{display:flex;flex-direction:column;gap:12px;margin-bottom:8px;}
+  .oi-group__head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2);}
+  .oi-group__txt{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .oi-group__txt h3{font-size:1.05rem;overflow-wrap:anywhere;}
+  .oi-group__actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .oi-cards--offers{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+  .oi-ocard{display:flex;gap:14px;padding:14px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);min-height:132px;}
+  .oi-ocard:hover{border-color:var(--accent);}
+  .oi-ocard:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .oi-ocard .oi-ctx__img{width:64px;height:64px;}
+  .oi-ocard__body{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .oi-ocard__name{font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .oi-viewtoggle .seg-btn{min-height:40px;padding:0 14px;}
+  @media(max-width:980px){
+    .oi-ctx{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img main" "actions actions" "chips chips";}
+    .oi-ctx__actions{flex-direction:row;flex-wrap:wrap;align-items:center;max-width:none;}
+    .oi-ctx__actions .oi-meta{text-align:left;}
+    .oi-ctx__name{font-size:1.15rem;white-space:normal;}
+    .oi-count{min-height:44px;}
+    .oi-copy{min-height:44px;}
+    .oi-dcard .btn--sm{min-height:44px;}
+    .oi-ocard{min-height:0;}
+  }
   @media(min-width:981px){.oi-backdrop{display:none;}}
   @media(max-width:700px){
+    .oi-dcard--ad .oi-dcard__links,.oi-dcard__text,.oi-dcard__line--plat,.oi-dcard__big,.oi-dcard__links{min-height:0;}
     .oi-table--stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
     .oi-table--stack,.oi-table--stack tbody,.oi-table--stack tr,.oi-table--stack td{display:block;width:100%;}
     .oi-table--stack tr{padding:12px 14px;border-bottom:1px solid var(--border);}
@@ -2596,9 +2663,14 @@ function oiSideNavHtml(){
 
 /* ----- carregamento de dados (somente com OI_BACKEND_READY) ----- */
 const OI_LOADERS={
-  descobertas:async(route,cursor)=>{
-    const q=route.query,r=await oiApi.listDiscoveries(oiScope(route),{type:OI_TYPE_FILTER[q.tipo],status:OI_STATUS_FILTER[q.status],q:searchTerm,sort:q.ordem==="anuncios"?"ads":"recent",cursor,limit:25});
-    return {items:(r.items||[]).map(OfferIntel.formatDiscovery),next:r.next_cursor||null,total:r.total};
+  descobertas:async route=>{
+    /* O conjunto da oferta (até 500) é carregado inteiro: filtros, busca, ordenação e contadores rodam no cliente. */
+    let items=[],cursor=null;
+    for(let page=0;page<5;page++){
+      const r=await oiApi.listDiscoveries(oiScope(route),{cursor,limit:100});
+      items=items.concat((r.items||[]).map(OfferIntel.formatDiscovery));cursor=r.next_cursor||null;if(!cursor)break;
+    }
+    return {items,next:null,truncated:!!cursor};
   },
   historico:async(route,cursor)=>{
     const r=await oiApi.listInvestigations(oiScope(route),{status:OI_STATUS_FILTER[route.query.status],cursor,limit:25});
@@ -2619,7 +2691,7 @@ const OI_LOADERS={
   investigacao:async route=>{const r=await oiApi.getJob(route.jobId);return {items:[OfferIntel.formatJob(r)]};},
   oferta:async route=>{const o=oiOfferById(route.offerId);if(!o||!OI_SUMMARY_LIVE)return {items:[]};const r=await oiApi.summary(route.offerId,oiRouteRef(route,o));return {items:[],summary:r};}
 };
-function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,q.oferta,q.ref,q.job,q.tipo,q.status,q.ordem,searchTerm].join("|");}
+function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,q.oferta,q.ref,q.job].concat(route.area==="descobertas"?[]:[q.tipo,q.status,q.ordem,searchTerm]).join("|");}
 function oiNeedsScope(route){return (route.area==="descobertas"||route.area==="conexoes"||(route.area==="funis"&&!route.funnelId))&&!oiScope(route).offerId&&!oiScope(route).jobId;}
 function oiEnsure(route){
   if(!oiAreaLive(route.area)||!OI_LOADERS[route.area])return;
@@ -2634,7 +2706,7 @@ async function oiFetch(route,key,cursor){
   try{
     const res=await OI_LOADERS[area](route,cursor),st=oiStates[area];
     if(!st||st.key!==key)return;
-    oiStates[area]={status:"ready",key,items:(cursor?st.items:[]).concat(res.items),next:res.next||null,total:res.total==null?null:res.total,summary:res.summary||null,funnel:res.funnel||null};
+    oiStates[area]={status:"ready",key,items:(cursor?st.items:[]).concat(res.items),next:res.next||null,total:res.total==null?null:res.total,summary:res.summary||null,funnel:res.funnel||null,truncated:!!res.truncated};
   }catch(error){
     const st=oiStates[area];if(!st||st.key!==key)return;
     if(error&&error.status===404&&(route.funnelId||route.jobId))oiStates[area]={status:"ready",key,items:[]};
@@ -2682,7 +2754,7 @@ async function oiTick(){
   }
   oiRenderTray();
   if(activeSection!=="inteligencia"||!oiRoute)return;
-  if(finished&&(oiRoute.area==="descobertas"||oiRoute.area==="oferta"))delete oiStates[oiRoute.area];
+  if(finished){oiInvalidateIntel();if(oiRoute.area==="descobertas"||oiRoute.area==="oferta")delete oiStates[oiRoute.area];}
   const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest("#gridArea")&&/^(SELECT|INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
   if(changed||finished||oiDirty){if(typing){oiDirty=true;return;}oiDirty=false;renderOfferIntel();}
 }
@@ -2738,6 +2810,7 @@ async function oiLoadLimits(ctx){
     box.innerHTML=lim.lines.length?`<ul>${lim.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:"";
     const off=(id,text)=>{const input=$(id);if(!input)return;const had=document.activeElement===input;input.checked=false;input.disabled=true;const label=input.closest("label");label.classList.add("oi-opts__off");const small=$("small",label);if(small)small.textContent=text;if(had){const next=$("#oiOptAds:not(:disabled),#oiOptDom:not(:disabled)")||$("#oiStartCancel");if(next)next.focus();}};
     if(lim.apifyAvailable===false)off("#oiOptAds","Coleta de anúncios indisponível");
+    else if(lim.apifyCoolingDown){const ads=$("#oiOptAds");if(ads){ads.checked=false;const small=$("small",ads.closest("label"));if(small)small.textContent="Disponível após "+lim.apifyCooldownLabel+" (intervalo mínimo por oferta)";}}
     if(lim.domainAvailable===false)off("#oiOptDom","Exploração de domínios indisponível nesta versão");
     if(lim.apifyAvailable===false&&lim.domainAvailable===false){const msg=$("#oiStartMsg");if(msg)msg.textContent="Nenhuma fonte de investigação está disponível nesta versão.";const go=$("#oiStartGo");if(go){go.disabled=true;}}
   }catch(_){if(oiStartCtx===ctx)box.textContent="";}
@@ -2753,7 +2826,7 @@ async function oiSubmitStart(){
   try{
     const r=await oiApi.startInvestigation(Object.assign({idempotencyKey:ctx.key},payload));
     closeOverlay("#oiStartOverlay");
-    oiTrack(r.job_id);delete oiStates.historico;delete oiStates.oferta;
+    oiTrack(r.job_id);delete oiStates.historico;delete oiStates.oferta;oiInvalidateIntel();
     toast(r.reused?"Já havia uma investigação em andamento; acompanhando.":"Investigação iniciada. Você pode continuar navegando.");
     if(activeSection==="inteligencia")renderOfferIntel();
   }catch(error){msg.textContent=error.message;}
@@ -2768,7 +2841,7 @@ async function oiReview(id,status){
   try{
     const r=await oiApi.setDiscoveryStatus(id,status,item.version);
     st.items[i]=OfferIntel.formatDiscovery(r);
-    toast(OI_REVIEW_DONE[status]);
+    oiInvalidateCtx();toast(OI_REVIEW_DONE[status]);
   }catch(error){
     item.busy=false;toast(error.message,true);
     if(error.status===409){delete oiStates.descobertas;}
@@ -2784,7 +2857,7 @@ function oiEndpointHtml(ep){return `<span class="oi-meta">${esc(OI_KIND_LABEL[ep
 function oiRelationsHtml(route,st){
   const filters=`<div class="oi-filters">${oiFilterSelect("oiStatus","Status",route.query.status,[["","Todas"],["pendente","Pendentes"],["confirmado","Confirmadas"],["ignorado","Ignoradas"]])}</div>`;
   const kind=OfferIntel.viewState(st);
-  if(st.needsOffer)return filters+oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver as conexões relacionadas a ela."});
+  if(st.needsOffer)return oiOverviewHtml(route);
   if(kind==="loading"||kind==="error")return filters+oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return filters+oiStateHtml("empty",route.query.status?{title:"Nada encontrado",text:"Nenhuma conexão corresponde a este filtro."}:OI_EMPTY.conexoes);
   const rows=st.items.map(r=>{
@@ -2800,7 +2873,7 @@ async function oiReviewRelation(id,status){
   item.busy=true;renderOfferIntel();
   try{
     const r=await oiApi.setRelationStatus(id,status,item.version);
-    st.items[i]=OfferIntel.formatConnection(r);toast(OI_REL_DONE[status]);
+    st.items[i]=OfferIntel.formatConnection(r);oiInvalidateCtx();toast(OI_REL_DONE[status]);
   }catch(error){item.busy=false;toast(error.message,true);if(error.status===409)delete oiStates.conexoes;}
   if(activeSection==="inteligencia")renderOfferIntel();
 }
@@ -2808,7 +2881,7 @@ async function oiReviewRelation(id,status){
 /* ----- Mapa de Funis ----- */
 function oiFunnelListHtml(route,st){
   const kind=OfferIntel.viewState(st);
-  if(st.needsOffer)return oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver os funis mapeados."});
+  if(st.needsOffer)return oiOverviewHtml(route);
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.funis);
   return `<div class="oi-cards oi-cards--funnels">${st.items.map(f=>`<a class="oi-fcard" data-nav href="${esc(OfferIntel.buildPath({area:"funis",funnelId:f.id,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}"><span class="oi-fcard__title" title="${esc(f.title)}">${esc(f.title)}</span><span class="oi-meta">${esc(f.originLabel||"Origem desconhecida")}</span><span class="oi-meta">${f.finalLabel?"Final: "+esc(f.finalLabel):"&nbsp;"}</span><span class="oi-meta">${f.stepsCount==null?"Etapas: —":f.stepsCount+(f.stepsCount===1?" etapa":" etapas")}${f.createdAt?" · "+esc(f.createdAt):""}</span><span class="oi-fcard__open">Abrir mapa →</span></a>`).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
@@ -2941,39 +3014,163 @@ function oiProgressHtml(job){
   return `<div class="oi-progress" role="progressbar" aria-label="Progresso da investigação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${job.progressPercent}" aria-valuetext="${esc(text)}"><span style="width:${job.progressPercent}%"></span></div>`;
 }
 function oiStatusChip(label,status){return `<span class="oi-status oi-status--${esc(status)}">${esc(label)}</span>`;}
-function oiDiscoveryCard(d){
-  const e=esc,existing=d.existingOfferId&&oiOfferById(d.existingOfferId);
-  const phIcon=d.type==="domain"?"globe":d.type==="ad"?"play":"search";
+/* ----- Cards de Descobertas (por tipo, altura previsível) ----- */
+function oiAvatarHtml(picture,name,cls){
+  const initial=esc((String(name||"?").trim()[0]||"?").toUpperCase());
+  return picture?`<img class="oi-avatar ${cls||""}" data-oi-img data-oi-ph="avatar" data-oi-initial="${initial}" src="${esc(picture)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="oi-avatar oi-avatar--none ${cls||""}" aria-hidden="true">${initial}</span>`;
+}
+function oiExtLink(href,label,cls){return href?`<a class="btn btn--sm ${cls||"btn--outline"}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:"";}
+function oiReviewButtons(d){
+  const cls={confirmed:"btn--accent",ignored:"btn--ghost",review:"btn--outline"};
+  return ["confirmed","ignored","review"].map(s=>`<button type="button" class="btn btn--sm ${cls[s]}${d.status===s?" is-current":""}" data-oi-act="${s}" data-id="${esc(d.id)}" aria-pressed="${d.status===s}"${d.busy?' aria-disabled="true"':""}>${OI_REVIEW_LABEL[s]}</button>`).join("");
+}
+function oiCardFoot(d){
+  const ev=d.evidenceCount?`<details class="oi-evidence"><summary>${d.evidenceCount} ${d.evidenceCount===1?"evidência":"evidências"}</summary><ul>${d.evidence.map(ev=>`<li><b>${esc(ev.verificationLabel)}</b> · ${esc(ev.source)}${ev.observedAt?" · "+esc(ev.observedAt):""}${ev.urlLabel?` · <a href="${esc(ev.url)}" target="_blank" rel="noopener noreferrer">${esc(ev.urlLabel)}</a>`:""}${ev.detail?`<br><span>${esc(ev.detail)}</span>`:""}</li>`).join("")}</ul></details>`:"";
+  return `${ev}<div class="oi-dcard__actions" role="group" aria-label="Revisar: ${esc(d.title)}">${oiReviewButtons(d)}</div>`;
+}
+function oiStatusChipFor(d){return `<span class="oi-status oi-status--${esc(d.status)}">${esc(d.cardStatusLabel)}</span>`;}
+function oiCopyBtn(pageId){return pageId?`<button type="button" class="oi-copy" data-oi-copy="${esc(pageId)}" aria-label="Copiar Page ID ${esc(pageId)}">Page ID ${esc(pageId)} <span aria-hidden="true">⧉</span></button>`:"";}
+function oiAdCard(d,compact){
+  const e=esc,phIcon="play";
   const media=d.thumbnail?`<img class="oi-thumb" data-oi-img data-oi-ph="${phIcon}" src="${e(d.thumbnail)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<div class="oi-thumb oi-thumb--none" aria-hidden="true">${ic(phIcon)}</div>`;
-  const evidence=d.evidenceCount?`<details class="oi-evidence"><summary>${d.evidenceCount} ${d.evidenceCount===1?"evidência":"evidências"}</summary><ul>${d.evidence.map(ev=>`<li><b>${e(ev.verificationLabel)}</b> · ${e(ev.source)}${ev.observedAt?" · "+e(ev.observedAt):""}${ev.urlLabel?` · <a href="${e(ev.url)}" target="_blank" rel="noopener noreferrer">${e(ev.urlLabel)}</a>`:""}${ev.detail?`<br><span>${e(ev.detail)}</span>`:""}</li>`).join("")}</ul></details>`:`<div class="oi-meta">Sem evidências registradas</div>`;
-  const swipe=d.alreadyInSwipe?(existing?`<a class="oi-chip oi-chip--link" data-nav href="${e(offerPath(existing))}">Já no Swipe: ${e(oiOfferName(existing))}</a>`:`<span class="oi-chip">Já no Swipe${d.existingMatches.length?": "+e(d.existingMatches[0].label):""}</span>`):"";
-  const metrics=[d.adsLabel,d.firstSeen?"1ª vez: "+d.firstSeen:"",d.lastSeen?"Última: "+d.lastSeen:""].filter(Boolean).join(" · ");
-  const buttons=["confirmed","ignored","review"].map(s=>`<button type="button" class="btn btn--sm ${d.status===s?"btn--accent":"btn--outline"}" data-oi-act="${s}" data-id="${e(d.id)}" aria-pressed="${d.status===s}"${d.busy?' aria-disabled="true"':""}>${OI_REVIEW_LABEL[s]}</button>`).join("");
-  return `<article class="oi-dcard" data-id="${e(d.id)}"${d.busy?' aria-busy="true"':""}>
-    <div class="oi-dcard__media">${media}</div>
-    <div class="oi-dcard__chips"><span class="oi-chip">${e(d.typeLabel)}</span>${oiStatusChip(d.statusLabel,d.status)}${swipe}</div>
-    <h3 class="oi-dcard__title" title="${e(d.title)}">${e(d.title)}</h3>
-    <div class="oi-meta">${e(d.subtitle)}</div>
-    ${d.urlLabel?`<a class="oi-dcard__url" href="${e(d.url)}" target="_blank" rel="noopener noreferrer">${e(d.urlLabel)}</a>`:'<div class="oi-meta">Sem URL</div>'}
-    <div class="oi-meta">${e(metrics)||"&nbsp;"}</div>
-    <div class="oi-meta">${d.source?"Fonte: "+e(d.source):"&nbsp;"}</div>
-    ${evidence}
-    ${d.disclaimer?`<div class="oi-note oi-note--warn">${e(d.disclaimer)}</div>`:""}
-    <div class="oi-dcard__actions" role="group" aria-label="Revisar: ${e(d.title)}">${buttons}</div>
+  const platforms=d.platforms.length?`<ul class="oi-platforms" aria-label="Plataformas">${d.platforms.map(p=>`<li title="${e(p.label)}" aria-label="${e(p.label)}">${e(p.short)}</li>`).join("")}</ul>`:"";
+  const meta=[d.displayFormat,d.startedAt?"Ativo desde "+d.startedAt:""].filter(Boolean).join(" · ");
+  return `<article class="oi-dcard oi-dcard--ad" data-id="${e(d.id)}"${d.busy?' aria-busy="true"':""}>
+    <header class="oi-dcard__page">${compact?"":oiAvatarHtml(d.pagePicture,d.pageName||d.title)}<div class="oi-dcard__pagetxt">${compact?"":`<b title="${e(d.pageName||"Página não identificada")}">${e(d.pageName||"Página não identificada")}</b>`}${oiStatusChipFor(d)}</div></header>
+    <div class="oi-dcard__media oi-dcard__media--ad">${media}</div>
+    <p class="oi-dcard__text">${d.adText?e(d.adText):'<span class="oi-meta">Sem texto do anúncio registrado</span>'}</p>
+    <div class="oi-dcard__line">${d.landingDomain?`<span class="oi-meta" title="Destino">Destino: <b>${e(d.landingDomain)}</b></span>`:'<span class="oi-meta">Destino não identificado</span>'}${d.ctaText?`<span class="oi-chip">${e(d.ctaText)}</span>`:""}</div>
+    <div class="oi-meta oi-meta--wrap">${e(meta)||"&nbsp;"}</div>
+    <div class="oi-dcard__line oi-dcard__line--plat">${platforms}</div>
+    <div class="oi-dcard__links">${oiExtLink(d.url,"Ver na Biblioteca")}${oiExtLink(d.landingUrl,"Abrir destino")}</div>
+    ${oiCardFoot(d)}
   </article>`;
 }
+function oiPageCard(d){
+  const e=esc,found=d.adsFound!=null?d.adsFound:d.adsCount;
+  return `<article class="oi-dcard oi-dcard--page" data-id="${e(d.id)}"${d.busy?' aria-busy="true"':""}>
+    <header class="oi-dcard__page oi-dcard__page--big">${oiAvatarHtml(d.pagePicture,d.title,"oi-avatar--lg")}<div class="oi-dcard__pagetxt"><span class="oi-chip">Página</span><b title="${e(d.title)}">${e(d.title)}</b></div></header>
+    <div class="oi-dcard__line">${oiCopyBtn(d.pageId)||'<span class="oi-meta">Page ID não identificado</span>'}${oiStatusChipFor(d)}</div>
+    <div class="oi-dcard__big">${found==null?'<span class="oi-meta">Anúncios encontrados: —</span>':`<b>${e(found.toLocaleString("pt-BR"))}</b> <span>${found===1?"anúncio encontrado":"anúncios encontrados"}</span>`}</div>
+    <div class="oi-meta">${d.firstSeen?"Vista desde "+e(d.firstSeen):"&nbsp;"}${d.source?" · "+e(d.source):""}</div>
+    <div class="oi-dcard__links">${oiExtLink(d.url,"Ver anúncios da Página")}</div>
+    ${oiCardFoot(d)}
+  </article>`;
+}
+function oiDomainCard(d,route){
+  const e=esc,existing=d.existingOfferId&&oiOfferById(d.existingOfferId),host=d.domain||d.landingDomain||displayUrlSafe(d.url)||d.title;
+  const swipe=d.alreadyInSwipe?(existing?`<a class="oi-chip oi-chip--link" data-nav href="${e(offerPath(existing))}">Já no Swipe: ${e(oiOfferName(existing))}</a>`:`<span class="oi-chip">Já no Swipe${d.existingMatches.length?": "+e(d.existingMatches[0].label):""}</span>`):"";
+  const funnel=d.funnelId?`<a class="btn btn--sm btn--outline" data-nav href="${e(OfferIntel.buildPath({area:"funis",funnelId:d.funnelId,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}">Ver funil</a>`:"";
+  return `<article class="oi-dcard oi-dcard--domain" data-id="${e(d.id)}"${d.busy?' aria-busy="true"':""}>
+    <header class="oi-dcard__page oi-dcard__page--big"><span class="oi-avatar oi-avatar--lg oi-avatar--icon" aria-hidden="true">${ic("globe")}</span><div class="oi-dcard__pagetxt"><span class="oi-chip">Domínio</span></div></header>
+    <h3 class="oi-dcard__domain" title="${e(host)}">${e(host)}</h3>
+    <div class="oi-dcard__line">${oiStatusChipFor(d)}${swipe}</div>
+    <div class="oi-meta">${d.firstSeen?"Visto em "+e(d.firstSeen):"&nbsp;"}${d.source?" · "+e(d.source):""}</div>
+    <div class="oi-dcard__links">${funnel}${oiExtLink(d.url,"Abrir site")}</div>
+    ${oiCardFoot(d)}
+  </article>`;
+}
+function displayUrlSafe(url){return url?OfferIntel.displayUrl(url,60):"";}
+function oiDiscoveryCard(d,route){return d.type==="ad"?oiAdCard(d):d.type==="page"?oiPageCard(d):oiDomainCard(d,route);}
 function oiFilterSelect(id,label,value,options){return `<label class="sort-control"><span>${esc(label)}</span><select id="${id}" aria-label="${esc(label)}">${options.map(([v,l])=>`<option value="${esc(v)}"${v===value?" selected":""}>${esc(l)}</option>`).join("")}</select></label>`;}
+function oiDiscHref(route,patch){
+  const sc=oiNavScope(route);
+  return OfferIntel.buildPath({area:"descobertas",query:Object.assign({},route.query,{oferta:sc.oferta,ref:sc.ref,job:sc.job,etapa:""},patch,{pagina:1})});
+}
 function oiDiscoveriesHtml(route,st){
   const q=route.query;
-  const filters=`<div class="oi-filters">${oiFilterSelect("oiType","Tipo",q.tipo,[["","Todos"],["anuncio","Anúncios"],["pagina","Páginas"],["dominio","Domínios"]])}${oiFilterSelect("oiStatus","Status",q.status,[["","Todos"],["novo","Novos"],["revisar","Em revisão"],["confirmado","Confirmados"],["ignorado","Ignorados"]])}${oiFilterSelect("oiOrder","Ordenar por",q.ordem,[["recentes","Mais recentes"],["anuncios","Mais anúncios"]])}</div>`;
-  const jobChip=q.job?`<div class="oi-note">Mostrando apenas as descobertas da investigação <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:q.job}))}">${esc(q.job)}</a>. <a data-nav href="${esc(OfferIntel.buildPath({area:"descobertas",query:Object.assign({},q,{job:""})}))}">Limpar</a></div>`:"";
-  let body;
+  if(st.needsOffer)return oiOverviewHtml(route);
   const kind=OfferIntel.viewState(st);
-  if(st.needsOffer)body=oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver as descobertas relacionadas a ela."});
-  else if(kind==="loading"||kind==="error")body=oiStateHtml(kind,{error:st.error});
-  else if(kind==="empty")body=oiStateHtml("empty",(q.tipo||q.status||searchTerm)?{title:"Nada encontrado",text:"Nenhuma descoberta corresponde a estes filtros."}:OI_EMPTY.descobertas);
-  else body=`<div class="oi-cards">${st.items.map(oiDiscoveryCard).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Confirmar, ignorar ou revisar apenas registra a decisão sobre a descoberta; não cria nem altera ofertas.</p>`;
-  return filters+jobChip+body;
+  const toggle=`<nav class="seg oi-viewtoggle" aria-label="Agrupamento"><a class="seg-btn${q.visao==="paginas"?"":" active"}" data-nav href="${esc(oiDiscHref(route,{visao:""}))}"${q.visao==="paginas"?"":' aria-current="page"'}>Lista</a><a class="seg-btn${q.visao==="paginas"?" active":""}" data-nav href="${esc(oiDiscHref(route,{visao:"paginas"}))}"${q.visao==="paginas"?' aria-current="page"':""}>Por Página</a></nav>`;
+  const filters=`<div class="oi-filters">${oiFilterSelect("oiType","Tipo",q.tipo,[["","Todos"],["anuncio","Anúncios"],["pagina","Páginas"],["dominio","Domínios"]])}${oiFilterSelect("oiStatus","Status",q.status,[["","Todos"],["pendente","Pendentes"],["revisar","Em revisão"],["confirmado","Confirmados"],["ignorado","Ignorados"]])}${oiFilterSelect("oiOrder","Ordenar por",q.ordem,[["recentes","Mais recentes"],["anuncios","Mais anúncios"]])}${toggle}</div>`;
+  const jobChip=q.job?`<div class="oi-note">Mostrando apenas as descobertas da investigação <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:q.job}))}">${esc(q.job)}</a>. <a data-nav href="${esc(OfferIntel.buildPath({area:"descobertas",query:Object.assign({},q,{job:""})}))}">Limpar</a></div>`:"";
+  if(kind==="loading"||kind==="error")return filters+jobChip+oiStateHtml(kind,{error:st.error});
+  const partial=st.truncated?`<div class="banner banner--warn" role="note">${ic("alert")}Universo parcial: só as primeiras 500 descobertas desta oferta foram carregadas. Contadores, filtros e buscas consideram apenas essas.</div>`:"";
+  if(kind==="empty")return filters+jobChip+oiStateHtml("empty",OI_EMPTY.descobertas);
+  const shown=OfferIntel.filterDiscoveries(st.items,{tipo:q.tipo,status:q.status,q:searchTerm,ordem:q.ordem});
+  if(!shown.length)return filters+jobChip+partial+oiStateHtml("empty",{title:"Nada encontrado",text:"Nenhuma descoberta corresponde a estes filtros.",cta:`<a class="btn btn--outline" data-nav href="${esc(oiDiscHref(route,{tipo:"",status:"",q:""}))}" style="margin-top:18px">Limpar filtros</a>`});
+  const banner=shown.some(d=>d.status!=="confirmed")?`<div class="banner oi-banner" role="note">${ic("alert")}Sugerido por similaridade — a semelhança não prova que pertencem ao mesmo anunciante. Confirmar ou ignorar só registra a decisão; não cria nem altera ofertas.</div>`:"";
+  let body;
+  if(q.visao==="paginas"){
+    const {groups,loose}=OfferIntel.groupByPage(shown);
+    body=groups.map(g=>{
+      const head=`<header class="oi-group__head">${oiAvatarHtml(g.picture,g.name,"oi-avatar--lg")}<div class="oi-group__txt"><h3>${esc(g.name||"Página não identificada")}</h3><div class="oi-dcard__line">${oiCopyBtn(g.pageId)}<span class="oi-meta">${g.ads.length} ${g.ads.length===1?"anúncio":"anúncios"} nesta lista${g.page&&g.page.adsFound!=null?` · ${g.page.adsFound} encontrados na Página`:""}</span></div></div><div class="oi-group__actions">${g.page?oiExtLink(g.page.url,"Ver anúncios da Página")+oiStatusChipFor(g.page):""}</div></header>`;
+      return `<section class="oi-group" aria-label="Página ${esc(g.name||"")}">${head}<div class="oi-cards">${g.ads.map(d=>oiAdCard(d,true)).join("")||'<p class="oi-meta">Sem anúncios nesta lista para esta Página.</p>'}</div></section>`;
+    }).join("");
+    if(loose.length)body+=`<section class="oi-group" aria-label="Outros itens"><header class="oi-group__head"><div class="oi-group__txt"><h3>Domínios e itens sem Página</h3></div></header><div class="oi-cards">${loose.map(d=>oiDiscoveryCard(d,route)).join("")}</div></section>`;
+  }else body=`<div class="oi-cards">${shown.map(d=>oiDiscoveryCard(d,route)).join("")}</div>`;
+  return filters+jobChip+partial+banner+body;
+}
+/* Sem oferta escolhida: lista das ofertas já investigadas (histórico agrupado por oferta). */
+const oiTodas={status:"idle",items:[],error:"",truncated:false};
+function oiEnsureTodas(){
+  if(oiTodas.status!=="idle"||!OI_BACKEND_READY)return;
+  oiTodas.status="loading";
+  (async()=>{
+    try{
+      let jobs=[],cursor=null;
+      for(let i=0;i<3;i++){const r=await oiApi.listInvestigations({},{cursor,limit:100});jobs=jobs.concat((r.items||[]).map(OfferIntel.formatJob));cursor=r.next_cursor||null;if(!cursor)break;}
+      oiTodas.items=OfferIntel.groupInvestigationsByOffer(jobs);oiTodas.truncated=!!cursor;oiTodas.status="ready";
+    }catch(error){oiTodas.status="error";oiTodas.error=String(error&&error.message||"Não foi possível carregar.");}
+    if(activeSection==="inteligencia")renderOfferIntel();
+  })();
+}
+function oiOverviewHtml(route){
+  oiEnsureTodas();
+  if(oiTodas.status==="loading"||oiTodas.status==="idle")return oiStateHtml("loading");
+  if(oiTodas.status==="error")return oiStateHtml("error",{error:oiTodas.error});
+  if(!oiTodas.items.length)return oiStateHtml("empty",{title:"Nenhuma oferta investigada ainda",text:"Escolha uma oferta acima e use “Investigar oferta” para começar.",cta:""});
+  const cards=oiTodas.items.map(g=>{
+    const o=g.offerId?oiOfferById(g.offerId):null,job=g.latest,d=o?normalize(brandHubAdminData(o)):null;
+    const name=o?oiOfferName(o):(g.offerId?"Oferta não encontrada no acervo":g.seedUrlLabel||"URL informada");
+    const brand=d&&String(d.nomeMarca||"").trim(),section=o?SEC_SHORT[itemSection(o)]||"":"Investigação por URL";
+    const href=g.offerId?OfferIntel.buildPath({area:route.area==="investigacao"?"descobertas":route.area,query:{oferta:g.offerId,ref:g.offerRefKind==="admin_draft"?"admin_draft":""}}):OfferIntel.buildPath({area:route.area,query:{job:job.id}});
+    const thumb=d&&d.imagemProduto?`<img class="oi-ctx__img" data-oi-img data-oi-ph="layers" src="${esc(d.imagemProduto)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="oi-ctx__img oi-ctx__img--none" aria-hidden="true">${ic("layers")}</span>`;
+    return `<a class="oi-ocard" data-nav href="${esc(href)}">${thumb}<span class="oi-ocard__body"><span class="eyebrow">${esc(section)}</span><b class="oi-ocard__name" title="${esc(name)}">${esc(name)}</b><span class="oi-meta">${brand?esc(brand)+" · ":""}${esc(g.jobsCount)} ${g.jobsCount===1?"investigação":"investigações"}</span><span class="oi-dcard__line">${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${esc(job.finishedAt||job.createdAt||"")}</span></span><span class="oi-meta">${esc(oiCount(job.counts.discoveries))} descobertas · ${esc(oiCount(job.counts.funnels))} funis</span></span></a>`;
+  }).join("");
+  const partial=oiTodas.truncated?`<div class="banner banner--warn" role="note">${ic("alert")}Universo parcial: só as 300 investigações mais recentes foram carregadas; pode haver outras ofertas investigadas. Use o Histórico para ver tudo.</div>`:"";
+  return `<p class="oi-note">Ofertas já investigadas. Escolha uma para ver as descobertas, conexões e funis dela.</p>${partial}<div class="oi-cards oi-cards--offers">${cards}</div>`;
+}
+
+/* ----- Cabeçalho de contexto da oferta (Descobertas, Conexões, Funis e Histórico filtrado) ----- */
+const oiCtxCache=Object.create(null);
+/* Geração do resumo: cada mutação incrementa oiCtxGen. Um GET guarda a geração em que começou; se ela mudou
+   quando a resposta chega, o cache fica defasado e o próximo render faz UM novo GET (sem loop, sem perder invalidação). */
+let oiCtxGen=0;
+function oiInvalidateCtx(){oiCtxGen++;}
+function oiInvalidateIntel(){oiTodas.status="idle";oiInvalidateCtx();}
+function oiCtxKey(route){const sc=oiNavScope(route);return sc.oferta?(sc.ref||"offer")+":"+sc.oferta:"";}
+function oiEnsureCtx(route){
+  const key=oiCtxKey(route);
+  if(!key||!OI_BACKEND_READY||!OI_SUMMARY_LIVE)return;
+  const cached=oiCtxCache[key];
+  if(cached&&(cached.fetching||cached.gen===oiCtxGen))return;
+  const sc=oiNavScope(route),gen=oiCtxGen;
+  if(cached)cached.fetching=true;else oiCtxCache[key]={status:"loading",fetching:true,gen};
+  oiApi.summary(sc.oferta,sc.ref==="admin_draft"?"admin_draft":"offer").then(r=>{oiCtxCache[key]={status:"ready",summary:r,gen};}).catch(error=>{oiCtxCache[key]={status:"error",error:String(error&&error.message||""),gen};}).then(()=>{if(activeSection==="inteligencia"&&oiRoute&&oiCtxKey(oiRoute)===key)renderOfferIntel();});
+}
+function oiContextHtml(route){
+  if(!["descobertas","conexoes","funis","historico"].includes(route.area)||route.funnelId)return"";
+  const sc=oiNavScope(route);if(!sc.oferta)return"";
+  const o=oiOfferById(sc.oferta),ctx=oiCtxCache[oiCtxKey(route)]||{status:"loading"},sum=ctx.summary||null;
+  const d=o?normalize(brandHubAdminData(o)):null,e=esc;
+  const name=o?oiOfferName(o):"Oferta não encontrada no acervo",brand=d?String(d.nomeMarca||"").trim():"",section=o?SEC_SHORT[itemSection(o)]||"":"";
+  const img=d&&d.imagemProduto?`<img class="oi-ctx__img" data-oi-img data-oi-ph="layers" src="${e(d.imagemProduto)}" alt="" decoding="async" referrerpolicy="no-referrer">`:`<span class="oi-ctx__img oi-ctx__img--none" aria-hidden="true">${ic("layers")}</span>`;
+  const active=sum&&sum.active_job?OfferIntel.formatJob(sum.active_job):null,last=sum&&sum.last_job?OfferIntel.formatJob(sum.last_job):null,job=active||last;
+  const lim=OfferIntel.formatLimits(sum&&sum.limits);
+  const status=ctx.status==="loading"?'<span class="oi-meta">Carregando status…</span>':ctx.status==="error"?'<span class="oi-meta">Status indisponível no momento</span>':job?`${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${active?"Em andamento":"Última investigação: "+e(job.finishedAt||job.createdAt||"—")}</span>`:'<span class="oi-meta">Ainda não investigada</span>';
+  const chip=(label,n,href,on)=>`<a class="oi-count${on?" is-active":""}" data-nav href="${e(href)}"${on?' aria-current="true"':""}><span>${e(label)}</span><b>${e(n)}</b></a>`;
+  let chips;
+  if(route.area==="descobertas"&&oiStates.descobertas&&oiStates.descobertas.status==="ready"&&!oiStates.descobertas.needsOffer){
+    const c0=OfferIntel.countDiscoveries(oiStates.descobertas.items),more=oiStates.descobertas.truncated?"+":"",c=Object.fromEntries(Object.entries(c0).map(([k,v])=>[k,v+more])),q=route.query;
+    chips=chip("Anúncios",c.ad,oiDiscHref(route,{tipo:q.tipo==="anuncio"?"":"anuncio"}),q.tipo==="anuncio")+chip("Páginas",c.page,oiDiscHref(route,{tipo:q.tipo==="pagina"?"":"pagina"}),q.tipo==="pagina")+chip("Domínios",c.domain,oiDiscHref(route,{tipo:q.tipo==="dominio"?"":"dominio"}),q.tipo==="dominio")+chip("Pendentes",c.pending,oiDiscHref(route,{status:q.status==="pendente"?"":"pendente"}),q.status==="pendente");
+  }else if(sum&&sum.counts){
+    const c=sum.counts,n=k=>oiCount(c[k]),pend=(c.new==null||c.review==null)?"—":Number(c.new)+Number(c.review);
+    chips=chip("Descobertas pendentes",pend,oiDiscHref(route,{status:"pendente",tipo:""}),false)+chip("Relações pendentes",n("relations_pending"),OfferIntel.buildPath({area:"conexoes",query:{oferta:sc.oferta,ref:sc.ref,status:"pendente"}}),false)+chip("Funis",n("funnels"),OfferIntel.buildPath({area:"funis",query:{oferta:sc.oferta,ref:sc.ref}}),false);
+  }else chips='<span class="oi-meta">Contadores indisponíveis</span>';
+  const hint=lim.apifyAvailable===false?"Coleta de anúncios indisponível":lim.apifyCoolingDown?"Nova coleta de anúncios após "+lim.apifyCooldownLabel:"";
+  const action=active?`<a class="btn btn--accent btn--sm" data-nav href="${e(OfferIntel.buildPath({area:"investigacao",jobId:active.id}))}">Acompanhar investigação</a>`:`<button type="button" class="btn btn--accent btn--sm" data-oi-start="${e(sc.oferta)}"${OI_BACKEND_READY&&o?"":" disabled"}>${ic("search")}Investigar novamente</button>`;
+  return `<section class="oi-ctx" aria-label="Oferta em análise">${img}<div class="oi-ctx__main"><div class="eyebrow">${e(section||"Oferta")}</div><h2 class="oi-ctx__name">${e(name)}</h2><div class="oi-meta">${brand?"Marca: "+e(brand):"&nbsp;"}</div><div class="oi-ctx__status">${status}</div></div><div class="oi-ctx__chips" role="group" aria-label="Contadores">${chips}</div><div class="oi-ctx__actions">${o?`<a class="btn btn--outline btn--sm" data-nav href="${e(offerPath(o))}">Abrir ficha</a>`:""}${action}${hint?`<span class="oi-meta oi-meta--wrap">${e(hint)}</span>`:""}</div></section>`;
 }
 function oiJobsTableHtml(route,st){
   const kind=OfferIntel.viewState(st);
@@ -3031,20 +3228,26 @@ function oiBodyHtml(route){
 function oiResultLabel(route){
   if(!["descobertas","conexoes","funis","historico"].includes(route.area))return "";
   const st=oiStates[route.area]||{status:"ready",items:[]},kind=OfferIntel.viewState(st);
-  if(st.needsOffer)return "Escolha uma oferta";
+  if(st.needsOffer)return "Ofertas investigadas";
   if(route.area==="funis"&&route.funnelId)return st.funnel?`${st.funnel.layout.stats.steps} etapas`:kind==="loading"?"Carregando…":"";
-  const n=st.total!=null?st.total:(st.items||[]).length;
-  return kind==="loading"?"Carregando…":kind==="error"?"Erro ao carregar":`${n.toLocaleString("pt-BR")} ${n===1?"resultado":"resultados"}${st.next&&st.total==null?"+":""}`;
+  const partialMark=route.area==="descobertas"&&st.truncated?"+":"";
+  const n=route.area==="descobertas"&&kind==="ready"?OfferIntel.filterDiscoveries(st.items,{tipo:route.query.tipo,status:route.query.status,q:searchTerm}).length:st.total!=null?st.total:(st.items||[]).length;
+  return kind==="loading"?"Carregando…":kind==="error"?"Erro ao carregar":`${n.toLocaleString("pt-BR")}${partialMark} ${n===1&&!partialMark?"resultado":"resultados"}${st.next&&st.total==null?"+":""}`;
 }
 function oiPendingBanner(route){
   if(oiAreaLive(route.area)||route.area==="monitoramento")return"";
   return `<div class="banner banner--warn" role="note">${ic("shield")}${OI_BACKEND_READY?"Esta área ainda não está conectada ao backend.":"Módulo em construção: a integração com o backend ainda não está conectada."} Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
 /* URLs assinadas do fbcdn expiram: se a miniatura falhar, volta ao placeholder do card (mesma altura fixa). */
+function oiCopyText(text){
+  const done=()=>toast("Page ID copiado");
+  try{navigator.clipboard.writeText(text).then(done,()=>toast("Não foi possível copiar",true));}catch(_){toast("Não foi possível copiar",true);}
+}
 function oiImgFallback(img){
   if(!img.isConnected)return;
   const ph=img.dataset.oiPh;
   if(!ph){img.remove();return;}
+  if(ph==="avatar"){const box=document.createElement("span");box.className=img.className.replace("oi-avatar","oi-avatar oi-avatar--none");box.setAttribute("aria-hidden","true");box.textContent=img.dataset.oiInitial||"?";img.replaceWith(box);return;}
   const box=document.createElement("div");box.className="oi-thumb oi-thumb--none";box.setAttribute("aria-hidden","true");box.innerHTML=ic(ph);img.replaceWith(box);
 }
 /* Foco estável entre renders: chave por id ou ação+id (botões de revisão/ação não têm id).
@@ -3077,6 +3280,7 @@ function oiRestoreFocus(area,key){
 let oiClickBound=false;
 function oiOnClick(event){
   if(activeSection!=="inteligencia"||!oiRoute)return;
+  const copy=event.target.closest("[data-oi-copy]");if(copy){oiCopyText(copy.dataset.oiCopy);return;}
   const act=event.target.closest("[data-oi-act]");if(act){oiReview(act.dataset.id,act.dataset.oiAct);return;}
   const ract=event.target.closest("[data-oi-rel-act]");if(ract){oiReviewRelation(ract.dataset.id,ract.dataset.oiRelAct);return;}
   if(event.target.closest("[data-oi-more]")){oiLoadMore(oiRoute);return;}
@@ -3087,7 +3291,7 @@ function renderOfferIntel(){
   const area=$("#gridArea");if(!area)return;
   if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   const route=oiRoute||{area:"descobertas",query:OfferIntel.normalizeQuery("")};
-  oiEnsure(route);
+  oiEnsure(route);oiEnsureCtx(route);
   const q=route.query||{},list=oiOffers(),selected=q.oferta||"";
   const known=!selected||list.some(o=>String(o.id)===selected);
   const options=`<option value="">Todas as ofertas</option>`+list.map(o=>`<option value="${esc(o.id)}"${String(o.id)===selected?" selected":""}>${esc(oiOfferName(o))} · ${esc(SEC_SHORT[itemSection(o)]||"")}</option>`).join("")+(known?"":`<option value="${esc(selected)}" selected>Oferta não encontrada</option>`);
@@ -3096,7 +3300,7 @@ function renderOfferIntel(){
   const scope=["descobertas","conexoes","funis","historico"].includes(route.area)?`<label class="sort-control oi-offer"><span>Oferta</span><select id="oiOffer" aria-label="Filtrar por oferta">${options}</select></label>`:"";
   const body=oiBodyHtml(route);
   let focusKey=oiFocusKey(area);if(focusKey)oiPendingFocus="";else focusKey=oiPendingFocus;
-  area.innerHTML=`<div class="oi"><div class="oi-bar"><nav class="seg oi-tabs" aria-label="Áreas de Inteligência de Ofertas">${tabs}</nav>${scope}</div>${oiPendingBanner(route)}${warn}<div class="oi-body" id="oiBody">${body}</div></div>`;
+  area.innerHTML=`<div class="oi">${oiContextHtml(route)}<div class="oi-bar"><nav class="seg oi-tabs" aria-label="Áreas de Inteligência de Ofertas">${tabs}</nav>${scope}</div>${oiPendingBanner(route)}${warn}<div class="oi-body" id="oiBody">${body}</div></div>`;
   oiRestoreFocus(area,focusKey);
   const result=$("#pageResult");if(result)result.textContent=oiResultLabel(route);
   const go=patch=>navigate(OfferIntel.buildPath({area:route.area,jobId:route.jobId,funnelId:route.funnelId,query:Object.assign({},q,{pagina:1},patch)}));
@@ -3107,7 +3311,7 @@ function renderOfferIntel(){
   if(!oiClickBound){oiClickBound=true;area.addEventListener("click",oiOnClick);}
   if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);oiFunnelSheet(area,route);}else{oiSheetFor=null;if(oiResize){oiResize.disconnect();oiResize=null;}}
   const retry=$("[data-oi-retry]",area);
-  if(retry)retry.addEventListener("click",()=>{delete oiStates[route.area];renderOfferIntel();});
+  if(retry)retry.addEventListener("click",()=>{delete oiStates[route.area];oiInvalidateIntel();renderOfferIntel();});
   const form=$("#oiUrlForm",area);
   if(form){
     const input=$("#oiUrl",form),hint=$("#oiUrlHint",form);
@@ -3132,6 +3336,7 @@ async function oiJobAction(id,action,button){
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);
     oiJobs[id]=job;const st=oiStates.investigacao;if(st&&st.items[0]&&st.items[0].id===id)st.items[0]=job;
     if(job.active)oiTrack(id);
+    oiInvalidateIntel();
     toast(action==="cancel"?"Investigação cancelada":"Nova tentativa iniciada");
   }catch(error){toast(error.message,true);}
   finally{oiBusy.delete(lock);}
