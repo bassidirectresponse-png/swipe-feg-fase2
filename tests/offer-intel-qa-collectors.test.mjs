@@ -161,3 +161,33 @@ test("QA unavailable PostgreSQL budget fails closed before provider POST without
    e=>e.status===503&&e.code==="capability_unavailable");
  assert.equal(posts,0);
 });
+
+
+test("QA UI preserves succeeded source warning without a failed label",async()=>{
+ const {readFileSync}=await import("node:fs"),vm=await import("node:vm");
+ const ctx={};vm.createContext(ctx);
+ vm.runInContext(readFileSync(new URL("../lib/offer-intel.js",import.meta.url),"utf8"),ctx);
+ const job=ctx.OfferIntel.formatJob({status:"succeeded",sources:[{name:"domain_explorer",status:"succeeded",
+   result_count:2,error:{code:"pages_inaccessible",message:"Aviso: 1 de 2 páginas ficaram inacessíveis."}}]});
+ assert.equal(job.status,"succeeded");
+ assert.equal(job.sources[0].statusLabel,"Concluída");
+ assert.equal(job.sources[0].error.code,"pages_inaccessible");
+ assert.match(job.sources[0].error.message,/1 de 2/);
+});
+
+
+test("QA v1.4 rejection permits only explicit retry with another reservation; no refund",async()=>{
+ const j=job(),storage=createFAKEWorkerStorage(j),budgetStorage=createFAKEBudgetStorage();
+ let posts=0;
+ const collector=createApifyCollector({storage,budget:createDailyBudget({storage:budgetStorage}),token:randomUUID(),
+   fetcher:async(_url,options)=>{
+     assert.equal(options.method,"POST");posts++;
+     return Response.json({error:{message:"FAKE billing rejection"}},{status:402});
+   }});
+ await assert.rejects(()=>collector.run(j),e=>e.code==="provider_rejected");
+ assert.equal(posts,1);assert.equal(budgetStorage.reservations.size,1);
+ assert.equal([...storage.records.providers.values()][0].state,"failed");
+ // Second invocation models an explicit admin retry; production dispatch remains guarded by its lease.
+ await assert.rejects(()=>collector.run(j),e=>e.code==="provider_rejected");
+ assert.equal(posts,2);assert.equal(budgetStorage.reservations.size,2);
+});
