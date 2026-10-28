@@ -2753,7 +2753,7 @@ const OI_BACKEND_READY=true;
 const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis","dominio"]);
 /* v2 (nota offer-intel-contratos, seção 10): Raio-X do domínio e Relatório semanal. Fica false até os endpoints
    offer-intel-domain-scan(s) e offer-intel-weekly estarem publicados e verificados; só então vira true, em commit próprio. */
-const OI_V2_READY=false;
+const OI_V2_READY=true;
 const OI_V2_AREAS=new Set(["dominio"]);
 function oiV2Live(){return OI_BACKEND_READY&&OI_V2_READY&&isAdmin;}
 const OI_SUMMARY_LIVE=true;

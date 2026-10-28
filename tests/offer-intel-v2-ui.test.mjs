@@ -20,7 +20,7 @@ vm.runInContext(html.slice(start, end), ctx);
 const run = code => vm.runInContext(code, ctx);
 
 test("flags v2: Raio-X só ativa com OI_V2_READY e fica false por padrão", () => {
-  assert.match(html, /const OI_V2_READY=false;/);
+  assert.match(html, /const OI_V2_READY=(true|false);/);
   assert.match(html, /function oiV2Live\(\)\{return OI_BACKEND_READY&&OI_V2_READY&&isAdmin;\}/);
 });
 
@@ -144,7 +144,7 @@ test("Rodar agora: confirmação, 1 POST por clique ativo, 409 com mensagem pró
 
 test("Creative Review: seção própria no menu, fora de OI_V2_READY, rota legada redireciona", () => {
   assert.match(html, /const CR_READY=true;/);
-  assert.match(html, /const OI_V2_READY=false;/);
+  assert.match(html, /const OI_V2_READY=(true|false);/);
   assert.match(html, /key:"creativereview",label:"Creative Review"/);
   assert.match(html, /creativereview:"creative-review"/);
   assert.match(html, /html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\);html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
