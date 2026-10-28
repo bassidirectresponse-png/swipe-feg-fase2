@@ -1,6 +1,8 @@
 # Offer Intelligence B3 — execução e validação
 
-Implementação no worktree backend; migrations são **arquivos, não aplicados**.
+Implementação no worktree backend. Atualização após smoke de produção:
+001–003 foram aplicadas pelo Maestro; a correção 004
+(`202610280001_offer_intelligence_fixes.sql`) é **somente arquivo, não aplicada aqui**.
 Os testes usam storage/auth/fetch/DNS FAKE. Os testes de domínio fazem HTTP real
 somente contra um servidor FAKE local, por transporte explicitamente injetado.
 Não há configuração de produção que permita localhost ou portas alternativas.
@@ -49,8 +51,13 @@ Blobs e a assinatura já usada pelo worker. Nenhum segredo novo em arquivo.
 Page IDs conhecidos são seeds antes das buscas por nome/domínio; máximo 2 queries,
 15 resultados/query. IDs meta:ad/meta:page são deduplicados.
 
-Reserva diária CAS em Blobs offer-intel-budget, até 15 runs/dia UTC. Falha de CAS
-ou indisponibilidade de Blobs impede o POST; não existe fallback em memória.
+Reserva diária autoritativa no Postgres: offer_intel_budget, até 15 runs/dia UTC
+calculado pelo servidor. A RPC offer_intel_budget_reserve usa advisory lock por dia,
+reutiliza a mesma reservation antes de verificar o teto e rejeita excedente com
+daily_limit. A leitura offer_intel_budget_usage alimenta limits.apify.daily_used;
+falha de leitura omite o valor desconhecido, enquanto falha de reserva impede o POST.
+Não existe fallback em Blobs ou memória. O SDK Blobs 9.1.5 permanece inalterado:
+setJSON retorna void e não implementa o CAS antes presumido pelo budget.
 provider_runs passa reserved -> starting ANTES do POST e salva provider_run_id
 imediatamente depois. Há somente um POST por reserva, inclusive sob concorrência.
 Timeout/resposta perdida/storage indisponível deixam unknown (ou starting caso
@@ -66,10 +73,25 @@ itens cobrados em actors pay-per-result, não garante teto monetário universal.
 O custo real e a preservação do marcador pelo provedor ainda precisam de
 validação autorizada; os testes atuais comprovam apenas o protocolo com FAKE.
 
-## Limitações de validação
+## Correção SQL 004 e revisão de ambiguidades
 
-- Nenhuma migration aplicada; SQL/RLS/RPC ainda precisam de PostgreSQL isolado.
-- Sem deploy, teste Netlify ou integração Blobs/Supabase real.
+offer_intel_persist usa v_counts para o resultado agregado e SET counts=v_counts;
+não qualifica variável declarada com nome da função. SECURITY INVOKER e search_path
+são explícitos; os grants/revokes são reaplicados. A tabela budget tem RLS sem
+acesso anon/authenticated; tabela e RPCs são restritas a service_role.
+
+Revisadas por leitura as nove funções das migrations 001–003: create, action,
+claim, checkpoint, review, read, worker_state, persist e provider. A colisão
+declarada encontrada foi counts em persist. As demais usam records j/r/n ou
+nomes distintos das colunas consultadas (actor/actor_id, scope/scope_key,
+next_status/status, patch, row_data, updated/updated_at, entity etc.).
+As migrations já aplicadas não foram editadas.
+
+## Limitações de validação desta correção
+
+- SQL 004/RLS/RPC não executados aqui: o Maestro validará em PostgreSQL real
+  dentro de transação com ROLLBACK antes de aplicar.
+- Sem merge, push, deploy ou acesso a produção nesta correção.
 - Sem execução paga ou teste real Apify; unknown sem correspondência exige
   investigação operacional, não repetição cega da cobrança. Cancelar o job bloqueia
   novas etapas e gravações, mas não aborta um run já aceito pelo Apify; ele pode
