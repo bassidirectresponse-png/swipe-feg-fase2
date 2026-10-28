@@ -69,3 +69,15 @@ test("B2/B3: só as áreas com endpoint existente ficam ativas", () => {
   assert.match(html, /ctx\.offerId&&OI_SUMMARY_LIVE\?await oiApi\.summary/);
   assert.match(html, /lim\.domainAvailable===false\)off\("#oiOptDom"/);
 });
+
+test("contagens desconhecidas (null) do backend não viram zero na UI", () => {
+  const job = OI.formatJob({ ...JOB, counts: { discoveries: null, relations: 0, funnels: null } });
+  assert.equal(job.counts.discoveries, null);
+  assert.equal(job.counts.relations, 0);
+  assert.equal(job.counts.steps, null);
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /function oiCount\(value\)\{return value==null\?"—":String\(value\);\}/);
+  assert.match(html, /\$\{oiCount\(job\.counts\.discoveries\)\} desc\./);
+  assert.doesNotMatch(html, /\$\{job\.counts\.(discoveries|relations|funnels|steps)\}/);
+  assert.match(html, /c\[k\]==null\|\|c\[k\]===""/);
+});
