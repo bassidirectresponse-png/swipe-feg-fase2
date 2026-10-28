@@ -864,7 +864,7 @@ async function oiReview(id,status){
   try{
     const r=await oiApi.setDiscoveryStatus(id,status,item.version);
     st.items[i]=OfferIntel.formatDiscovery(r);
-    toast(OI_REVIEW_DONE[status]);
+    oiInvalidateCtx();toast(OI_REVIEW_DONE[status]);
   }catch(error){
     item.busy=false;toast(error.message,true);
     if(error.status===409){delete oiStates.descobertas;}
@@ -896,7 +896,7 @@ async function oiReviewRelation(id,status){
   item.busy=true;renderOfferIntel();
   try{
     const r=await oiApi.setRelationStatus(id,status,item.version);
-    st.items[i]=OfferIntel.formatConnection(r);toast(OI_REL_DONE[status]);
+    st.items[i]=OfferIntel.formatConnection(r);oiInvalidateCtx();toast(OI_REL_DONE[status]);
   }catch(error){item.busy=false;toast(error.message,true);if(error.status===409)delete oiStates.conexoes;}
   if(activeSection==="inteligencia")renderOfferIntel();
 }
@@ -1138,7 +1138,9 @@ function oiEnsureTodas(){
     if(activeSection==="inteligencia")renderOfferIntel();
   })();
 }
-function oiInvalidateIntel(){oiTodas.status="idle";Object.keys(oiCtxCache).forEach(k=>delete oiCtxCache[k]);}
+/* Invalida sem apagar: o cabeçalho segue mostrando o resumo antigo enquanto um único GET atualiza (sem piscar nem loop). */
+function oiInvalidateCtx(){Object.keys(oiCtxCache).forEach(k=>{oiCtxCache[k].stale=true;});}
+function oiInvalidateIntel(){oiTodas.status="idle";oiInvalidateCtx();}
 function oiOverviewHtml(route){
   oiEnsureTodas();
   if(oiTodas.status==="loading"||oiTodas.status==="idle")return oiStateHtml("loading");
@@ -1161,8 +1163,10 @@ const oiCtxCache=Object.create(null);
 function oiCtxKey(route){const sc=oiNavScope(route);return sc.oferta?(sc.ref||"offer")+":"+sc.oferta:"";}
 function oiEnsureCtx(route){
   const key=oiCtxKey(route);
-  if(!key||!OI_BACKEND_READY||!OI_SUMMARY_LIVE||oiCtxCache[key])return;
-  const sc=oiNavScope(route);oiCtxCache[key]={status:"loading"};
+  const cached=key&&oiCtxCache[key];
+  if(!key||!OI_BACKEND_READY||!OI_SUMMARY_LIVE||(cached&&(!cached.stale||cached.fetching)))return;
+  const sc=oiNavScope(route);
+  if(cached)cached.fetching=true;else oiCtxCache[key]={status:"loading"};
   oiApi.summary(sc.oferta,sc.ref==="admin_draft"?"admin_draft":"offer").then(r=>{oiCtxCache[key]={status:"ready",summary:r};}).catch(error=>{oiCtxCache[key]={status:"error",error:String(error&&error.message||"")};}).then(()=>{if(activeSection==="inteligencia"&&oiRoute&&oiCtxKey(oiRoute)===key)renderOfferIntel();});
 }
 function oiContextHtml(route){
@@ -1352,6 +1356,7 @@ async function oiJobAction(id,action,button){
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);
     oiJobs[id]=job;const st=oiStates.investigacao;if(st&&st.items[0]&&st.items[0].id===id)st.items[0]=job;
     if(job.active)oiTrack(id);
+    oiInvalidateIntel();
     toast(action==="cancel"?"Investigação cancelada":"Nova tentativa iniciada");
   }catch(error){toast(error.message,true);}
   finally{oiBusy.delete(lock);}
