@@ -27,20 +27,27 @@ export const FAKE_SCAN = { ok: true, id: "scan-1", host: "exemplo-demo.com", reg
   assets: { images: [{ url: "https://exemplo-demo.com/img/hero.jpg", page_url: "https://exemplo-demo.com/" }, { url: "https://exemplo-demo.com/img/produto.png", page_url: "https://exemplo-demo.com/vsl" }], videos: [{ url: "https://exemplo-demo.com/media/teaser.mp4", page_url: "https://exemplo-demo.com/" }] },
   ads_library: { domain_search_url: "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&q=exemplo-demo.com&search_type=keyword_unordered&sort_data[mode]=total_impressions&sort_data[direction]=desc" } };
 
-const ad = (n, group, over) => Object.assign({ group, rank: n, ad_archive_id: String(1000000000 + n), page_id: String(200 + n), page_name: `Página Demo ${n}`, offer_id: group === "registered" && n % 2 ? "11111111-1111-4111-8111-111111111111" : null,
+const ad = (n, over) => Object.assign({ rank: n, ad_archive_id: String(1000000000 + n), page_name: `Página Demo ${n}`, page_source: n % 3 === 0 ? "encontrada" : "cadastrada",
   ad_text: `Texto do anúncio de demonstração ${n}. Descubra o método que mudou tudo.`, cta_text: "Saiba mais", landing_url: `https://oferta-demo-${n}.com/vsl`, started_at: "2026-08-20T00:00:00.000Z",
-  days_active: 90 - n * 5, repetitions: 20 - n, score: 96.5 - n * 4.3, is_new: n === 2, rank_change: n === 1 ? 0 : n === 3 ? 4 : n === 4 ? -2 : 0,
-  media: { thumb_url: null, video_url: null },
+  ad_library_url: `https://www.facebook.com/ads/library/?id=${1000000000 + n}`, days_active: 90 - n * 5, repetitions: 20 - n, score: 96.5 - n * 4.3, is_new: n === 2, rank_change: n === 1 ? 0 : n === 3 ? 4 : n === 4 ? -2 : 0,
+  media: { thumb_url: null, video_url: null, archived: false },
   analysis: n <= 3 ? { gancho: "Pergunta direta sobre dor.", angulo: "Descoberta recente.", promessa: "Resultado em 7 dias.", mecanismo: "Composto exclusivo.", formato: "UGC vertical", cta: "Saiba mais", publico: "Mulheres 40+", por_que_funciona: "Prova social forte e promessa específica." } : null }, over || {});
 
-export const FAKE_WEEKLY_LIST = { ok: true, items: [
-  { id: "w3", week_start: "2026-10-27", status: "succeeded", finished_at: "2026-10-28T01:40:00.000Z", cost: { apify_usd_est: 12.4, ads_collected: 2010, pages: 58 } },
-  { id: "w2", week_start: "2026-10-20", status: "partial", finished_at: "2026-10-21T01:35:00.000Z", cost: { apify_usd_est: 15, ads_collected: 2490, pages: 61 } },
-  { id: "w1", week_start: "2026-10-13", status: "failed", finished_at: null, cost: null }
+export const FAKE_REVIEW_LIST = { ok: true, items: [
+  { id: "r1", review_date: "2026-10-21", title: "Creative Review 21/10/2026", status: "succeeded", finished_at: "2026-10-21T01:40:00.000Z", products_count: 2, ads_count: 20, cost: { apify_usd_est: 12.4 } },
+  { id: "r2", review_date: "2026-10-28", title: "Creative Review 28/10/2026", status: "succeeded", finished_at: "2026-10-28T13:10:00.000Z", products_count: 3, ads_count: 30, cost: { apify_usd_est: 14.2 } },
+  { id: "r0", review_date: "2026-10-14", title: "Creative Review 14/10/2026", status: "failed", finished_at: null, products_count: null, ads_count: null, cost: null }
 ] };
 
-export const FAKE_WEEKLY = { ok: true,
-  report: { id: "w3", week_start: "2026-10-27", status: "succeeded", started_at: "2026-10-28T01:00:00.000Z", finished_at: "2026-10-28T01:40:00.000Z", cost: { apify_usd_est: 12.4, ads_collected: 2010, pages: 58 }, error: null },
-  registered: Array.from({ length: 10 }, (_, i) => ad(i + 1, "registered")),
-  discovered: Array.from({ length: 10 }, (_, i) => ad(i + 1, "discovered", { page_name: `Página Encontrada ${i + 1}`, offer_id: null })),
-  summary: { bullets: ["Anúncios em vídeo UGC dominam o Top 10.", "Três novidades entram nas Páginas cadastradas.", "O ângulo de descoberta científica cresceu.", "Repetição média subiu para 12 criativos.", "Duas Páginas encontradas já passam de 60 dias."] } };
+const PRODUCTS = [
+  { offer_id: "11111111-1111-4111-8111-111111111111", offer_name: "Produto Demo Alfa", brand: "Marca FAKE", section: "brandsvalidated", thumb_url: null, pages_count: 4, ads_collected: 96, top: [{ rank: 1, thumb_url: null, score: 92.2 }, { rank: 2, thumb_url: null, score: 87.9 }, { rank: 3, thumb_url: null, score: 83.6 }], summary: { bullets: ["Escalando: UGC vertical com prova social.", "Ângulo dominante: descoberta recente.", "Formato: vídeo 30–45 s."] }, is_new_leader: true },
+  { offer_id: "22222222-2222-4222-8222-222222222222", offer_name: "Produto Demo Beta", brand: "Marca FAKE 2", section: "brandsgeneral", thumb_url: null, pages_count: 2, ads_collected: 40, top: [{ rank: 1, thumb_url: null, score: 71 }], summary: null, is_new_leader: false },
+  { offer_id: "33333333-3333-4333-8333-333333333333", offer_name: "Produto Demo Gama <b>", brand: "", section: "brandsvalidated", thumb_url: null, pages_count: 1, ads_collected: 12, top: [], summary: { bullets: ["Poucos anúncios ativos."] }, is_new_leader: false }
+];
+export const FAKE_REVIEW_FOLDER = { ok: true,
+  report: { id: "r2", review_date: "2026-10-28", title: "Creative Review 28/10/2026", status: "succeeded", phase: "done", progress: 100, finished_at: "2026-10-28T13:10:00.000Z", cost: { apify_usd_est: 14.2 } },
+  summary: { bullets: ["Anúncios em vídeo UGC dominam o Top 10.", "Três novidades entram nesta semana.", "O ângulo de descoberta científica cresceu.", "Repetição média subiu para 12 criativos.", "Dois produtos têm novo líder."] },
+  products: PRODUCTS };
+export const FAKE_REVIEW_PRODUCT = (offerId) => ({ ok: true,
+  report: FAKE_REVIEW_FOLDER.report, product: PRODUCTS.find(p => p.offer_id === offerId) || PRODUCTS[0],
+  ads: Array.from({ length: 10 }, (_, i) => ad(i + 1)) });

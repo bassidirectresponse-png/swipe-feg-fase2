@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { FAKE_SCAN, FAKE_SCAN_LIST, FAKE_WEEKLY, FAKE_WEEKLY_LIST } from "./offer-intel-FAKE-v2-fixtures.mjs";
+import { FAKE_SCAN, FAKE_SCAN_LIST, FAKE_REVIEW_FOLDER, FAKE_REVIEW_LIST, FAKE_REVIEW_PRODUCT } from "./offer-intel-FAKE-v2-fixtures.mjs";
 
 const context = { globalThis: {}, URL, URLSearchParams, Intl, JSON, Promise, Error, Object, Number, Math, String, Date };
 for (const file of ["offer-intel.js", "offer-intel-api.js"]) vm.runInNewContext(readFileSync(new URL(`../lib/${file}`, import.meta.url), "utf8"), context);
@@ -15,13 +15,9 @@ test("rotas v2: /inteligencia/dominio/:scanId e /inteligencia/semanal?semana=", 
   assert.equal(OI.parsePath("/inteligencia/dominio", "").notFound, true);
   assert.equal(OI.parsePath("/inteligencia/dominio/a/b", "").notFound, true);
   assert.equal(OI.parsePath("/inteligencia/dominio/%3Cx%3E", "").notFound, true);
-  const w = OI.parsePath("/inteligencia/semanal", "?semana=2026-10-27");
-  assert.equal(w.area, "semanal"); assert.equal(w.query.semana, "2026-10-27");
-  assert.equal(OI.parsePath("/inteligencia/semanal", "?semana=2026-13-40").query.semana, "");
-  assert.equal(OI.parsePath("/inteligencia/semanal", "?semana=javascript:1").query.semana, "");
+  assert.equal(OI.parsePath("/inteligencia/semanal", "").notFound, true, "legado vira redirect no app, não área da Inteligência");
   assert.equal(OI.buildPath({ area: "dominio", scanId: "scan-1" }), "/inteligencia/dominio/scan-1");
-  assert.equal(OI.buildPath({ area: "semanal", query: { semana: "2026-10-27" } }), "/inteligencia/semanal?semana=2026-10-27");
-  assert.ok(OI.AREAS.some(a => a.key === "semanal" && a.label === "Relatório semanal"));
+  assert.ok(!OI.AREAS.some(a => a.key === "semanal"));
   assert.equal(OI.areaMeta("dominio").title, "Raio-X do domínio");
 });
 
@@ -75,34 +71,56 @@ test("Raio-X: contagens nulas ficam nulas e prototype pollution não passa", () 
   assert.deepEqual([none.pages.length, none.vsl.length, none.summary.vsl], [0, 0, null]);
 });
 
-test("Semanal: lista, relatório, selos, score e análise", () => {
-  const list = OI.formatWeeklyList(FAKE_WEEKLY_LIST.items);
-  assert.equal(list[0].weekLabel, "Semana de 27/10/2026"); assert.equal(list[0].costLabel, "US$ 12,40"); assert.equal(list[0].statusLabel, "Concluído");
-  assert.equal(list[2].costLabel, ""); assert.equal(list[2].finishedAt, ""); assert.equal(list[1].statusLabel, "Parcial");
-  const r = OI.formatWeeklyReport(FAKE_WEEKLY);
-  assert.equal(r.registered.length, 10); assert.equal(r.discovered.length, 10);
-  assert.equal(r.summary.length, 5);
-  assert.equal(r.meta.adsCollected, 2010); assert.equal(r.meta.pages, 58);
-  const [a1, a2, a3, a4] = r.registered;
-  assert.equal(a1.rank, 1); assert.equal(a1.score, 92.2); assert.equal(a2.isNew, true);
-  assert.equal(a3.rankChange, 4); assert.equal(a4.rankChange, -2); assert.equal(a1.rankChange, 0);
-  assert.equal(a1.offerId, "11111111-1111-4111-8111-111111111111"); assert.equal(r.registered[1].offerId, "");
-  assert.equal(a1.analysis.length, 8); assert.equal(a1.analysis[0].label, "Gancho"); assert.equal(r.registered[5].analysis.length, 0);
-  assert.equal(a1.libraryUrl, "https://www.facebook.com/ads/library/?id=1000000001");
-  assert.equal(a1.thumbUrl, ""); assert.equal(a1.videoUrl, "");
+test("Creative Review: rotas /creative-review, data e produto", () => {
+  assert.deepEqual(j(OI.parseReviewPath("/creative-review")), { notFound: false, view: "list", date: "", offerId: "" });
+  assert.deepEqual(j(OI.parseReviewPath("/creative-review/2026-10-28")), { notFound: false, view: "folder", date: "2026-10-28", offerId: "" });
+  assert.deepEqual(j(OI.parseReviewPath("/creative-review/2026-10-28/abc-1/")), { notFound: false, view: "product", date: "2026-10-28", offerId: "abc-1" });
+  for (const bad of ["/creative-review/2026-13-40", "/creative-review/ontem", "/creative-review/2026-10-28/a/b", "/creative-review/2026-10-28/../x", "/outra"]) assert.equal(OI.parseReviewPath(bad).notFound, true, bad);
+  assert.equal(OI.buildReviewPath("2026-10-28", "abc"), "/creative-review/2026-10-28/abc");
+  assert.equal(OI.buildReviewPath("lixo"), "/creative-review");
+  assert.equal(OI.reviewTitle("2026-10-28"), "Creative Review 28/10/2026");
 });
 
-test("Semanal: mídia insegura é descartada; resumo só aceita {bullets}; lista vazia", () => {
+test("Creative Review: lista ordena a mais recente primeiro e mantém desconhecidos nulos", () => {
+  const list = OI.formatReviewList(FAKE_REVIEW_LIST.items);
+  assert.deepEqual(list.map(x => x.date), ["2026-10-28", "2026-10-21", "2026-10-14"]);
+  assert.equal(list[0].title, "Creative Review 28/10/2026"); assert.equal(list[0].costLabel, "US$ 14,20"); assert.equal(list[0].productsCount, 3);
+  assert.equal(list[2].productsCount, null); assert.equal(list[2].adsCount, null); assert.equal(list[2].statusLabel, "Falhou");
+  const running = OI.formatReviewMeta({ review_date: "2026-11-04", status: "running", phase: "coleta", progress: 42 });
+  assert.equal(running.active, true); assert.equal(running.progress, 42); assert.equal(running.title, "Creative Review 04/11/2026");
+  assert.equal(OI.formatReviewMeta({ status: "running", progress: 250 }).progress, 100);
+  assert.equal(OI.formatReviewMeta({ status: "running" }).progress, null);
+  assert.equal(OI.formatReviewMeta({ status: "x" }).status, "queued");
+});
+
+test("Creative Review: pasta e produto seguem o contrato 10.5", () => {
+  const f = OI.formatReviewFolder(FAKE_REVIEW_FOLDER);
+  assert.equal(f.summary.length, 5); assert.equal(f.products.length, 3);
+  assert.equal(f.products[0].summary.length, 3); assert.equal(f.products[1].summary.length, 0); assert.equal(f.products[0].isNewLeader, true);
+  assert.equal(f.products[0].top.length, 3); assert.equal(f.products[0].top[0].score, 92.2);
+  assert.equal(OI.formatReviewFolder({ summary: ["x"], products: [{ offer_id: "../x" }] }).products.length, 0);
+  assert.deepEqual(j(OI.formatReviewFolder({ summary: null }).summary), []);
+  const p = OI.formatReviewProduct(FAKE_REVIEW_PRODUCT("22222222-2222-4222-8222-222222222222"));
+  assert.equal(p.product.name, "Produto Demo Beta"); assert.equal(p.ads.length, 10);
+  const [a1, a2, a3, a4] = p.ads;
+  assert.equal(a1.score, 92.2); assert.equal(a2.isNew, true); assert.equal(a3.rankChange, 4); assert.equal(a4.rankChange, -2);
+  assert.equal(a3.pageSource, "encontrada"); assert.equal(a1.pageSource, "cadastrada");
+  assert.equal(a1.analysis.length, 8); assert.equal(p.ads[5].analysis.length, 0);
+  assert.equal(a1.libraryUrl, "https://www.facebook.com/ads/library/?id=1000000001");
+  assert.equal(OI.formatReviewProduct({ ads: new Array(15).fill({}) }).ads.length, 10);
+});
+
+test("score desconhecido e mídia insegura nos anúncios", () => {
   const ad = OI.formatWeeklyAd({ rank: 1, media: { thumb_url: "javascript:x", video_url: "https://x.supabase.co/v.mp4" }, ad_archive_id: "abc", score: "x", rank_change: "NaN" });
   assert.equal(ad.thumbUrl, ""); assert.equal(ad.videoUrl, "https://x.supabase.co/v.mp4"); assert.equal(ad.score, null); assert.equal(ad.libraryUrl, ""); assert.equal(ad.rankChange, 0);
-  assert.deepEqual(j(OI.formatWeeklyReport({ report: { status: "weird" }, summary: "Texto único" }).summary), [], "só {bullets} é aceito");
-  assert.deepEqual(j(OI.formatWeeklyReport({ summary: ["a"] }).summary), []);
-  assert.deepEqual(j(OI.formatWeeklyReport({ summary: { bullets: ["a", 5, " b "] } }).summary), ["a", "b"]);
-  assert.deepEqual(j(OI.formatWeeklyReport({ summary: null }).summary), []);
-  const empty = OI.formatWeeklyReport(null);
-  assert.equal(empty.registered.length, 0); assert.equal(empty.meta.status, "queued");
-  assert.deepEqual(j(OI.formatWeeklyList(null)), []);
-  assert.equal(OI.formatWeeklyReport({ report: { status: "running" } }).meta.active, true);
+  assert.deepEqual(j(OI.formatReviewFolder({ report: { status: "partial" }, summary: { bullets: ["a", 5, " b "] } }).summary), ["a", "b"]);
+  assert.deepEqual(j(OI.formatReviewFolder({ summary: "Texto" }).summary), []);
+});
+
+test("QA-UI-R6-02: score desconhecido (null, vazio, boolean) fica null, nunca 0", () => {
+  for (const v of [null, undefined, "", false, true, "x"]) assert.equal(OI.formatWeeklyAd({ score: v }).score, null, String(v));
+  assert.equal(OI.formatWeeklyAd({ score: 0 }).score, 0);
+  assert.equal(OI.formatWeeklyAd({ score: "42.46" }).score, 42.5);
 });
 
 test("cliente v2: endpoints, parâmetros e POST de execução", async () => {
@@ -111,14 +129,15 @@ test("cliente v2: endpoints, parâmetros e POST de execução", async () => {
   await client.listDomainScans({ offerId: "o1", offerRefKind: "admin_draft" });
   await client.listDomainScans({ jobId: "j1" });
   await client.getDomainScan("scan-1");
-  await client.listWeekly(); await client.getWeekly(); await client.getWeekly("2026-10-27"); await client.runWeekly();
+  await client.listReviews(); await client.getReview(); await client.getReview("2026-10-28"); await client.getReviewProduct("2026-10-28", "o1"); await client.runReview();
   assert.equal(calls[0].url, "/.netlify/functions/offer-intel-domain-scans?offer_id=o1&offer_ref_kind=admin_draft");
   assert.equal(calls[1].url, "/.netlify/functions/offer-intel-domain-scans?job_id=j1");
   assert.equal(calls[2].url, "/.netlify/functions/offer-intel-domain-scan?id=scan-1");
   assert.equal(calls[3].url, "/.netlify/functions/offer-intel-weekly");
-  assert.equal(calls[4].url, "/.netlify/functions/offer-intel-weekly?week=latest");
-  assert.equal(calls[5].url, "/.netlify/functions/offer-intel-weekly?week=2026-10-27");
-  assert.equal(calls[6].init.method, "POST"); assert.deepEqual(JSON.parse(calls[6].init.body), { action: "run" });
+  assert.equal(calls[4].url, "/.netlify/functions/offer-intel-weekly?date=latest");
+  assert.equal(calls[5].url, "/.netlify/functions/offer-intel-weekly?date=2026-10-28");
+  assert.equal(calls[6].url, "/.netlify/functions/offer-intel-weekly?date=2026-10-28&offer_id=o1");
+  assert.equal(calls[7].init.method, "POST"); assert.deepEqual(JSON.parse(calls[7].init.body), { action: "run" });
 });
 
 test("QA-UI-R6-01: scansByHost compara o timestamp bruto e normaliza www", () => {
@@ -128,10 +147,4 @@ test("QA-UI-R6-01: scansByHost compara o timestamp bruto e normaliza www", () =>
   assert.equal(OI.scansByHost([next, old])["example.com"].id, "new");
   const dec = OI.formatScanSummary({ id: "dez", host: "a.com", created_at: "2026-12-01T00:00:00.000Z" }), jan = OI.formatScanSummary({ id: "jan", host: "a.com", created_at: "2027-01-02T00:00:00.000Z" });
   assert.equal(OI.scansByHost([dec, jan])["a.com"].id, "jan", "01/12/2026 > 02/01/2027 como texto não pode vencer");
-});
-
-test("QA-UI-R6-02: score desconhecido (null, vazio, boolean) fica null, nunca 0", () => {
-  for (const v of [null, undefined, "", false, true, "x"]) assert.equal(OI.formatWeeklyAd({ score: v }).score, null, String(v));
-  assert.equal(OI.formatWeeklyAd({ score: 0 }).score, 0);
-  assert.equal(OI.formatWeeklyAd({ score: "42.46" }).score, 42.5);
 });

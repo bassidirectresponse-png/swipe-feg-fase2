@@ -63,7 +63,7 @@ test("B2: POST de início usa os campos do contrato e 503 credentials_missing vi
 test("B2/B3: só as áreas com endpoint existente ficam ativas", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /const OI_BACKEND_READY=(true|false);/);
-  assert.match(html, /const OI_LIVE_AREAS=new Set\(\["historico","investigacao","investigar","oferta","descobertas","conexoes","funis","dominio","semanal"\]\);/);
+  assert.match(html, /const OI_LIVE_AREAS=new Set\(\["historico","investigacao","investigar","oferta","descobertas","conexoes","funis","dominio"\]\);/);
   assert.match(html, /const OI_V2_READY=(true|false);/);
   assert.match(html, /function oiAreaLive\(area\)\{return OI_BACKEND_READY&&OI_LIVE_AREAS\.has\(area\)&&\(OI_V2_READY\|\|!OI_V2_AREAS\.has\(area\)\);\}/);
   assert.match(html, /const OI_SUMMARY_LIVE=true;/);
