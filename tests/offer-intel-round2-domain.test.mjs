@@ -7,6 +7,19 @@ import { createDomainExplorer } from "../lib/offer-intel-domain.mjs";
 import { createFAKEWorkerStorage } from "./offer-intel-FAKE-worker-storage.mjs";
 import { randomUUID } from "node:crypto";
 const shopify=readFileSync(new URL("./fixtures/offer-intel-shopify-our-saga.html",import.meta.url),"utf8");
+test("QA-R2-01 own cart form verifies checkout, plural checkout path infers it, drawer never proves it",()=>{
+  const form='<form action="/cart" method="post"><input name="updates[]" value="1"><button name="checkout" type="submit">Checkout</button></form>';
+  const cart={url:"https://store.example/cart",title:"Your cart - Store",html:'<main><h1>Your cart</h1>'+form+'</main>'};
+  assert.equal(classifyStep(cart).kind,"checkout");
+  assert.equal(classifyStep(cart).verification,"verified");
+  for(const chrome of ['<div class="cart-drawer">'+form+'</div>','<header><nav>'+form+'</nav></header>','<footer>'+form+'</footer>']) {
+    assert.notEqual(classifyStep({...cart,html:chrome+'<main><h1>Your cart</h1></main>'}).kind,"checkout");
+    assert.notEqual(classifyStep({...cart,url:"https://store.example/products/powder",title:"Ingredients",html:chrome+'<main><h1>Ingredients</h1></main>'}).kind,"checkout");
+  }
+  const plural=classifyStep({url:"https://store.example/checkouts/session123",title:"Pagamento",html:"<main><h1>Pagamento</h1></main>"});
+  assert.equal(plural.kind,"checkout");assert.equal(plural.verification,"inferred");
+  assert.deepEqual(plural.classification_basis.signals,[{source:"url_path",rule:"checkout"}]);
+});
 test("Round2 real Shopify fixture: legal/about pages unknown, Ingredients not quiz from navigation",()=>{
   assert.match(shopify,/<header\b/i);assert.match(shopify,/<footer\b/i);assert.match(shopify,/Take (?:the )?Quiz/i);
   for(const [path,title] of [["/pages/our-saga","Our Saga"],["/policies/privacy-policy","Privacy policy"],["/pages/ingredients","Ingredients"]]) {
