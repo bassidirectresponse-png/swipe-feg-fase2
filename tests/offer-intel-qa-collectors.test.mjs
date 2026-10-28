@@ -5,6 +5,7 @@ import http from "node:http";
 import { randomUUID } from "node:crypto";
 import { createDomainExplorer } from "../lib/offer-intel-domain.mjs";
 import { createApifyCollector } from "../lib/offer-intel-apify.mjs";
+import { createFAKEBudgetStorage } from "./offer-intel-FAKE-budget-storage.mjs";
 import { createDailyBudget } from "../lib/offer-intel-budget.mjs";
 import { fetchPublicPage,pinnedRequest } from "../lib/offer-intel-url-safety.mjs";
 import { classifyStep } from "../lib/offer-intel-classifier.mjs";
@@ -44,7 +45,8 @@ test("QA real Node streaming transport caps bytes/time, redirects and sends only
 });
 test("QA classifier only claims verified for observed document signals",()=>{
  assert.equal(classifyStep({url:"https://example.com/checkout",text:"Welcome"}).verification,"inferred");
- const seen=classifyStep({text:"Payment method"});assert.equal(seen.verification,"verified");assert.equal(seen.classification_basis.signals[0].source,"document");
+ assert.notEqual(classifyStep({text:"Payment method"}).kind,"checkout");
+ const seen=classifyStep({text:"Card number"});assert.equal(seen.verification,"verified");assert.equal(seen.classification_basis.signals[0].source,"document");
  assert.equal(classifyStep({text:"Payment method",http_status:403}).verification,"inaccessible");
 });
 test("QA same Apify investigation twice: one POST, stable identities, decisions and legacy snapshots unchanged",async()=>{
@@ -80,13 +82,11 @@ test("QA cancelled Apify after accepted POST cannot persist or start another req
  await assert.rejects(()=>collector.run(j),e=>e.code==="conflict");assert.equal(calls,1);assert.equal(s.records.discoveries.size,0);
  await assert.rejects(()=>collector.run(j),e=>e.code==="conflict");assert.equal(calls,1);
 });
-test("QA real CAS budget rejects sixteenth reservation before any provider POST",async()=>{
- const data=new Map();let version=0,posts=0;
- const store={getWithMetadata:async key=>structuredClone(data.get(key)||null),setJSON:async(key,value,opts)=>{
- const old=data.get(key);if(opts.onlyIfNew?!!old:old?.etag!==opts.onlyIfMatch)return {modified:false};
- data.set(key,{data:value,etag:String(++version)});return {modified:true};}};
- const budget=createDailyBudget({store,now:()=>new Date("2026-10-28T12:00:00Z")});
+test("QA PostgreSQL budget adapter with FAKE storage rejects sixteenth reservation before provider POST",async()=>{
+ const storage=createFAKEBudgetStorage();let posts=0;
+ const budget=createDailyBudget({storage});
  await Promise.all(Array.from({length:15},(_,i)=>budget.reserve("FAKE-"+i)));
+ assert.equal((await budget.reserve("FAKE-0")).reused,true);
  const j=job(),s=createFAKEWorkerStorage(j);
  await assert.rejects(()=>createApifyCollector({storage:s,budget,token:randomUUID(),fetcher:async()=>{posts++;}}).run(j),e=>e.code==="daily_limit");
  assert.equal(posts,0);
@@ -147,4 +147,14 @@ test("QA real worker plus Domain Explorer retains useful records as partial afte
  const row=await storage.get(dispatch.id);assert.equal(row.status,"partial");assert.equal(row.sources.find(s=>s.name==="domain_explorer").status,"failed");
  assert.ok(row.counts.discoveries>0);assert.ok([...workerRecords.steps.values()].some(s=>s.verification==="verified"));
  assert.ok([...workerRecords.steps.values()].some(s=>s.verification==="inaccessible"));
+});
+
+
+test("QA unavailable PostgreSQL budget fails closed before provider POST without fallback",async()=>{
+ let posts=0;
+ const budget=createDailyBudget({storage:{budgetReserve:async()=>{throw Error("FAKE database outage");}}});
+ const j=job(),s=createFAKEWorkerStorage(j);
+ await assert.rejects(()=>createApifyCollector({storage:s,budget,token:randomUUID(),fetcher:async()=>{posts++;}}).run(j),
+   e=>e.status===503&&e.code==="capability_unavailable");
+ assert.equal(posts,0);
 });
