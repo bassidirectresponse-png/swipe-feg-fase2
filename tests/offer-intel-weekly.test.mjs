@@ -472,3 +472,38 @@ test("Creative Review uses a valid allowlisted Claude model by default", async (
   assert.equal(CREATIVE_REVIEW_MODEL, "claude-sonnet-5-5");
   assert.ok(Object.hasOwn(AI_LIMITS.models, CREATIVE_REVIEW_MODEL));
 });
+
+test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usage mapped, failures explained", async () => {
+  const { createWeeklyOpenRouter, OPENROUTER_IMAGE_TOKENS } = await import("../lib/offer-intel-weekly-worker.mjs");
+  const { AI_LIMITS } = await import("../lib/offer-intel-weekly.mjs");
+  const calls = [];
+  const FAKE_fetch = async (url, init) => {
+    calls.push(JSON.parse(init.body));
+    if (calls.length === 3) return new Response(JSON.stringify({ error: { code: 402, message: "Insufficient credits" } }), { status: 402 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":1}' } }], usage: { prompt_tokens: 900, completion_tokens: 120 } }));
+  };
+  const ai = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/gemini-3.8-flash", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
+  const ad = await ai({ prompt: "p", image: "https://x.supabase.co/a.png", maxTokens: 1500, kind: "ad" });
+  assert.deepEqual(ad.usage, { input_tokens: 900, output_tokens: 120 });
+  await ai({ prompt: "p", maxTokens: 1200, kind: "week" });
+  assert.equal(calls[0].model, "google/gemini-3.8-flash");
+  assert.equal(calls[1].model, "anthropic/claude-sonnet-5.5");
+  assert.deepEqual(calls[0].provider.max_price, { prompt: AI_LIMITS.models["google/gemini-3.8-flash"][0], completion: AI_LIMITS.models["google/gemini-3.8-flash"][1] });
+  assert.equal(calls[0].messages[0].content[1].type, "image_url");
+  assert.equal(calls[1].messages[0].content.length, 1);
+  await assert.rejects(ai({ prompt: "p", maxTokens: 10, kind: "ad" }), /OpenRouter HTTP 402 402: Insufficient credits/);
+  assert.equal(ai.modelFor("product"), "anthropic/claude-sonnet-5.5");
+  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 501 + OPENROUTER_IMAGE_TOKENS);
+  const unknown = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/unknown-model", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
+  await assert.rejects(unknown({ prompt: "p", maxTokens: 10, kind: "ad" }), /sem preço/);
+});
+
+test("Creative Review prefers OpenRouter when its key exists and falls back to Anthropic", async () => {
+  const { creativeReviewAi } = await import("../netlify/functions/_offer-intel-weekly.mjs");
+  const or = creativeReviewAi({ OPENROUTER_API_KEY: "FAKE-KEY" });
+  assert.equal(or.model, "google/gemini-3.8-flash");
+  assert.equal(or.claude.modelFor("week"), "anthropic/claude-sonnet-5.5");
+  const direct = creativeReviewAi({ ANTHROPIC_API_KEY: "FAKE-KEY" });
+  assert.equal(direct.model, "claude-sonnet-5-5");
+  assert.equal(direct.claude.modelFor, undefined);
+});

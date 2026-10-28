@@ -6,12 +6,23 @@ import { IntelError, UUID } from "../../lib/offer-intel-core.mjs";
 import { signedDispatch, verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { reviewDate, isReviewDate, reviewTitle, publicReport, publicAd, publicProduct, validateBullets, isMoney } from "../../lib/offer-intel-weekly.mjs";
 import { createWeeklyStorage } from "../../lib/offer-intel-weekly-storage.mjs";
-import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createWeeklyClaude } from "../../lib/offer-intel-weekly-worker.mjs";
+import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createWeeklyClaude, createWeeklyOpenRouter } from "../../lib/offer-intel-weekly-worker.mjs";
 
 const METHODS = "GET, POST, OPTIONS";
 const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net"];
-// The shared AD_ANALYSIS_MODEL default ("claude-sonnet-5") is rejected by the API, so Creative Review pins its own id.
+// Direct Anthropic fallback (used only without OPENROUTER_API_KEY).
 export const CREATIVE_REVIEW_MODEL = String(process.env.CREATIVE_REVIEW_MODEL || "claude-sonnet-5-5").trim();
+// OpenRouter (preferred when its key exists): best cost/benefit measured on real ads on 28/10/2026 —
+// Gemini 3.8 Flash for the ~240 ad analyses, Claude Sonnet 5.5 for the product/executive summaries shown in the meeting.
+export const OPENROUTER_ADS_MODEL = String(process.env.OPENROUTER_MODEL_ADS || "google/gemini-3.8-flash").trim();
+export const OPENROUTER_SUMMARY_MODEL = String(process.env.OPENROUTER_MODEL_SUMMARY || "anthropic/claude-sonnet-5.5").trim();
+export function creativeReviewAi(env = process.env) {
+  const openRouterKey = String(env.OPENROUTER_API_KEY || "").trim();
+  if (openRouterKey) return { model: OPENROUTER_ADS_MODEL,
+    claude: createWeeklyOpenRouter({ key: openRouterKey, adsModel: OPENROUTER_ADS_MODEL, summaryModel: OPENROUTER_SUMMARY_MODEL }) };
+  return { model: CREATIVE_REVIEW_MODEL,
+    claude: createWeeklyClaude({ key: env.ANTHROPIC_API_KEY || "", model: CREATIVE_REVIEW_MODEL, url: ANTHROPIC_URL }) };
+}
 // Domain separation: a weekly signature is never valid for the investigation worker and vice versa.
 export const weeklySecret = secret => secret ? createHmac("sha256", secret).update("offer-intel-weekly/v1").digest("hex") : "";
 
@@ -20,9 +31,8 @@ export function weeklyRuntime() {
   const storage = createWeeklyStorage({ url: SUPABASE_URL, serviceKey });
   const secret = weeklySecret(automationSigningSecret());
   return {
-    storage, secret, model: CREATIVE_REVIEW_MODEL,
+    storage, secret, ...creativeReviewAi(),
     apify: createWeeklyApify({ token: String(process.env.APIFY_TOKEN || "").trim() }),
-    claude: createWeeklyClaude({ key: process.env.ANTHROPIC_API_KEY || "", model: CREATIVE_REVIEW_MODEL, url: ANTHROPIC_URL }),
     archive: createWeeklyArchive({
       publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
       async download(url, maxBytes) {
