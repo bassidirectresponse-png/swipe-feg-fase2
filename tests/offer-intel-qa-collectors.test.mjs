@@ -46,7 +46,8 @@ test("QA real Node streaming transport caps bytes/time, redirects and sends only
 test("QA classifier only claims verified for observed document signals",()=>{
  assert.equal(classifyStep({url:"https://example.com/checkout",text:"Welcome"}).verification,"inferred");
  assert.notEqual(classifyStep({text:"Payment method"}).kind,"checkout");
- const seen=classifyStep({text:"Card number"});assert.equal(seen.verification,"verified");assert.equal(seen.classification_basis.signals[0].source,"document");
+ assert.notEqual(classifyStep({text:"Card number"}).kind,"checkout");
+ const seen=classifyStep({html:'<main><form><input autocomplete="cc-number"></form></main>'});assert.equal(seen.verification,"verified");assert.equal(seen.classification_basis.signals[0].source,"document");
  assert.equal(classifyStep({text:"Payment method",http_status:403}).verification,"inaccessible");
 });
 test("QA same Apify investigation twice: one POST, stable identities, decisions and legacy snapshots unchanged",async()=>{
@@ -108,7 +109,8 @@ test("QA-B04 retries transient child only, preserves successful root and caches 
    return {status:root||attempt>1?200:status,headers:{"content-type":"text/html"},final_url:url,redirects:[],
     body:Buffer.from(root?'<title>Root</title><a href="/child">next</a>':"<title>Recovered</title>")};
   }});
-  assert.equal((await explorer.run(j)).status,"failed");assert.equal((await explorer.run(j)).status,"succeeded");await explorer.run(j);
+  const first=await explorer.run(j);assert.equal(first.status,"succeeded");assert.equal(first.error.code,"pages_inaccessible");
+  assert.equal((await explorer.run(j)).status,"succeeded");await explorer.run(j);
   assert.equal(calls.filter(u=>new URL(u).pathname==="/").length,1);
   assert.equal(calls.filter(u=>u.endsWith("/child")).length,2);
   assert.equal([...s.records.steps.values()].find(x=>x.original_url.endsWith("/child")).title,"Recovered");
@@ -128,7 +130,7 @@ test("QA-B05 cycles/convergence survive collection and cached edge repair withou
   assert.equal(calls,before);assert.equal(s.records.edges.size,expected);assert.deepEqual([...s.records.steps.values()].map(x=>x.title).sort(),titles);
  }
 });
-test("QA real worker plus Domain Explorer retains useful records as partial after HTTP failure",async()=>{
+test("QA real worker plus Domain Explorer reports page-level failure as successful source with warning",async()=>{
  const { createIntelHandlers }=await import("../netlify/functions/_offer-intel-api.mjs");
  const { createFAKEStorage }=await import("./offer-intel-FAKE-storage.mjs");
  const { signedDispatch }=await import("../lib/offer-intel-dispatch.mjs");
@@ -144,7 +146,8 @@ test("QA real worker plus Domain Explorer retains useful records as partial afte
  body:JSON.stringify({url:"https://public.example/",idempotency_key:randomUUID(),options:{collect_ads:false,explore_domains:true}})}));
  assert.equal(created.status,202);
  await api.background(new Request("https://benchmarkinggrupofeg.site/background",{method:"POST",...signedDispatch(dispatch.id,dispatch.nonce,secret)}));
- const row=await storage.get(dispatch.id);assert.equal(row.status,"partial");assert.equal(row.sources.find(s=>s.name==="domain_explorer").status,"failed");
+ const row=await storage.get(dispatch.id);assert.equal(row.status,"succeeded");assert.equal(row.sources.find(s=>s.name==="domain_explorer").status,"succeeded");
+ assert.equal(row.sources.find(s=>s.name==="domain_explorer").error.code,"pages_inaccessible");
  assert.ok(row.counts.discoveries>0);assert.ok([...workerRecords.steps.values()].some(s=>s.verification==="verified"));
  assert.ok([...workerRecords.steps.values()].some(s=>s.verification==="inaccessible"));
 });
@@ -157,4 +160,34 @@ test("QA unavailable PostgreSQL budget fails closed before provider POST without
  await assert.rejects(()=>createApifyCollector({storage:s,budget,token:randomUUID(),fetcher:async()=>{posts++;}}).run(j),
    e=>e.status===503&&e.code==="capability_unavailable");
  assert.equal(posts,0);
+});
+
+
+test("QA UI preserves succeeded source warning without a failed label",async()=>{
+ const {readFileSync}=await import("node:fs"),vm=await import("node:vm");
+ const ctx={};vm.createContext(ctx);
+ vm.runInContext(readFileSync(new URL("../lib/offer-intel.js",import.meta.url),"utf8"),ctx);
+ const job=ctx.OfferIntel.formatJob({status:"succeeded",sources:[{name:"domain_explorer",status:"succeeded",
+   result_count:2,error:{code:"pages_inaccessible",message:"Aviso: 1 de 2 páginas ficaram inacessíveis."}}]});
+ assert.equal(job.status,"succeeded");
+ assert.equal(job.sources[0].statusLabel,"Concluída");
+ assert.equal(job.sources[0].error.code,"pages_inaccessible");
+ assert.match(job.sources[0].error.message,/1 de 2/);
+});
+
+
+test("QA v1.4 rejection permits only explicit retry with another reservation; no refund",async()=>{
+ const j=job(),storage=createFAKEWorkerStorage(j),budgetStorage=createFAKEBudgetStorage();
+ let posts=0;
+ const collector=createApifyCollector({storage,budget:createDailyBudget({storage:budgetStorage}),token:randomUUID(),
+   fetcher:async(_url,options)=>{
+     assert.equal(options.method,"POST");posts++;
+     return Response.json({error:{message:"FAKE billing rejection"}},{status:402});
+   }});
+ await assert.rejects(()=>collector.run(j),e=>e.code==="provider_rejected");
+ assert.equal(posts,1);assert.equal(budgetStorage.reservations.size,1);
+ assert.equal([...storage.records.providers.values()][0].state,"failed");
+ // Second invocation models an explicit admin retry; production dispatch remains guarded by its lease.
+ await assert.rejects(()=>collector.run(j),e=>e.code==="provider_rejected");
+ assert.equal(posts,2);assert.equal(budgetStorage.reservations.size,2);
 });
