@@ -26,6 +26,7 @@ const SECTIONS=[
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
   {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'},
+  {key:"creativereview",label:"Creative Review",icon:"film",newLabel:"",statLabel:"Pastas",emptyTitle:"",searchPlaceholder:"Buscar...",subHtml:'<b>Creative Review</b> — os criativos mais fortes de cada produto, prontos para a reunião de quarta.'},
   {key:"inteligencia",label:"Inteligência de Ofertas",icon:"search",newLabel:"",statLabel:"Descobertas",emptyTitle:"",searchPlaceholder:"Buscar descoberta, Página ou domínio...",subHtml:'<b>Inteligência de Ofertas</b> — descobertas, conexões e funis a partir das ofertas cadastradas.'}
 ];
 function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
@@ -67,7 +68,7 @@ async function saveTagEditor(){
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
-const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok","inteligencia"]);
+const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok","inteligencia","creativereview"]);
 const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
@@ -630,9 +631,14 @@ function automationCounts(section){
 const OI_BACKEND_READY=true;
 /* Áreas cujos endpoints existem no backend (B2: investigations e job; B3: discoveries, relations, funnels, summary).
    Uma área fora desta lista fica como "ainda não conectada" mesmo com OI_BACKEND_READY=true. */
-const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis"]);
+const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis","dominio"]);
+/* v2 (nota offer-intel-contratos, seção 10): Raio-X do domínio e Relatório semanal. Fica false até os endpoints
+   offer-intel-domain-scan(s) e offer-intel-weekly estarem publicados e verificados; só então vira true, em commit próprio. */
+const OI_V2_READY=false;
+const OI_V2_AREAS=new Set(["dominio"]);
+function oiV2Live(){return OI_BACKEND_READY&&OI_V2_READY&&isAdmin;}
 const OI_SUMMARY_LIVE=true;
-function oiAreaLive(area){return OI_BACKEND_READY&&OI_LIVE_AREAS.has(area);}
+function oiAreaLive(area){return OI_BACKEND_READY&&OI_LIVE_AREAS.has(area)&&(OI_V2_READY||!OI_V2_AREAS.has(area));}
 const OI_OFFER_SECTIONS=new Set(["oferta","brandsvalidated","brandsgeneral"]);
 const OI_JOBS_KEY="feg-oi-jobs";
 const OI_TYPE_FILTER={anuncio:"ad",pagina:"page",dominio:"domain"};
@@ -713,9 +719,10 @@ const OI_LOADERS={
     return {items:(r.items||[]).map(OfferIntel.formatFunnelSummary),next:r.next_cursor||null};
   },
   investigacao:async route=>{const r=await oiApi.getJob(route.jobId);return {items:[OfferIntel.formatJob(r)]};},
+  dominio:async route=>{const r=await oiApi.getDomainScan(route.scanId);return {items:[OfferIntel.formatDomainScan(r)]};},
   oferta:async route=>{const o=oiOfferById(route.offerId);if(!o||!OI_SUMMARY_LIVE)return {items:[]};const r=await oiApi.summary(route.offerId,oiRouteRef(route,o));return {items:[],summary:r};}
 };
-function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,q.oferta,q.ref,q.job].concat(route.area==="descobertas"?[]:[q.tipo,q.status,q.ordem,searchTerm]).join("|");}
+function oiKey(route){const q=route.query||{};return [route.area,route.offerId,route.jobId,route.funnelId,route.scanId,q.semana,q.oferta,q.ref,q.job].concat(route.area==="descobertas"?[]:[q.tipo,q.status,q.ordem,searchTerm]).join("|");}
 function oiNeedsScope(route){return (route.area==="descobertas"||route.area==="conexoes"||(route.area==="funis"&&!route.funnelId))&&!oiScope(route).offerId&&!oiScope(route).jobId;}
 function oiEnsure(route){
   if(!oiAreaLive(route.area)||!OI_LOADERS[route.area])return;
@@ -730,10 +737,10 @@ async function oiFetch(route,key,cursor){
   try{
     const res=await OI_LOADERS[area](route,cursor),st=oiStates[area];
     if(!st||st.key!==key)return;
-    oiStates[area]={status:"ready",key,items:(cursor?st.items:[]).concat(res.items),next:res.next||null,total:res.total==null?null:res.total,summary:res.summary||null,funnel:res.funnel||null,truncated:!!res.truncated};
+    oiStates[area]={status:"ready",key,items:(cursor?st.items:[]).concat(res.items),next:res.next||null,total:res.total==null?null:res.total,summary:res.summary||null,funnel:res.funnel||null,data:res.data||null,truncated:!!res.truncated};
   }catch(error){
     const st=oiStates[area];if(!st||st.key!==key)return;
-    if(error&&error.status===404&&(route.funnelId||route.jobId))oiStates[area]={status:"ready",key,items:[]};
+    if(error&&error.status===404&&(route.funnelId||route.jobId||route.scanId))oiStates[area]={status:"ready",key,items:[]};
     else oiStates[area]={status:"error",key,items:cursor?st.items:[],error:String(error&&error.message||"Não foi possível carregar.")};
   }
   if(activeSection==="inteligencia")renderOfferIntel();
@@ -794,6 +801,7 @@ let oiBooted=false;
 function oiBoot(){
   if(oiBooted||!OI_BACKEND_READY||!isAdmin)return;
   oiBooted=true;
+  if(CR_READY)setTimeout(()=>crEnsure({view:"list"}),0);
   try{const saved=JSON.parse(localStorage.getItem(OI_JOBS_KEY)||"[]");if(Array.isArray(saved))oiTracked=saved.filter(id=>typeof id==="string").slice(-10);}catch(_){}
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)oiPoller.kick();});
   oiRenderTray();oiPoller.start();
@@ -959,6 +967,7 @@ function oiFunnelDetailHtml(route,st){
   const list=OfferIntel.buildPath({area:"funis",funnelId:route.funnelId,query:Object.assign({},route.query,{visao:"lista"})}),map=OfferIntel.buildPath({area:"funis",funnelId:route.funnelId,query:Object.assign({},route.query,{visao:"mapa"})});
   const view=route.query.visao==="lista"?"lista":"mapa";
   return `<div class="oi-card oi-fhead"><div class="oi-links"><a class="btn btn--outline btn--sm" data-nav href="${esc(OfferIntel.buildPath({area:"funis",query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}">← Funis</a><span class="oi-chip">${s.steps} etapas</span><span class="oi-chip">✓ ${s.verified} verificadas</span><span class="oi-chip">◇ ${s.inferred} inferidas</span><span class="oi-chip">⛔ ${s.inaccessible} inacessíveis</span></div>
+    <div class="oi-links">${oiScanLink(oiHostOf(st.items[0]&&st.items[0].originUrl),route)}${oiScanLink(oiHostOf(st.items[0]&&st.items[0].finalUrl),route)}</div>
     <div class="oi-meta oi-meta--wrap">${fn.originLabel?"Origem: "+esc(fn.originLabel):""}${fn.finalLabel?" · URL final: "+esc(fn.finalLabel):""}</div>${fn.technologies.length?`<div class="oi-links">${fn.technologies.map(t=>`<span class="oi-chip">${esc(t)}</span>`).join("")}</div>`:""}
     <nav class="seg oi-viewtoggle" aria-label="Visualização do funil"><a class="seg-btn${view==="mapa"?" active":""}" data-nav href="${esc(map)}"${view==="mapa"?' aria-current="page"':""}>Mapa</a><a class="seg-btn${view==="lista"?" active":""}" data-nav href="${esc(list)}"${view==="lista"?' aria-current="page"':""}>Lista</a></nav></div>${warnings}
     <div class="oi-fgrid">${route.query.etapa?`<a class="oi-backdrop" data-nav href="${esc(oiStepHref(route,""))}" tabindex="-1" aria-hidden="true"></a>`:""}<div class="oi-funnel" data-view="${view}">${oiFunnelMapHtml(route,L)}<div class="oi-flist" id="oiFlist"><h3 class="oi-sr">Etapas do funil em lista</h3>${oiFunnelTreeHtml(route,L)}</div></div>${oiStepPanelHtml(route,L)}</div>`;
@@ -1031,6 +1040,7 @@ const OI_EMPTY={
   conexoes:{title:"Nenhuma conexão ainda",text:"As relações entre produtos, ofertas, anúncios e bibliotecas aparecem aqui depois da primeira investigação."},
   funis:{title:"Nenhum funil mapeado ainda",text:"Os funis encontrados nas investigações aparecem aqui, com URL, screenshot e dados de cada etapa."},
   historico:{title:"Nenhuma análise registrada",text:"As investigações realizadas, com resultados, erros e atualizações, ficam registradas aqui."},
+  dominio:{title:"Raio-X não encontrado",text:"Este scan não existe ou ainda não está disponível."},
   investigacao:{title:"Investigação não encontrada",text:"Esta execução não existe ou ainda não está disponível."}
 };
 function oiProgressHtml(job){
@@ -1090,10 +1100,11 @@ function oiDomainCard(d,route){
     <h3 class="oi-dcard__domain" title="${e(host)}">${e(host)}</h3>
     <div class="oi-dcard__line">${oiStatusChipFor(d)}${swipe}</div>
     <div class="oi-meta">${d.firstSeen?"Visto em "+e(d.firstSeen):"&nbsp;"}${d.source?" · "+e(d.source):""}</div>
-    <div class="oi-dcard__links">${funnel}${oiExtLink(d.url,"Abrir site")}</div>
+    <div class="oi-dcard__links">${funnel}${oiScanLink(host,route)}${oiExtLink(d.url,"Abrir site")}</div>
     ${oiCardFoot(d)}
   </article>`;
 }
+function oiHostOf(url){try{return url?new URL(url).hostname:"";}catch(_){return"";}}
 function displayUrlSafe(url){return url?OfferIntel.displayUrl(url,60):"";}
 function oiDiscoveryCard(d,route){return d.type==="ad"?oiAdCard(d):d.type==="page"?oiPageCard(d):oiDomainCard(d,route);}
 function oiFilterSelect(id,label,value,options){return `<label class="sort-control"><span>${esc(label)}</span><select id="${id}" aria-label="${esc(label)}">${options.map(([v,l])=>`<option value="${esc(v)}"${v===value?" selected":""}>${esc(l)}</option>`).join("")}</select></label>`;}
@@ -1162,7 +1173,7 @@ const oiCtxCache=Object.create(null);
    quando a resposta chega, o cache fica defasado e o próximo render faz UM novo GET (sem loop, sem perder invalidação). */
 let oiCtxGen=0;
 function oiInvalidateCtx(){oiCtxGen++;}
-function oiInvalidateIntel(){oiTodas.status="idle";oiInvalidateCtx();}
+function oiInvalidateIntel(){oiTodas.status="idle";oiScans.key="";oiInvalidateCtx();}
 function oiCtxKey(route){const sc=oiNavScope(route);return sc.oferta?(sc.ref||"offer")+":"+sc.oferta:"";}
 function oiEnsureCtx(route){
   const key=oiCtxKey(route);
@@ -1231,9 +1242,359 @@ function oiHubHtml(route,st){
       summary=limHtml+`<div class="oi-links"><span class="oi-chip">${n("new")} novas</span><span class="oi-chip">${n("review")} em revisão</span><span class="oi-chip">${n("confirmed")} confirmadas</span><span class="oi-chip">${n("ignored")} ignoradas</span><span class="oi-chip">${n("relations_pending")} relações pendentes</span><span class="oi-chip">${n("funnels")} funis</span></div>`+(job?`<div class="oi-meta">Em andamento: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(job.phaseLabel||job.statusLabel)} · ${job.progressPercent}%</a></div>`:last?`<div class="oi-meta">Última investigação: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:last.id}))}">${esc(last.statusLabel)}${last.finishedAt?" em "+esc(last.finishedAt):""}</a></div>`:`<div class="oi-meta">Esta oferta ainda não foi investigada.</div>`);
     }
   }
+  if(oiV2Live()&&oiScans.items.length)summary+=`<div class="oi-dx__hub"><h3>Raio-X dos domínios</h3><div class="oi-links">${oiScans.items.map(x=>`<a class="btn btn--outline btn--sm" data-nav href="${esc(oiScanPath(x.id,route))}">${esc(x.host)}${x.createdAt?" · "+esc(x.createdAt):""}</a>`).join("")}</div></div>`;
   const start=`<button type="button" class="btn btn--accent" data-oi-start="${esc(route.offerId)}" data-oi-ref="${ref||"offer"}"${OI_BACKEND_READY?"":' disabled aria-describedby="oiStartHint"'}>${ic("search")}Investigar oferta</button>${OI_BACKEND_READY?"":'<span class="oi-meta" id="oiStartHint">Disponível quando o backend estiver conectado.</span>'}`;
   return `<div class="oi-card"><div class="eyebrow">${esc(SEC_SHORT[section]||"Oferta")}</div><h2 class="oi-offer-name">${esc(oiOfferName(offer))}</h2><div class="oi-links">${start}<a class="btn btn--outline btn--sm" data-nav href="${esc(offerPath(offer))}">Abrir ficha da oferta</a>${links}</div>${summary}</div>`;
 }
+/* ============================================================
+   v2 — RAIO-X DO DOMÍNIO e RELATÓRIO SEMANAL (contrato v2, seção 10)
+   OI_V2_READY=false até os endpoints offer-intel-domain-scan(s) e offer-intel-weekly estarem publicados.
+   ============================================================ */
+const OI_PAGE_KIND={landing:"Landing",vsl:"VSL",upsell:"Upsell",downsell:"Downsell",thankyou:"Obrigado",checkout:"Checkout",quiz:"Quiz",other:"Outra"};
+const oiScans={key:"",status:"idle",items:[],map:Object.create(null)};
+/* Scans do escopo atual: liga cards de domínio, funis e a ficha da oferta ao Raio-X. Falha = sem links, sem erro. */
+function oiEnsureScans(route){
+  if(!oiV2Live()||!["descobertas","funis","oferta"].includes(route.area))return;
+  const sc=oiScope(route);if(!sc.offerId&&!sc.jobId)return;
+  const key=[sc.jobId,sc.offerId,sc.offerRefKind].join("|");
+  if(oiScans.key===key)return;
+  oiScans.key=key;oiScans.status="loading";oiScans.items=[];oiScans.map=Object.create(null);
+  oiApi.listDomainScans(sc).then(r=>{
+    if(oiScans.key!==key)return;
+    oiScans.items=(r.items||[]).map(OfferIntel.formatScanSummary).filter(s=>s.id);oiScans.map=OfferIntel.scansByHost(oiScans.items);oiScans.status="ready";
+    if(activeSection==="inteligencia")renderOfferIntel();
+  }).catch(()=>{if(oiScans.key===key)oiScans.status="error";});
+}
+function oiScanFor(host){const h=String(host||"").toLowerCase().replace(/^www\./,"");return h?oiScans.map[h]||null:null;}
+function oiScanPath(scanId,route){const q=route.query||{};return OfferIntel.buildPath({area:"dominio",scanId,query:{oferta:q.oferta||route.offerId||"",ref:q.ref,job:q.job}});}
+function oiScanLink(host,route,cls){const s=oiScanFor(host);return s?`<a class="btn btn--sm ${cls||"btn--outline"}" data-nav href="${esc(oiScanPath(s.id,route))}">Raio-X</a>`:"";}
+function oiCopyChip(text,label,aria,prefix){return `<button type="button" class="oi-copy" data-oi-copy="${esc(text)}" data-oi-copy-label="${esc(label)}" aria-label="${esc(aria)}">${esc(prefix||"")}${esc(text)} <span aria-hidden="true">⧉</span></button>`;}
+
+/* ----- Raio-X do domínio ----- */
+const oiDomUi={scan:"",source:"",verified:"",q:"",all:false};
+function oiDxBackPath(route){const q=route.query||{};return OfferIntel.buildPath({area:"descobertas",query:{oferta:q.oferta,ref:q.ref,job:q.job}});}
+function oiDxSec(id,title,count,body){return `<section class="oi-card oi-dx__sec" aria-labelledby="oiDx-${id}"><h3 id="oiDx-${id}">${esc(title)}${count==null?"":` <span class="oi-count">${count}</span>`}</h3>${body}</section>`;}
+function oiDxEmpty(text){return `<p class="oi-note">${esc(text)}</p>`;}
+function oiDxPagesHtml(s){
+  const all=OfferIntel.filterPages(s.pages,oiDomUi),shown=oiDomUi.all?all:all.slice(0,100);
+  if(!all.length)return {count:"Nenhuma página corresponde a este filtro.",table:""};
+  const rows=shown.map(p=>`<tr><td data-label="Página"><a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.title||p.display)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>${p.title?`<div class="oi-meta">${esc(p.display)}</div>`:""}</td><td data-label="Tipo">${esc(p.kind?(OI_PAGE_KIND[p.kind]||p.kind):"—")}</td><td data-label="HTTP">${p.httpStatus==null?"—":p.httpStatus}</td><td data-label="Fontes">${p.sources.map(x=>`<span class="oi-chip">${esc(OfferIntel.countPageSources([{sources:[x]}])[0].label)}</span>`).join(" ")||"—"}</td><td data-label="Verificada">${p.verified?'<span class="oi-status oi-status--succeeded">Verificada</span>':'<span class="oi-meta">Não verificada</span>'}</td></tr>`).join("");
+  const more=all.length>shown.length?`<button type="button" class="btn btn--outline btn--sm" data-oi-dx-more>Mostrar todas (${all.length})</button>`:"";
+  return {count:`${all.length.toLocaleString("pt-BR")} de ${s.pages.length.toLocaleString("pt-BR")} páginas`,table:`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Páginas do site</caption><thead><tr><th scope="col">Página</th><th scope="col">Tipo</th><th scope="col">HTTP</th><th scope="col">Fontes</th><th scope="col">Verificada</th></tr></thead><tbody>${rows}</tbody></table></div>${more}`};
+}
+function oiDxUpdatePages(area){
+  const s=oiStates.dominio&&oiStates.dominio.items[0],cnt=$("#oiDxCount",area),tbl=$("#oiDxTable",area);if(!s||!cnt||!tbl)return;
+  const r=oiDxPagesHtml(s);cnt.textContent=r.count;tbl.innerHTML=r.table;
+}
+function oiDomainScanHtml(route,st){
+  const kind=OfferIntel.viewState(st),e=esc,back=`<a class="btn btn--outline btn--sm" data-nav href="${e(oiDxBackPath(route))}">← Descobertas</a>`;
+  if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
+  if(kind==="empty")return oiStateHtml("empty",{title:"Raio-X não encontrado",text:"Este scan não existe ou ainda não está disponível.",cta:`<span style="display:inline-block;margin-top:18px">${back}</span>`});
+  const s=st.items[0];
+  if(oiDomUi.scan!==s.id)Object.assign(oiDomUi,{scan:s.id,source:"",verified:"",q:"",all:false});
+  const pixelChips=s.summary.pixels.slice(0,8).map(p=>oiCopyChip(p.id,"ID do pixel copiado",`Copiar ID ${p.typeLabel} ${p.id}`,p.typeLabel+" · ")).join("")+(s.summary.pixels.length>8?`<span class="oi-meta">+${s.summary.pixels.length-8}</span>`:"");
+  const v=s.summary.vsl,vslChip=v?`<span class="oi-chip">VSL ${e(v.providerLabel||"")}${v.durationLabel?" · "+e(v.durationLabel):""}${v.pitchLabel?" · pitch "+e(v.pitchLabel):""}</span>`:'<span class="oi-chip oi-chip--off">VSL não identificada</span>';
+  const checkoutChips=s.summary.checkoutPlatforms.length?s.summary.checkoutPlatforms.map(p=>`<span class="oi-chip oi-chip--ok">Checkout: ${e(p)}</span>`).join(""):'<span class="oi-chip oi-chip--off">Checkout não identificado</span>';
+  const failed=s.sources.filter(x=>x.status==="failed");
+  const srcChips=s.sources.map(x=>`<span class="oi-chip${x.status==="failed"?" oi-chip--bad":""}" title="${e(x.error||"")}">${e(x.label)}: ${e(x.statusLabel)}${x.count==null?"":" · "+x.count}</span>`).join("");
+  const head=`<div class="oi-card oi-dx__head"><div class="oi-links">${back}<span class="oi-chip">Raio-X</span>${oiStatusChip(s.statusLabel,s.status==="partial"?"pending":s.status)}</div>
+    <h2 class="oi-dx__host">${e(s.host)}</h2><div class="oi-meta oi-meta--wrap">${s.createdAt?"Coletado em "+e(s.createdAt)+" · ":""}Domínio registrável: ${e(s.registrable||s.host)}</div>
+    <div class="oi-dx__chips" aria-label="Resumo do domínio">${checkoutChips}${vslChip}${pixelChips||'<span class="oi-chip oi-chip--off">Nenhum pixel identificado</span>'}</div>
+    ${failed.length?`<div class="banner banner--warn" role="note">${ic("alert")}Algumas fontes falharam: ${e(failed.map(x=>x.label+(x.error?" ("+x.error+")":"")).join(", "))}. O resultado pode estar incompleto.</div>`:""}
+    <div class="oi-dx__chips" aria-label="Fontes consultadas">${srcChips}</div>
+    <div class="oi-links">${oiExtLink(s.adsLibraryUrl,"Anúncios deste domínio","btn--accent")}</div></div>`;
+  const srcCounts=OfferIntel.countPageSources(s.pages);
+  const pages=oiDxSec("pages","Páginas do site",s.pages.length,s.pages.length?`<div class="oi-filters"><label class="sort-control"><span>Fonte</span><select id="oiDxSource" aria-label="Filtrar páginas por fonte"><option value="">Todas as fontes (${s.pages.length})</option>${srcCounts.map(c=>`<option value="${e(c.source)}"${c.source===oiDomUi.source?" selected":""}>${e(c.label)} (${c.count})</option>`).join("")}</select></label><label class="sort-control"><span>Verificação</span><select id="oiDxVerified" aria-label="Filtrar por verificação"><option value="">Todas</option><option value="yes"${oiDomUi.verified==="yes"?" selected":""}>Verificadas</option><option value="no"${oiDomUi.verified==="no"?" selected":""}>Não verificadas</option></select></label><label class="sort-control"><span>Buscar</span><input type="search" id="oiDxQ" value="${e(oiDomUi.q)}" placeholder="URL ou título" aria-label="Buscar páginas"></label></div><div class="oi-meta" id="oiDxCount" aria-live="polite"></div><div id="oiDxTable"></div>`:oiDxEmpty("Nenhuma página foi listada para este domínio."));
+  const checkout=oiDxSec("checkout","Checkout",s.checkout.length,s.checkout.length?`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Checkouts identificados</caption><thead><tr><th scope="col">Plataforma</th><th scope="col">Link</th><th scope="col">Encontrado em</th></tr></thead><tbody>${s.checkout.map(c=>`<tr><td data-label="Plataforma"><b>${e(c.platform)}</b></td><td data-label="Link">${c.url?`<a href="${e(c.url)}" target="_blank" rel="noopener noreferrer">${e(c.display)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:"—"}</td><td data-label="Encontrado em">${c.pageUrl?`<span class="oi-meta">${e(displayUrlSafe(c.pageUrl))}</span>`:"—"}</td></tr>`).join("")}</tbody></table></div>`:oiDxEmpty("Nenhum checkout foi identificado nas páginas analisadas."));
+  const pxMap=new Map();s.pixels.forEach(p=>{const k=p.type+":"+p.id,cur=pxMap.get(k)||Object.assign({pages:new Set()},p);if(p.pageUrl)cur.pages.add(p.pageUrl);pxMap.set(k,cur);});
+  const pixels=oiDxSec("pixels","Pixels",pxMap.size,pxMap.size?`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Pixels e tags</caption><thead><tr><th scope="col">Tipo</th><th scope="col">ID</th><th scope="col">Páginas</th></tr></thead><tbody>${[...pxMap.values()].map(p=>`<tr><td data-label="Tipo">${e(p.typeLabel)}</td><td data-label="ID">${oiCopyChip(p.id,"ID do pixel copiado",`Copiar ID ${p.typeLabel} ${p.id}`)}</td><td data-label="Páginas">${p.pages.size||"—"}</td></tr>`).join("")}</tbody></table></div>`:oiDxEmpty("Nenhum pixel foi identificado."));
+  const tg=OfferIntel.groupTech(s.tech);
+  const tech=oiDxSec("tech","Tecnologias",s.tech.length?tg.reduce((n,g)=>n+g.names.length,0):0,tg.length?`<div class="oi-dx__tech">${tg.map(g=>`<div><h4>${e(g.label)}</h4><div class="oi-links">${g.names.map(n=>`<span class="oi-chip">${e(n)}</span>`).join("")}</div></div>`).join("")}</div>`:oiDxEmpty("Nenhuma tecnologia foi identificada."));
+  const vsl=oiDxSec("vsl","VSL",s.vsl.length,s.vsl.length?s.vsl.map(x=>{
+    const pct=x.durationS&&x.pitchS!=null?Math.min(100,Math.round(x.pitchS/x.durationS*100)):null,media=x.mediaUrl&&/\.m3u8(\?|$)/i.test(x.mediaUrl)?"Abrir link do m3u8":"Abrir vídeo";
+    return `<div class="oi-dx__vsl"><dl class="oi-dl"><div><dt>Provedor</dt><dd>${e(x.providerLabel||"—")}</dd></div><div><dt>Duração</dt><dd>${e(x.durationLabel||"—")}</dd></div><div><dt>Minuto do pitch</dt><dd>${e(x.pitchLabel||"—")}</dd></div><div><dt>Resolução</dt><dd>${x.height?x.height+"p":"—"}</dd></div>${x.playerId?`<div><dt>Player ID</dt><dd>${oiCopyChip(x.playerId,"Player ID copiado","Copiar Player ID "+x.playerId)}</dd></div>`:""}</dl>
+      ${pct==null?"":`<div class="oi-dx__bar" role="img" aria-label="Pitch aos ${e(x.pitchLabel)} de ${e(x.durationLabel)}"><i style="width:${pct}%"></i><b style="left:${pct}%"></b></div>`}
+      <div class="oi-links">${oiExtLink(x.mediaUrl,media)}${x.pageUrl?`<span class="oi-meta">em ${e(displayUrlSafe(x.pageUrl))}</span>`:""}</div></div>`;}).join(""):oiDxEmpty("Nenhum player de VSL foi identificado."));
+  const ctaRows=s.ctas.slice().sort((a,b)=>Number(b.hidden)-Number(a.hidden));
+  const ctas=oiDxSec("ctas","CTAs",s.ctas.length,s.ctas.length?`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Botões e chamadas para ação</caption><thead><tr><th scope="col">Texto</th><th scope="col">Destino</th><th scope="col">Aparece em</th><th scope="col">Página</th></tr></thead><tbody>${ctaRows.map(c=>`<tr class="${c.hidden?"is-hidden-cta":""}"><td data-label="Texto"><b>${e(c.text||"(sem texto)")}</b>${c.hidden?' <span class="oi-chip oi-chip--hi">Escondido</span>':""}</td><td data-label="Destino">${c.href?`<a href="${e(c.href)}" target="_blank" rel="noopener noreferrer">${e(c.hrefDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:"—"}</td><td data-label="Aparece em">${c.showOnLabel?e(c.showOnLabel):"—"}</td><td data-label="Página"><span class="oi-meta">${c.pageUrl?e(displayUrlSafe(c.pageUrl)):"—"}</span></td></tr>`).join("")}</tbody></table></div>`:oiDxEmpty("Nenhum CTA foi identificado."));
+  const imgs=s.assets.images,vids=s.assets.videos;
+  const fileOf=u=>{try{const n=decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop()||"");return n||"(sem nome)";}catch(_){return "(sem nome)";}};
+  const assetRow=(a,kind)=>`<li class="oi-dx__file"><span class="oi-dx__ficon" aria-hidden="true">${ic(kind==="image"?"image":"film")}</span><div class="oi-dx__fmeta"><b title="${e(fileOf(a.url))}">${e(fileOf(a.url))}</b><span class="oi-meta">${e(oiHostOf(a.url))}${a.pageUrl?" · em "+e(displayUrlSafe(a.pageUrl)):""}</span></div>${oiExtLink(a.url,"Abrir")}</li>`;
+  const assets=oiDxSec("assets","Assets",imgs.length+vids.length,imgs.length||vids.length?`<p class="oi-note">As imagens e vídeos de sites externos não são carregados aqui; abra cada arquivo em outra aba.</p>`+(imgs.length?`<h4>Imagens</h4><ul class="oi-dx__files">${imgs.map(a=>assetRow(a,"image")).join("")}</ul>`:"")+(vids.length?`<h4>Vídeos</h4><ul class="oi-dx__files">${vids.map(a=>assetRow(a,"video")).join("")}</ul>`:""):oiDxEmpty("Nenhum asset foi identificado."));
+  const subs=oiDxSec("subs","Subdomínios",s.subdomains.length,s.subdomains.length?`<div class="oi-links">${s.subdomains.map(h=>`<span class="oi-chip">${e(h)}</span>`).join("")}</div>`:oiDxEmpty("Nenhum subdomínio foi encontrado."));
+  return head+pages+checkout+pixels+tech+vsl+ctas+assets+subs;
+}
+/* ============================================================
+   CREATIVE REVIEW (contrato v2, seção 10.5) — seção própria do menu, independente de OI_V2_READY.
+   Rotas: /creative-review · /creative-review/AAAA-MM-DD · /creative-review/AAAA-MM-DD/:offerId
+   ============================================================ */
+const CR_READY=true;
+const crStates={};
+let crRoute=null,crTimer=null,crClickBound=false,oiPres=null,crGen=0;
+/* Invalida o cache: respostas de requisições iniciadas antes (inclusive polling silencioso) são descartadas. */
+function crInvalidate(){crGen++;Object.keys(crStates).forEach(k=>delete crStates[k]);}
+const CR_RUNNING_MS=8000;
+/* Contador do menu = nº de pastas; só aparece depois que a lista é carregada. */
+function crFolderCount(){const st=crStates.list;return st&&st.status==="ready"?st.data.length:"";}
+function crPath(date,offerId){return OfferIntel.buildReviewPath(date,offerId);}
+function crKey(route){return route.view==="list"?"list":route.view==="folder"?"folder:"+route.date:"product:"+route.date+":"+route.offerId;}
+function crFetcher(route){
+  if(route.view==="list")return ()=>oiApi.listReviews().then(r=>OfferIntel.formatReviewList(r.items));
+  if(route.view==="folder")return ()=>oiApi.getReview(route.date).then(OfferIntel.formatReviewFolder);
+  return ()=>oiApi.getReviewProduct(route.date,route.offerId).then(OfferIntel.formatReviewProduct);
+}
+/* 404 vira "não encontrado" (data:null); qualquer outro erro vira estado de erro com retentativa. */
+function crSettle(key,promise,silent){
+  const prev=crStates[key],token={},gen=crGen;
+  if(!silent)crStates[key]={status:"loading",token};
+  promise.then(data=>{
+    if(gen!==crGen)return;
+    const cur=crStates[key];if(!silent&&(!cur||cur.token!==token))return;
+    if(silent&&JSON.stringify(cur&&cur.data)===JSON.stringify(data))return;
+    crStates[key]={status:"ready",data};
+    if(activeSection==="creativereview")renderCreativeReview();
+    if(key==="list")renderSideNav();
+  }).catch(error=>{
+    if(silent||gen!==crGen)return;
+    const cur=crStates[key];if(!cur||cur.token!==token)return;
+    crStates[key]=error&&error.status===404?{status:"ready",data:null}:{status:"error",error:String(error&&error.message||"Não foi possível carregar.")};
+    if(activeSection==="creativereview")renderCreativeReview();
+  });
+  return prev;
+}
+function crEnsure(route){const key=crKey(route);if(!crStates[key])crSettle(key,crFetcher(route)());return crStates[key];}
+function crStatusChip(m){return oiStatusChip(m.statusLabel,m.status==="partial"?"pending":m.status);}
+function crProgress(m){
+  if(!m.active)return "";
+  const pct=m.progress,text=(m.phase||m.statusLabel)+(pct==null?"":", "+pct+"%");
+  return `<div class="cr-prog"><div class="oi-progress" role="progressbar" aria-label="Progresso da análise" aria-valuemin="0" aria-valuemax="100"${pct==null?"":` aria-valuenow="${pct}"`} aria-valuetext="${esc(text)}"><span style="width:${pct==null?8:pct}%"></span></div><span class="oi-meta">${esc(text)}</span></div>`;
+}
+function crCrumbs(items){return `<nav class="cr-crumbs" aria-label="Você está em"><ol>${items.map((it,i)=>`<li>${it.href?`<a data-nav href="${esc(it.href)}">${esc(it.label)}</a>`:`<span aria-current="page">${esc(it.label)}</span>`}</li>`).join("")}</ol></nav>`;}
+function crStateBlock(st,notFound){
+  if(!st||st.status==="loading")return oiStateHtml("loading");
+  if(st.status==="error")return oiStateHtml("error",{error:st.error});
+  return oiStateHtml("empty",notFound);
+}
+function crRunBtn(){return `<button type="button" class="btn btn--outline" data-cr-run>Rodar agora</button>`;}
+function crListHtml(){
+  const st=crEnsure({view:"list"});
+  const head=`<div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>Pastas semanais</h2><p class="oi-note">Toda terça às 22h (Brasília) a análise roda sozinha e cria a pasta da quarta-feira seguinte.</p></div><div class="oi-links">${crRunBtn()}</div></div>`;
+  if(st.status!=="ready")return head+crStateBlock(st);
+  if(!st.data.length)return head+oiStateHtml("empty",{title:"Nenhuma pasta ainda",text:"A primeira pasta aparece depois da próxima análise. Você pode rodar uma agora.",cta:`<span style="display:inline-block;margin-top:18px">${crRunBtn()}</span>`});
+  const n=v=>v==null?"—":v.toLocaleString("pt-BR");
+  return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${[m.productsCount==null?"":n(m.productsCount)+" produtos",m.adsCount==null?"":n(m.adsCount)+" anúncios",m.finishedAt?"Atualizado em "+esc(m.finishedAt):""].filter(Boolean).join(" · ")||esc(m.statusLabel)}</span>${crProgress(m)}</span>${crStatusChip(m)}</a></li>`).join("")}</ul>`;
+}
+function crProductCard(p,date){
+  const thumbs=p.top.map(t=>t.thumbUrl?`<img data-oi-img data-oi-ph="film" src="${esc(t.thumbUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="cr-thumb--none" aria-hidden="true">${ic("film")}</span>`).join("");
+  return `<a class="cr-pcard" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
+    <div class="cr-thumbs" aria-hidden="${p.top.length?"false":"true"}">${thumbs||`<span class="cr-thumb--none">${ic("film")}</span>`}</div>
+    <div class="oi-meta">${[p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios",p.pagesCount==null?"":p.pagesCount+" Páginas"].filter(Boolean).join(" · ")||"&nbsp;"}</div>
+    ${p.summary.length?`<ul class="cr-bullets">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</a>`;
+}
+function crFolderHtml(route){
+  const st=crEnsure(route),crumbs=crCrumbs([{label:"Creative Review",href:crPath()},{label:OfferIntel.reviewTitle(route.date)}]);
+  if(st.status!=="ready"||!st.data)return crumbs+crStateBlock(st,{title:"Pasta não encontrada",text:"Não existe Creative Review para esta data.",cta:`<a class="btn btn--outline" data-nav href="${esc(crPath())}" style="margin-top:18px">Ver todas as pastas</a>`});
+  const d=st.data,m=d.meta,n=v=>v==null?"—":v.toLocaleString("pt-BR");
+  const allKnown=d.products.length>0&&d.products.every(p=>p.adsCollected!=null),total=m.adsCount!=null?m.adsCount:allKnown?d.products.reduce((t,p)=>t+p.adsCollected,0):null;
+  const adsTxt=total==null?"":" · "+n(total)+" anúncios";
+  const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?"Pasta parcial: parte da análise de IA não terminou, mas o ranking está completo.":"A geração desta pasta falhou."}${m.error?" "+esc(m.error):""}</div>`:"";
+  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn()}</div></div>
+    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
+  const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
+  const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"Nenhuma oferta com biblioteca cadastrada foi analisada."});
+  return crumbs+head+sum+grid;
+}
+function crProductHtml(route){
+  const st=crEnsure(route),fst=crEnsure({view:"folder",date:route.date});
+  const crumbs=crCrumbs([{label:"Creative Review",href:crPath()},{label:OfferIntel.reviewTitle(route.date),href:crPath(route.date)},{label:st.status==="ready"&&st.data?st.data.product.name:"Produto"}]);
+  if(st.status!=="ready"||!st.data)return crumbs+crStateBlock(st,{title:"Produto não encontrado",text:"Este produto não está nesta pasta.",cta:`<a class="btn btn--outline" data-nav href="${esc(crPath(route.date))}" style="margin-top:18px">Voltar à pasta</a>`});
+  const d=st.data,p=d.product,list=fst.status==="ready"&&fst.data?fst.data.products:[],i=list.findIndex(x=>x.offerId===route.offerId);
+  const nav=(x,label,cls)=>x?`<a class="btn btn--outline btn--sm" data-nav href="${esc(crPath(route.date,x.offerId))}" ${cls}>${label}</a>`:`<span class="btn btn--outline btn--sm" aria-disabled="true">${label}</span>`;
+  const prev=i>0?list[i-1]:null,next=i>=0&&i<list.length-1?list[i+1]:null;
+  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">${esc(OfferIntel.reviewTitle(route.date))}</div><h2>${esc(p.name)}</h2><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||"",p.pagesCount==null?"":p.pagesCount+" Páginas",p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios coletados"].filter(Boolean).join(" · "))}</span></div>
+    <div class="oi-wk__actions">${nav(prev,"← Produto anterior",'rel="prev"')}${nav(next,"Próximo produto →",'rel="next"')}<button type="button" class="btn btn--accent" data-cr-present>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button></div></div>
+    ${p.summary.length?`<ul class="cr-bullets cr-bullets--lg">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</div>`;
+  const ads=d.ads.length?`<div class="oi-wk__list">${d.ads.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:"Sem anúncios neste produto",text:"Nenhum anúncio ativo foi coletado para este produto nesta semana."});
+  return crumbs+head+ads;
+}
+function renderCreativeReview(){
+  const area=$("#gridArea");if(!area)return;
+  if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
+  const route=crRoute||{view:"list"};
+  const html=route.view==="list"?crListHtml():route.view==="folder"?crFolderHtml(route):crProductHtml(route);
+  area.innerHTML=`<div class="oi cr">${html}</div>`;
+  area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
+  area.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
+  if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);}
+  const retry=$("[data-oi-retry]",area);if(retry)retry.addEventListener("click",()=>{delete crStates[crKey(route)];renderCreativeReview();});
+  const result=$("#pageResult");if(result)result.textContent="";
+  crSchedule(route);
+}
+function crOnClick(event){
+  if(activeSection!=="creativereview"||!crRoute)return;
+  if(event.target.closest("[data-cr-run]")){crRun(event.target.closest("[data-cr-run]"));return;}
+  const pr=event.target.closest("[data-cr-present]");if(pr){if(pr.getAttribute("aria-disabled")!=="true")crPresent(pr);return;}
+  if(event.target.closest("[data-cr-print]"))window.print();
+}
+/* Enquanto houver pasta em geração, recarrega em silêncio (sem esqueleto); um único relógio por vez. */
+function crActive(route){
+  const key=crKey(route),st=crStates[key];if(!st||st.status!=="ready"||!st.data)return false;
+  return route.view==="list"?st.data.some(m=>m.active):(st.data.meta||{}).active===true;
+}
+function crSchedule(route){
+  if(!crActive(route)){if(crTimer){clearTimeout(crTimer);crTimer=null;}return;}
+  if(crTimer)return;
+  crTimer=setTimeout(()=>{
+    crTimer=null;
+    if(activeSection!=="creativereview"||!crRoute)return;
+    if(document.hidden){crSchedule(crRoute);return;}
+    const r=crRoute;crSettle(crKey(r),crFetcher(r)(),true);
+    if(r.view!=="list")crSettle("list",crFetcher({view:"list"})(),true);
+    setTimeout(()=>{if(activeSection==="creativereview")crSchedule(crRoute||r);},500);
+  },CR_RUNNING_MS);
+}
+async function crRun(button){
+  if(oiBusy.has("cr:run"))return;
+  if(!confirm("Rodar o Creative Review agora?\n\nA coleta consome o orçamento do Apify (teto de US$ 15 por semana) e a análise de IA (teto de US$ 10). Atualiza a pasta da quarta-feira corrente; se já houver uma execução em andamento, nada novo é iniciado."))return;
+  oiBusy.add("cr:run");button.setAttribute("aria-disabled","true");
+  try{await oiApi.runReview();toast("Creative Review iniciado");crInvalidate();}
+  catch(error){if(error.status===409){crInvalidate();toast("Já existe uma execução em andamento.",true);}else toast(error.message,true);}
+  finally{oiBusy.delete("cr:run");}
+  if(activeSection==="creativereview")renderCreativeReview();
+}
+/* ----- cartão de anúncio (Top 10 do produto) e apresentação ----- */
+function oiWkMediaHtml(a,cls){
+  const ph=`<div class="oi-wk__media oi-wk__media--none ${cls||""}" aria-hidden="true">${ic("film")}</div>`;
+  if(a.videoUrl)return `<div class="oi-wk__media ${cls||""}"><video data-oi-vid controls preload="none" playsinline${a.thumbUrl?` poster="${esc(a.thumbUrl)}"`:""} src="${esc(a.videoUrl)}" aria-label="Vídeo do anúncio ${a.rank||""} de ${esc(a.pageName)}"></video>${a.thumbUrl?`<img class="oi-wk__printimg" src="${esc(a.thumbUrl)}" alt="" referrerpolicy="no-referrer">`:""}</div>`;
+  if(a.thumbUrl)return `<div class="oi-wk__media ${cls||""}"><img data-oi-img data-oi-ph="film" src="${esc(a.thumbUrl)}" alt="Imagem do anúncio ${a.rank||""} de ${esc(a.pageName)}" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
+  return ph;
+}
+function oiWkBadges(a){
+  const chg=a.rankChange>0?`<span class="oi-wk__chg oi-wk__chg--up"><span aria-hidden="true">↑${a.rankChange}</span><span class="oi-sr">Subiu ${a.rankChange} ${a.rankChange===1?"posição":"posições"}</span></span>`:a.rankChange<0?`<span class="oi-wk__chg oi-wk__chg--down"><span aria-hidden="true">↓${-a.rankChange}</span><span class="oi-sr">Caiu ${-a.rankChange} ${a.rankChange===-1?"posição":"posições"}</span></span>`:"";
+  return (a.isNew?'<span class="oi-wk__new">NOVO</span>':"")+chg;
+}
+function oiWkMetrics(a){const n=v=>v==null?"—":v.toLocaleString("pt-BR");return `<dl class="oi-wk__metrics"><div><dt>Dias ativos</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`;}
+function oiWkPageLine(a){
+  const src=a.pageSource==="encontrada"?"Encontrada":a.pageSource==="cadastrada"?"Cadastrada":"";
+  return `<div class="oi-wk__page"><b>${esc(a.pageName||"Página sem nome")}</b>${src?`<span class="oi-chip">${src}</span>`:""}</div>`;
+}
+function oiWkCopyHtml(a,full){
+  const t=a.adText;if(!t)return '<p class="oi-meta">Anúncio sem texto.</p>';
+  if(full||t.length<=280)return `<p class="oi-wk__copy">${esc(t)}</p>`;
+  return `<details class="oi-wk__copy oi-wk__copy--long"><summary><span class="oi-wk__short">${esc(t.slice(0,260).replace(/\s+\S*$/,""))}… <span class="oi-wk__more">ver tudo</span></span><span class="oi-wk__less">recolher</span></summary><p>${esc(t)}</p></details>`;
+}
+function oiWkAiHtml(a,open){
+  if(!a.analysis.length)return '<p class="oi-meta">Análise de IA indisponível para este anúncio.</p>';
+  return `<details class="oi-wk__ai"${open?" open":""}><summary>Análise de IA</summary><dl>${a.analysis.map(f=>`<div><dt>${esc(f.label)}</dt><dd>${esc(f.text)}</dd></div>`).join("")}</dl></details>`;
+}
+function oiWkDestHtml(a){return `<div class="oi-wk__dest">${a.ctaText?`<span class="oi-chip">CTA: ${esc(a.ctaText)}</span>`:""}${a.landingUrl?`<a href="${esc(a.landingUrl)}" target="_blank" rel="noopener noreferrer">Destino: ${esc(a.landingDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:""}</div>`;}
+function oiWkAdHtml(a,group){
+  return `<article class="oi-wk__ad" aria-label="Anúncio ${a.rank||""} de ${esc(group)}"><div class="oi-wk__rank"><span class="oi-wk__pos" aria-hidden="true">#${a.rank||"—"}</span><span class="oi-sr">Posição ${a.rank||"sem posição"}</span>${oiWkBadges(a)}</div>
+    ${oiWkMediaHtml(a)}<div class="oi-wk__body">${oiWkPageLine(a)}${oiWkMetrics(a)}${oiWkCopyHtml(a)}${oiWkDestHtml(a)}<div class="oi-links">${oiExtLink(a.libraryUrl,"Ver na Biblioteca")}</div>${oiWkAiHtml(a)}</div></article>`;
+}
+/* Apresentação: capa (resumo executivo) → por produto: slide do produto → um slide por anúncio. */
+function crPresent(opener){
+  const route=crRoute;if(!route||route.view==="list"||oiPres)return;
+  const fst=crEnsure({view:"folder",date:route.date});if(fst.status!=="ready"||!fst.data)return;
+  const folder=fst.data;
+  oiOpenPresentation(opener,folder,route.view==="product"?route.offerId:"");
+}
+function oiPresBuild(folder,products){
+  const out=[{type:"cover",folder}];
+  folder.products.forEach(p=>{
+    const detail=products[p.offerId];
+    out.push({type:"product",product:p,index:folder.products.indexOf(p)+1,total:folder.products.length});
+    if(detail&&detail.ads)detail.ads.forEach(a=>out.push({type:"ad",product:p,ad:a,total:detail.ads.length}));
+    else out.push({type:"missing",product:p});
+  });
+  return out;
+}
+function oiPresSlideHtml(sl){
+  const e=esc;
+  if(sl.type==="cover"){const m=sl.folder.meta;return `<div class="oi-pres__cover"><div class="eyebrow">Creative Review</div><h2>${e(m.title)}</h2>${sl.folder.summary.length?`<h3>Resumo executivo</h3><ul>${sl.folder.summary.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`:'<p class="oi-note">Resumo indisponível.</p>'}</div>`;}
+  if(sl.type==="product"){const p=sl.product;return `<div class="oi-pres__cover"><div class="eyebrow">Produto ${sl.index} de ${sl.total}</div><h2>${e(p.name)}</h2><p class="oi-meta">${e([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</p>${p.summary.length?`<ul>${p.summary.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`:'<p class="oi-note">Resumo do produto indisponível.</p>'}</div>`;}
+  if(sl.type==="missing")return `<div class="oi-pres__cover"><h2>${e(sl.product.name)}</h2><p class="oi-note">Não foi possível carregar os anúncios deste produto.</p></div>`;
+  const a=sl.ad;
+  return `<div class="oi-pres__ad"><div class="oi-pres__media">${oiWkMediaHtml(a,"oi-wk__media--big")}</div><div class="oi-pres__info"><div class="oi-wk__rank"><span class="oi-chip">${e(sl.product.name)}</span><span class="oi-wk__pos">#${a.rank||"—"}</span>${oiWkBadges(a)}</div><h2>${e(a.pageName||"Página sem nome")}</h2>${oiWkMetrics(a)}${oiWkCopyHtml(a,true)}${oiWkDestHtml(a)}${oiWkAiHtml(a,true)}</div></div>`;
+}
+function oiPresLabel(sl,i,n){
+  if(sl.type==="cover")return `Capa · slide 1 de ${n}`;
+  if(sl.type==="ad")return `${sl.product.name} · anúncio ${sl.ad.rank||"?"} de ${sl.total} · slide ${i+1} de ${n}`;
+  return `${sl.product.name} · slide ${i+1} de ${n}`;
+}
+function oiPresRender(){
+  if(!oiPres)return;
+  const host=$("#oiPresSlide",oiPres.el),n=oiPres.slides.length;
+  if(!n){host.innerHTML='<div class="oi-pres__cover"><p class="oi-note" role="status">Carregando produtos…</p></div>';$("#oiPresCount",oiPres.el).textContent="Carregando…";return;}
+  const sl=oiPres.slides[oiPres.i];
+  host.innerHTML=oiPresSlideHtml(sl);host.scrollTop=0;
+  $("#oiPresCount",oiPres.el).textContent=oiPresLabel(sl,oiPres.i,n)+(oiPres.loading?" · carregando…":"");
+  $("[data-oi-pres-prev]",oiPres.el).setAttribute("aria-disabled",String(oiPres.i===0));$("[data-oi-pres-next]",oiPres.el).setAttribute("aria-disabled",String(oiPres.i===n-1));
+  host.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
+  host.querySelectorAll("img[data-oi-img]").forEach(img=>img.addEventListener("error",()=>oiImgFallback(img),{once:true}));
+}
+function oiPresGo(delta){if(!oiPres||!oiPres.slides.length)return;const i=Math.max(0,Math.min(oiPres.slides.length-1,oiPres.i+delta));if(i!==oiPres.i){oiPres.i=i;oiPresRender();}}
+function oiPresKey(ev){
+  if(!oiPres)return;
+  const k=ev.key,t=ev.target,typing=t&&(t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA");
+  if(k==="Escape"){ev.preventDefault();ev.stopPropagation();oiClosePresentation();return;}
+  if(typing)return;
+  if(k==="ArrowRight"||k==="PageDown"||(k===" "&&!(t&&(t.tagName==="BUTTON"||t.tagName==="VIDEO"||t.tagName==="SUMMARY")))){ev.preventDefault();oiPresGo(1);}
+  else if(k==="ArrowLeft"||k==="PageUp"){ev.preventDefault();oiPresGo(-1);}
+  else if(k==="Home"){ev.preventDefault();oiPres.i=0;oiPresRender();}
+  else if(k==="End"){ev.preventDefault();oiPres.i=Math.max(0,oiPres.slides.length-1);oiPresRender();}
+  else if(k==="Tab"){const f=[...oiPres.el.querySelectorAll("button:not([hidden]),a[href],video[controls],summary")];if(!f.length)return;const i=f.indexOf(document.activeElement);ev.preventDefault();f[(i+(ev.shiftKey?-1:1)+f.length)%f.length].focus();}
+}
+function oiPresFullscreenChange(){if(oiPres&&oiPres.fs&&!document.fullscreenElement)oiClosePresentation();}
+/* Carrega o Top 10 de cada produto (4 em paralelo) enquanto o primeiro slide já aparece. */
+async function oiPresLoadProducts(session,folder,date){let j0;
+  const products=session.products,queue=folder.products.map(p=>p.offerId).filter(id=>!products[id]);
+  const cached=id=>{const st=crStates["product:"+date+":"+id];return st&&st.status==="ready"&&st.data?st.data:null;};
+  folder.products.forEach(p=>{const c=cached(p.offerId);if(c)products[p.offerId]=c;});
+  const todo=queue.filter(id=>!products[id]);
+  const worker=async()=>{
+    while(todo.length&&oiPres===session){
+      const id=todo.shift();
+      try{products[id]=await oiApi.getReviewProduct(date,id).then(OfferIntel.formatReviewProduct);}catch(_){products[id]=null;}
+      if(oiPres!==session)return;
+      const cur=session.slides[session.i];session.slides=oiPresBuild(folder,products);
+      if(cur){const j=session.slides.findIndex(s=>s.type===cur.type&&s.product===cur.product&&s.ad===cur.ad);session.i=j>=0?j:Math.min(session.i,session.slides.length-1);}
+      if(!cur||cur.type==="missing"||session.i!==(j0=session.i))oiPresRender();else{$("#oiPresCount",session.el).textContent=oiPresLabel(session.slides[session.i],session.i,session.slides.length)+(session.loading?" · carregando…":"");}
+    }
+  };
+  await Promise.all([worker(),worker(),worker(),worker()]);
+  if(oiPres===session){session.loading=false;oiPresRender();}
+}
+function oiOpenPresentation(opener,folder,startOfferId){
+  if(oiPres)return;
+  const route=crRoute,el=document.createElement("div");el.className="oi-pres";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Modo apresentação");el.tabIndex=-1;
+  el.innerHTML=`<div class="oi-pres__bar"><span class="oi-pres__count" id="oiPresCount" aria-live="polite"></span><span class="oi-meta oi-pres__hint">← → trocam de slide · Esc sai</span><div class="oi-links"><button type="button" class="btn btn--outline btn--sm" data-oi-pres-prev aria-label="Slide anterior">←</button><button type="button" class="btn btn--outline btn--sm" data-oi-pres-next aria-label="Próximo slide">→</button><button type="button" class="btn btn--accent btn--sm" data-oi-pres-close>Sair (Esc)</button></div></div><div class="oi-pres__slide" id="oiPresSlide"></div>`;
+  el.addEventListener("click",ev=>{
+    if(ev.target.closest("[data-oi-pres-close]"))oiClosePresentation();
+    else if(ev.target.closest("[data-oi-pres-prev]"))oiPresGo(-1);
+    else if(ev.target.closest("[data-oi-pres-next]"))oiPresGo(1);
+  });
+  document.body.appendChild(el);document.body.classList.add("oi-pres-open");
+  const session=oiPres={el,folder,products:{},slides:[],i:0,opener,fs:false,loading:true};
+  session.slides=oiPresBuild(folder,session.products);
+  if(startOfferId){const j=session.slides.findIndex(s=>s.type==="product"&&s.product.offerId===startOfferId);if(j>0)session.i=j;}
+  document.addEventListener("keydown",oiPresKey,true);document.addEventListener("fullscreenchange",oiPresFullscreenChange);
+  oiPresRender();el.focus();
+  try{if(el.requestFullscreen)el.requestFullscreen().then(()=>{if(oiPres===session)session.fs=true;}).catch(()=>{});}catch(_){}
+  oiPresLoadProducts(session,folder,route.date);
+}
+function oiClosePresentation(){
+  if(!oiPres)return;
+  const {el,opener}=oiPres;oiPres=null;
+  document.removeEventListener("keydown",oiPresKey,true);document.removeEventListener("fullscreenchange",oiPresFullscreenChange);
+  el.remove();document.body.classList.remove("oi-pres-open");
+  try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});}catch(_){}
+  if(opener&&opener.isConnected)opener.focus();
+}
+/* Vídeo que não carrega (link expirado ou bloqueado) volta ao placeholder, como as miniaturas. */
+function oiVideoGuard(video){video.addEventListener("error",()=>{const box=video.closest(".oi-wk__media");if(!box)return;box.classList.add("oi-wk__media--none");box.innerHTML=ic("film")+'<span class="oi-meta">Vídeo indisponível</span>';},{once:true});}
+window.addEventListener("beforeprint",()=>{document.querySelectorAll(".oi-wk__ad details").forEach(d=>{d.dataset.wasOpen=d.open?"1":"";d.open=true;});});
+window.addEventListener("afterprint",()=>{document.querySelectorAll(".oi-wk__ad details").forEach(d=>{d.open=d.dataset.wasOpen==="1";});});
 /* Contagem desconhecida (null) aparece como "—", nunca como 0. */
 function oiCount(value){return value==null?"—":String(value);}
 function oiPathFor(area,query){return OfferIntel.buildPath({area,query:Object.assign({},oiRoute&&oiRoute.query,query)});}
@@ -1245,6 +1606,7 @@ function oiBodyHtml(route){
   if(area==="descobertas")return oiDiscoveriesHtml(route,st);
   if(area==="historico")return oiJobsTableHtml(route,st);
   if(area==="investigacao")return oiJobDetailHtml(route,st);
+  if(area==="dominio")return oiDomainScanHtml(route,st);
   if(area==="conexoes")return oiRelationsHtml(route,st);
   if(area==="funis")return route.funnelId?oiFunnelDetailHtml(route,st):oiFunnelListHtml(route,st);
   return oiStateHtml("empty",OI_EMPTY.descobertas);
@@ -1263,8 +1625,8 @@ function oiPendingBanner(route){
   return `<div class="banner banner--warn" role="note">${ic("shield")}${OI_BACKEND_READY?"Esta área ainda não está conectada ao backend.":"Módulo em construção: a integração com o backend ainda não está conectada."} Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
 /* URLs assinadas do fbcdn expiram: se a miniatura falhar, volta ao placeholder do card (mesma altura fixa). */
-function oiCopyText(text){
-  const done=()=>toast("Page ID copiado");
+function oiCopyText(text,label){
+  const done=()=>toast(label||"Page ID copiado");
   try{navigator.clipboard.writeText(text).then(done,()=>toast("Não foi possível copiar",true));}catch(_){toast("Não foi possível copiar",true);}
 }
 function oiImgFallback(img){
@@ -1304,7 +1666,8 @@ function oiRestoreFocus(area,key){
 let oiClickBound=false;
 function oiOnClick(event){
   if(activeSection!=="inteligencia"||!oiRoute)return;
-  const copy=event.target.closest("[data-oi-copy]");if(copy){oiCopyText(copy.dataset.oiCopy);return;}
+  const copy=event.target.closest("[data-oi-copy]");if(copy){oiCopyText(copy.dataset.oiCopy,copy.dataset.oiCopyLabel);return;}
+  if(event.target.closest("[data-oi-dx-more]")){oiDomUi.all=true;oiDxUpdatePages(event.currentTarget);return;}
   const act=event.target.closest("[data-oi-act]");if(act){oiReview(act.dataset.id,act.dataset.oiAct);return;}
   const ract=event.target.closest("[data-oi-rel-act]");if(ract){oiReviewRelation(ract.dataset.id,ract.dataset.oiRelAct);return;}
   if(event.target.closest("[data-oi-more]")){oiLoadMore(oiRoute);return;}
@@ -1315,7 +1678,7 @@ function renderOfferIntel(){
   const area=$("#gridArea");if(!area)return;
   if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   const route=oiRoute||{area:"descobertas",query:OfferIntel.normalizeQuery("")};
-  oiEnsure(route);oiEnsureCtx(route);
+  oiEnsure(route);oiEnsureCtx(route);oiEnsureScans(route);
   const q=route.query||{},list=oiOffers(),selected=q.oferta||"";
   const known=!selected||list.some(o=>String(o.id)===selected);
   const options=`<option value="">Todas as ofertas</option>`+list.map(o=>`<option value="${esc(o.id)}"${String(o.id)===selected?" selected":""}>${esc(oiOfferName(o))} · ${esc(SEC_SHORT[itemSection(o)]||"")}</option>`).join("")+(known?"":`<option value="${esc(selected)}" selected>Oferta não encontrada</option>`);
@@ -1333,6 +1696,11 @@ function renderOfferIntel(){
   [["oiType","tipo"],["oiStatus","status"],["oiOrder","ordem"]].forEach(([id,key])=>{const el=$("#"+id,area);if(el)el.addEventListener("change",()=>go({[key]:el.value}));});
   area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
   if(!oiClickBound){oiClickBound=true;area.addEventListener("click",oiOnClick);}
+  area.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
+  if(route.area==="dominio"){
+    oiDxUpdatePages(area);
+    [["oiDxSource","source"],["oiDxVerified","verified"],["oiDxQ","q"]].forEach(([id,key])=>{const el=$("#"+id,area);if(el)el.addEventListener(key==="q"?"input":"change",()=>{oiDomUi[key]=el.value;oiDomUi.all=false;oiDxUpdatePages(area);});});
+  }
   if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);oiFunnelSheet(area,route);}else{oiSheetFor=null;if(oiResize){oiResize.disconnect();oiResize=null;}}
   const retry=$("[data-oi-retry]",area);
   if(retry)retry.addEventListener("click",()=>{delete oiStates[route.area];oiInvalidateIntel();renderOfferIntel();});
@@ -1367,14 +1735,14 @@ async function oiJobAction(id,action,button){
   if(activeSection==="inteligencia")renderOfferIntel();
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL",inteligencia:"Inteligência de Ofertas"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL",inteligencia:"Inteligência de Ofertas",creativereview:"Creative Review"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl",inteligencia:"inteligencia"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl",creativereview:"creative-review",inteligencia:"inteligencia"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
@@ -1427,7 +1795,7 @@ function listPath(section,niche){
   const base="/"+(SEC2PATH[section]||"ofertas");
   return NICHE_SECTIONS.has(section)?base+"/"+catSlug(niche):base;
 }
-function currentPath(){if(activeSection==="inteligencia")return oiCurrentPath();return listPath(activeSection,activeNiche)+qsFromState();}
+function currentPath(){if(activeSection==="creativereview"&&crRoute)return crPath(crRoute.date,crRoute.offerId);if(activeSection==="inteligencia")return oiCurrentPath();return listPath(activeSection,activeNiche)+qsFromState();}
 function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsys":sectionOf(o);}
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
@@ -1437,6 +1805,7 @@ function offerPath(o){
   return sec==="brandsvalidated"&&activeBrand===insiderProductKey(o)?path+"?marca="+encodeURIComponent(activeBrand):path;
 }
 function setDocTitle(){
+  if(activeSection==="creativereview"){document.title=(crRoute&&crRoute.date?OfferIntel.reviewTitle(crRoute.date):"Creative Review")+" — Benchmarking FEG";return;}
   if(activeSection==="inteligencia"){const meta=oiRoute&&OfferIntel.areaMeta(oiRoute.area);document.title=(meta?meta.title+" · ":"")+"Inteligência de Ofertas — Benchmarking FEG";return;}
   const cfg=sectionCfg(activeSection);
   const parts=[SEC_SHORT[activeSection]||cfg.label];
@@ -1453,6 +1822,7 @@ function parseLocation(){
   if(!seg.length)return {section:"brandsvalidated",niche:"",id:null,notFound:false,q};
   const section=PATH2SEC[seg[0]];
   if(!section)return {notFound:true,q};
+  if(section==="creativereview"){const cr=OfferIntel.parseReviewPath(path);return {section,niche:"",id:null,notFound:cr.notFound,q,cr};}
   if(section==="inteligencia"){const oi=OfferIntel.parsePath(path,location.search);return {section,niche:"",id:null,notFound:oi.notFound,q,oi};}
   let niche="",id=null,notFound=false;
   if(NICHE_SECTIONS.has(section)){
@@ -1485,11 +1855,13 @@ function maybeOpenView(id){
 function applyRoute(){
   if(!routeReady)return;
   if(/^\/feg-brands-geral(?:\/|$)/.test(location.pathname))try{history.replaceState(history.state,"",location.pathname.replace(/^\/feg-brands-geral(?=\/|$)/,"/feg-brands-insider")+location.search+location.hash);}catch(_){}
+  if(/^\/inteligencia\/semanal\/?$/.test(location.pathname))try{history.replaceState(history.state,"","/creative-review");}catch(_){}
   const r=parseLocation();
   if(r.notFound){renderNotFound();return;}
-  if((ADMIN_SECTIONS.has(r.section)||r.section==="inteligencia")&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
+  if((ADMIN_SECTIONS.has(r.section)||r.section==="inteligencia"||r.section==="creativereview")&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   activeSection=r.section;
   oiRoute=r.section==="inteligencia"?r.oi:null;
+  crRoute=r.section==="creativereview"?r.cr:null;
   if(oiRoute&&oiRoute.redirect){try{history.replaceState(history.state,"",OfferIntel.buildPath(oiRoute));}catch(_){}}
   if(r.legacyOrganicDetail){try{history.replaceState(history.state,"",offerPath(itemById(r.id)||{id:r.id,data:{kind:"criativo",division:"organic"}})+location.search);}catch(_){}}
   if(activeSection==="updates")markUpdatesSeen();
@@ -1622,7 +1994,7 @@ function renderSideNav(){
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
-    const chip=s.key==="vsldissector"||s.key==="inteligencia"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
+    const chip=s.key==="vsldissector"||s.key==="inteligencia"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(s.key==="creativereview"?crFolderCount():(counts[s.key]||0))}</span>`;
     const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
     const label=SEC_SHORT[s.key]||s.label;
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(label)}</span>${chip}</a>`;
@@ -1632,7 +2004,7 @@ function renderSideNav(){
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   html+=`<nav class="sidenav__body" aria-label="Navegação FEG Brands">`;
-  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);if(key==="brandsvalidated"&&isAdmin)html+=navItem(SECTIONS.find(s=>s.key==="inteligencia"));});
+  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);if(key==="brandsvalidated"&&isAdmin){html+=navItem(SECTIONS.find(s=>s.key==="creativereview"));html+=navItem(SECTIONS.find(s=>s.key==="inteligencia"));}});
   html+=`</nav><div class="sidenav__footer">${ic("trending")}<span><strong>Inteligência de mercado</strong>Grupo FEG · Brands</span></div>`;
   nav.innerHTML=html;
   $(".sidenav__body",nav).scrollTop=scrollTop;
@@ -2167,6 +2539,7 @@ function renderGrid(skipNav){
   if(!skipNav)renderSideNav();
   renderSubFilter();
   setSectionHeader();
+  if(activeSection==="creativereview"){renderCreativeReview();return;}
   if(activeSection==="inteligencia"){renderOfferIntel();return;}
   if(activeSection==="transcritor"){renderTranscritor();return;}
   if(activeSection==="vsldissector"){renderVslDissector();return;}
@@ -3368,7 +3741,7 @@ function setSectionHeader(){
   document.body.classList.add("admin-preview");
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
   document.body.classList.toggle("toolmode",cc);
-  const mr=$(".page .meta-row");if(mr)mr.style.display=cc||activeSection==="inteligencia"?"none":"";
+  const mr=$(".page .meta-row");if(mr)mr.style.display=cc||activeSection==="inteligencia"||activeSection==="creativereview"?"none":"";
   const identity=$("#pageIdentity");if(identity)identity.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc||!cfg.newLabel?"none":"";
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
@@ -3395,6 +3768,7 @@ function setSectionHeader(){
   if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe de Criativos"):adminBrands?"Ofertas Brands":cfg.label;
   if(description)description.innerHTML=selectedInsiderItem?esc(insiderCategoryOf(selectedInsiderItem))+" · produto do acervo Brands":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Top ads desta marca":"Originais dos top ads das ofertas, organizados por marca."):adminBrands?"<b>Ofertas Brands</b> — produtos por categoria, bibliotecas, histórico de anúncios e métricas da BM quando disponíveis.":cfg.subHtml||"";
   if(activeSection==="inteligencia")oiApplyHeader(title,description);
+  if(activeSection==="creativereview"){if(title)title.textContent="Creative Review";if(description)description.textContent="Os criativos mais fortes de cada produto, prontos para a reunião de quarta.";}
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
@@ -3465,7 +3839,7 @@ function renderSubFilter(){
   // esse nó durante a seleção, seja por mouse, toque ou teclado.
   if(preserveOpenFilter(el))return;
   renderedSubFilterSection=activeSection;
-  if(isToolSection(activeSection)||activeSection==="inteligencia"){el.innerHTML="";el.style.display="none";return;}
+  if(isToolSection(activeSection)||activeSection==="inteligencia"||activeSection==="creativereview"){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     el.style.display="";
     const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"],["spend_7d","Maior gasto · 7 dias"],["sales_7d","Mais vendas · 7 dias"]];

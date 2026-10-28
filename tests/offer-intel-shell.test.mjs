@@ -32,7 +32,7 @@ test("filtros da URL são validados e fazem round-trip", () => {
   const path = OI.buildPath(route);
   assert.equal(path, "/inteligencia/descobertas?q=foo&oferta=o1&tipo=pagina&status=novo&ordem=anuncios&pagina=3");
   const invalid = OI.normalizeQuery("tipo=xss&status=<b>&ordem=zzz&pagina=-4&oferta=../x&url=javascript:alert(1)");
-  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", job: "", visao: "", ref: "", investigar: false, url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
+  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", job: "", visao: "", ref: "", semana: "", investigar: false, url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
   assert.equal(OI.buildPath({ area: "descobertas" }), "/inteligencia/descobertas");
   assert.equal(OI.buildPath({ area: "oferta", offerId: "o1", query: { ref: "admin_draft", investigar: true } }), "/inteligencia/oferta/o1?ref=admin_draft&investigar=1");
   assert.equal(OI.parsePath("/inteligencia/descobertas", "?job=j9&ref=hack&investigar=2").query.ref, "");
@@ -55,11 +55,11 @@ test("estado visual é exclusivo: carregando, erro, vazio ou pronto", () => {
 
 test("a casca integra rota, sidebar admin-only, abas e estados sem dados falsos", () => {
   assert.match(html, /<script src="\/lib\/offer-intel\.js"><\/script>/);
-  assert.match(html, /\(ADMIN_SECTIONS\.has\(r\.section\)\|\|r\.section==="inteligencia"\)&&!isAdmin/);
+  assert.match(html, /\(ADMIN_SECTIONS\.has\(r\.section\)\|\|r\.section==="inteligencia"\|\|r\.section==="creativereview"\)&&!isAdmin/);
   assert.match(html, /inteligencia:"inteligencia"\}/);
   assert.match(html, /if\(section==="inteligencia"\)\{const oi=OfferIntel\.parsePath/);
   assert.match(html, /if\(activeSection==="inteligencia"\)\{renderOfferIntel\(\);return;\}/);
-  assert.match(html, /if\(key==="brandsvalidated"&&isAdmin\)html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
+  assert.match(html, /if\(key==="brandsvalidated"&&isAdmin\)\{html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\);html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\);\}/);
   assert.match(html, /aria-label="Áreas de Inteligência de Ofertas"/);
   assert.match(html, /aria-current="page"/);
   assert.match(html, /const OI_BACKEND_READY=(true|false)/);
