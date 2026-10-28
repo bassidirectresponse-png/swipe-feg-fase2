@@ -281,3 +281,84 @@ test("QA-06: ?ref=admin_draft explícito vale para oferta já publicada em summa
   assert.match(html, /ref=oiRouteRef\(route,offer\)==="admin_draft"/);
   assert.doesNotMatch(html, /refKind:oiRefKindOf\(o\)/);
 });
+
+// Rodada 5: campos de exibição da seção 8e, contadores, filtros, visão por Página e histórico por oferta.
+const ad = (id, extra = {}) => ({ id, type: "ad", title: `Anúncio ${id}`, page_id: "111", page_name: "Alfa", status: "new", version: 1, ...extra });
+
+test("8e: campos de exibição do anúncio, página e domínio; ausentes não são inventados", () => {
+  const full = OI.formatDiscovery(ad("a1", { ad_text: "  Texto <b>forte</b>\n com quebra ".padEnd(700, "x"), landing_url: "https://alfa.com/lp?x=1", cta_text: "Saiba mais", started_at: "2026-10-05T15:00:00Z", platforms: ["facebook", "instagram", "x", "facebook"], display_format: "video", page_picture_url: "https://scontent-gru1-1.xx.fbcdn.net/p.jpg", url: "https://www.facebook.com/ads/library/?id=1" }));
+  assert.ok(full.adText.length <= 500);
+  assert.equal(full.landingDomain, "alfa.com");
+  assert.equal(full.landingUrl, "https://alfa.com/lp?x=1");
+  assert.equal(full.ctaText, "Saiba mais");
+  assert.match(full.startedAt, /05\/10\/2026/);
+  assert.deepEqual(j(full.platforms.map(p => p.short)), ["FB", "IG"]);
+  assert.equal(full.displayFormat, "Vídeo");
+  assert.equal(full.cardStatusLabel, "Não confirmado");
+  const old = OI.formatDiscovery(ad("a2"));
+  assert.equal(old.adText, "");
+  assert.equal(old.startedAt, "");
+  assert.deepEqual(j(old.platforms), []);
+  assert.equal(old.pagePicture, "");
+  assert.equal(old.adsFound, null);
+  assert.equal(old.funnelId, "");
+  const bad = OI.formatDiscovery(ad("a3", { landing_url: "javascript:alert(1)", page_picture_url: "data:x", platforms: "facebook", display_format: "__proto__" }));
+  assert.equal(bad.landingUrl, "");
+  assert.equal(bad.pagePicture, "");
+  assert.deepEqual(j(bad.platforms), []);
+  assert.equal(bad.displayFormat, "");
+  assert.equal(OI.formatDiscovery({ type: "domain", id: "d", funnel_id: "f1", domain: "alfa.com" }).funnelId, "f1");
+  assert.equal(OI.formatDiscovery({ type: "page", id: "p", ads_found: 0 }).adsFound, 0);
+  assert.deepEqual(j(["new", "review", "confirmed", "ignored"].map(s => OI.formatDiscovery({ status: s }).cardStatusLabel)), ["Não confirmado", "Em revisão", "Confirmado", "Ignorado"]);
+});
+
+test("contadores, filtros, busca e ordenação no cliente", () => {
+  const items = [
+    ad("a1", { started_at: "2026-10-01T00:00:00Z", ad_text: "Compre agora a oferta" }),
+    ad("a2", { started_at: "2026-10-09T00:00:00Z", status: "confirmed", ads_count: 3 }),
+    { id: "p1", type: "page", title: "Alfa", page_id: "111", status: "review", ads_found: 9 },
+    { id: "d1", type: "domain", title: "alfa.com", domain: "alfa.com", status: "ignored" }
+  ].map(OI.formatDiscovery);
+  assert.deepEqual(j(OI.countDiscoveries(items)), { ad: 2, page: 1, domain: 1, pending: 2, total: 4 });
+  assert.deepEqual(j(OI.filterDiscoveries(items, { tipo: "anuncio" }).map(d => d.id)), ["a2", "a1"]);
+  assert.deepEqual(j(OI.filterDiscoveries(items, { status: "pendente" }).map(d => d.id)).sort(), ["a1", "p1"]);
+  assert.deepEqual(j(OI.filterDiscoveries(items, { status: "confirmado" }).map(d => d.id)), ["a2"]);
+  assert.deepEqual(j(OI.filterDiscoveries(items, { q: "COMPRE" }).map(d => d.id)), ["a1"]);
+  assert.deepEqual(j(OI.filterDiscoveries(items, { ordem: "anuncios" }).map(d => d.id)), ["p1", "a2", "a1", "d1"]);
+  assert.deepEqual(j(OI.filterDiscoveries(items, { tipo: "xx", status: "yy" }).map(d => d.id)).length, 4);
+  assert.deepEqual(j(OI.countDiscoveries(undefined)), { ad: 0, page: 0, domain: 0, pending: 0, total: 0 });
+});
+
+test("visão Por Página agrupa anúncios sob a Página e separa domínios e itens sem Página", () => {
+  const items = [
+    ad("a1"), ad("a2"), ad("a3", { page_id: "222", page_name: "Beta" }), ad("a4", { page_id: "", page_name: "" }),
+    { id: "p1", type: "page", title: "Alfa", page_id: "111", ads_found: 2, status: "new", page_picture_url: "https://scontent.xx.fbcdn.net/a.jpg" },
+    { id: "d1", type: "domain", title: "alfa.com", domain: "alfa.com", status: "new" }
+  ].map(OI.formatDiscovery);
+  const { groups, loose } = OI.groupByPage(items);
+  assert.deepEqual(j(groups.map(g => [g.name, g.ads.length, !!g.page, !!g.picture])), [["Alfa", 2, true, true], ["Beta", 1, false, false]]);
+  assert.deepEqual(j(loose.map(d => d.id)), ["a4", "d1"]);
+  assert.deepEqual(j(OI.groupByPage(undefined)), { groups: [], loose: [] });
+});
+
+test("histórico agrupado por oferta com a investigação mais recente primeiro", () => {
+  const jobs = [
+    { id: "j3", offer_id: "11111111-1111-4111-8111-111111111111", offer_ref_kind: "offer", status: "succeeded", counts: { discoveries: 24, funnels: 2 } },
+    { id: "j2", offer_id: "22222222-2222-4222-8222-222222222222", offer_ref_kind: "admin_draft", status: "failed" },
+    { id: "j1", offer_id: "11111111-1111-4111-8111-111111111111", offer_ref_kind: "offer", status: "failed" },
+    { id: "j0", seed_url: "https://exemplo.com/", status: "queued" }
+  ].map(OI.formatJob);
+  const groups = OI.groupInvestigationsByOffer(jobs);
+  assert.deepEqual(j(groups.map(g => [g.offerId.slice(0, 2), g.jobsCount, g.latest.id])), [["11", 2, "j3"], ["22", 1, "j2"], ["", 1, "j0"]]);
+  assert.equal(groups[0].latest.counts.discoveries, 24);
+  assert.equal(groups[2].seedUrlLabel, "exemplo.com");
+  assert.deepEqual(j(OI.groupInvestigationsByOffer(undefined)), []);
+});
+
+test("limits: cooldown ativo é sinalizado sem bloquear as demais fontes", () => {
+  const now = Date.parse("2026-10-28T00:00:00Z");
+  const lim = OI.formatLimits({ apify: { available: true, cooldown_until: "2026-10-28T06:00:00Z" } }, now);
+  assert.equal(lim.apifyCoolingDown, true);
+  assert.match(lim.apifyCooldownLabel, /28\/10\/2026/);
+  assert.equal(OI.formatLimits({ apify: { available: true, cooldown_until: "2026-10-27T06:00:00Z" } }, now).apifyCoolingDown, false);
+});
