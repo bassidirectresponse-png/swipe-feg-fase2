@@ -1627,7 +1627,7 @@
   .oi-thumb--none{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:2rem;}
   .oi-dcard__chips{display:flex;gap:6px;flex-wrap:wrap;min-height:26px;}
   .oi-dcard__title{font-size:1rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
-  .oi-dcard__actions{display:flex;gap:6px;flex-wrap:wrap;align-self:end;}
+  .oi-dcard__actions{display:flex;gap:6px;flex-wrap:wrap;align-self:stretch;}
   .oi-meta{font-size:.78rem;color:var(--muted-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .oi-chip{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;padding:4px 8px;border-radius:7px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--fg);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .oi-chip--link:hover{border-color:var(--accent);}
@@ -1731,6 +1731,7 @@
   .oi-ctx__main{grid-area:main;min-width:0;display:flex;flex-direction:column;gap:3px;}
   .oi-ctx__name{font-size:1.35rem;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .oi-ctx__status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .oi-ctx__status .oi-meta,.oi-ctx__main .oi-meta{white-space:normal;}
   .oi-ctx__actions{grid-area:actions;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-width:260px;}
   .oi-ctx__actions .oi-meta{text-align:right;}
   .oi-ctx__chips{grid-area:chips;display:flex;gap:8px;flex-wrap:wrap;}
@@ -1792,6 +1793,7 @@
   }
   @media(min-width:981px){.oi-backdrop{display:none;}}
   @media(max-width:700px){
+    .oi-dcard--ad .oi-dcard__links,.oi-dcard__text,.oi-dcard__line--plat,.oi-dcard__big,.oi-dcard__links{min-height:0;}
     .oi-table--stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
     .oi-table--stack,.oi-table--stack tbody,.oi-table--stack tr,.oi-table--stack td{display:block;width:100%;}
     .oi-table--stack tr{padding:12px 14px;border-bottom:1px solid var(--border);}
