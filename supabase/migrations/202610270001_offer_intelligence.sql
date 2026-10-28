@@ -37,7 +37,8 @@ create table public.offer_intel_investigations (
   unique (created_by,idempotency_key),
   check (
     (offer_id is not null and offer_ref_kind is not null
-      and ((seed_url is null and seed_key is null) or (seed_url is not null and seed_key ~ '^[a-f0-9]{64}
+      and ((seed_url is null and seed_key is null) or
+        (seed_url is not null and seed_key is not null and seed_key ~ '^[a-f0-9]{64}$')))
     or
     (offer_id is null and offer_ref_kind is null and seed_url is not null
       and seed_key is not null and seed_key ~ '^[a-f0-9]{64}$')
@@ -203,167 +204,6 @@ begin
     );
   end loop;
 end $$;
-)))
-    or
-    (offer_id is null and offer_ref_kind is null and seed_url is not null
-      and seed_key is not null and seed_key ~ '^[a-f0-9]{64}$')
-  )
-);
-create unique index offer_intel_one_active_scope
-  on public.offer_intel_investigations(scope_key)
-  where status in ('queued','running');
-create index offer_intel_history
-  on public.offer_intel_investigations(scope_key,created_at desc,id desc);
-
-create table public.offer_intel_discoveries (
-  id uuid primary key default gen_random_uuid(),
-  scope_key text not null,
-  type text not null check (type in ('ad','page','domain')),
-  identity_key text not null,
-  data jsonb not null,
-  status text not null default 'new'
-    check (status in ('new','confirmed','ignored','review')),
-  existing_offer_id uuid references public.offers(id) on delete set null,
-  first_investigation_id uuid not null references public.offer_intel_investigations(id),
-  last_investigation_id uuid not null references public.offer_intel_investigations(id),
-  version integer not null default 1 check (version > 0),
-  reviewed_by uuid,
-  reviewed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (scope_key,type,identity_key)
-);
-
-create table public.offer_intel_relations (
-  id uuid primary key default gen_random_uuid(),
-  scope_key text not null,
-  from_key text not null,
-  to_key text not null,
-  relation_type text not null,
-  status text not null default 'pending'
-    check (status in ('pending','confirmed','ignored')),
-  reason text,
-  version integer not null default 1 check (version > 0),
-  reviewed_by uuid,
-  reviewed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(scope_key,from_key,to_key,relation_type)
-);
-
-create table public.offer_intel_funnels (
-  id uuid primary key default gen_random_uuid(),
-  investigation_id uuid not null references public.offer_intel_investigations(id),
-  entry_key text not null,
-  title text,
-  created_at timestamptz not null default now(),
-  unique(investigation_id,entry_key)
-);
-create table public.offer_intel_funnel_steps (
-  id uuid primary key default gen_random_uuid(),
-  funnel_id uuid not null references public.offer_intel_funnels(id),
-  url_key text not null,
-  original_url text not null,
-  final_url text,
-  redirects jsonb not null default '[]',
-  kind text not null check
-    (kind in ('landing','presell','quiz','vsl','sales','checkout','unknown')),
-  verification text not null check
-    (verification in ('verified','inferred','inaccessible')),
-  classification_basis jsonb not null default '{}',
-  http_status integer,
-  inaccessible_reason text,
-  screenshot_path text,
-  screenshot_status text not null default 'not_requested'
-    check (screenshot_status in ('not_requested','pending','captured','unavailable','failed')),
-  observed_at timestamptz not null,
-  unique(funnel_id,url_key),
-  unique(funnel_id,id)
-);
-create table public.offer_intel_funnel_edges (
-  id uuid primary key default gen_random_uuid(),
-  funnel_id uuid not null references public.offer_intel_funnels(id),
-  from_step_id uuid not null,
-  to_step_id uuid not null,
-  kind text not null check (kind in ('redirect','link','inferred')),
-  verification text not null check
-    (verification in ('verified','inferred','inaccessible')),
-  foreign key(funnel_id,from_step_id)
-    references public.offer_intel_funnel_steps(funnel_id,id),
-  foreign key(funnel_id,to_step_id)
-    references public.offer_intel_funnel_steps(funnel_id,id),
-  unique(funnel_id,from_step_id,to_step_id,kind)
-);
-create table public.offer_intel_evidence (
-  id uuid primary key default gen_random_uuid(),
-  investigation_id uuid not null references public.offer_intel_investigations(id),
-  discovery_id uuid references public.offer_intel_discoveries(id),
-  relation_id uuid references public.offer_intel_relations(id),
-  step_id uuid references public.offer_intel_funnel_steps(id),
-  edge_id uuid references public.offer_intel_funnel_edges(id),
-  evidence_key text not null,
-  source text not null,
-  source_url text,
-  provider_run_id text,
-  verification text not null check
-    (verification in ('verified','inferred','inaccessible')),
-  observed_at timestamptz not null,
-  content_hash text,
-  payload jsonb not null,
-  unique(investigation_id,evidence_key)
-);
-create index offer_intel_evidence_discovery
-  on public.offer_intel_evidence(discovery_id,observed_at desc);
-
-create table public.offer_intel_review_events (
-  id uuid primary key default gen_random_uuid(),
-  discovery_id uuid references public.offer_intel_discoveries(id),
-  relation_id uuid references public.offer_intel_relations(id),
-  from_status text not null,
-  to_status text not null,
-  actor_id uuid not null,
-  action_key text not null,
-  reason text,
-  created_at timestamptz not null default now(),
-  unique(actor_id,action_key),
-  check (num_nonnulls(discovery_id,relation_id)=1)
-);
-create table public.offer_intel_provider_runs (
-  id uuid primary key default gen_random_uuid(),
-  investigation_id uuid not null references public.offer_intel_investigations(id),
-  query_key text not null,
-  provider text not null default 'apify',
-  provider_run_id text,
-  dataset_id text,
-  state text not null default 'reserved'
-    check (state in ('reserved','starting','running','succeeded','failed','unknown','cancelled')),
-  request jsonb not null,
-  usage jsonb not null default '{}',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(investigation_id,provider,query_key),
-  unique(provider,provider_run_id)
-);
-
-do $$
-declare t text;
-begin
-  foreach t in array array[
-    'offer_intel_investigations','offer_intel_discoveries',
-    'offer_intel_relations','offer_intel_funnels',
-    'offer_intel_funnel_steps','offer_intel_funnel_edges',
-    'offer_intel_evidence','offer_intel_review_events','offer_intel_provider_runs'
-  ] loop
-    execute format('alter table public.%I enable row level security',t);
-    execute format('revoke all on public.%I from public, anon, authenticated',t);
-    execute format('grant select on public.%I to authenticated',t);
-    execute format('grant all on public.%I to service_role',t);
-    execute format(
-      'create policy offer_intel_select_admin on public.%I for select to authenticated using (public.swipe_is_admin())',t
-    );
-  end loop;
-end $$;
-
 
 -- Internal ledgers: no browser access, even for an authenticated admin.
 create table public.offer_intel_requests (
@@ -406,14 +246,26 @@ begin
   if found then
     if r.request_hash<>p->>'request_hash' or r.kind<>'create' then raise exception 'conflict'; end if;
     select * into j from offer_intel_investigations where id=r.job_id;
-    return jsonb_build_object('job',to_jsonb(j),'reused',true,'nonce',r.result->'nonce');
+    if j.status='queued' then
+      select nonce into nonce_value from offer_intel_dispatches
+        where job_id=j.id and used_at is null and expires_at>now() order by created_at desc limit 1;
+      if nonce_value is null then
+        insert into offer_intel_dispatches(job_id) values(j.id) returning nonce into nonce_value;
+      end if;
+    end if;
+    return jsonb_build_object('job',to_jsonb(j),'reused',true,'nonce',nonce_value);
   end if;
   select * into j from offer_intel_investigations where scope_key=scope and status in ('queued','running');
   if found then
     reused := true;
     select nonce into nonce_value from offer_intel_dispatches
       where job_id=j.id and used_at is null and expires_at>now() order by created_at desc limit 1;
+    if j.status='queued' and nonce_value is null then
+      insert into offer_intel_dispatches(job_id) values(j.id) returning nonce into nonce_value;
+    end if;
   else
+    if coalesce((p->'options'->>'collect_ads')::boolean,false)
+      and not coalesce((p->>'apify_available')::boolean,false) then raise exception 'credentials_missing'; end if;
     select max(created_at) into last_time from offer_intel_investigations where scope_key=scope;
     if last_time>now()-interval '6 hours' then
       raise exception 'cooldown' using detail=ceil(extract(epoch from last_time+interval '6 hours'-now()))::text;
@@ -448,7 +300,17 @@ begin
   if found then
     if r.request_hash<>p->>'request_hash' or r.kind<>action then raise exception 'conflict'; end if;
     select * into j from offer_intel_investigations where id=r.job_id;
-    return jsonb_build_object('job',to_jsonb(j),'reused',true,'nonce',r.result->'nonce');
+    if j.status='queued' and action='retry' then
+      select nonce into nonce_value from offer_intel_dispatches
+        where job_id=j.id and used_at is null and expires_at>now() order by created_at desc limit 1;
+      if nonce_value is null then
+        insert into offer_intel_dispatches(job_id) values(j.id) returning nonce into nonce_value;
+      end if;
+    end if;
+    return jsonb_build_object('job',to_jsonb(j),'reused',true,'nonce',nonce_value);
+  end if;
+  if (select count(*) from offer_intel_requests where actor_id=actor and kind in ('retry','cancel') and created_at>now()-interval '1 hour')>=60 then
+    raise exception 'rate_limited' using detail='3600';
   end if;
   select * into j from offer_intel_investigations where id=(p->>'job_id')::uuid for update;
   if not found then raise exception 'not_found'; end if;
@@ -471,6 +333,9 @@ begin
     if exists(select 1 from offer_intel_investigations where scope_key=j.scope_key and id<>j.id and status in ('queued','running')) then raise exception 'job_active'; end if;
     update offer_intel_dispatches set used_at=now() where job_id=j.id and used_at is null;
     update offer_intel_investigations set status='queued',error=null,finished_at=null,
+      sources=(select coalesce(jsonb_agg(case when source->>'status' in ('failed','running')
+        then jsonb_build_object('name',source->>'name','status','pending','result_count',0) else source end),'[]'::jsonb)
+        from jsonb_array_elements(j.sources) source),
       lease_token=null,lease_until=null,updated_at=now() where id=j.id returning * into j;
     insert into offer_intel_dispatches(job_id) values(j.id) returning nonce into nonce_value;
   else raise exception 'invalid_request';
