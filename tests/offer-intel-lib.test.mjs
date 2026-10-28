@@ -152,9 +152,11 @@ test("formatConnection e formatJob normalizam valores desconhecidos", () => {
   assert.equal(OI.formatJob(undefined).error, null);
 });
 
-test("nada disso é ligado a dados de demonstração no index.html", () => {
+test("o index.html usa os formatadores só sobre respostas da API e não embute dados de demonstração", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.doesNotMatch(html, /layoutFunnel|formatDiscovery|formatConnection|formatJob/);
+  assert.match(html, /const OI_BACKEND_READY=false;/);
+  assert.doesNotMatch(html, /FIXTURE|DADOS DE DEMONSTRA|OI_MOCK/);
+  assert.match(html, /\.map\(OfferIntel\.formatDiscovery\)/);
 });
 
 test("etapas do funil seguem a forma v1: final_url, captura indisponível e tecnologias", () => {
@@ -167,4 +169,84 @@ test("etapas do funil seguem a forma v1: final_url, captura indisponível e tecn
   assert.equal(b.verificationLabel, "Inacessível");
   assert.equal(b.inaccessibleReason, "Exige login");
   assert.equal(layout.edges[0].kind, "redirect");
+});
+
+test("formatLimits mostra só o que vier e desabilita a coleta quando indisponível", () => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+  const full = OI.formatLimits({ apify: { available: true, daily_max_runs: 15, daily_used: 4, cooldown_hours: 6, cooldown_until: "2026-10-27T18:00:00Z", max_queries: 2, results_per_query: 15 }, domain_explorer: { available: true, max_pages: 20, max_depth: 2 }, screenshot: { available: false, reason: "x" } }, now);
+  assert.equal(full.apifyAvailable, true);
+  assert.deepEqual(j(full.lines), ["4 de 15 coletas de anúncios hoje", "Intervalo mínimo de 6 h entre coletas da mesma oferta", "Próxima coleta desta oferta após 27/10/2026, 15:00", "Até 2 consultas e 15 resultados por consulta", "Exploração de domínios: até 20 páginas, profundidade 2"]);
+  assert.equal(full.screenshotUnavailable, true);
+  const off = OI.formatLimits({ apify: { available: false } }, now);
+  assert.equal(off.apifyAvailable, false);
+  assert.deepEqual(j(off.lines), ["Coleta de anúncios indisponível"]);
+  const past = OI.formatLimits({ apify: { available: true, cooldown_until: "2026-10-27T10:00:00Z" } }, now);
+  assert.equal(past.lines.some(l => /Próxima coleta/.test(l)), false);
+  for (const bad of [undefined, null, "x", { apify: "x" }]) assert.deepEqual(j(OI.formatLimits(bad).lines), []);
+});
+
+test("formatFunnelSummary limita texto e sanitiza URLs", () => {
+  const f = OI.formatFunnelSummary({ id: "f1", investigation_id: "j1", title: "T".repeat(300), origin_url: "javascript:x", final_url: "https://a.com/p", steps_count: "7", created_at: "2026-10-27T12:00:00Z" });
+  assert.ok(f.title.length <= 100);
+  assert.equal(f.originUrl, "");
+  assert.equal(f.finalLabel, "a.com/p");
+  assert.equal(f.stepsCount, 7);
+  assert.equal(OI.formatFunnelSummary(null).title, "Funil sem título");
+});
+
+test("etapas trazem redirecionamentos e data de observação seguros", () => {
+  const layout = OI.layoutFunnel({ steps: [step("a", { redirects: [{ url: "https://r.com/1" }, "javascript:x", "https://r.com/2"], observed_at: "2026-10-27T12:00:00Z" })], edges: [] });
+  assert.deepEqual(j(layout.nodes[0].redirects), ["r.com/1", "r.com/2"]);
+  assert.match(layout.nodes[0].observedAt, /27\/10\/2026/);
+});
+
+// Regressões do QA independente (QA-01..QA-04).
+test("QA-01: a referência admin_draft sobrevive ao parse/build e à troca de área", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const route = OI.parsePath(`/inteligencia/oferta/${id}`, "?ref=admin_draft");
+  assert.equal(route.query.ref, "admin_draft");
+  assert.equal(OI.buildPath(route), `/inteligencia/oferta/${id}?ref=admin_draft`);
+  const next = OI.parsePath("/inteligencia/descobertas", `?oferta=${id}&ref=admin_draft&q=x`);
+  assert.equal(OI.buildPath(next), `/inteligencia/descobertas?q=x&oferta=${id}&ref=admin_draft`);
+  assert.equal(OI.buildPath({ area: "historico", query: { oferta: id, ref: next.query.ref } }), `/inteligencia/historico?oferta=${id}&ref=admin_draft`);
+  assert.equal(OI.parsePath("/inteligencia/descobertas", "?ref=offer").query.ref, "");
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /query:\{oferta:offer,ref\}/);
+  assert.match(html, /query:\{oferta:selected,ref:q\.ref\}/);
+});
+
+test("QA-02: DAG com arestas laterais não alega ciclo; ciclo real continua marcado", () => {
+  const dag = OI.layoutFunnel({ steps: [step("a"), step("b"), step("c")], edges: [edge("a", "b"), edge("a", "c"), edge("b", "c")] });
+  assert.equal(codes(dag).includes("cycle_edges"), false);
+  assert.equal(dag.edges.some(e => e.back), false);
+  assert.deepEqual(j(dag.nodes.map(n => [n.id, n.col])), [["a", 0], ["b", 1], ["c", 2]]);
+  assert.equal(dag.edges.some(e => e.lateral), false);
+  const diamond = OI.layoutFunnel({ steps: [step("s"), step("x"), step("y"), step("z")], edges: [edge("s", "x"), edge("s", "y"), edge("x", "y"), edge("y", "z")] });
+  assert.equal(codes(diamond).includes("cycle_edges"), false);
+  const cross = OI.layoutFunnel({ start_step_id: "a", steps: [step("a"), step("b"), step("c")], edges: [edge("a", "b"), edge("a", "c"), edge("c", "b"), edge("b", "c")] });
+  assert.equal(cross.edges.filter(e => e.back).length, 1);
+  assert.ok(codes(cross).includes("cycle_edges"));
+});
+
+test("QA-03: ids herdados do prototype não quebram o layout", () => {
+  const bad = OI.layoutFunnel({ steps: [{ id: "a" }], edges: [{ from: "constructor", to: "a" }, { from: "a", to: "__proto__" }, { from: "toString", to: "hasOwnProperty" }] });
+  assert.equal(bad.nodes.length, 1);
+  assert.equal(bad.edges.length, 0);
+  assert.deepEqual(j(bad.warnings), [{ code: "invalid_edges", count: 3 }]);
+  const odd = OI.layoutFunnel({ steps: [step("constructor"), step("valueOf"), step("toString"), step("__proto__")], edges: [edge("constructor", "valueOf"), edge("valueOf", "toString")] });
+  assert.deepEqual(j(odd.nodes.map(n => [n.id, n.col])), [["constructor", 0], ["valueOf", 1], ["toString", 2]]);
+  assert.equal(odd.nav.constructor.right, "valueOf");
+});
+
+test("QA-04: contagem ausente não vira zero", () => {
+  assert.equal(OI.formatDiscovery({ ads_count: null }).adsLabel, "");
+  assert.equal(OI.formatDiscovery({ ads_count: "" }).adsCount, null);
+  assert.equal(OI.formatDiscovery({ ads_count: false }).adsLabel, "");
+  assert.equal(OI.formatDiscovery({ ads_count: 0 }).adsLabel, "0 anúncios");
+  assert.equal(OI.formatDiscovery({ ads_count: "12" }).adsLabel, "12 anúncios");
+  assert.equal(OI.formatFunnelSummary({ id: "f" }).stepsCount, null);
+  assert.equal(OI.formatFunnelSummary({ id: "f", steps_count: 0 }).stepsCount, 0);
+  assert.equal(OI.layoutFunnel({ steps: [step("a", { http_status: null })] }).nodes[0].httpStatus, null);
+  assert.equal(j(OI.formatLimits({ apify: { available: true, daily_max_runs: 15 } }).lines)[0], "Limite de 15 coletas de anúncios por dia");
+  assert.equal(OI.formatJob({ progress_detail: {} }).progressDone, null);
 });
