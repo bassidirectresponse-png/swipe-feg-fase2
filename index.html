@@ -3419,7 +3419,7 @@ function oiDomainScanHtml(route,st){
   const head=`<div class="oi-card oi-dx__head"><div class="oi-links">${back}<span class="oi-chip">Raio-X</span>${oiStatusChip(s.statusLabel,s.status==="partial"?"pending":s.status)}</div>
     <h2 class="oi-dx__host">${e(s.host)}</h2><div class="oi-meta oi-meta--wrap">${s.createdAt?"Coletado em "+e(s.createdAt)+" · ":""}Domínio registrável: ${e(s.registrable||s.host)}</div>
     <div class="oi-dx__chips" aria-label="Resumo do domínio">${checkoutChips}${vslChip}${pixelChips||'<span class="oi-chip oi-chip--off">Nenhum pixel identificado</span>'}</div>
-    ${failed.length?`<div class="banner banner--warn" role="note">${ic("alert")}Algumas fontes falharam: ${e(failed.map(x=>x.label+(x.error?" ("+x.error+")":"")).join(", "))}. O resultado pode estar incompleto.</div>`:""}
+    ${failed.length?`<div class="banner banner--warn" role="note">${ic("alert")}Algumas fontes falharam: ${e(failed.map(x=>{const er=x.error&&typeof x.error==="object"?(x.error.message||x.error.code||""):(x.error||"");return x.label+(er?" ("+er+")":"");}).join(", "))}. O resultado pode estar incompleto.</div>`:""}
     <div class="oi-dx__chips" aria-label="Fontes consultadas">${srcChips}</div>
     <div class="oi-links">${oiExtLink(s.adsLibraryUrl,"Anúncios deste domínio","btn--accent")}</div></div>`;
   const srcCounts=OfferIntel.countPageSources(s.pages);

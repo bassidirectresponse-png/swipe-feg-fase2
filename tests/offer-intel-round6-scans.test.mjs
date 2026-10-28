@@ -157,3 +157,13 @@ test("ad-platform hosts are never scanned as offer domains", async () => {
   for (const h of ["fb.com", "l.facebook.com", "www.instagram.com", "wa.me", "youtu.be"]) assert.equal(platformHost(h), true, h);
   for (const h of ["astavin.co", "shop.ultimapeak.com", "notfacebook.com"]) assert.equal(platformHost(h), false, h);
 });
+
+test("Apify landings on the ad platform itself do not become domain discoveries", async () => {
+  const { apifyRecords } = await import("../lib/offer-intel-apify.mjs");
+  const job = { id: "j", scope_key: "offer:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", offer_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", offer_ref_kind: "offer", seed_snapshot: { data: {} } };
+  const items = [{ adArchiveId: "111", pageId: "222", snapshot: { linkUrl: "https://fb.com/some-page" } },
+    { adArchiveId: "333", pageId: "222", snapshot: { linkUrl: "https://astavin.co/products/x" } }];
+  const out = apifyRecords(job, items, "run", [], new Date().toISOString());
+  const domains = out.discoveries.filter(d => d.type === "domain").map(d => d.data.domain);
+  assert.deepEqual(domains, ["astavin.co"]);
+});
