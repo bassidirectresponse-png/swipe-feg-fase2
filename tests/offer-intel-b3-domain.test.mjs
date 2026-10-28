@@ -18,7 +18,7 @@ test("QA-B04: retry revisits transient child failures while preserving successfu
       return FAKEPage(url,"<title>Recovered landing</title>",recover?200:failure);
     };
     const explorer=createDomainExplorer({storage,fetchPage:FAKE_fetchPage});
-    assert.equal((await explorer.run(job)).status,"failed");
+    const first=await explorer.run(job);assert.equal(first.status,"succeeded");assert.equal(first.error.code,"pages_inaccessible");
     // Exercise pre-fix persisted payloads, whose reason existed only in detail.
     for(const e of storage.records.evidence.values())delete e.payload.inaccessible_reason;
     recover=true;
@@ -122,7 +122,7 @@ test("B3 Domain bounded concurrency/pages/depth/links; cancellation fences persi
   let active=0,max=0;
   const fake=await FAKEHTTP(t,(req,res)=>{
     active++;max=Math.max(max,active);res.setHeader("content-type","text/html");
-    setTimeout(()=>{active--;res.end("<title>Landing</title>"+Array.from({length:300},(_,i)=>'<a href="/p'+i+'">x</a>').join(""));},5);
+    setTimeout(()=>{active--;res.end("<title>Landing</title>"+Array.from({length:300},(_,i)=>'<a href="'+req.url.replace(/\/$/,"")+'/p'+i+'">x</a>').join(""));},5);
   });
   const job=fixture("http://public.example/"),storage=createFAKEWorkerStorage(job);
   const result=await createDomainExplorer({storage,fetchPage:fake.page}).run(job);
