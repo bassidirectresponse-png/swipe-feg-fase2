@@ -61,6 +61,7 @@ test("B3 Domain redirect to private IP is blocked before a second HTTP request",
   const job=fixture("http://public.example/"),storage=createFAKEWorkerStorage(job);
   await createDomainExplorer({storage,fetchPage:fake.page}).run(job);
   assert.equal(fake.requests.length,1);assert.equal([...storage.records.steps.values()][0].inaccessible_reason,"blocked_url");
+  assert.equal([...storage.records.steps.values()][0].redirects[0].to,"http://169.254.169.254/latest");
 });
 test("B3 Domain bounded concurrency/pages/depth/links; cancellation fences persistence",async t=>{
   let active=0,max=0;
@@ -77,4 +78,11 @@ test("B3 Domain bounded concurrency/pages/depth/links; cancellation fences persi
 test("B3 document extraction ignores scripts/forms, unsafe URLs and labels classification evidence",()=>{
   const doc=extractPublicDocument('<title>Quiz &amp; saúde</title><script><a href="/evil">x</a></script><form action="/send"></form><a href="javascript:alert(1)">bad</a><a href="/quiz?a=1&amp;b=2">next</a>',"https://example.com/");
   assert.equal(doc.title,"Quiz & saúde");assert.deepEqual(doc.links,["https://example.com/quiz?a=1&b=2"]);
+});
+test("B3 Domain explores persisted Apify destinations even without an initial URL",async t=>{
+  const fake=await FAKEHTTP(t,(_req,res)=>{res.setHeader("content-type","text/html");res.end("<title>Public landing</title>");});
+  const job=fixture(null),storage=createFAKEWorkerStorage(job);
+  storage.records.evidence.set("FAKE-provider-proof",{source:"apify",evidence_key:"apify:domain:public.example",source_url:"http://public.example/offer",payload:{}});
+  const result=await createDomainExplorer({storage,fetchPage:fake.page}).run(job);
+  assert.equal(result.result_count,1);assert.equal(fake.requests[0].url,"/offer");
 });

@@ -20,10 +20,13 @@ begin
   if not found or j.status<>'running' or j.lease_token is distinct from (p->>'lease_token')::uuid
     or j.lease_until<=now() or j.cancel_requested_at is not null then raise exception 'conflict'; end if;
   for r in select value from jsonb_array_elements(coalesce(b->'discoveries','[]')) loop
-    insert into offer_intel_discoveries(id,scope_key,type,identity_key,data,first_investigation_id,last_investigation_id)
-      values((r->>'id')::uuid,j.scope_key,r->>'type',r->>'identity_key',r->'data',j.id,j.id)
+    insert into offer_intel_discoveries(id,scope_key,type,identity_key,data,first_investigation_id,last_investigation_id,existing_offer_id)
+      values((r->>'id')::uuid,j.scope_key,r->>'type',r->>'identity_key',r->'data',j.id,j.id,
+        case when j.offer_ref_kind='offer' and coalesce(r->'data'->'existing_matches','[]') @>
+          jsonb_build_array(jsonb_build_object('ref_kind','offer','ref_id',j.offer_id)) then j.offer_id end)
       on conflict(scope_key,type,identity_key) do update set
-        data=offer_intel_discoveries.data||excluded.data,last_investigation_id=j.id,updated_at=now();
+        data=offer_intel_discoveries.data||excluded.data,last_investigation_id=j.id,updated_at=now(),
+        existing_offer_id=coalesce(offer_intel_discoveries.existing_offer_id,excluded.existing_offer_id);
     -- Preserve review status/version and existing_offer_id on every recollection.
   end loop;
   for r in select value from jsonb_array_elements(coalesce(b->'relations','[]')) loop

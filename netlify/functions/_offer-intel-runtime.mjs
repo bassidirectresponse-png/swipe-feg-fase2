@@ -8,12 +8,19 @@ import { signedDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { unavailableCollectors } from "../../lib/offer-intel-collectors.mjs";
 import { IntelError } from "../../lib/offer-intel-core.mjs";
 import { createDomainExplorer } from "../../lib/offer-intel-domain.mjs";
+import { createApifyCollector } from "../../lib/offer-intel-apify.mjs";
+import { createDailyBudget } from "../../lib/offer-intel-budget.mjs";
 
 export function intelRuntime() {
   const serviceKey=String(process.env.SUPABASE_SERVICE_ROLE_KEY||"").trim();
   const secret=automationSigningSecret();
   // No bot fallback: only service_role can write the auxiliary schema.
   const storage=createSupabaseStorage({url:SUPABASE_URL,serviceKey});
+  const apifyToken=String(process.env.APIFY_TOKEN||"").trim();
+  const budget=createDailyBudget({store:{
+    getWithMetadata:(...args)=>getStore({name:"offer-intel-budget",consistency:"strong"}).getWithMetadata(...args),
+    setJSON:(...args)=>getStore({name:"offer-intel-budget",consistency:"strong"}).setJSON(...args),
+  }});
   const reader=createReferenceReader({
     supabaseUrl:SUPABASE_URL,serviceKey,
     readDraft:async id=>{
@@ -22,9 +29,9 @@ export function intelRuntime() {
     },
   });
   return {
-    storage,reader,secret,collectors:{...unavailableCollectors,domain_explorer:createDomainExplorer({storage})},validateUrl:resolvePublicUrl,
-    // B2 exposes orchestration only. A token alone does not enable an unimplemented adapter.
-    capabilities: { apify: false, domain_explorer: true },
+    storage,reader,secret,collectors:{...unavailableCollectors,domain_explorer:createDomainExplorer({storage}),
+      apify:createApifyCollector({storage,budget,token:apifyToken})},validateUrl:resolvePublicUrl,
+    capabilities: { apify: !!apifyToken, domain_explorer: true },
     async dispatch(jobId,nonce) {
       const origin=new URL(process.env.URL||"https://benchmarkinggrupofeg.site").origin;
       const signed=signedDispatch(jobId,nonce,secret);
