@@ -1,0 +1,17 @@
+[
+  {
+    "ad_archive_id":"111111111", "page_id":"222222222", "page_name":"FAKE Wellness",
+    "start_date":1793059200, "start_date_formatted":"2026-10-27", "publisher_platform":["FACEBOOK","INSTAGRAM"],
+    "snapshot":{
+      "title":"Daily support", "body":{"text":"<p>Feel <strong>better</strong> &amp; discover your daily routine.</p>"},
+      "link_url":"https://wellness.example/products/daily?utm_source=facebook", "cta_text":"Shop Now", "display_format":"VIDEO",
+      "page_profile_picture_url":"https://scontent.xx.fbcdn.net/page.jpg",
+      "images":[{"original_image_url":"https://scontent.xx.fbcdn.net/ad.jpg"}]
+    }
+  },
+  {
+    "adArchiveId":"333333333", "pageId":"222222222", "pageName":"FAKE Wellness",
+    "startDateFormatted":"2026-10-26T13:15:00+00:00", "publisherPlatform":["messenger","AUDIENCE_NETWORK"],
+    "snapshot":{"body":"Second ad", "linkUrl":"https://wellness.example/quiz", "ctaText":"Learn more", "displayFormat":"IMAGE"}
+  }
+]
