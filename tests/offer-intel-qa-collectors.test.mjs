@@ -209,7 +209,7 @@ test("QA truncated retry replaces old oversized checkpoint and renders public wa
  assert.equal([...storage.records.steps.values()][0].kind,"quiz");
  await explorer.run(j);assert.equal(calls,2);
  const ctx={URL,URLSearchParams,Intl,esc:s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll('"',"&quot;"),
-   ic:()=>"",oiOfferById:()=>null,OI_REVIEW_LABEL:{confirmed:"Confirmar",ignored:"Ignorar",review:"Revisar"}};
+   ic:()=>"",oiOfferById:()=>null,oiScanLink:()=>"",OI_REVIEW_LABEL:{confirmed:"Confirmar",ignored:"Ignorar",review:"Revisar"}};
  vm.createContext(ctx);
  vm.runInContext(readFileSync(new URL("../lib/offer-intel.js",import.meta.url),"utf8"),ctx);
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
