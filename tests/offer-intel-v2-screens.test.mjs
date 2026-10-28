@@ -120,3 +120,18 @@ test("cliente v2: endpoints, parâmetros e POST de execução", async () => {
   assert.equal(calls[5].url, "/.netlify/functions/offer-intel-weekly?week=2026-10-27");
   assert.equal(calls[6].init.method, "POST"); assert.deepEqual(JSON.parse(calls[6].init.body), { action: "run" });
 });
+
+test("QA-UI-R6-01: scansByHost compara o timestamp bruto e normaliza www", () => {
+  const old = OI.formatScanSummary({ id: "old", host: "example.com", status: "succeeded", created_at: "2026-10-31T12:00:00.000Z" });
+  const next = OI.formatScanSummary({ id: "new", host: "www.example.com", status: "succeeded", created_at: "2026-11-01T12:00:00.000Z" });
+  assert.equal(OI.scansByHost([old, next])["example.com"].id, "new");
+  assert.equal(OI.scansByHost([next, old])["example.com"].id, "new");
+  const dec = OI.formatScanSummary({ id: "dez", host: "a.com", created_at: "2026-12-01T00:00:00.000Z" }), jan = OI.formatScanSummary({ id: "jan", host: "a.com", created_at: "2027-01-02T00:00:00.000Z" });
+  assert.equal(OI.scansByHost([dec, jan])["a.com"].id, "jan", "01/12/2026 > 02/01/2027 como texto não pode vencer");
+});
+
+test("QA-UI-R6-02: score desconhecido (null, vazio, boolean) fica null, nunca 0", () => {
+  for (const v of [null, undefined, "", false, true, "x"]) assert.equal(OI.formatWeeklyAd({ score: v }).score, null, String(v));
+  assert.equal(OI.formatWeeklyAd({ score: 0 }).score, 0);
+  assert.equal(OI.formatWeeklyAd({ score: "42.46" }).score, 42.5);
+});
