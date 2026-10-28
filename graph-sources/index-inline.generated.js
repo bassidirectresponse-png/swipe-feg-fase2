@@ -618,10 +618,10 @@ function automationCounts(section){
    exibido nem simulado; as áreas mostram o estado vazio com aviso explícito.
    ============================================================ */
 const OI_BACKEND_READY=false;
-/* Áreas cujos endpoints já existem no backend (B2: investigations e job). As demais (descobertas, conexões,
-   funis, summary, evidence) ficam como "ainda não conectadas" mesmo com OI_BACKEND_READY=true. */
-const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta"]);
-const OI_SUMMARY_LIVE=false;
+/* Áreas cujos endpoints existem no backend (B2: investigations e job; B3: discoveries, relations, funnels, summary).
+   Uma área fora desta lista fica como "ainda não conectada" mesmo com OI_BACKEND_READY=true. */
+const OI_LIVE_AREAS=new Set(["historico","investigacao","investigar","oferta","descobertas","conexoes","funis"]);
+const OI_SUMMARY_LIVE=true;
 function oiAreaLive(area){return OI_BACKEND_READY&&OI_LIVE_AREAS.has(area);}
 const OI_OFFER_SECTIONS=new Set(["oferta","brandsvalidated","brandsgeneral"]);
 const OI_JOBS_KEY="feg-oi-jobs";
@@ -1059,7 +1059,7 @@ function oiJobsTableHtml(route,st){
   const filters=`<div class="oi-filters">${oiFilterSelect("oiStatus","Status",route.query.status,[["","Todos"],["em_andamento","Em andamento"],["concluida","Concluídas"],["parcial","Parciais"],["erro","Com erro"]])}</div>`;
   if(kind==="loading"||kind==="error")return filters+oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return filters+oiStateHtml("empty",route.query.status?{title:"Nada encontrado",text:"Nenhuma investigação corresponde a este filtro."}:OI_EMPTY.historico);
-  const rows=st.items.map(job=>`<tr><td data-label="Início">${esc(job.createdAt||"—")}</td><td data-label="Origem"><a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(oiJobOfferName(job))}</a></td><td data-label="Status">${oiStatusChip(job.statusLabel,job.status)}</td><td class="oi-prog" data-label="Fase">${job.active?oiProgressHtml(job)+`<span class="oi-meta">${esc(job.phaseLabel)}</span>`:esc(job.phaseLabel||"—")}</td><td data-label="Resultados">${job.counts.discoveries} desc. · ${job.counts.funnels} funis</td><td data-label="Duração">${esc(job.duration||"—")}</td></tr>`).join("");
+  const rows=st.items.map(job=>`<tr><td data-label="Início">${esc(job.createdAt||"—")}</td><td data-label="Origem"><a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(oiJobOfferName(job))}</a></td><td data-label="Status">${oiStatusChip(job.statusLabel,job.status)}</td><td class="oi-prog" data-label="Fase">${job.active?oiProgressHtml(job)+`<span class="oi-meta">${esc(job.phaseLabel)}</span>`:esc(job.phaseLabel||"—")}</td><td data-label="Resultados">${oiCount(job.counts.discoveries)} desc. · ${oiCount(job.counts.funnels)} funis</td><td data-label="Duração">${esc(job.duration||"—")}</td></tr>`).join("");
   return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Investigações realizadas</caption><thead><tr><th scope="col">Início</th><th scope="col">Origem</th><th scope="col">Status</th><th scope="col">Fase</th><th scope="col">Resultados</th><th scope="col">Duração</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
 }
 function oiJobDetailHtml(route,st){
@@ -1071,7 +1071,7 @@ function oiJobDetailHtml(route,st){
   const err=job.error?`<div class="banner banner--warn" role="alert">${ic("alert")}${e(job.error.message||"A investigação falhou.")}${job.nextRetryAt?" Nova tentativa automática: "+e(job.nextRetryAt)+".":""}</div>`:"";
   const actions=[job.active?`<button type="button" class="btn btn--outline btn--sm" data-oi-job-action="cancel" data-id="${e(job.id)}">Cancelar investigação</button>`:"",(job.status==="failed"||job.status==="partial")&&(!job.error||job.error.retryable||job.status==="partial")?`<button type="button" class="btn btn--accent btn--sm" data-oi-job-action="retry" data-id="${e(job.id)}">Tentar novamente</button>`:"",`<a class="btn btn--outline btn--sm" data-nav href="${e(OfferIntel.buildPath({area:"descobertas",query:{job:job.id}}))}">Ver descobertas</a>`].join("");
   return `<div class="oi-card"><div class="oi-links">${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${e(oiJobOfferName(job))}</span></div>${oiProgressHtml(job)}<div class="oi-meta">${e(job.phaseLabel||job.statusLabel)}${job.progressTotal?` · ${job.progressDone||0} de ${job.progressTotal}`:""}</div>${err}
-    <dl class="oi-dl"><div><dt>Criada</dt><dd>${e(job.createdAt||"—")}</dd></div><div><dt>Início</dt><dd>${e(job.startedAt||"—")}</dd></div><div><dt>Fim</dt><dd>${e(job.finishedAt||"—")}</dd></div><div><dt>Duração</dt><dd>${e(job.duration||"—")}</dd></div><div><dt>Descobertas</dt><dd>${job.counts.discoveries}</dd></div><div><dt>Relações</dt><dd>${job.counts.relations}</dd></div><div><dt>Funis</dt><dd>${job.counts.funnels}</dd></div><div><dt>Etapas</dt><dd>${job.counts.steps}</dd></div></dl>
+    <dl class="oi-dl"><div><dt>Criada</dt><dd>${e(job.createdAt||"—")}</dd></div><div><dt>Início</dt><dd>${e(job.startedAt||"—")}</dd></div><div><dt>Fim</dt><dd>${e(job.finishedAt||"—")}</dd></div><div><dt>Duração</dt><dd>${e(job.duration||"—")}</dd></div><div><dt>Descobertas</dt><dd>${oiCount(job.counts.discoveries)}</dd></div><div><dt>Relações</dt><dd>${oiCount(job.counts.relations)}</dd></div><div><dt>Funis</dt><dd>${oiCount(job.counts.funnels)}</dd></div><div><dt>Etapas</dt><dd>${oiCount(job.counts.steps)}</dd></div></dl>
     ${sources}<div class="oi-links">${actions}</div></div>`;
 }
 function oiHubHtml(route,st){
@@ -1084,7 +1084,7 @@ function oiHubHtml(route,st){
     if(!st||st.status==="loading")summary=oiStateHtml("loading");
     else if(st.status==="error")summary=oiStateHtml("error",{error:st.error});
     else if(sum){
-      const c=sum.counts||{},n=k=>Number(c[k])||0,job=sum.active_job&&OfferIntel.formatJob(sum.active_job),last=sum.last_job&&OfferIntel.formatJob(sum.last_job);
+      const c=sum.counts||{},n=k=>c[k]==null||c[k]===""||!Number.isFinite(Number(c[k]))?"—":Number(c[k]),job=sum.active_job&&OfferIntel.formatJob(sum.active_job),last=sum.last_job&&OfferIntel.formatJob(sum.last_job);
       const lim=OfferIntel.formatLimits(sum.limits),limHtml=lim.lines.length?`<ul class="oi-limits">${lim.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:"";
       summary=limHtml+`<div class="oi-links"><span class="oi-chip">${n("new")} novas</span><span class="oi-chip">${n("review")} em revisão</span><span class="oi-chip">${n("confirmed")} confirmadas</span><span class="oi-chip">${n("ignored")} ignoradas</span><span class="oi-chip">${n("relations_pending")} relações pendentes</span><span class="oi-chip">${n("funnels")} funis</span></div>`+(job?`<div class="oi-meta">Em andamento: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(job.phaseLabel||job.statusLabel)} · ${job.progressPercent}%</a></div>`:last?`<div class="oi-meta">Última investigação: <a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:last.id}))}">${esc(last.statusLabel)}${last.finishedAt?" em "+esc(last.finishedAt):""}</a></div>`:`<div class="oi-meta">Esta oferta ainda não foi investigada.</div>`);
     }
@@ -1092,6 +1092,8 @@ function oiHubHtml(route,st){
   const start=`<button type="button" class="btn btn--accent" data-oi-start="${esc(route.offerId)}" data-oi-ref="${ref||"offer"}"${OI_BACKEND_READY?"":' disabled aria-describedby="oiStartHint"'}>${ic("search")}Investigar oferta</button>${OI_BACKEND_READY?"":'<span class="oi-meta" id="oiStartHint">Disponível quando o backend estiver conectado.</span>'}`;
   return `<div class="oi-card"><div class="eyebrow">${esc(SEC_SHORT[section]||"Oferta")}</div><h2 class="oi-offer-name">${esc(oiOfferName(offer))}</h2><div class="oi-links">${start}<a class="btn btn--outline btn--sm" data-nav href="${esc(offerPath(offer))}">Abrir ficha da oferta</a>${links}</div>${summary}</div>`;
 }
+/* Contagem desconhecida (null) aparece como "—", nunca como 0. */
+function oiCount(value){return value==null?"—":String(value);}
 function oiPathFor(area,query){return OfferIntel.buildPath({area,query:Object.assign({},oiRoute&&oiRoute.query,query)});}
 function oiBodyHtml(route){
   const area=route.area,q=route.query,st=oiStates[area]||{status:"ready",items:[]};
@@ -1196,7 +1198,7 @@ const oiBusy=new Set();
 async function oiJobAction(id,action,button){
   const lock=id+":"+action;
   if(oiBusy.has(lock))return;
-  if(action==="cancel"&&!confirm("Cancelar esta investigação? Os resultados já coletados são mantidos."))return;
+  if(action==="cancel"&&!confirm("Cancelar esta investigação? Novas etapas não serão iniciadas e os resultados já coletados são mantidos. Uma coleta de anúncios já enviada ao provedor pode continuar até terminar e consumir a cota do dia."))return;
   oiBusy.add(lock);button.setAttribute("aria-disabled","true");
   try{
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);

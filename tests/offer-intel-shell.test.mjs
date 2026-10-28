@@ -138,3 +138,8 @@ test("QA-07: foco estável por ação+id entre renders; botões ocupados usam ar
   assert.match(html, /oiBusy\.add\(lock\);button\.setAttribute\("aria-disabled","true"\)/);
   assert.match(html, /if\(typing\)\{oiDirty=true;return;\}/);
 });
+
+test("cancelar investigação avisa que uma coleta já aceita pelo provedor pode continuar", () => {
+  assert.match(html, /Uma coleta de anúncios já enviada ao provedor pode continuar até terminar e consumir a cota do dia\./);
+  assert.match(html, /Novas etapas não serão iniciadas/);
+});
