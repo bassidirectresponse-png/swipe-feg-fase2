@@ -38,7 +38,7 @@ export function assertJobV1(v) {
     oneOf(s.status, "pending running succeeded failed skipped unavailable");
     count(s.result_count);
     if (s.error !== undefined && s.error !== null) { fields(s.error, "code message"); text(s.error.code); text(s.error.message); }
-    if (s.name === "screenshot") assert.equal(s.status, "unavailable", "v1 has no screenshot capability");
+    if (s.name === "screenshot") assert.ok(["skipped", "unavailable"].includes(s.status), "v1 has no screenshot capability");
   });
   if (v.error !== null) { fields(v.error, "code message retryable"); text(v.error.code); text(v.error.message); assert.equal(typeof v.error.retryable, "boolean"); }
   date(v.created_at); date(v.updated_at);

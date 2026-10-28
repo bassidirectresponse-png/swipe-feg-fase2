@@ -1,5 +1,5 @@
 // FAKE QA corpus; never resolve these hosts or call a provider.
-// Consumed later by backend adapters. These are expectations, not executed SSRF tests.
+// Consumed later by backend adapters. URL/DNS cases are consumed by offer-intel-qa-b2.test.mjs; remaining transport expectations are not proof of real sockets.
 export const INVALID_ID_CASES = Object.freeze([
   { name: "missing", value: undefined }, { name: "null", value: null },
   { name: "empty", value: "" }, { name: "slug", value: "joymode" },
@@ -20,9 +20,9 @@ export const OFFER_REF_CASES = Object.freeze([
 ]);
 
 const urls = [
-  ["scheme file", "file:///etc/passwd", "invalid_url"],
-  ["scheme javascript", "javascript:alert(1)", "invalid_url"],
-  ["scheme ftp", "ftp://example.com/a", "invalid_url"],
+  ["scheme file", "file:///etc/passwd", "blocked_url"],
+  ["scheme javascript", "javascript:alert(1)", "blocked_url"],
+  ["scheme ftp", "ftp://example.com/a", "blocked_url"],
   ["malformed", "https://", "invalid_url"],
   ["loopback", "http://127.0.0.1/", "blocked_url"],
   ["loopback shorthand", "http://127.1/", "blocked_url"],
