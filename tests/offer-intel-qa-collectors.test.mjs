@@ -34,7 +34,7 @@ async function local(t){
 }
 test("QA real Node streaming transport caps bytes/time, redirects and sends only GET without credentials",async t=>{
  const f=await local(t);
- await assert.rejects(()=>f.page("http://public.example/large"),e=>e.code==="response_too_large");
+ const large=await f.page("http://public.example/large");assert.equal(large.truncated,true);assert.equal(large.body.length,2*1024*1024);
  await assert.rejects(()=>f.page("http://public.example/slow",{timeoutMs:80}),e=>e.code==="provider_error"||e.name==="AbortError");
  const n=f.calls.length;await assert.rejects(()=>f.page("http://public.example/redirect"),e=>e.code==="blocked_url");assert.equal(f.calls.length,n+1);
  const before=f.calls.length;await assert.rejects(()=>f.page("http://public.example/loop"),e=>e.code==="invalid_url");assert.equal(f.calls.length-before,6);
