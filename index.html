@@ -1618,20 +1618,15 @@
   .oi-dx__bar b{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:var(--accent);}
   .is-hidden-cta td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
   .is-hidden-cta{background:var(--accent-soft);}
-  .oi-dx__assets{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:0;}
-  .oi-dx__assets li{display:flex;flex-direction:column;gap:6px;min-width:0;}
-  .oi-dx__asset{display:grid;place-items:center;aspect-ratio:4/3;width:100%;border:1px solid var(--border-2);border-radius:var(--radius-xs);background:var(--surface-2);overflow:hidden;cursor:zoom-in;padding:0;color:var(--muted-fg);}
-  .oi-dx__asset img{width:100%;height:100%;object-fit:cover;}
-  .oi-dx__asset:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .oi-dx__files{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .oi-dx__file{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-xs);min-width:0;}
+  .oi-dx__ficon{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:var(--radius-xs);background:var(--surface-2);color:var(--muted-fg);}
+  .oi-dx__fmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .oi-dx__fmeta b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .oi-dx__fmeta .oi-meta{white-space:normal;overflow-wrap:anywhere;}
   .oi-dx__vids{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
   .oi-dx__hub{width:100%;display:flex;flex-direction:column;gap:8px;}
   .oi-dx__hub h3{font-size:.95rem;}
-  .oi-lb{position:fixed;inset:0;z-index:var(--z-lightbox);background:var(--overlay);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:16px;justify-items:center;}
-  .oi-lb__close{justify-self:end;min-height:44px;}
-  .oi-lb__stage{min-height:0;display:grid;place-items:center;width:100%;}
-  .oi-lb__stage img{max-width:100%;max-height:100%;border-radius:var(--radius-xs);}
-  .oi-lb__err{color:var(--fg);max-width:44ch;text-align:center;}
-  .oi-lb__open{min-height:44px;display:inline-flex;align-items:center;}
   .oi-wk__top{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;width:100%;}
   .oi-wk__top h2{font-size:clamp(1.3rem,3vw,1.9rem);}
   .oi-wk__actions{display:flex;flex-wrap:wrap;gap:8px;}
@@ -1697,7 +1692,7 @@
   @media(max-width:700px){.oi-wk__list{grid-template-columns:1fr;}.oi-wk__actions .btn{flex:1 1 auto;}.oi-dx__tech{grid-template-columns:1fr;}}
   @media print{
     @page{margin:12mm;}
-    .topbar,.sidenav,#oiTray,#toast,.oi-bar,.oi-ctx,.oi-wk__actions,.oi-wk__tabs,.oi-wk__sel,.oi-pres,.skip-link,.oi-lb,[data-oi-wk-run],.oi-wk__media video,.oi-wk__media--none,#pageResult{display:none!important;}
+    .topbar,.sidenav,#oiTray,#toast,.oi-bar,.oi-ctx,.oi-wk__actions,.oi-wk__tabs,.oi-wk__sel,.oi-pres,.skip-link,[data-oi-wk-run],.oi-wk__media video,.oi-wk__media--none,#pageResult{display:none!important;}
     .shell{display:block!important;}
     html,body,.main{background:#fff!important;color:#000!important;padding:0!important;overflow:visible!important;}
     .oi-card,.oi-wk__ad{background:#fff!important;color:#000!important;border:1px solid #999!important;box-shadow:none!important;}
@@ -3415,26 +3410,12 @@ function oiDomainScanHtml(route,st){
   const ctaRows=s.ctas.slice().sort((a,b)=>Number(b.hidden)-Number(a.hidden));
   const ctas=oiDxSec("ctas","CTAs",s.ctas.length,s.ctas.length?`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Botões e chamadas para ação</caption><thead><tr><th scope="col">Texto</th><th scope="col">Destino</th><th scope="col">Aparece em</th><th scope="col">Página</th></tr></thead><tbody>${ctaRows.map(c=>`<tr class="${c.hidden?"is-hidden-cta":""}"><td data-label="Texto"><b>${e(c.text||"(sem texto)")}</b>${c.hidden?' <span class="oi-chip oi-chip--hi">Escondido</span>':""}</td><td data-label="Destino">${c.href?`<a href="${e(c.href)}" target="_blank" rel="noopener noreferrer">${e(c.hrefDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:"—"}</td><td data-label="Aparece em">${c.showOnLabel?e(c.showOnLabel):"—"}</td><td data-label="Página"><span class="oi-meta">${c.pageUrl?e(displayUrlSafe(c.pageUrl)):"—"}</span></td></tr>`).join("")}</tbody></table></div>`:oiDxEmpty("Nenhum CTA foi identificado."));
   const imgs=s.assets.images,vids=s.assets.videos;
-  const assets=oiDxSec("assets","Assets",imgs.length+vids.length,imgs.length||vids.length?(imgs.length?`<ul class="oi-dx__assets">${imgs.map((a,i)=>`<li><button type="button" class="oi-dx__asset" data-oi-lightbox="${e(a.url)}" aria-label="Ampliar imagem ${i+1}: ${e(a.display)}"><img data-oi-img data-oi-ph="image" src="${e(a.url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button><span class="oi-meta">${e(a.display)}</span></li>`).join("")}</ul>`:"")+(vids.length?`<h4>Vídeos</h4><ul class="oi-dx__vids">${vids.map(a=>`<li>${oiExtLink(a.url,a.display)}</li>`).join("")}</ul>`:""):oiDxEmpty("Nenhum asset foi identificado."));
+  const fileOf=u=>{try{const n=decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop()||"");return n||"(sem nome)";}catch(_){return "(sem nome)";}};
+  const assetRow=(a,kind)=>`<li class="oi-dx__file"><span class="oi-dx__ficon" aria-hidden="true">${ic(kind==="image"?"image":"film")}</span><div class="oi-dx__fmeta"><b title="${e(fileOf(a.url))}">${e(fileOf(a.url))}</b><span class="oi-meta">${e(oiHostOf(a.url))}${a.pageUrl?" · em "+e(displayUrlSafe(a.pageUrl)):""}</span></div>${oiExtLink(a.url,"Abrir")}</li>`;
+  const assets=oiDxSec("assets","Assets",imgs.length+vids.length,imgs.length||vids.length?`<p class="oi-note">As imagens e vídeos de sites externos não são carregados aqui; abra cada arquivo em outra aba.</p>`+(imgs.length?`<h4>Imagens</h4><ul class="oi-dx__files">${imgs.map(a=>assetRow(a,"image")).join("")}</ul>`:"")+(vids.length?`<h4>Vídeos</h4><ul class="oi-dx__files">${vids.map(a=>assetRow(a,"video")).join("")}</ul>`:""):oiDxEmpty("Nenhum asset foi identificado."));
   const subs=oiDxSec("subs","Subdomínios",s.subdomains.length,s.subdomains.length?`<div class="oi-links">${s.subdomains.map(h=>`<span class="oi-chip">${e(h)}</span>`).join("")}</div>`:oiDxEmpty("Nenhum subdomínio foi encontrado."));
   return head+pages+checkout+pixels+tech+vsl+ctas+assets+subs;
 }
-/* Lightbox simples: imagem ampliada, Esc/clique fora fecham, foco volta ao botão de origem. */
-function oiLightbox(url,opener){
-  if($("#oiLb"))return;
-  const el=document.createElement("div");el.id="oiLb";el.className="oi-lb";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Imagem ampliada");
-  el.innerHTML=`<button type="button" class="btn btn--outline oi-lb__close">Fechar</button><div class="oi-lb__stage"><img alt="" referrerpolicy="no-referrer"><p class="oi-lb__err" hidden>Não foi possível exibir esta imagem aqui (o navegador bloqueia imagens de sites externos). Abra o original em outra aba.</p></div><a class="btn btn--outline btn--sm oi-lb__open" target="_blank" rel="noopener noreferrer">Abrir original <span aria-hidden="true">↗</span></a>`;
-  const img=$("img",el);img.src=url;$(".oi-lb__open",el).href=url;
-  img.addEventListener("error",()=>{img.hidden=true;$(".oi-lb__err",el).hidden=false;});
-  const close=()=>{document.removeEventListener("keydown",onKey,true);el.remove();if(opener&&opener.isConnected)opener.focus();};
-  const onKey=ev=>{
-    if(ev.key==="Escape"){ev.preventDefault();ev.stopPropagation();close();return;}
-    if(ev.key==="Tab"){const f=[...el.querySelectorAll("button,a[href]")];if(!f.length)return;const i=f.indexOf(document.activeElement);ev.preventDefault();f[(i+(ev.shiftKey?-1:1)+f.length)%f.length].focus();}
-  };
-  el.addEventListener("click",ev=>{if(ev.target===el||ev.target.closest(".oi-lb__close"))close();});
-  document.addEventListener("keydown",onKey,true);document.body.appendChild(el);$(".oi-lb__close",el).focus();
-}
-
 /* ----- Relatório semanal ----- */
 const oiWkUi={group:"registered"};
 let oiWkTimer=null,oiPres=null;
@@ -3654,7 +3635,6 @@ let oiClickBound=false;
 function oiOnClick(event){
   if(activeSection!=="inteligencia"||!oiRoute)return;
   const copy=event.target.closest("[data-oi-copy]");if(copy){oiCopyText(copy.dataset.oiCopy,copy.dataset.oiCopyLabel);return;}
-  const lb=event.target.closest("[data-oi-lightbox]");if(lb){oiLightbox(lb.dataset.oiLightbox,lb);return;}
   if(event.target.closest("[data-oi-dx-more]")){oiDomUi.all=true;oiDxUpdatePages(event.currentTarget);return;}
   const wtab=event.target.closest("[data-oi-wk-tab]");if(wtab){oiWkSwitchTab(event.currentTarget,wtab.dataset.oiWkTab);return;}
   const wp=event.target.closest("[data-oi-wk-present]");if(wp){oiOpenPresentation(wp);return;}

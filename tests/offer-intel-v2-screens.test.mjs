@@ -92,11 +92,13 @@ test("Semanal: lista, relatório, selos, score e análise", () => {
   assert.equal(a1.thumbUrl, ""); assert.equal(a1.videoUrl, "");
 });
 
-test("Semanal: mídia insegura é descartada; resumo aceita formas alternativas; lista vazia", () => {
+test("Semanal: mídia insegura é descartada; resumo só aceita {bullets}; lista vazia", () => {
   const ad = OI.formatWeeklyAd({ rank: 1, media: { thumb_url: "javascript:x", video_url: "https://x.supabase.co/v.mp4" }, ad_archive_id: "abc", score: "x", rank_change: "NaN" });
   assert.equal(ad.thumbUrl, ""); assert.equal(ad.videoUrl, "https://x.supabase.co/v.mp4"); assert.equal(ad.score, null); assert.equal(ad.libraryUrl, ""); assert.equal(ad.rankChange, 0);
-  assert.deepEqual(j(OI.formatWeeklyReport({ report: { status: "weird" }, summary: "Texto único" }).summary), ["Texto único"]);
-  assert.deepEqual(j(OI.formatWeeklyReport({ summary: ["a", { text: "b" }] }).summary), ["a", "b"]);
+  assert.deepEqual(j(OI.formatWeeklyReport({ report: { status: "weird" }, summary: "Texto único" }).summary), [], "só {bullets} é aceito");
+  assert.deepEqual(j(OI.formatWeeklyReport({ summary: ["a"] }).summary), []);
+  assert.deepEqual(j(OI.formatWeeklyReport({ summary: { bullets: ["a", 5, " b "] } }).summary), ["a", "b"]);
+  assert.deepEqual(j(OI.formatWeeklyReport({ summary: null }).summary), []);
   const empty = OI.formatWeeklyReport(null);
   assert.equal(empty.registered.length, 0); assert.equal(empty.meta.status, "queued");
   assert.deepEqual(j(OI.formatWeeklyList(null)), []);
