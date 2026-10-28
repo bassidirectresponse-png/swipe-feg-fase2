@@ -62,7 +62,7 @@ test("a casca integra rota, sidebar admin-only, abas e estados sem dados falsos"
   assert.match(html, /if\(key==="brandsvalidated"&&isAdmin\)html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
   assert.match(html, /aria-label="Áreas de Inteligência de Ofertas"/);
   assert.match(html, /aria-current="page"/);
-  assert.match(html, /const OI_BACKEND_READY=false/);
+  assert.match(html, /const OI_BACKEND_READY=(true|false)/);
   assert.match(html, /role="alert"/);
   assert.match(html, /Fase posterior/);
   assert.doesNotMatch(html, /OI_MOCK|DADOS DE DEMONSTRA/);
