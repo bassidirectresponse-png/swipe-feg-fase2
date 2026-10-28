@@ -129,7 +129,7 @@ test("Creative Review: apresentação percorre produto a produto e anúncio a an
 
 test("Rodar agora: confirmação, 1 POST por clique ativo, 409 com mensagem própria", async () => {
   const calls = [];
-  ctx.confirm = () => true; ctx.toast = (m, bad) => calls.push(["toast", m, !!bad]); ctx.activeSection = "outra"; ctx.crStates = {};
+  ctx.confirm = () => true; ctx.toast = (m, bad) => calls.push(["toast", m, !!bad]); ctx.activeSection = "outra"; run("Object.keys(crStates).forEach(k=>delete crStates[k]);crStates.list={status:'ready',data:[{status:'succeeded'}]}");
   let n = 0, fail;
   ctx.oiApi = { runReview: () => { n++; return new Promise((res, rej) => { fail = () => rej(Object.assign(new Error("x"), { status: 409 })); }); } };
   ctx.btn = { setAttribute() {} };
@@ -137,6 +137,7 @@ test("Rodar agora: confirmação, 1 POST por clique ativo, 409 com mensagem pró
   assert.equal(n, 1);
   fail(); await p1;
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["toast", "Já existe uma execução em andamento.", true]]);
+  assert.equal(run("Object.keys(crStates).length"), 0, "QA-CR-02: 409 também invalida o cache para descobrir a execução atual");
   ctx.confirm = () => false; calls.length = 0;
   await run("crRun(btn)"); assert.equal(n, 1);
 });
@@ -149,4 +150,32 @@ test("Creative Review: seção própria no menu, fora de OI_V2_READY, rota legad
   assert.match(html, /html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\);html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
   assert.match(html, /\^\\\/inteligencia\\\/semanal\\\/\?\$/);
   assert.match(html, /r\.section==="creativereview"\)&&!isAdmin/);
+});
+
+test("QA-CR-01: resposta de polling iniciada antes da invalidação não regride o cache", async () => {
+  ctx.activeSection = "outra"; run("Object.keys(crStates).forEach(k=>delete crStates[k]);crGen=0");
+  const oldMeta = ctx.OfferIntel.formatReviewList([{ review_date: "2026-10-28", status: "succeeded" }]);
+  const newMeta = ctx.OfferIntel.formatReviewList([{ review_date: "2026-10-28", status: "running", progress: 10 }]);
+  let resolveOld, resolveNew;
+  ctx.__old = new Promise(r => { resolveOld = () => r(oldMeta); });
+  ctx.__new = new Promise(r => { resolveNew = () => r(newMeta); });
+  run("crStates.list={status:'ready',data:[]};crSettle('list',__old,true)");
+  run("crInvalidate()");
+  assert.equal(run("Object.keys(crStates).length"), 0);
+  run("crSettle('list',__new,false)");
+  resolveNew(); await new Promise(r => setImmediate(r));
+  assert.equal(run("crStates.list.data[0].status"), "running");
+  resolveOld(); await new Promise(r => setImmediate(r));
+  assert.equal(run("crStates.list.data[0].status"), "running", "o poll antigo (succeeded) chegou por último e foi descartado");
+  assert.equal(run("crActive({view:'list'})"), true, "polling continua agendável");
+});
+
+test("QA-CR-01: erro tardio de requisição antiga também é descartado", async () => {
+  run("Object.keys(crStates).forEach(k=>delete crStates[k]);crGen=0");
+  let failOld; ctx.__o = new Promise((_, rej) => { failOld = () => rej(new Error("tarde")); });
+  run("crSettle('folder:2026-10-28',__o,false)"); run("crInvalidate()");
+  ctx.__n = Promise.resolve({ meta: { active: false }, products: [], summary: [] });
+  run("crSettle('folder:2026-10-28',__n,false)"); await new Promise(r => setImmediate(r));
+  failOld(); await new Promise(r => setImmediate(r));
+  assert.equal(run("crStates['folder:2026-10-28'].status"), "ready");
 });

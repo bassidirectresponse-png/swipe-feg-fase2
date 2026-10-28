@@ -3446,7 +3446,9 @@ function oiDomainScanHtml(route,st){
    ============================================================ */
 const CR_READY=true;
 const crStates={};
-let crRoute=null,crTimer=null,crClickBound=false,oiPres=null;
+let crRoute=null,crTimer=null,crClickBound=false,oiPres=null,crGen=0;
+/* Invalida o cache: respostas de requisições iniciadas antes (inclusive polling silencioso) são descartadas. */
+function crInvalidate(){crGen++;Object.keys(crStates).forEach(k=>delete crStates[k]);}
 const CR_RUNNING_MS=8000;
 /* Contador do menu = nº de pastas; só aparece depois que a lista é carregada. */
 function crFolderCount(){const st=crStates.list;return st&&st.status==="ready"?st.data.length:"";}
@@ -3459,15 +3461,17 @@ function crFetcher(route){
 }
 /* 404 vira "não encontrado" (data:null); qualquer outro erro vira estado de erro com retentativa. */
 function crSettle(key,promise,silent){
-  const prev=crStates[key],token={};
+  const prev=crStates[key],token={},gen=crGen;
   if(!silent)crStates[key]={status:"loading",token};
   promise.then(data=>{
+    if(gen!==crGen)return;
     const cur=crStates[key];if(!silent&&(!cur||cur.token!==token))return;
     if(silent&&JSON.stringify(cur&&cur.data)===JSON.stringify(data))return;
     crStates[key]={status:"ready",data};
-    if(activeSection==="creativereview")renderCreativeReview();else if(key==="list")renderSideNav();
+    if(activeSection==="creativereview")renderCreativeReview();
+    if(key==="list")renderSideNav();
   }).catch(error=>{
-    if(silent)return;
+    if(silent||gen!==crGen)return;
     const cur=crStates[key];if(!cur||cur.token!==token)return;
     crStates[key]=error&&error.status===404?{status:"ready",data:null}:{status:"error",error:String(error&&error.message||"Não foi possível carregar.")};
     if(activeSection==="creativereview")renderCreativeReview();
@@ -3509,7 +3513,7 @@ function crFolderHtml(route){
   const d=st.data,m=d.meta,n=v=>v==null?"—":v.toLocaleString("pt-BR");
   const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?"Pasta parcial: parte da análise de IA não terminou, mas o ranking está completo.":"A geração desta pasta falhou."}${m.error?" "+esc(m.error):""}</div>`:"";
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn()}</div></div>
-    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos · ${n(m.adsCount)} anúncios${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
+    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos · ${n(m.adsCount==null&&d.products.length?d.products.reduce((t,p)=>t+(p.adsCollected||0),0):m.adsCount)} anúncios${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
   const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"Nenhuma oferta com biblioteca cadastrada foi analisada."});
   return crumbs+head+sum+grid;
@@ -3567,8 +3571,8 @@ async function crRun(button){
   if(oiBusy.has("cr:run"))return;
   if(!confirm("Rodar o Creative Review agora?\n\nA coleta consome o orçamento do Apify (teto de US$ 15 por semana) e a análise de IA (teto de US$ 10). Atualiza a pasta da quarta-feira corrente; se já houver uma execução em andamento, nada novo é iniciado."))return;
   oiBusy.add("cr:run");button.setAttribute("aria-disabled","true");
-  try{await oiApi.runReview();toast("Creative Review iniciado");Object.keys(crStates).forEach(k=>delete crStates[k]);}
-  catch(error){toast(error.status===409?"Já existe uma execução em andamento.":error.message,true);}
+  try{await oiApi.runReview();toast("Creative Review iniciado");crInvalidate();}
+  catch(error){if(error.status===409){crInvalidate();toast("Já existe uma execução em andamento.",true);}else toast(error.message,true);}
   finally{oiBusy.delete("cr:run");}
   if(activeSection==="creativereview")renderCreativeReview();
 }
