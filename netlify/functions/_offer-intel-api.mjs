@@ -127,6 +127,7 @@ export function createIntelHandlers(overrides={}) {
       let row=await services.storage.claim(signed);
       if(!row) return deps.json(req,202,{ok:true},METHODS);
       const token=row.lease_token;
+      const deadline=Date.now()+12*60*1000;
       const checkpoint=async patch=>{
         row=await services.storage.checkpoint({job_id:row.id,lease_token:token,patch}); return row;
       };
@@ -141,13 +142,17 @@ export function createIntelHandlers(overrides={}) {
           source.status="running";
           await checkpoint({phase:source.name==="apify"?"collect_ads":"explore_domains",progress:Math.round(done/Math.max(1,tasks.length)*80),sources});
           let result;
-          try {result=await services.collectors[source.name].run(row);}
-          catch {result={status:"failed",result_count:0,error:{code:"provider_error",message:"Falha ao consultar a fonte."},retryable:true};}
+          try {result=await services.collectors[source.name].run(row,{checkpoint,deadline});}
+          catch(error) {
+            if(error?.code==="conflict")throw error;
+            result={status:"failed",result_count:0,counts:row.counts,counts_mode:"absolute",
+              error:{code:error instanceof IntelError?error.code:"provider_error",message:error instanceof IntelError?error.message:"Falha ao consultar a fonte."},retryable:true};
+          }
           source.status=result.status;
           source.result_count=result.result_count||0;
           if(result.error) source.error=result.error; else delete source.error;
           // Only adapters that persisted their own auxiliary records may report durable counts.
-          for(const key of Object.keys(counts)) counts[key]+=Number(result.counts?.[key])||0;
+          for(const key of Object.keys(counts)) counts[key]=result.counts_mode==="absolute"?(Number(result.counts?.[key])||0):counts[key]+(Number(result.counts?.[key])||0);
           done++;
           await checkpoint({sources,counts,progress_detail:{done,total:tasks.length},progress:Math.round(done/Math.max(1,tasks.length)*90)});
         }
