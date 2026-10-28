@@ -6,6 +6,7 @@ export function createFAKEWorkerStorage(job) {
   const fence=p=>{if(!live||p.job_id!==job.id||p.lease_token!==job.lease_token)throw new IntelError(409,"conflict","Lease inválido.");};
   const counts=()=>({discoveries:records.discoveries.size,relations:records.relations.size,funnels:records.funnels.size,steps:records.steps.size});
   return {records,cancel:()=>{live=false;},
+    async scanRead(p){return {items:structuredClone([...records.scans.values()].filter(row=>row.investigation_id===p.job_id))};},
     async scanPersist(p){fence(p);const row={...structuredClone(p.scan),investigation_id:job.id,scope_key:job.scope_key,created_at:new Date().toISOString()};records.scans.set(row.id,row);return row;},
     async workerState(p){fence(p);return {counts:counts(),evidence:[...records.evidence.values()],providers:[...records.providers.values()]};},
     async persist(p){fence(p);
