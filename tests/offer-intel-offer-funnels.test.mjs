@@ -8,22 +8,21 @@ const funnel=(id,origin,created_at)=>({id,investigation_id:id,title:id,origin_ur
 // Two investigations of the same offer: each one snapshots the product page and an ad-landing quiz.
 const FUNNELS=[funnel("new-product",PRODUCT,"2026-10-28T12:42:00Z"),funnel("new-quiz","https://shop.ultimapeak.com/pages/quiz-funnel-v2","2026-10-28T12:41:00Z"),
   funnel("old-product",PRODUCT+"/","2026-10-28T06:42:00Z"),funnel("old-quiz","https://shop.ultimapeak.com/pages/quiz-funnel-v2","2026-10-28T06:41:00Z")];
-const snapshot=data=>({data:{kind:"brandsvalidated",...data}});
-test("offer map keeps only registered product pages, newest snapshot per entry",()=>{
-  const out=offerFunnels(FUNNELS,snapshot({dominios:[{nome:"Página principal",linkDominio:"https://www.ultimapeak.com/products/ultimapeak-daily-gummies"}]}));
-  assert.deepEqual(out.map(f=>f.id),["new-product"]);
+test("offer map keeps the newest snapshot per entry page, including ad-landing funnels",()=>{
+  assert.deepEqual(offerFunnels(FUNNELS).map(f=>f.id),["new-product","new-quiz"]);
 });
-test("offer without registered URLs still deduplicates repeated investigations",()=>{
-  assert.deepEqual(offerFunnels(FUNNELS,snapshot({})).map(f=>f.id),["new-product","new-quiz"]);
-});
-test("funnels endpoint and summary count use the registered products of the offer",async()=>{
+test("funnels endpoint and summary count are deduplicated across investigations",async()=>{
   const storage=createFAKEStorage();
   storage.read=async q=>q.resource==="summary"?{active_job:null,last_job:null,counts:{new:0,review:0,confirmed:0,ignored:0,relations_pending:0,funnels:4},latest_at:null}:{items:FUNNELS};
   const handlers=createIntelHandlers({authenticate:async()=>({id:ID}),isAdmin:()=>true,rateLimit:async()=>({allowed:true}),
     getServices:()=>({storage,capabilities:{},reader:{getOffer:async()=>({id:ID,data:{kind:"brandsvalidated",dominios:[{linkDominio:PRODUCT}]}})}})});
   const req=r=>new Request("https://benchmarkinggrupofeg.site/"+r);
   const list=await (await handlers.funnels(req("funnels?offer_id="+ID+"&offer_ref_kind=offer"))).json();
-  assert.deepEqual(list.items.map(f=>f.id),["new-product"]);assert.equal(list.next_cursor,null);
+  assert.deepEqual(list.items.map(f=>f.id),["new-product","new-quiz"]);assert.equal(list.next_cursor,null);
   const summary=await (await handlers.summary(req("summary?offer_id="+ID+"&offer_ref_kind=offer"))).json();
-  assert.equal(summary.counts.funnels,1);
+  assert.equal(summary.counts.funnels,2);
+});
+test("offer picker lists only offers from sections in the current menu",async()=>{
+  const html=await (await import("node:fs/promises")).readFile(new URL("../index.html",import.meta.url),"utf8");
+  assert.match(html,/function oiOffers\(\)\{return offers\.filter\(o=>OI_OFFER_SECTIONS\.has\(sectionOf\(o\)\)&&BRANDS_NAV_ORDER\.includes\(sectionOf\(o\)\)\)/);
 });

@@ -48,18 +48,18 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
       const services=deps.getServices();
       await refreshBudgetUsage(services);
       const limits=publicLimits(services.capabilities);
-      let snapshot=null;
-      if(query.reference){const ref=await resolveReference(query.reference,services.reader);query.scope=ref.scope_key;snapshot=ref.seed_snapshot;delete query.reference;}
-      // Funnels are snapshots per investigation: the offer view lists one per registered product page.
-      const offerMap=async()=>offerFunnels((await services.storage.read({resource:"funnels",scope:query.scope,job_id:null,limit:100,sort:"recent",type:null,status:null,q:null,cursor:null}))?.items||[],snapshot);
+      // Funnels are snapshots per investigation: the offer view lists the newest one per entry page.
+      let offerScope=false;
+      if(query.reference){query.scope=(await resolveReference(query.reference,services.reader)).scope_key;offerScope=true;delete query.reference;}
+      const offerMap=async()=>offerFunnels((await services.storage.read({resource:"funnels",scope:query.scope,job_id:null,limit:100,sort:"recent",type:null,status:null,q:null,cursor:null}))?.items||[]);
       if(method==="POST") {
         const review={entity_type:resource,id:query.id,status:body.status,expected_version:body.expected_version,reason:body.reason||null};
         const row=await services.storage.review({...review,actor_id:user.id,idempotency_key:body.idempotency_key,request_hash:hash(stableJson(review))});
         const detail=await services.storage.read(query);
         return deps.json(req,200,{ok:true,...(resource==="discovery"?publicDiscovery:publicRelation)({...row,evidence:detail?.evidence||[]}),limits},methods);
       }
-      const result=resource==="funnels"&&snapshot?{items:await offerMap()}:await services.storage.read(query);
-      if(resource==="summary"&&result?.counts&&snapshot)result.counts={...result.counts,funnels:(await offerMap()).length};
+      const result=resource==="funnels"&&offerScope?{items:await offerMap()}:await services.storage.read(query);
+      if(resource==="summary"&&result?.counts&&offerScope)result.counts={...result.counts,funnels:(await offerMap()).length};
       if(!result)throw new IntelError(404,"not_found","Registro não encontrado.");
       if(resource==="summary")return deps.json(req,200,{ok:true,...result,
         active_job:result.active_job?{...publicJob(result.active_job),limits}:null,last_job:result.last_job?{...publicJob(result.last_job),limits}:null,limits},methods);
@@ -67,7 +67,7 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
       const project=resource==="discoveries"?publicDiscovery:resource==="relations"?publicRelation:r=>({id:r.id,investigation_id:r.investigation_id,title:r.title,
         origin_url:r.origin_url,final_url:r.final_url,steps_count:r.steps_count,created_at:r.created_at});
       const items=result.items.slice(0,query.limit),last=items.at(-1);
-      const next_cursor=result.items.length>query.limit&&!(resource==="funnels"&&snapshot)?Buffer.from(JSON.stringify({id:last.id,created_at:cursorTimestamp(last.created_at),rank:last.rank||0,fingerprint:query.fingerprint})).toString("base64url"):null;
+      const next_cursor=result.items.length>query.limit&&!(resource==="funnels"&&offerScope)?Buffer.from(JSON.stringify({id:last.id,created_at:cursorTimestamp(last.created_at),rank:last.rank||0,fingerprint:query.fingerprint})).toString("base64url"):null;
       return deps.json(req,200,{ok:true,items:items.map(project),next_cursor,limits},methods);
     }catch(error){return errorResponse(req,error);}
   }]));
