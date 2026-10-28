@@ -25,7 +25,8 @@ const SECTIONS=[
   {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Top ads",emptyTitle:"Acervo de top ads em preparação",searchPlaceholder:"Buscar top ad ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — originais dos top ads das ofertas, organizados por marca.'},
   {key:"updates",label:"Atualizações",icon:"clipboard",newLabel:"",statLabel:"Materiais adicionados",emptyTitle:"Nenhuma atualização registrada",searchPlaceholder:"Buscar atualização, material ou nicho...",subHtml:'Registro objetivo dos novos materiais adicionados ao Swipe, com acesso direto aos respectivos cards.'},
   {key:"vsldissector",label:"Dissecador de VSL",icon:"scissors",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Dissecador de VSL</b> · envie a VSL e receba a transcrição completa organizada + uma dissecação estratégica por blocos, com leitura visual do vídeo.'},
-  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'}
+  {key:"transcritor",label:"Transcritor",icon:"mic",newLabel:"",statLabel:"",emptyTitle:"",searchPlaceholder:"",subHtml:'<b>Transcritor</b> · envie um vídeo e receba o texto completo, escolhendo o idioma.'},
+  {key:"inteligencia",label:"Inteligência de Ofertas",icon:"search",newLabel:"",statLabel:"Descobertas",emptyTitle:"",searchPlaceholder:"Buscar descoberta, Página ou domínio...",subHtml:'<b>Inteligência de Ofertas</b> — descobertas, conexões e funis a partir das ofertas cadastradas.'}
 ];
 function isToolSection(k){return k==="transcritor"||k==="vsldissector";}
 function isChatSection(){return false;}
@@ -66,7 +67,7 @@ async function saveTagEditor(){
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
-const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"]);
+const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok","inteligencia"]);
 const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
@@ -609,15 +610,108 @@ function automationCounts(section){
   const rows=offers.filter(o=>sectionOf(o)===section),count=(field,values)=>rows.filter(o=>values.includes(String(((o.data||{})[field])||""))).length;
   return {pending:count("analysisStatus",["pending","processing","retry_scheduled"]),failed:count("analysisStatus",["failed"]),transcribing:count("transcriptionStatus",["pending","processing","retry_scheduled"])+count("transcricaoStatus",["pending","working","processing"])};
 }
+/* ============================================================
+   INTELIGÊNCIA DE OFERTAS — casca de navegação (etapa 1)
+   Lógica pura de rotas/estados em /lib/offer-intel.js (window.OfferIntel).
+   Backend ainda não conectado: nenhuma descoberta, funil ou histórico é
+   exibido nem simulado; as áreas mostram o estado vazio com aviso explícito.
+   ============================================================ */
+const OI_BACKEND_READY=false;
+const OI_OFFER_SECTIONS=new Set(["oferta","brandsvalidated","brandsgeneral"]);
+let oiRoute=null;
+const oiStates={};
+function oiSetState(area,state){oiStates[area]=state;if(activeSection==="inteligencia")renderOfferIntel();}
+function oiCurrentPath(){const r=oiRoute||{area:"descobertas",query:{}};return OfferIntel.buildPath(Object.assign({},r,{query:Object.assign({},r.query,{q:searchTerm})}));}
+function oiApplyHeader(title,description){
+  const meta=oiRoute&&OfferIntel.areaMeta(oiRoute.area);if(!meta)return;
+  if(title)title.textContent=meta.title;
+  if(description)description.textContent=meta.description;
+}
+function oiOfferName(o){const d=(o&&o.data)||{};return String(d.nomeOferta||d.nomeMarca||d.nome||"Oferta sem nome").trim();}
+function oiOffers(){return offers.filter(o=>OI_OFFER_SECTIONS.has(sectionOf(o))).sort((a,b)=>oiOfferName(a).localeCompare(oiOfferName(b),"pt-BR"));}
+function oiPath(area,query,extra){return OfferIntel.buildPath(Object.assign({area,query:Object.assign({},oiRoute&&oiRoute.query,query)},extra));}
+function oiSideNavHtml(){
+  const offer=oiRoute&&oiRoute.query?oiRoute.query.oferta:"";
+  return '<span class="snav__niches-title">Áreas</span>'+OfferIntel.AREAS.map(a=>{
+    const active=!!oiRoute&&oiRoute.area===a.key;
+    return `<a class="snav__niche${active?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:offer}}))}"${active?' aria-current="page"':""}><span class="nl"><span class="ndot"></span><span>${esc(a.label)}</span></span></a>`;
+  }).join("");
+}
+function oiStateHtml(kind,opts){
+  opts=opts||{};
+  if(kind==="loading")return `<div class="oi-grid" role="status" aria-busy="true"><span class="oi-sr">Carregando…</span>${Array.from({length:6},()=>'<div class="sk oi-skel" aria-hidden="true"></div>').join("")}</div>`;
+  if(kind==="error")return `<div class="empty" role="alert"><h2>${esc(opts.errorTitle||"Não foi possível carregar")}</h2><p>${esc(opts.error||"Verifique a conexão e tente novamente. Nenhum dado foi alterado.")}</p><button type="button" class="btn btn--outline" data-oi-retry style="margin-top:18px">Tentar novamente</button></div>`;
+  return `<div class="empty"><h2>${esc(opts.title||"Nada por aqui ainda")}</h2><p>${esc(opts.text||"")}</p>${opts.cta||""}</div>`;
+}
+const OI_EMPTY={
+  descobertas:{title:"Nenhuma descoberta ainda",text:"Quando uma oferta for investigada, os novos anúncios, Páginas e domínios relacionados aparecem aqui para você confirmar, ignorar ou revisar."},
+  conexoes:{title:"Nenhuma conexão ainda",text:"As relações entre produtos, ofertas, anúncios e bibliotecas aparecem aqui depois da primeira investigação."},
+  funis:{title:"Nenhum funil mapeado ainda",text:"Os funis encontrados nas investigações aparecem aqui, com URL, screenshot e dados de cada etapa."},
+  historico:{title:"Nenhuma análise registrada",text:"As investigações realizadas, com resultados, erros e atualizações, ficam registradas aqui."},
+  investigacao:{title:"Investigação não encontrada",text:"Esta execução não existe ou ainda não está disponível."}
+};
+function oiBodyHtml(route){
+  const area=route.area,q=route.query;
+  if(area==="monitoramento")return `<div class="oi-card oi-placeholder"><span class="chip accent">Fase posterior</span><h2>Monitoramento em planejamento</h2><p>As verificações recorrentes das ofertas e funis investigados chegam em uma próxima fase. Por enquanto, rode investigações manualmente e consulte o histórico.</p><a class="btn btn--outline btn--sm" data-nav href="${esc(oiPath("historico",{}))}">Ver histórico</a></div>`;
+  if(area==="investigar"){
+    const url=q.url||"";
+    return `<form class="oi-card oi-form" id="oiUrlForm" novalidate><label class="lbl" for="oiUrl">URL ou domínio público</label><input type="url" id="oiUrl" name="url" autocomplete="off" inputmode="url" placeholder="https://exemplo.com/pagina" value="${esc(url)}" aria-describedby="oiUrlHint"><div class="fsec__hint" id="oiUrlHint" aria-live="polite"></div><div class="oi-links"><button type="submit" class="btn btn--accent" disabled>Investigar URL</button></div><p class="oi-note">O envio será liberado quando a integração com o backend estiver conectada. A análise respeita restrições de acesso e não ultrapassa autenticação dos sites.</p></form>`;
+  }
+  if(area==="oferta"){
+    const offer=offers.find(o=>String(o.id)===route.offerId);
+    if(!offer)return oiStateHtml("empty",{title:"Oferta não encontrada",text:"Esta oferta não está no acervo carregado. Volte para a lista e escolha outra.",cta:`<a class="btn btn--outline" data-nav href="${esc(oiPath("descobertas",{oferta:""}))}" style="margin-top:18px">Voltar para Descobertas</a>`});
+    const section=itemSection(offer),links=OfferIntel.AREAS.filter(a=>a.key!=="monitoramento").map(a=>`<a class="btn btn--outline btn--sm" data-nav href="${esc(OfferIntel.buildPath({area:a.key,query:{oferta:route.offerId}}))}">${esc(a.label)}</a>`).join("");
+    return `<div class="oi-card"><div class="eyebrow">${esc(SEC_SHORT[section]||"Oferta")}</div><h2 class="oi-offer-name">${esc(oiOfferName(offer))}</h2><div class="oi-links" style="margin-top:14px"><a class="btn btn--outline btn--sm" data-nav href="${esc(offerPath(offer))}">Abrir ficha da oferta</a>${links}</div></div>`+oiStateHtml("empty",OI_EMPTY.historico);
+  }
+  const st=oiStates[area==="oferta"?"descobertas":area]||{status:"ready",items:[]};
+  const kind=OfferIntel.viewState(st);
+  if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
+  if(kind==="empty"){
+    const base=OI_EMPTY[area==="funis"&&route.funnelId?"funis":area]||OI_EMPTY.descobertas;
+    return oiStateHtml("empty",route.funnelId?{title:"Funil não encontrado",text:"Este funil não existe ou ainda não está disponível."}:base);
+  }
+  return "";
+}
+function oiResultLabel(route){
+  if(!["descobertas","conexoes","funis","historico"].includes(route.area))return "";
+  const st=oiStates[route.area]||{status:"ready",items:[]},kind=OfferIntel.viewState(st);
+  return kind==="loading"?"Carregando…":kind==="error"?"Erro ao carregar":`${(st.items||[]).length.toLocaleString("pt-BR")} ${(st.items||[]).length===1?"resultado":"resultados"}`;
+}
+function renderOfferIntel(){
+  const area=$("#gridArea");if(!area)return;
+  if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
+  const route=oiRoute||{area:"descobertas",query:OfferIntel.normalizeQuery("")};
+  const q=route.query||{},list=oiOffers(),selected=q.oferta||"";
+  const known=!selected||list.some(o=>String(o.id)===selected);
+  const options=`<option value="">Todas as ofertas</option>`+list.map(o=>`<option value="${esc(o.id)}"${String(o.id)===selected?" selected":""}>${esc(oiOfferName(o))} · ${esc(SEC_SHORT[itemSection(o)]||"")}</option>`).join("")+(known?"":`<option value="${esc(selected)}" selected>Oferta não encontrada</option>`);
+  const tabs=OfferIntel.areaTabs(route.area).map(t=>`<a class="seg-btn${t.current?" active":""}" data-nav href="${esc(OfferIntel.buildPath({area:t.key,query:{oferta:selected}}))}"${t.current?' aria-current="page"':""}>${esc(t.label)}</a>`).join("");
+  const pending=!OI_BACKEND_READY&&route.area!=="monitoramento"?`<div class="banner banner--warn" role="note">${ic("shield")}Módulo em construção: a integração com o backend ainda não está conectada. Nenhum dado, nem de demonstração, é exibido.</div>`:"";
+  const warn=known?"":`<div class="banner banner--warn" role="note">${ic("shield")}A oferta indicada na URL não está no acervo carregado.</div>`;
+  const scope=["descobertas","conexoes","funis","historico"].includes(route.area)?`<label class="sort-control oi-offer"><span>Oferta</span><select id="oiOffer" aria-label="Filtrar por oferta">${options}</select></label>`:"";
+  area.innerHTML=`<div class="oi"><div class="oi-bar"><nav class="seg oi-tabs" aria-label="Áreas de Inteligência de Ofertas">${tabs}</nav>${scope}</div>${pending}${warn}<div class="oi-body" id="oiBody">${oiBodyHtml(route)}</div></div>`;
+  const result=$("#pageResult");if(result)result.textContent=oiResultLabel(route);
+  const select=$("#oiOffer",area);
+  if(select)select.addEventListener("change",()=>navigate(OfferIntel.buildPath({area:route.area,query:Object.assign({},q,{oferta:select.value,pagina:1})})));
+  const retry=$("[data-oi-retry]",area);
+  if(retry)retry.addEventListener("click",()=>{oiSetState(route.area,{status:"ready",items:[]});toast("Sem backend conectado: nada para carregar ainda.");});
+  const form=$("#oiUrlForm",area);
+  if(form){
+    const input=$("#oiUrl",form),hint=$("#oiUrlHint",form);
+    const check=()=>{const v=input.value.trim();const ok=!v||OfferIntel.isValidHttpUrl(v);input.setAttribute("aria-invalid",ok?"false":"true");hint.textContent=ok?"":"Informe uma URL http(s) completa, sem usuário ou senha.";return ok;};
+    input.addEventListener("input",check);
+    form.addEventListener("submit",e=>{e.preventDefault();check();});
+    if(input.value)check();
+  }
+}
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL",inteligencia:"Inteligência de Ofertas"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl",inteligencia:"inteligencia"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
@@ -666,10 +760,11 @@ function qsFromState(){
   const s=p.toString();return s?"?"+s:"";
 }
 function listPath(section,niche){
+  if(section==="inteligencia")return OfferIntel.BASE+"/descobertas";
   const base="/"+(SEC2PATH[section]||"ofertas");
   return NICHE_SECTIONS.has(section)?base+"/"+catSlug(niche):base;
 }
-function currentPath(){return listPath(activeSection,activeNiche)+qsFromState();}
+function currentPath(){if(activeSection==="inteligencia")return oiCurrentPath();return listPath(activeSection,activeNiche)+qsFromState();}
 function itemSection(o){return o&&(o.data||{}).source==="fegsys"?"megabrainfegsys":sectionOf(o);}
 function itemById(id){return fegsysCards.find(x=>x.id===id)||offers.find(x=>x.id===id)||null;}
 function offerPath(o){
@@ -679,6 +774,7 @@ function offerPath(o){
   return sec==="brandsvalidated"&&activeBrand===insiderProductKey(o)?path+"?marca="+encodeURIComponent(activeBrand):path;
 }
 function setDocTitle(){
+  if(activeSection==="inteligencia"){const meta=oiRoute&&OfferIntel.areaMeta(oiRoute.area);document.title=(meta?meta.title+" · ":"")+"Inteligência de Ofertas — Benchmarking FEG";return;}
   const cfg=sectionCfg(activeSection);
   const parts=[SEC_SHORT[activeSection]||cfg.label];
   if(activeNiche===NO_NICHE)parts.unshift(BRAND_SECTIONS.has(activeSection)&&isAdmin?BRAND_NICHE_REVIEW:"Sem nicho");
@@ -694,6 +790,7 @@ function parseLocation(){
   if(!seg.length)return {section:"brandsvalidated",niche:"",id:null,notFound:false,q};
   const section=PATH2SEC[seg[0]];
   if(!section)return {notFound:true,q};
+  if(section==="inteligencia"){const oi=OfferIntel.parsePath(path,location.search);return {section,niche:"",id:null,notFound:oi.notFound,q,oi};}
   let niche="",id=null,notFound=false;
   if(NICHE_SECTIONS.has(section)){
     if(seg.length>3)return {section,niche:"",id:null,notFound:true,q};
@@ -727,8 +824,10 @@ function applyRoute(){
   if(/^\/feg-brands-geral(?:\/|$)/.test(location.pathname))try{history.replaceState(history.state,"",location.pathname.replace(/^\/feg-brands-geral(?=\/|$)/,"/feg-brands-insider")+location.search+location.hash);}catch(_){}
   const r=parseLocation();
   if(r.notFound){renderNotFound();return;}
-  if(ADMIN_SECTIONS.has(r.section)&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
+  if((ADMIN_SECTIONS.has(r.section)||r.section==="inteligencia")&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   activeSection=r.section;
+  oiRoute=r.section==="inteligencia"?r.oi:null;
+  if(oiRoute&&oiRoute.redirect){try{history.replaceState(history.state,"",OfferIntel.buildPath(oiRoute));}catch(_){}}
   if(r.legacyOrganicDetail){try{history.replaceState(history.state,"",offerPath(itemById(r.id)||{id:r.id,data:{kind:"criativo",division:"organic"}})+location.search);}catch(_){}}
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
@@ -850,6 +949,8 @@ function renderSideNav(){
     if(none&&activeSection!=="noticia"){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
+  if(activeSection==="inteligencia"&&isAdmin)nicheHtml=oiSideNavHtml();
+
   /* anima o slide dos nichos só quando a SEÇÃO muda (não a cada clique de nicho) */
   const sectionChanged=navPrevSection!==activeSection;
   navPrevSection=activeSection;
@@ -858,7 +959,7 @@ function renderSideNav(){
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
-    const chip=s.key==="vsldissector"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
+    const chip=s.key==="vsldissector"||s.key==="inteligencia"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(counts[s.key]||0)}</span>`;
     const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
     const label=SEC_SHORT[s.key]||s.label;
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(label)}</span>${chip}</a>`;
@@ -868,7 +969,7 @@ function renderSideNav(){
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   html+=`<nav class="sidenav__body" aria-label="Navegação FEG Brands">`;
-  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);});
+  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);if(key==="brandsvalidated"&&isAdmin)html+=navItem(SECTIONS.find(s=>s.key==="inteligencia"));});
   html+=`</nav><div class="sidenav__footer">${ic("trending")}<span><strong>Inteligência de mercado</strong>Grupo FEG · Brands</span></div>`;
   nav.innerHTML=html;
   $(".sidenav__body",nav).scrollTop=scrollTop;
@@ -1403,6 +1504,7 @@ function renderGrid(skipNav){
   if(!skipNav)renderSideNav();
   renderSubFilter();
   setSectionHeader();
+  if(activeSection==="inteligencia"){renderOfferIntel();return;}
   if(activeSection==="transcritor"){renderTranscritor();return;}
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   if(activeSection==="updates"){renderUpdates();return;}
@@ -2601,7 +2703,7 @@ function setSectionHeader(){
   document.body.classList.add("admin-preview");
   document.body.classList.toggle("chatmode",isChatSection(activeSection));
   document.body.classList.toggle("toolmode",cc);
-  const mr=$(".page .meta-row");if(mr)mr.style.display=cc?"none":"";
+  const mr=$(".page .meta-row");if(mr)mr.style.display=cc||activeSection==="inteligencia"?"none":"";
   const identity=$("#pageIdentity");if(identity)identity.style.display=cc?"none":"";
   const nbt=$("#newBtn");if(nbt)nbt.style.display=cc||!cfg.newLabel?"none":"";
   const nt=$("#nicheToggle");if(nt)nt.style.display="";   /* menu sempre disponível no mobile */
@@ -2627,6 +2729,7 @@ function setSectionHeader(){
   const adminBrands=activeSection==="brandsvalidated";
   if(title)title.textContent=selectedInsiderItem?insiderProductName(selectedInsiderItem):brandHub?(selectedHubItem?brandNameOf(selectedHubItem):"Swipe de Criativos"):adminBrands?"Ofertas Brands":cfg.label;
   if(description)description.innerHTML=selectedInsiderItem?esc(insiderCategoryOf(selectedInsiderItem))+" · produto do acervo Brands":brandHub?(selectedHubItem?esc(brandHubNicheOf(selectedHubItem)||"Sem nicho")+" · Top ads desta marca":"Originais dos top ads das ofertas, organizados por marca."):adminBrands?"<b>Ofertas Brands</b> — produtos por categoria, bibliotecas, histórico de anúncios e métricas da BM quando disponíveis.":cfg.subHtml||"";
+  if(activeSection==="inteligencia")oiApplyHeader(title,description);
 }
 function brainNameKey(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 function fegsysPeriodLabel(){const labels={today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","14d":"Últimos 14 dias","30d":"Últimos 30 dias","90d":"Últimos 90 dias",custom:"Período personalizado"};return labels[brainPeriod]||labels["7d"];}
@@ -2697,7 +2800,7 @@ function renderSubFilter(){
   // esse nó durante a seleção, seja por mouse, toque ou teclado.
   if(preserveOpenFilter(el))return;
   renderedSubFilterSection=activeSection;
-  if(isToolSection(activeSection)){el.innerHTML="";el.style.display="none";return;}
+  if(isToolSection(activeSection)||activeSection==="inteligencia"){el.innerHTML="";el.style.display="none";return;}
   if(activeSection==="oferta"||BRAND_OFFER_SECTIONS.has(activeSection)){
     el.style.display="";
     const options=[["active_ads","Anúncios ativos"],["active_days","Dias ativos"],["spend_7d","Maior gasto · 7 dias"],["sales_7d","Mais vendas · 7 dias"]];
