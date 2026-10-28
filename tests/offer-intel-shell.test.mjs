@@ -32,7 +32,7 @@ test("filtros da URL são validados e fazem round-trip", () => {
   const path = OI.buildPath(route);
   assert.equal(path, "/inteligencia/descobertas?q=foo&oferta=o1&tipo=pagina&status=novo&ordem=anuncios&pagina=3");
   const invalid = OI.normalizeQuery("tipo=xss&status=<b>&ordem=zzz&pagina=-4&oferta=../x&url=javascript:alert(1)");
-  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", job: "", visao: "", ref: "", investigar: false, url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
+  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", job: "", visao: "", ref: "", semana: "", investigar: false, url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
   assert.equal(OI.buildPath({ area: "descobertas" }), "/inteligencia/descobertas");
   assert.equal(OI.buildPath({ area: "oferta", offerId: "o1", query: { ref: "admin_draft", investigar: true } }), "/inteligencia/oferta/o1?ref=admin_draft&investigar=1");
   assert.equal(OI.parsePath("/inteligencia/descobertas", "?job=j9&ref=hack&investigar=2").query.ref, "");
