@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import {
   WEEKLY_LIMITS, AI_LIMITS, reviewDate, isReviewDate, previousReview, reviewTitle, librarySource, selectProducts, planCollection, weeklyActorInput,
   normalizeAd, sourceMatches, groupCreatives, scoreCreative, rankCreatives, compareWithPrevious, validateAnalysis, validateBullets, extractJson,
-  aiCostEstimate, publicAd,
+  aiCost, publicAd,
 } from "../lib/offer-intel-weekly.mjs";
 import { runCreativeReviewSlice, createWeeklyArchive, weeklyMediaPath, createWeeklyApify } from "../lib/offer-intel-weekly-worker.mjs";
 import { signedDispatch } from "../lib/offer-intel-dispatch.mjs";
@@ -49,10 +49,15 @@ const itemsFor = (perSource = 15) => url => {
 };
 const ANALYSIS = { gancho: "Pergunta direta", angulo: "Medo de perder", promessa: "Resultado rápido", mecanismo: "Ingrediente X",
   formato: "Vídeo UGC", cta: "Saiba mais", publico: "Homens 40+", por_que_funciona: "Roda há muito tempo com várias cópias." };
-const okClaude = () => { const calls = []; const fn = async ({ prompt }) => { calls.push(prompt);
+// FAKE Claude: exact-count stand-in (UTF-8 bytes ≥ tokens) and a usage block like the Messages API.
+const claudeWith = textFor => { const calls = [], counts = [];
+  const fn = async ({ prompt, maxTokens }) => { calls.push(prompt); return { text: await textFor(prompt), usage: { input_tokens: 900, output_tokens: Math.min(300, maxTokens) } }; };
+  fn.countTokens = async ({ prompt, image }) => { counts.push(prompt); return Buffer.byteLength(prompt) + (image ? 1600 : 0); };
+  fn.calls = calls; fn.counts = counts; return fn; };
+const okClaude = () => claudeWith(prompt => {
   if (prompt.includes("<semana>")) return JSON.stringify({ bullets: [1, 2, 3, 4, 5].map(n => "Padrão " + n) });
   if (prompt.includes("<top10>")) return JSON.stringify({ bullets: ["Escala", "Ângulos", "Formatos"] });
-  return "```json\n" + JSON.stringify(ANALYSIS) + "\n```"; }; fn.calls = calls; return fn; };
+  return "```json\n" + JSON.stringify(ANALYSIS) + "\n```"; });
 const FAKEArchive = () => { const uploads = []; const fn = async ({ date, offer_id, ad_archive_id, kind }) => {
   const path = weeklyMediaPath(date, offer_id, ad_archive_id, kind, kind === "video" ? "mp4" : "jpg"); uploads.push(path);
   return { url: "https://FAKE.supabase.co/storage/v1/object/public/criativos/" + path }; }; fn.uploads = uploads; return fn; };
@@ -147,6 +152,10 @@ test("domain searches keep only ads that mention the domain; keyword searches ne
   const ad = (landing, text, input) => ({ ...normalizeAd({ ...item("1", { landing, text }), ...(input ? { inputUrl: input } : {}) }, NOW) });
   assert.ok(sourceMatches(ad("https://kittysupps.com/p", "x"), domain));
   assert.ok(sourceMatches(ad("https://x.example", "Compre em kittysupps.com hoje"), domain));
+  assert.ok(sourceMatches(ad("https://shop.kittysupps.com/p", "x"), domain));
+  for (const other of ["https://notkittysupps.com/p", "https://kittysupps.com.evil.example/p", "https://kittysupps.co/p"])
+    assert.ok(!sourceMatches(ad(other, "texto sem o domínio"), domain), other);
+  assert.ok(!sourceMatches(ad("https://x.example", "visite notkittysupps.com"), domain));
   assert.ok(!sourceMatches(ad("https://alheio.example", "outro produto qualquer"), domain));
   assert.ok(sourceMatches(ad("https://x.example", "Resília funciona"), web));
   assert.ok(!sourceMatches(ad("https://x.example", "nada a ver"), web));
@@ -192,15 +201,17 @@ test("is_new and rank_change against the previous folder", () => {
   assert.deepEqual(compareWithPrevious(cur, prev).map(a => [a.is_new, a.rank_change]), [[false, 3], [false, -1], [true, null]]);
 });
 
-test("AI JSON validation and AI cost estimate (unknown model fails closed; full week fits US$ 10)", () => {
+test("AI JSON validation and AI cost: exact model allowlist, look-alikes and invalid counts fail closed", () => {
   assert.deepEqual(validateAnalysis(extractJson("```json\n" + JSON.stringify(ANALYSIS) + "\n```")), ANALYSIS);
   assert.equal(validateAnalysis({ ...ANALYSIS, cta: "" }), null); assert.equal(validateAnalysis({ ...ANALYSIS, publico: 3 }), null);
   assert.equal(validateBullets({ bullets: ["1", "2", "3"] }, 3).bullets.length, 3); assert.equal(validateBullets({ bullets: ["1", "2"] }, 3), null);
-  assert.equal(aiCostEstimate("modelo-desconhecido", { promptChars: 100, maxTokens: 700 }), null);
-  assert.equal(aiCostEstimate(MODEL, { promptChars: NaN, maxTokens: 700 }), null);
-  const perAd = aiCostEstimate(MODEL, { promptChars: 3000, image: true, maxTokens: AI_LIMITS.max_tokens_ad });
-  const perSummary = aiCostEstimate(MODEL, { promptChars: 8000, maxTokens: AI_LIMITS.max_tokens_summary });
-  assert.ok(perAd > 0 && 310 * perAd + 32 * perSummary < 10, String(310 * perAd + 32 * perSummary));
+  for (const model of ["claude-sonnet-future-unknown", "claude-sonnet-5-evil", "xclaude-sonnet-5", "CLAUDE-SONNET-5", "sonnet", "", null, "toString", "__proto__"])
+    assert.equal(aiCost(model, { inputTokens: 3000, outputTokens: 700 }), null, String(model));
+  for (const bad of [{ inputTokens: NaN, outputTokens: 700 }, { inputTokens: 0, outputTokens: 700 }, { inputTokens: 10.5, outputTokens: 1 },
+    { inputTokens: "10", outputTokens: 1 }, { inputTokens: 10, outputTokens: -1 }, { inputTokens: 10 }])
+    assert.equal(aiCost(MODEL, bad), null, JSON.stringify(bad));
+  assert.equal(aiCost(MODEL, { inputTokens: 1_000_000, outputTokens: 1_000_000 }), 30); // sonnet at the conservative 5/25 table
+  assert.ok(Object.keys(AI_LIMITS.models).every(m => AI_LIMITS.models[m][0] > 0 && AI_LIMITS.models[m][1] > 0));
 });
 
 function scenario({ products = 3, pagesPer = 2, perSource = 15, withSearch = true } = {}) {
@@ -227,7 +238,11 @@ test("worker: full run → Top 10 per product, media, analyses, 3-bullet product
   assert.ok(first.some(a => a.page_source === "encontrada") && first.some(a => a.page_source === "cadastrada"));
   assert.ok(!first.some(a => a.page_id === "70000"), "domain filter drops the stranger ad (i=0 lands elsewhere)");
   assert.ok(apify.starts.every(s => s.maxUsd > 0 && s.maxUsd <= 15));
-  assert.ok(storage.calls.filter(c => c[1] === "ai").length >= claude.calls.length, "AI reserved before every call");
+  const reserves = storage.calls.filter(c => c[0] === "reserve" && c[1] === "ai");
+  assert.equal(reserves.length, claude.calls.length, "one reservation before every call");
+  assert.equal(claude.counts.length, claude.calls.length, "exact count before every call");
+  assert.ok(storage.calls.filter(c => c[0] === "settle").length === claude.calls.length, "settled down to real usage");
+  assert.ok(storage.ledger.filter(l => l.kind === "ai").reduce((s, l) => s + l.usd, 0) <= 10);
 });
 
 test("worker: self re-chaining across slices resumes without a second Apify POST", async () => {
@@ -280,13 +295,26 @@ test("worker: AI ceiling / unknown price fail closed → partial with full ranki
   assert.match(out.report.error.message, /Teto semanal de IA/);
   assert.equal([...storage.ads.values()].length, 20);
 
+  for (const model of ["modelo-sem-preco", "claude-sonnet-future-unknown"]) {
+    ({ storage, apify } = scenario({ products: 1 }));
+    claude = okClaude();
+    out = await runAll(storage, { apify, archive: FAKEArchive(), claude, model });
+    assert.equal(out.status, "partial"); assert.equal(claude.calls.length + claude.counts.length, 0, model);
+    assert.equal([...storage.ads.values()].length, 10); assert.equal(storage.ledger.filter(l => l.kind === "ai").length, 0);
+  }
+
+  // Count failure or a count that would cross the ceiling: no call for it.
   ({ storage, apify } = scenario({ products: 1 }));
-  claude = okClaude();
-  out = await runAll(storage, { apify, archive: FAKEArchive(), claude, model: "modelo-sem-preco" });
-  assert.equal(out.status, "partial"); assert.equal(claude.calls.length, 0);
+  claude = okClaude(); claude.countTokens = async () => { throw new Error("FAKE count fora"); };
+  out = await runAll(storage, { apify, archive: FAKEArchive(), claude });
+  assert.equal(claude.calls.length, 0); assert.equal(out.status, "partial");
+  ({ storage, apify } = scenario({ products: 1 }));
+  claude = okClaude(); claude.countTokens = async () => 5_000_000; // 5M tokens × US$5/M = US$25 > ceiling
+  out = await runAll(storage, { apify, archive: FAKEArchive(), claude });
+  assert.equal(claude.calls.length, 0); assert.match(out.report.error.message, /Teto semanal de IA/);
 
   ({ storage, apify } = scenario({ products: 1 }));
-  out = await runAll(storage, { apify, archive: FAKEArchive(), claude: async () => "isto não é JSON" });
+  out = await runAll(storage, { apify, archive: FAKEArchive(), claude: claudeWith(() => "isto não é JSON") });
   assert.equal(out.status, "partial"); assert.equal([...storage.ads.values()].length, 10);
   out = await runAll(storage, { apify, archive: FAKEArchive(), claude: okClaude() });
   assert.equal(out.status, "succeeded"); assert.ok([...storage.ads.values()].every(a => validateAnalysis(a.analysis)));

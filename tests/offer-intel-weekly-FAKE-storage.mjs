@@ -64,6 +64,14 @@ export function createFAKEWeeklyStorage({ offers = [], discoveries = [], clock =
       ledger.push({ review_date, kind, reservation, usd });
       return { review_date, kind, used_usd: used + usd, reused: false };
     },
+    async budgetSettle({ review_date, kind, reservation, usd }) {
+      fake.calls.push(["settle", kind, reservation, usd]);
+      const row = ledger.find(l => l.review_date === review_date && l.kind === kind && l.reservation === reservation);
+      if (!row) throw new IntelError(404, "not_found", "Registro não encontrado.");
+      if (typeof usd !== "number" || !(usd > 0)) throw new IntelError(400, "invalid_request", "Requisição inválida.");
+      row.usd = Math.min(row.usd, usd);
+      return { reservation, usd: row.usd };
+    },
     async run(p) {
       fenced(p);
       const key = p.report_id + ":" + p.batch_key, row = runs.get(key);
