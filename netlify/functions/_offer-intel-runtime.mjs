@@ -7,7 +7,7 @@ import { resolvePublicUrl } from "../../lib/offer-intel-url-safety.mjs";
 import { signedDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { unavailableCollectors } from "../../lib/offer-intel-collectors.mjs";
 import { IntelError } from "../../lib/offer-intel-core.mjs";
-import { createDomainExplorer } from "../../lib/offer-intel-domain.mjs";
+import {createDomainScansCollector} from '../../lib/offer-intel-domain-scans.mjs';
 import { createApifyCollector } from "../../lib/offer-intel-apify.mjs";
 import { createDailyBudget } from "../../lib/offer-intel-budget.mjs";
 
@@ -26,7 +26,7 @@ export function intelRuntime() {
     },
   });
   return {
-    storage,reader,secret,collectors:{...unavailableCollectors,domain_explorer:createDomainExplorer({storage}),
+    storage,reader,secret,collectors:{...unavailableCollectors,domain_explorer:createDomainScansCollector({storage}),
       apify:createApifyCollector({storage,budget,token:apifyToken})},validateUrl:resolvePublicUrl,
     capabilities: { apify: !!apifyToken, domain_explorer: true },
     async dispatch(jobId,nonce) {

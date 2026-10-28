@@ -47,8 +47,8 @@ test("B3 Apify reserves before POST, persists run immediately, known-page seeds 
   };
   const adapter=createApifyCollector({storage,budget,token,fetcher:FAKE_fetch}),result=await adapter.run(job);
   assert.equal(result.status,"succeeded");assert.equal(storage.records.discoveries.size,3);assert.equal(storage.records.relations.size,1);
-  const input=JSON.parse(calls[0].options.body);assert.equal(input.startUrls.length,2);assert.match(input.startUrls[0].url,/view_all_page_id=123/);
-  assert.equal(input.resultsLimit,15);assert.ok(calls[0].url.includes("maxItems=30"));
+  const input=JSON.parse(calls[0].options.body);assert.equal(input.startUrls.length,3);assert.match(input.startUrls[0].url,/view_all_page_id=123/);
+  assert.equal(input.resultsLimit,30);assert.ok(calls[0].url.includes("maxItems=90"));
   const page=[...storage.records.discoveries.values()].find(d=>d.type==="page");assert.equal(page.identity_key,"meta:page:123");assert.equal(page.data.ads_count,null);
   assert.equal(page.data.existing_matches[0].ref_id,job.offer_id);
   await adapter.run(job);assert.equal(calls.filter(c=>c.options.method==="POST").length,1);assert.equal(storage.records.discoveries.size,3);

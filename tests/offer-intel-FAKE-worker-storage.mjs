@@ -1,11 +1,12 @@
 import { IntelError } from "../lib/offer-intel-core.mjs";
 // Identified in-memory FAKE; no application imports this module.
 export function createFAKEWorkerStorage(job) {
-  const records=Object.fromEntries(["discoveries","relations","funnels","steps","edges","evidence","providers"].map(k=>[k,new Map()]));
+  const records=Object.fromEntries(["discoveries","relations","funnels","steps","edges","evidence","providers","scans"].map(k=>[k,new Map()]));
   let live=true;
   const fence=p=>{if(!live||p.job_id!==job.id||p.lease_token!==job.lease_token)throw new IntelError(409,"conflict","Lease inválido.");};
   const counts=()=>({discoveries:records.discoveries.size,relations:records.relations.size,funnels:records.funnels.size,steps:records.steps.size});
   return {records,cancel:()=>{live=false;},
+    async scanPersist(p){fence(p);const row={...structuredClone(p.scan),investigation_id:job.id,scope_key:job.scope_key,created_at:new Date().toISOString()};records.scans.set(row.id,row);return row;},
     async workerState(p){fence(p);return {counts:counts(),evidence:[...records.evidence.values()],providers:[...records.providers.values()]};},
     async persist(p){fence(p);
       for(const [table,rows] of Object.entries(p.batch))for(const row of rows) {

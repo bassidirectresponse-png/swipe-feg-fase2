@@ -2,6 +2,7 @@ import { IntelError, UUID, hash, stableJson, actionKey, pagination, publicJob, c
 import { resolveReference, validateReferenceInput } from "../../lib/offer-intel-reference.mjs";
 import { publicLimits, refreshBudgetUsage } from "../../lib/offer-intel-limits.mjs";
 import { publicDiscovery, publicRelation, publicFunnel, publicEvidence } from "../../lib/offer-intel-public.mjs";
+import {publicDomainScan} from '../../lib/offer-intel-scan-public.mjs';
 import { offerFunnels } from "../../lib/offer-intel-records.mjs";
 
 const kinds={discoveries:["ad","page","domain"],relations:["same_page","same_domain","same_destination_url","similar_creative","redirect"]};
@@ -9,7 +10,7 @@ const statuses={discoveries:["new","review","confirmed","ignored"],relations:["p
 const invalid=()=>new IntelError(400,"invalid_request","Filtros ou revisão inválidos.");
 const uuid=v=>{if(typeof v!=="string"||!UUID.test(v))throw new IntelError(422,"invalid_request","Identificador inválido.");return v.toLowerCase();};
 export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
-  return Object.fromEntries(["discoveries","discovery","relations","relation","funnels","funnel","summary","evidence"].map(resource=>[resource,async req=>{
+  return Object.fromEntries(["discoveries","discovery","relations","relation","funnels","funnel","summary","evidence","domain-scans","domain-scan"].map(resource=>[resource,async req=>{
     const method=["discovery","relation"].includes(resource)?"POST":"GET",methods=method+", OPTIONS";
     const pre=deps.preflight(req,methods);if(pre)return pre;
     try {
@@ -24,7 +25,7 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
           (body.reason!==undefined&&(typeof body.reason!=="string"||body.reason.length>2000)))throw invalid();
       } else {
         const params=new URL(req.url).searchParams;
-        if(["funnel","evidence"].includes(resource))query.id=uuid(params.get("id"));
+        if(["funnel","evidence","domain-scan"].includes(resource))query.id=uuid(params.get("id"));
         else {
           if(params.has("job_id")) {
             if(resource==="summary"||params.has("offer_id")||params.has("offer_ref_kind"))throw invalid();
@@ -58,9 +59,11 @@ export function resourceHandlers({deps,auth,readQuota,errorResponse}) {
         const detail=await services.storage.read(query);
         return deps.json(req,200,{ok:true,...(resource==="discovery"?publicDiscovery:publicRelation)({...row,evidence:detail?.evidence||[]}),limits},methods);
       }
-      const result=resource==="funnels"&&offerScope?{items:await offerMap()}:await services.storage.read(query);
+      const result=resource.startsWith('domain-scan')?await services.storage.scanRead(query):resource==="funnels"&&offerScope?{items:await offerMap()}:await services.storage.read(query);
       if(resource==="summary"&&result?.counts&&offerScope)result.counts={...result.counts,funnels:(await offerMap()).length};
       if(!result)throw new IntelError(404,"not_found","Registro não encontrado.");
+      if(resource==='domain-scan')return deps.json(req,200,{ok:true,...publicDomainScan(result),limits},methods);
+      if(resource==='domain-scans')return deps.json(req,200,{ok:true,items:result.items.map(r=>publicDomainScan(r,true)),limits},methods);
       if(resource==="summary")return deps.json(req,200,{ok:true,...result,
         active_job:result.active_job?{...publicJob(result.active_job),limits}:null,last_job:result.last_job?{...publicJob(result.last_job),limits}:null,limits},methods);
       if(resource==="funnel"||resource==="evidence")return deps.json(req,200,{ok:true,...(resource==="funnel"?publicFunnel:publicEvidence)(result),limits},methods);
