@@ -849,9 +849,9 @@ function oiRelationsHtml(route,st){
   const rows=st.items.map(r=>{
     const ev=r.evidenceCount?`<details class="oi-evidence"><summary>${r.evidenceCount} ${r.evidenceCount===1?"evidência":"evidências"}</summary><ul>${r.evidence.map(x=>`<li><b>${esc(x.verificationLabel)}</b> · ${esc(x.source)}${x.observedAt?" · "+esc(x.observedAt):""}${x.urlLabel?` · <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.urlLabel)}</a>`:""}${x.detail?`<br><span>${esc(x.detail)}</span>`:""}</li>`).join("")}</ul></details>`:`<span class="oi-meta">Sem evidências</span>`;
     const buttons=["confirmed","ignored","pending"].map(s=>`<button type="button" class="btn btn--sm ${r.status===s?"btn--accent":"btn--outline"}" data-oi-rel-act="${s}" data-id="${esc(r.id)}" aria-pressed="${r.status===s}"${r.busy?" disabled":""}>${OI_REL_LABEL[s]}</button>`).join("");
-    return `<tr data-id="${esc(r.id)}"><td>${oiEndpointHtml(r.from)}</td><td>${esc(r.relationLabel)}${r.disclaimer?`<div class="oi-meta oi-meta--wrap">${esc(r.disclaimer)}</div>`:""}${r.reason?`<div class="oi-meta oi-meta--wrap">${esc(r.reason)}</div>`:""}</td><td>${oiEndpointHtml(r.to)}</td><td>${ev}</td><td>${oiStatusChip(r.statusLabel,r.status)}</td><td><div class="oi-dcard__actions" role="group" aria-label="Revisar conexão">${buttons}</div></td></tr>`;
+    return `<tr data-id="${esc(r.id)}"><td data-label="Origem">${oiEndpointHtml(r.from)}</td><td data-label="Relação observada">${esc(r.relationLabel)}${r.disclaimer?`<div class="oi-meta oi-meta--wrap">${esc(r.disclaimer)}</div>`:""}${r.reason?`<div class="oi-meta oi-meta--wrap">${esc(r.reason)}</div>`:""}</td><td data-label="Destino">${oiEndpointHtml(r.to)}</td><td data-label="Evidências">${ev}</td><td data-label="Status">${oiStatusChip(r.statusLabel,r.status)}</td><td data-label="Ações"><div class="oi-dcard__actions" role="group" aria-label="Revisar conexão">${buttons}</div></td></tr>`;
   }).join("");
-  return filters+`<div class="oi-tablewrap"><table class="oi-table"><caption class="oi-sr">Conexões observadas</caption><thead><tr><th scope="col">Origem</th><th scope="col">Relação observada</th><th scope="col">Destino</th><th scope="col">Evidências</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Semelhança observada não prova que duas Páginas pertencem ao mesmo anunciante. Decidir aqui não cria nem altera ofertas.</p>`;
+  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Conexões observadas</caption><thead><tr><th scope="col">Origem</th><th scope="col">Relação observada</th><th scope="col">Destino</th><th scope="col">Evidências</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Semelhança observada não prova que duas Páginas pertencem ao mesmo anunciante. Decidir aqui não cria nem altera ofertas.</p>`;
 }
 async function oiReviewRelation(id,status){
   const st=oiStates.conexoes,i=st?st.items.findIndex(x=>x.id===id):-1;if(i<0)return;
@@ -923,9 +923,29 @@ function oiFunnelDetailHtml(route,st){
   return `<div class="oi-card oi-fhead"><div class="oi-links"><a class="btn btn--outline btn--sm" data-nav href="${esc(OfferIntel.buildPath({area:"funis",query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}">← Funis</a><span class="oi-chip">${s.steps} etapas</span><span class="oi-chip">✓ ${s.verified} verificadas</span><span class="oi-chip">◇ ${s.inferred} inferidas</span><span class="oi-chip">⛔ ${s.inaccessible} inacessíveis</span></div>
     <div class="oi-meta oi-meta--wrap">${fn.originLabel?"Origem: "+esc(fn.originLabel):""}${fn.finalLabel?" · URL final: "+esc(fn.finalLabel):""}</div>${fn.technologies.length?`<div class="oi-links">${fn.technologies.map(t=>`<span class="oi-chip">${esc(t)}</span>`).join("")}</div>`:""}
     <nav class="seg oi-viewtoggle" aria-label="Visualização do funil"><a class="seg-btn${view==="mapa"?" active":""}" data-nav href="${esc(map)}"${view==="mapa"?' aria-current="page"':""}>Mapa</a><a class="seg-btn${view==="lista"?" active":""}" data-nav href="${esc(list)}"${view==="lista"?' aria-current="page"':""}>Lista</a></nav></div>${warnings}
-    <div class="oi-fgrid"><div class="oi-funnel" data-view="${view}">${oiFunnelMapHtml(route,L)}<div class="oi-flist" id="oiFlist"><h3 class="oi-sr">Etapas do funil em lista</h3>${oiFunnelTreeHtml(route,L)}</div></div>${oiStepPanelHtml(route,L)}</div>`;
+    <div class="oi-fgrid">${route.query.etapa?`<a class="oi-backdrop" data-nav href="${esc(oiStepHref(route,""))}" tabindex="-1" aria-hidden="true"></a>`:""}<div class="oi-funnel" data-view="${view}">${oiFunnelMapHtml(route,L)}<div class="oi-flist" id="oiFlist"><h3 class="oi-sr">Etapas do funil em lista</h3>${oiFunnelTreeHtml(route,L)}</div></div>${oiStepPanelHtml(route,L)}</div>`;
 }
-let oiResize=null;
+let oiResize=null,oiSheetFor=null;
+/* Painel da etapa: no mobile vira sheet modal com foco, Esc, Tab preso e retorno do foco à etapa de origem. */
+function oiFunnelSheet(area,route){
+  const panel=$(".oi-panel",area),step=route.query.etapa;
+  if(!panel){
+    if(oiSheetFor){const target=[...area.querySelectorAll(`[data-step="${CSS.escape(oiSheetFor)}"]`)].find(x=>x.offsetParent);oiSheetFor=null;if(target)target.focus({preventScroll:true});}
+    return;
+  }
+  const mobile=window.matchMedia("(max-width:980px)").matches;
+  if(mobile){panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");panel.tabIndex=-1;}
+  if(mobile&&oiSheetFor!==step){oiSheetFor=step;const close=$("a.btn",panel);(close||panel).focus({preventScroll:true});}
+  else if(!mobile)oiSheetFor=step;
+  panel.addEventListener("keydown",event=>{
+    if(event.key==="Escape"){event.preventDefault();event.stopPropagation();navigate(oiStepHref(route,""));return;}
+    if(event.key!=="Tab"||!mobile)return;
+    const items=[...panel.querySelectorAll("a[href],button:not([disabled])")].filter(x=>x.offsetParent);if(!items.length)return;
+    const first=items[0],last=items[items.length-1];
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  });
+}
 function oiDrawEdges(area){
   if(oiResize){oiResize.disconnect();oiResize=null;}
   const map=$("#oiFmap",area),scroll=$("#oiFscroll",area),svg=$("#oiFedges",area);
@@ -1018,15 +1038,15 @@ function oiJobsTableHtml(route,st){
   const filters=`<div class="oi-filters">${oiFilterSelect("oiStatus","Status",route.query.status,[["","Todos"],["em_andamento","Em andamento"],["concluida","Concluídas"],["parcial","Parciais"],["erro","Com erro"]])}</div>`;
   if(kind==="loading"||kind==="error")return filters+oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return filters+oiStateHtml("empty",route.query.status?{title:"Nada encontrado",text:"Nenhuma investigação corresponde a este filtro."}:OI_EMPTY.historico);
-  const rows=st.items.map(job=>`<tr><td>${esc(job.createdAt||"—")}</td><td><a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(oiJobOfferName(job))}</a></td><td>${oiStatusChip(job.statusLabel,job.status)}</td><td class="oi-prog">${job.active?oiProgressHtml(job)+`<span class="oi-meta">${esc(job.phaseLabel)}</span>`:esc(job.phaseLabel||"—")}</td><td>${job.counts.discoveries} desc. · ${job.counts.funnels} funis</td><td>${esc(job.duration||"—")}</td></tr>`).join("");
-  return filters+`<div class="oi-tablewrap"><table class="oi-table"><caption class="oi-sr">Investigações realizadas</caption><thead><tr><th scope="col">Início</th><th scope="col">Origem</th><th scope="col">Status</th><th scope="col">Fase</th><th scope="col">Resultados</th><th scope="col">Duração</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
+  const rows=st.items.map(job=>`<tr><td data-label="Início">${esc(job.createdAt||"—")}</td><td data-label="Origem"><a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(oiJobOfferName(job))}</a></td><td data-label="Status">${oiStatusChip(job.statusLabel,job.status)}</td><td class="oi-prog" data-label="Fase">${job.active?oiProgressHtml(job)+`<span class="oi-meta">${esc(job.phaseLabel)}</span>`:esc(job.phaseLabel||"—")}</td><td data-label="Resultados">${job.counts.discoveries} desc. · ${job.counts.funnels} funis</td><td data-label="Duração">${esc(job.duration||"—")}</td></tr>`).join("");
+  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Investigações realizadas</caption><thead><tr><th scope="col">Início</th><th scope="col">Origem</th><th scope="col">Status</th><th scope="col">Fase</th><th scope="col">Resultados</th><th scope="col">Duração</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
 }
 function oiJobDetailHtml(route,st){
   const kind=OfferIntel.viewState(st);
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.investigacao);
   const job=st.items[0],e=esc;
-  const sources=job.sources.length?`<table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${src.name==="Captura de tela"&&src.status==="unavailable"?"Captura indisponível nesta versão":e(src.statusLabel)}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table>`:"";
+  const sources=job.sources.length?`<div class="oi-tablewrap"><table class="oi-table"><caption class="oi-sr">Fontes consultadas</caption><thead><tr><th scope="col">Fonte</th><th scope="col">Situação</th><th scope="col">Resultados</th></tr></thead><tbody>${job.sources.map(src=>`<tr><td>${e(src.name)}</td><td>${src.name==="Captura de tela"&&src.status==="unavailable"?"Captura indisponível nesta versão":e(src.statusLabel)}${src.error?`<br><span class="oi-meta">${e(src.error.message)}</span>`:""}</td><td>${src.resultCount==null?"—":src.resultCount}</td></tr>`).join("")}</tbody></table></div>`:"";
   const err=job.error?`<div class="banner banner--warn" role="alert">${ic("alert")}${e(job.error.message||"A investigação falhou.")}${job.nextRetryAt?" Nova tentativa automática: "+e(job.nextRetryAt)+".":""}</div>`:"";
   const actions=[job.active?`<button type="button" class="btn btn--outline btn--sm" data-oi-job-action="cancel" data-id="${e(job.id)}">Cancelar investigação</button>`:"",(job.status==="failed"||job.status==="partial")&&(!job.error||job.error.retryable||job.status==="partial")?`<button type="button" class="btn btn--accent btn--sm" data-oi-job-action="retry" data-id="${e(job.id)}">Tentar novamente</button>`:"",`<a class="btn btn--outline btn--sm" data-nav href="${e(OfferIntel.buildPath({area:"descobertas",query:{job:job.id}}))}">Ver descobertas</a>`].join("");
   return `<div class="oi-card"><div class="oi-links">${oiStatusChip(job.statusLabel,job.status)}<span class="oi-meta">${e(oiJobOfferName(job))}</span></div>${oiProgressHtml(job)}<div class="oi-meta">${e(job.phaseLabel||job.statusLabel)}${job.progressTotal?` · ${job.progressDone||0} de ${job.progressTotal}`:""}</div>${err}
@@ -1104,7 +1124,7 @@ function renderOfferIntel(){
     const start=event.target.closest("[data-oi-start]");if(start){const o=oiOfferById(start.dataset.oiStart);if(o)oiOpenStart({offerId:o.id,refKind:oiRefKindOf(o)});return;}
     const ja=event.target.closest("[data-oi-job-action]");if(ja)oiJobAction(ja.dataset.id,ja.dataset.oiJobAction,ja);
   });
-  if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);}else if(oiResize){oiResize.disconnect();oiResize=null;}
+  if(route.area==="funis"&&route.funnelId){oiDrawEdges(area);oiWireFunnelKeys(area);oiFunnelSheet(area,route);}else{oiSheetFor=null;if(oiResize){oiResize.disconnect();oiResize=null;}}
   const retry=$("[data-oi-retry]",area);
   if(retry)retry.addEventListener("click",()=>{delete oiStates[route.area];renderOfferIntel();});
   const form=$("#oiUrlForm",area);
