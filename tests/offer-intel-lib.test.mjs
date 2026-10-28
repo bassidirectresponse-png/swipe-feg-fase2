@@ -152,9 +152,11 @@ test("formatConnection e formatJob normalizam valores desconhecidos", () => {
   assert.equal(OI.formatJob(undefined).error, null);
 });
 
-test("nada disso é ligado a dados de demonstração no index.html", () => {
+test("o index.html usa os formatadores só sobre respostas da API e não embute dados de demonstração", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.doesNotMatch(html, /layoutFunnel|formatDiscovery|formatConnection|formatJob/);
+  assert.match(html, /const OI_BACKEND_READY=false;/);
+  assert.doesNotMatch(html, /FIXTURE|DADOS DE DEMONSTRA|OI_MOCK/);
+  assert.match(html, /\.map\(OfferIntel\.formatDiscovery\)/);
 });
 
 test("etapas do funil seguem a forma v1: final_url, captura indisponível e tecnologias", () => {

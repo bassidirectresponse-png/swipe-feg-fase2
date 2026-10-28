@@ -32,8 +32,11 @@ test("filtros da URL são validados e fazem round-trip", () => {
   const path = OI.buildPath(route);
   assert.equal(path, "/inteligencia/descobertas?q=foo&oferta=o1&tipo=pagina&status=novo&ordem=anuncios&pagina=3");
   const invalid = OI.normalizeQuery("tipo=xss&status=<b>&ordem=zzz&pagina=-4&oferta=../x&url=javascript:alert(1)");
-  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
+  assert.deepEqual({ ...invalid }, { q: "", oferta: "", etapa: "", job: "", ref: "", investigar: false, url: "", tipo: "", status: "", ordem: "recentes", pagina: 1 });
   assert.equal(OI.buildPath({ area: "descobertas" }), "/inteligencia/descobertas");
+  assert.equal(OI.buildPath({ area: "oferta", offerId: "o1", query: { ref: "admin_draft", investigar: true } }), "/inteligencia/oferta/o1?ref=admin_draft&investigar=1");
+  assert.equal(OI.parsePath("/inteligencia/descobertas", "?job=j9&ref=hack&investigar=2").query.ref, "");
+  assert.equal(OI.parsePath("/inteligencia/descobertas", "?job=j9").query.job, "j9");
   assert.equal(OI.buildPath({ area: "funis", funnelId: "f1", query: { etapa: "s1" } }), "/inteligencia/funis/f1?etapa=s1");
 });
 
@@ -70,4 +73,30 @@ test("o arquivo da lib é publicado e coberto pela CSP script-src 'self'", () =>
   const policy = netlify.match(/Content-Security-Policy = "([^"]+)"/)?.[1] || "";
   assert.match(policy.match(/script-src[^;]+/)?.[0] || "", /'self'/);
   assert.match(netlify, /from = "\/\*"\s+to = "\/index\.html"\s+status = 200/);
+});
+
+test("Investigar oferta aparece no modal, no MVP de bibliotecas e nos cards, só para admin", () => {
+  assert.match(html, /<a class="btn btn--outline btn--sm" id="viewInvestigateBtn" data-admin-only data-nav/);
+  assert.match(html, /inv\.hidden=!isAdmin\|\|!OI_OFFER_SECTIONS\.has\(section\)/);
+  assert.match(html, /\$\{oiInvestigateLink\(itemById\(id\),"btn"\)\}/);
+  assert.equal([...html.matchAll(/oiInvestigateLink\(o,"oi-qlink"\)/g)].length, 2);
+  assert.match(html, /if\(!isAdmin\|\|!o\|\|!OI_OFFER_SECTIONS\.has\(sectionOf\(o\)\)\)return"";/);
+});
+
+test("painel de início: capture_screenshots desabilitado, chave de idempotência e vínculo offer_ref_kind", () => {
+  assert.match(html, /id="oiOptShot" disabled/);
+  assert.match(html, /Captura indisponível nesta versão/);
+  assert.match(html, /oiRefKindOf\(o\)==="admin_draft"\?"admin_draft":"offer"|o&&o\.adminPrivate\?"admin_draft":"offer"/);
+  assert.match(html, /ctx\.key=oiApi\.newKey\(\)/);
+  assert.match(html, /<div class="overlay" id="oiStartOverlay"><div class="confirm-box oi-start" role="dialog" aria-modal="true"/);
+});
+
+test("bandeja, polling e revisão com expected_version tratam 409 recarregando", () => {
+  assert.match(html, /id="oiTray" data-nav href="\/inteligencia\/historico" hidden aria-live="polite"/);
+  assert.match(html, /activeMs:3000,idleMs:15000/);
+  assert.match(html, /isHidden:\(\)=>document\.hidden/);
+  assert.match(html, /localStorage\.setItem\(OI_JOBS_KEY/);
+  assert.match(html, /oiApi\.setDiscoveryStatus\(id,status,item\.version\)/);
+  assert.match(html, /if\(error\.status===409\)\{delete oiStates\.descobertas;\}/);
+  assert.match(html, /role="progressbar"/);
 });
