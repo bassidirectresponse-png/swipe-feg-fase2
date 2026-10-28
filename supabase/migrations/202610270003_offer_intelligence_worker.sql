@@ -50,7 +50,7 @@ begin
       final_url=excluded.final_url,redirects=excluded.redirects,kind=excluded.kind,verification=excluded.verification,
       classification_basis=excluded.classification_basis,http_status=excluded.http_status,inaccessible_reason=excluded.inaccessible_reason,
       screenshot_status='unavailable',observed_at=excluded.observed_at
-      where excluded.verification<>'inferred' or offer_intel_funnel_steps.verification='inferred';
+      where excluded.classification_basis->>'method' is distinct from 'unvisited_link';
   end loop;
   for r in select value from jsonb_array_elements(coalesce(b->'funnels','[]')) loop
     update offer_intel_funnels set start_step_id=coalesce((r->>'start_step_id')::uuid,start_step_id)
