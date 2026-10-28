@@ -507,3 +507,14 @@ test("Creative Review prefers OpenRouter when its key exists and falls back to A
   assert.equal(direct.model, "claude-sonnet-5-5");
   assert.equal(direct.claude.modelFor, undefined);
 });
+
+test("first Creative Review folder marks nothing as new; DCO placeholders are stripped", async () => {
+  const { compareWithPrevious, withoutTemplateTokens, publicAd } = await import("../lib/offer-intel-weekly.mjs");
+  const ranked = [{ ad_ids: ["1"], match_keys: ["k"], rank: 1 }];
+  assert.deepEqual(compareWithPrevious(ranked, null).map(a => [a.is_new, a.rank_change]), [[false, null]]);
+  assert.deepEqual(compareWithPrevious(ranked, []).map(a => a.is_new), [true]);
+  assert.deepEqual(compareWithPrevious(ranked, [{ ad_archive_id: "1", rank: 3 }]).map(a => [a.is_new, a.rank_change]), [[false, 2]]);
+  assert.equal(withoutTemplateTokens("{{product.brand}}"), null);
+  assert.equal(withoutTemplateTokens("Try {{ product.name }} today"), "Try today");
+  assert.equal(publicAd({ id: "a", ad_archive_id: "1", ad_text: "{{product.brand}}", score: 1, media: {} }).ad_text, null);
+});
