@@ -116,3 +116,15 @@ test("Conexões e Mapa de Funis: ações com expected_version, mapa sem bibliote
   assert.match(html, /Coleta de anúncios indisponível/);
   assert.doesNotMatch(html, /r\.job\|\|r|r\.discovery\|\|r/);
 });
+
+test("QA-01/QA-05: abas e sidebar usam o escopo completo; um único listener de clique; ações com trava", () => {
+  assert.match(html, /function oiAreaHref\(areaKey,scope\)/);
+  assert.match(html, /href="\$\{esc\(oiAreaHref\(a\.key,scope\)\)\}"/);
+  assert.match(html, /href="\$\{esc\(oiAreaHref\(t\.key,navScope\)\)\}"/);
+  assert.doesNotMatch(html, /area\.addEventListener\("click",event=>/);
+  assert.equal([...html.matchAll(/addEventListener\("click",oiOnClick\)/g)].length, 1);
+  assert.match(html, /if\(!oiClickBound\)\{oiClickBound=true;/);
+  assert.match(html, /const lock=id\+":"\+action;\n\s+if\(oiBusy\.has\(lock\)\)return;/);
+  assert.match(html, /\$\("#oiStartOverlay"\)\.classList\.contains\("open"\)\)return;/);
+  assert.match(html, /if\(!ctx\|\|oiStarting\)return;/);
+});

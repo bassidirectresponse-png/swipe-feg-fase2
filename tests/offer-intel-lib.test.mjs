@@ -211,8 +211,8 @@ test("QA-01: a referência admin_draft sobrevive ao parse/build e à troca de á
   assert.equal(OI.buildPath({ area: "historico", query: { oferta: id, ref: next.query.ref } }), `/inteligencia/historico?oferta=${id}&ref=admin_draft`);
   assert.equal(OI.parsePath("/inteligencia/descobertas", "?ref=offer").query.ref, "");
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /query:\{oferta:offer,ref\}/);
-  assert.match(html, /query:\{oferta:selected,ref:q\.ref\}/);
+  assert.match(html, /OfferIntel\.scopeOf\(route,\{jobOfferId:jobOffer,offerRefKind:refKind\}\)/);
+  assert.match(html, /query:\{oferta:scope\.oferta,ref:scope\.ref,job:/);
 });
 
 test("QA-02: DAG com arestas laterais não alega ciclo; ciclo real continua marcado", () => {
@@ -249,4 +249,19 @@ test("QA-04: contagem ausente não vira zero", () => {
   assert.equal(OI.layoutFunnel({ steps: [step("a", { http_status: null })] }).nodes[0].httpStatus, null);
   assert.equal(j(OI.formatLimits({ apify: { available: true, daily_max_runs: 15 } }).lines)[0], "Limite de 15 coletas de anúncios por dia");
   assert.equal(OI.formatJob({ progress_detail: {} }).progressDone, null);
+});
+
+test("QA-01 (reaberto): scopeOf mantém oferta e tipo da referência ao trocar de área", () => {
+  const id = "22222222-2222-4222-8222-222222222222";
+  const hub = OI.parsePath(`/inteligencia/oferta/${id}`, "?ref=admin_draft");
+  assert.deepEqual(j(OI.scopeOf(hub)), { oferta: id, ref: "admin_draft", job: "" });
+  assert.equal(OI.buildPath({ area: "conexoes", query: OI.scopeOf(hub) }), `/inteligencia/conexoes?oferta=${id}&ref=admin_draft`);
+  assert.deepEqual(j(OI.scopeOf(OI.parsePath(`/inteligencia/oferta/${id}`, ""))), { oferta: id, ref: "", job: "" });
+  const filtered = OI.parsePath("/inteligencia/descobertas", `?oferta=${id}&ref=admin_draft&job=j9`);
+  assert.deepEqual(j(OI.scopeOf(filtered)), { oferta: id, ref: "admin_draft", job: "" });
+  const jobPage = OI.parsePath("/inteligencia/investigacao/j9", "");
+  assert.deepEqual(j(OI.scopeOf(jobPage, { jobOfferId: id, offerRefKind: "admin_draft" })), { oferta: id, ref: "admin_draft", job: "" });
+  assert.deepEqual(j(OI.scopeOf(jobPage, {})), { oferta: "", ref: "", job: "j9" });
+  assert.deepEqual(j(OI.scopeOf(jobPage, { offerRefKind: "admin_draft" })), { oferta: "", ref: "", job: "j9" });
+  assert.deepEqual(j(OI.scopeOf(undefined)), { oferta: "", ref: "", job: "" });
 });
