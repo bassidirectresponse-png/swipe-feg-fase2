@@ -494,7 +494,8 @@ test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usa
   assert.equal(calls[1].messages[0].content.length, 1);
   await assert.rejects(ai({ prompt: "p", maxTokens: 10, kind: "ad" }), /OpenRouter HTTP 402 402: Insufficient credits/);
   assert.equal(ai.modelFor("product"), "anthropic/claude-sonnet-5.5");
-  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 1001 + OPENROUTER_IMAGE_TOKENS);
+  assert.equal(await ai.countTokens({ prompt: "x".repeat(1001), image: "https://x/a.png" }), 1001 + 64 + OPENROUTER_IMAGE_TOKENS);
+  assert.equal(await ai.countTokens({ prompt: "é🙂" }), 2 + 4 + 64, "UTF-8 bytes, not characters");
   const unknown = createWeeklyOpenRouter({ key: "FAKE-KEY", adsModel: "google/unknown-model", summaryModel: "anthropic/claude-sonnet-5.5", fetcher: FAKE_fetch });
   await assert.rejects(unknown({ prompt: "p", maxTokens: 10, kind: "ad" }), /sem preço/);
 });
