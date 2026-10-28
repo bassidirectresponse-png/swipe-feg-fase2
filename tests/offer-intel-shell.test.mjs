@@ -128,3 +128,13 @@ test("QA-01/QA-05: abas e sidebar usam o escopo completo; um único listener de 
   assert.match(html, /\$\("#oiStartOverlay"\)\.classList\.contains\("open"\)\)return;/);
   assert.match(html, /if\(!ctx\|\|oiStarting\)return;/);
 });
+
+test("QA-07: foco estável por ação+id entre renders; botões ocupados usam aria-disabled", () => {
+  assert.match(html, /function oiFocusKey\(area\)/);
+  assert.match(html, /function oiRestoreFocus\(area,key\)/);
+  for (const key of ["act:", "rel:", "job:"]) assert.ok(html.includes("`" + key.slice(0, -1) + ":${"), key);
+  assert.match(html, /oiRestoreFocus\(area,focusKey\)/);
+  assert.doesNotMatch(html, /d\.busy\?" disabled"|r\.busy\?" disabled"|loadingMore\?" disabled"/);
+  assert.match(html, /oiBusy\.add\(lock\);button\.setAttribute\("aria-disabled","true"\)/);
+  assert.match(html, /if\(typing\)\{oiDirty=true;return;\}/);
+});

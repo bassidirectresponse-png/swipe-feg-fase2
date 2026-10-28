@@ -742,6 +742,7 @@ function oiWatchedIds(){
   return [...ids];
 }
 function oiJobOfferName(job){const o=job.offerId&&oiOfferById(job.offerId);return o?oiOfferName(o):job.seedUrlLabel||"URL informada";}
+let oiDirty=false;
 async function oiTick(){
   let changed=false,finished=false;
   for(const id of oiWatchedIds()){
@@ -757,7 +758,8 @@ async function oiTick(){
   oiRenderTray();
   if(activeSection!=="inteligencia"||!oiRoute)return;
   if(finished&&(oiRoute.area==="descobertas"||oiRoute.area==="oferta"))delete oiStates[oiRoute.area];
-  if(changed||finished)renderOfferIntel();
+  const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest("#gridArea")&&/^(SELECT|INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if(changed||finished||oiDirty){if(typing){oiDirty=true;return;}oiDirty=false;renderOfferIntel();}
 }
 const oiPoller=OfferIntelApi.createPoller({
   activeMs:3000,idleMs:15000,
@@ -859,10 +861,10 @@ function oiRelationsHtml(route,st){
   if(kind==="empty")return filters+oiStateHtml("empty",route.query.status?{title:"Nada encontrado",text:"Nenhuma conexão corresponde a este filtro."}:OI_EMPTY.conexoes);
   const rows=st.items.map(r=>{
     const ev=r.evidenceCount?`<details class="oi-evidence"><summary>${r.evidenceCount} ${r.evidenceCount===1?"evidência":"evidências"}</summary><ul>${r.evidence.map(x=>`<li><b>${esc(x.verificationLabel)}</b> · ${esc(x.source)}${x.observedAt?" · "+esc(x.observedAt):""}${x.urlLabel?` · <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.urlLabel)}</a>`:""}${x.detail?`<br><span>${esc(x.detail)}</span>`:""}</li>`).join("")}</ul></details>`:`<span class="oi-meta">Sem evidências</span>`;
-    const buttons=["confirmed","ignored","pending"].map(s=>`<button type="button" class="btn btn--sm ${r.status===s?"btn--accent":"btn--outline"}" data-oi-rel-act="${s}" data-id="${esc(r.id)}" aria-pressed="${r.status===s}"${r.busy?" disabled":""}>${OI_REL_LABEL[s]}</button>`).join("");
+    const buttons=["confirmed","ignored","pending"].map(s=>`<button type="button" class="btn btn--sm ${r.status===s?"btn--accent":"btn--outline"}" data-oi-rel-act="${s}" data-id="${esc(r.id)}" aria-pressed="${r.status===s}"${r.busy?' aria-disabled="true"':""}>${OI_REL_LABEL[s]}</button>`).join("");
     return `<tr data-id="${esc(r.id)}"><td data-label="Origem">${oiEndpointHtml(r.from)}</td><td data-label="Relação observada">${esc(r.relationLabel)}${r.disclaimer?`<div class="oi-meta oi-meta--wrap">${esc(r.disclaimer)}</div>`:""}${r.reason?`<div class="oi-meta oi-meta--wrap">${esc(r.reason)}</div>`:""}</td><td data-label="Destino">${oiEndpointHtml(r.to)}</td><td data-label="Evidências">${ev}</td><td data-label="Status">${oiStatusChip(r.statusLabel,r.status)}</td><td data-label="Ações"><div class="oi-dcard__actions" role="group" aria-label="Revisar conexão">${buttons}</div></td></tr>`;
   }).join("");
-  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Conexões observadas</caption><thead><tr><th scope="col">Origem</th><th scope="col">Relação observada</th><th scope="col">Destino</th><th scope="col">Evidências</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Semelhança observada não prova que duas Páginas pertencem ao mesmo anunciante. Decidir aqui não cria nem altera ofertas.</p>`;
+  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Conexões observadas</caption><thead><tr><th scope="col">Origem</th><th scope="col">Relação observada</th><th scope="col">Destino</th><th scope="col">Evidências</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Semelhança observada não prova que duas Páginas pertencem ao mesmo anunciante. Decidir aqui não cria nem altera ofertas.</p>`;
 }
 async function oiReviewRelation(id,status){
   const st=oiStates.conexoes,i=st?st.items.findIndex(x=>x.id===id):-1;if(i<0)return;
@@ -881,7 +883,7 @@ function oiFunnelListHtml(route,st){
   if(st.needsOffer)return oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver os funis mapeados."});
   if(kind==="loading"||kind==="error")return oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return oiStateHtml("empty",OI_EMPTY.funis);
-  return `<div class="oi-cards oi-cards--funnels">${st.items.map(f=>`<a class="oi-fcard" data-nav href="${esc(OfferIntel.buildPath({area:"funis",funnelId:f.id,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}"><span class="oi-fcard__title" title="${esc(f.title)}">${esc(f.title)}</span><span class="oi-meta">${esc(f.originLabel||"Origem desconhecida")}</span><span class="oi-meta">${f.finalLabel?"Final: "+esc(f.finalLabel):"&nbsp;"}</span><span class="oi-meta">${f.stepsCount==null?"Etapas: —":f.stepsCount+(f.stepsCount===1?" etapa":" etapas")}${f.createdAt?" · "+esc(f.createdAt):""}</span><span class="oi-fcard__open">Abrir mapa →</span></a>`).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
+  return `<div class="oi-cards oi-cards--funnels">${st.items.map(f=>`<a class="oi-fcard" data-nav href="${esc(OfferIntel.buildPath({area:"funis",funnelId:f.id,query:{oferta:route.query.oferta,ref:route.query.ref,job:route.query.job}}))}"><span class="oi-fcard__title" title="${esc(f.title)}">${esc(f.title)}</span><span class="oi-meta">${esc(f.originLabel||"Origem desconhecida")}</span><span class="oi-meta">${f.finalLabel?"Final: "+esc(f.finalLabel):"&nbsp;"}</span><span class="oi-meta">${f.stepsCount==null?"Etapas: —":f.stepsCount+(f.stepsCount===1?" etapa":" etapas")}${f.createdAt?" · "+esc(f.createdAt):""}</span><span class="oi-fcard__open">Abrir mapa →</span></a>`).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
 }
 function oiStepHref(route,stepId){return OfferIntel.buildPath({area:"funis",funnelId:route.funnelId,query:Object.assign({},route.query,{etapa:stepId||""})});}
 function oiNodeLabelHtml(n){return `<span class="oi-node__kind">${esc(n.kindLabel)}</span><span class="oi-node__label" title="${esc(n.label)}">${esc(n.label)}</span><span class="oi-node__url">${esc(n.urlLabel||"Sem URL")}</span><span class="oi-node__ver oi-node__ver--${esc(n.verification)}"><b aria-hidden="true">${esc(n.verificationIcon)}</b> ${esc(n.verificationLabel)}</span>`;}
@@ -1017,7 +1019,7 @@ function oiDiscoveryCard(d){
   const evidence=d.evidenceCount?`<details class="oi-evidence"><summary>${d.evidenceCount} ${d.evidenceCount===1?"evidência":"evidências"}</summary><ul>${d.evidence.map(ev=>`<li><b>${e(ev.verificationLabel)}</b> · ${e(ev.source)}${ev.observedAt?" · "+e(ev.observedAt):""}${ev.urlLabel?` · <a href="${e(ev.url)}" target="_blank" rel="noopener noreferrer">${e(ev.urlLabel)}</a>`:""}${ev.detail?`<br><span>${e(ev.detail)}</span>`:""}</li>`).join("")}</ul></details>`:`<div class="oi-meta">Sem evidências registradas</div>`;
   const swipe=d.alreadyInSwipe?(existing?`<a class="oi-chip oi-chip--link" data-nav href="${e(offerPath(existing))}">Já no Swipe: ${e(oiOfferName(existing))}</a>`:`<span class="oi-chip">Já no Swipe${d.existingMatches.length?": "+e(d.existingMatches[0].label):""}</span>`):"";
   const metrics=[d.adsLabel,d.firstSeen?"1ª vez: "+d.firstSeen:"",d.lastSeen?"Última: "+d.lastSeen:""].filter(Boolean).join(" · ");
-  const buttons=["confirmed","ignored","review"].map(s=>`<button type="button" class="btn btn--sm ${d.status===s?"btn--accent":"btn--outline"}" data-oi-act="${s}" data-id="${e(d.id)}" aria-pressed="${d.status===s}"${d.busy?" disabled":""}>${OI_REVIEW_LABEL[s]}</button>`).join("");
+  const buttons=["confirmed","ignored","review"].map(s=>`<button type="button" class="btn btn--sm ${d.status===s?"btn--accent":"btn--outline"}" data-oi-act="${s}" data-id="${e(d.id)}" aria-pressed="${d.status===s}"${d.busy?' aria-disabled="true"':""}>${OI_REVIEW_LABEL[s]}</button>`).join("");
   return `<article class="oi-dcard" data-id="${e(d.id)}"${d.busy?' aria-busy="true"':""}>
     <div class="oi-dcard__media">${media}</div>
     <div class="oi-dcard__chips"><span class="oi-chip">${e(d.typeLabel)}</span>${oiStatusChip(d.statusLabel,d.status)}${swipe}</div>
@@ -1041,7 +1043,7 @@ function oiDiscoveriesHtml(route,st){
   if(st.needsOffer)body=oiStateHtml("empty",{title:"Escolha uma oferta",text:"Selecione uma oferta acima para ver as descobertas relacionadas a ela."});
   else if(kind==="loading"||kind==="error")body=oiStateHtml(kind,{error:st.error});
   else if(kind==="empty")body=oiStateHtml("empty",(q.tipo||q.status||searchTerm)?{title:"Nada encontrado",text:"Nenhuma descoberta corresponde a estes filtros."}:OI_EMPTY.descobertas);
-  else body=`<div class="oi-cards">${st.items.map(oiDiscoveryCard).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Confirmar, ignorar ou revisar apenas registra a decisão sobre a descoberta; não cria nem altera ofertas.</p>`;
+  else body=`<div class="oi-cards">${st.items.map(oiDiscoveryCard).join("")}</div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}<p class="oi-note">Confirmar, ignorar ou revisar apenas registra a decisão sobre a descoberta; não cria nem altera ofertas.</p>`;
   return filters+jobChip+body;
 }
 function oiJobsTableHtml(route,st){
@@ -1050,7 +1052,7 @@ function oiJobsTableHtml(route,st){
   if(kind==="loading"||kind==="error")return filters+oiStateHtml(kind,{error:st.error});
   if(kind==="empty")return filters+oiStateHtml("empty",route.query.status?{title:"Nada encontrado",text:"Nenhuma investigação corresponde a este filtro."}:OI_EMPTY.historico);
   const rows=st.items.map(job=>`<tr><td data-label="Início">${esc(job.createdAt||"—")}</td><td data-label="Origem"><a data-nav href="${esc(OfferIntel.buildPath({area:"investigacao",jobId:job.id}))}">${esc(oiJobOfferName(job))}</a></td><td data-label="Status">${oiStatusChip(job.statusLabel,job.status)}</td><td class="oi-prog" data-label="Fase">${job.active?oiProgressHtml(job)+`<span class="oi-meta">${esc(job.phaseLabel)}</span>`:esc(job.phaseLabel||"—")}</td><td data-label="Resultados">${job.counts.discoveries} desc. · ${job.counts.funnels} funis</td><td data-label="Duração">${esc(job.duration||"—")}</td></tr>`).join("");
-  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Investigações realizadas</caption><thead><tr><th scope="col">Início</th><th scope="col">Origem</th><th scope="col">Status</th><th scope="col">Fase</th><th scope="col">Resultados</th><th scope="col">Duração</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?" disabled":""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
+  return filters+`<div class="oi-tablewrap"><table class="oi-table oi-table--stack"><caption class="oi-sr">Investigações realizadas</caption><thead><tr><th scope="col">Início</th><th scope="col">Origem</th><th scope="col">Status</th><th scope="col">Fase</th><th scope="col">Resultados</th><th scope="col">Duração</th></tr></thead><tbody>${rows}</tbody></table></div>${st.next?`<div class="oi-more"><button type="button" class="btn btn--outline" data-oi-more${st.loadingMore?' aria-disabled="true"':""}>${st.loadingMore?"Carregando…":"Carregar mais"}</button></div>`:""}`;
 }
 function oiJobDetailHtml(route,st){
   const kind=OfferIntel.viewState(st);
@@ -1107,6 +1109,32 @@ function oiPendingBanner(route){
   if(OI_BACKEND_READY||route.area==="monitoramento")return"";
   return `<div class="banner banner--warn" role="note">${ic("shield")}Módulo em construção: a integração com o backend ainda não está conectada. Nenhum dado, nem de demonstração, é exibido.</div>`;
 }
+/* Foco estável entre renders: chave por id ou ação+id (botões de revisão/ação não têm id).
+   Botões ocupados usam aria-disabled (não disabled) para não perderem o foco. */
+let oiPendingFocus="";
+function oiFocusKey(area){
+  const el=document.activeElement;if(!el||el===document.body||!area.contains(el))return "";
+  if(el.id==="oiBody")return "";
+  if(el.id)return "id:"+el.id;
+  const d=el.dataset||{};
+  if(d.oiAct)return `act:${d.oiAct}:${d.id}`;
+  if(d.oiRelAct)return `rel:${d.oiRelAct}:${d.id}`;
+  if(d.oiJobAction)return `job:${d.oiJobAction}:${d.id}`;
+  if(d.oiStart)return "start:"+d.oiStart;
+  if("oiMore" in d)return "more";
+  if("oiRetry" in d)return "retry";
+  if(d.step)return "step:"+d.step;
+  return "";
+}
+function oiRestoreFocus(area,key){
+  if(!key)return;
+  const [kind,a,b]=key.split(":");
+  const sel={id:`[id="${CSS.escape(a||"")}"]`,act:`[data-oi-act="${CSS.escape(a||"")}"][data-id="${CSS.escape(b||"")}"]`,rel:`[data-oi-rel-act="${CSS.escape(a||"")}"][data-id="${CSS.escape(b||"")}"]`,job:`[data-oi-job-action="${CSS.escape(a||"")}"][data-id="${CSS.escape(b||"")}"]`,start:`[data-oi-start="${CSS.escape(a||"")}"]`,more:"[data-oi-more]",retry:"[data-oi-retry]",step:`[data-step="${CSS.escape(a||"")}"]`}[kind];
+  const target=sel&&[...area.querySelectorAll(sel)].find(x=>x.offsetParent);
+  if(target){oiPendingFocus="";target.focus({preventScroll:true});return;}
+  oiPendingFocus=/^(act|rel|job|more)$/.test(kind)?key:"";
+  const body=$("#oiBody",area);if(body){body.tabIndex=-1;body.focus({preventScroll:true});}
+}
 /* Um único listener delegado em #gridArea (permanente); lê a rota atual no momento do clique. */
 let oiClickBound=false;
 function oiOnClick(event){
@@ -1129,9 +1157,9 @@ function renderOfferIntel(){
   const warn=known?"":`<div class="banner banner--warn" role="note">${ic("shield")}A oferta indicada na URL não está no acervo carregado.</div>`;
   const scope=["descobertas","conexoes","funis","historico"].includes(route.area)?`<label class="sort-control oi-offer"><span>Oferta</span><select id="oiOffer" aria-label="Filtrar por oferta">${options}</select></label>`:"";
   const body=oiBodyHtml(route);
-  const focusId=document.activeElement&&area.contains(document.activeElement)?document.activeElement.id:"";
+  let focusKey=oiFocusKey(area);if(focusKey)oiPendingFocus="";else focusKey=oiPendingFocus;
   area.innerHTML=`<div class="oi"><div class="oi-bar"><nav class="seg oi-tabs" aria-label="Áreas de Inteligência de Ofertas">${tabs}</nav>${scope}</div>${oiPendingBanner(route)}${warn}<div class="oi-body" id="oiBody">${body}</div></div>`;
-  if(focusId){const again=document.getElementById(focusId);if(again)again.focus({preventScroll:true});}
+  oiRestoreFocus(area,focusKey);
   const result=$("#pageResult");if(result)result.textContent=oiResultLabel(route);
   const go=patch=>navigate(OfferIntel.buildPath({area:route.area,jobId:route.jobId,funnelId:route.funnelId,query:Object.assign({},q,{pagina:1},patch)}));
   const select=$("#oiOffer",area);
@@ -1161,7 +1189,7 @@ async function oiJobAction(id,action,button){
   const lock=id+":"+action;
   if(oiBusy.has(lock))return;
   if(action==="cancel"&&!confirm("Cancelar esta investigação? Os resultados já coletados são mantidos."))return;
-  oiBusy.add(lock);button.disabled=true;
+  oiBusy.add(lock);button.setAttribute("aria-disabled","true");
   try{
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);
     oiJobs[id]=job;const st=oiStates.investigacao;if(st&&st.items[0]&&st.items[0].id===id)st.items[0]=job;
