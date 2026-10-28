@@ -34,7 +34,7 @@ async function local(t){
 }
 test("QA real Node streaming transport caps bytes/time, redirects and sends only GET without credentials",async t=>{
  const f=await local(t);
- await assert.rejects(()=>f.page("http://public.example/large"),e=>e.code==="response_too_large");
+ const large=await f.page("http://public.example/large");assert.equal(large.truncated,true);assert.equal(large.body.length,2*1024*1024);
  await assert.rejects(()=>f.page("http://public.example/slow",{timeoutMs:80}),e=>e.code==="provider_error"||e.name==="AbortError");
  const n=f.calls.length;await assert.rejects(()=>f.page("http://public.example/redirect"),e=>e.code==="blocked_url");assert.equal(f.calls.length,n+1);
  const before=f.calls.length;await assert.rejects(()=>f.page("http://public.example/loop"),e=>e.code==="invalid_url");assert.equal(f.calls.length-before,6);
@@ -190,4 +190,32 @@ test("QA v1.4 rejection permits only explicit retry with another reservation; no
  // Second invocation models an explicit admin retry; production dispatch remains guarded by its lease.
  await assert.rejects(()=>collector.run(j),e=>e.code==="provider_rejected");
  assert.equal(posts,2);assert.equal(budgetStorage.reservations.size,2);
+});
+
+test("QA truncated retry replaces old oversized checkpoint and renders public warning",async()=>{
+ const {publicDiscovery}=await import("../lib/offer-intel-public.mjs");
+ const {readFileSync}=await import("node:fs"),vm=await import("node:vm");
+ const j=job(),storage=createFAKEWorkerStorage(j);let calls=0;
+ const explorer=createDomainExplorer({storage,fetchPage:async url=>{
+   calls++;if(calls===1)throw Object.assign(Error("FAKE oversized legacy response"),{code:"response_too_large"});
+   return {status:200,headers:{"content-type":"text/html"},final_url:url,redirects:[],truncated:true,
+     body:Buffer.from("<title>Take the Quiz</title><main><h1>Take the Quiz</h1></main><!-- Checkout")};
+ }});
+ assert.equal((await explorer.run(j)).status,"failed");
+ assert.equal((await explorer.run(j)).status,"succeeded");
+ assert.equal(calls,2);
+ const proof=[...storage.records.evidence.values()].find(e=>e.payload?.checkpoint);
+ assert.equal(proof.payload.truncated,true);assert.deepEqual(proof.payload.warnings,["html_truncated"]);
+ assert.equal([...storage.records.steps.values()][0].kind,"quiz");
+ await explorer.run(j);assert.equal(calls,2);
+ const ctx={URL,URLSearchParams,Intl,esc:s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll('"',"&quot;"),
+   ic:()=>"",oiOfferById:()=>null,OI_REVIEW_LABEL:{confirmed:"Confirmar",ignored:"Ignorar",review:"Revisar"}};
+ vm.createContext(ctx);
+ vm.runInContext(readFileSync(new URL("../lib/offer-intel.js",import.meta.url),"utf8"),ctx);
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ vm.runInContext(html.slice(html.indexOf("function oiStatusChip("),html.indexOf("function oiFilterSelect(")),ctx);
+ const discovery=publicDiscovery({...storage.records.discoveries.values().next().value,evidence:[proof]});
+ const rendered=ctx.oiDiscoveryCard(ctx.OfferIntel.formatDiscovery(discovery));
+ assert.match(rendered,/html_truncated: prefixo HTML observado/);
+ assert.match(rendered,/<details class="oi-evidence">/);
 });
