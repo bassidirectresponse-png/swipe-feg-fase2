@@ -6,6 +6,61 @@ import { createDomainExplorer, extractPublicDocument } from "../lib/offer-intel-
 import { fetchPublicPage, pinnedRequest } from "../lib/offer-intel-url-safety.mjs";
 import { createFAKEWorkerStorage } from "./offer-intel-FAKE-worker-storage.mjs";
 const fixture=url=>({id:randomUUID(),lease_token:randomUUID(),scope_key:"url:FAKE",seed_url:url,seed_snapshot:{},options:{}});
+const FAKEPage=(url,html,status=200)=>({final_url:url,redirects:[],status,headers:{"content-type":"text/html"},body:Buffer.from(html)});
+test("QA-B04: retry revisits transient child failures while preserving successful checkpoints",async()=>{
+  for(const failure of [503,429,408,"timeout","network"]) {
+    const job=fixture("https://public.example/a"),storage=createFAKEWorkerStorage(job),calls=[];
+    let recover=false;
+    const FAKE_fetchPage=async url=>{
+      calls.push(url);
+      if(url.endsWith("/a"))return FAKEPage(url,'<title>Root</title><a href="/b">next</a>');
+      if(!recover&&typeof failure==="string")throw Error(failure==="timeout"?"FAKE timeout":"FAKE network outage");
+      return FAKEPage(url,"<title>Recovered landing</title>",recover?200:failure);
+    };
+    const explorer=createDomainExplorer({storage,fetchPage:FAKE_fetchPage});
+    assert.equal((await explorer.run(job)).status,"failed");
+    // Exercise pre-fix persisted payloads, whose reason existed only in detail.
+    for(const e of storage.records.evidence.values())delete e.payload.inaccessible_reason;
+    recover=true;
+    assert.equal((await explorer.run(job)).status,"succeeded");
+    assert.equal(calls.filter(url=>url.endsWith("/a")).length,1);
+    assert.equal(calls.filter(url=>url.endsWith("/b")).length,2);
+    const recovered=[...storage.records.steps.values()].find(s=>s.original_url.endsWith("/b"));
+    assert.equal(recovered.verification,"inferred");assert.equal(recovered.inaccessible_reason,null);
+    await explorer.run(job);
+    assert.equal(calls.length,3);assert.equal(storage.records.steps.size,2);
+  }
+});
+test("QA-B04: blocked destinations remain inaccessible without a retry bypass",async()=>{
+  const job=fixture("https://public.example/a"),storage=createFAKEWorkerStorage(job);let calls=0;
+  const explorer=createDomainExplorer({storage,fetchPage:async()=>{calls++;throw Object.assign(Error("FAKE blocked"),{code:"blocked_url"});}});
+  await explorer.run(job);await explorer.run(job);
+  assert.equal(calls,1);assert.equal([...storage.records.steps.values()][0].inaccessible_reason,"blocked_url");
+});
+test("QA-B05: cycles, depth-boundary cycles and convergence persist every observed edge without refetch",async()=>{
+  for(const graph of [{a:["b"],b:["a"]},{a:["b","c"],b:["c"],c:[]},{a:["b"],b:["c"],c:["a"]}]) {
+    const job=fixture("https://public.example/a"),storage=createFAKEWorkerStorage(job),calls=[];
+    const explorer=createDomainExplorer({storage,fetchPage:async url=>{
+      calls.push(url);const name=new URL(url).pathname.slice(1);
+      return FAKEPage(url,"<title>"+name+"</title>"+graph[name].map(to=>'<a href="/'+to+'">next</a>').join(""));
+    }});
+    await explorer.run(job);
+    const actual=[...storage.records.edges.values()].map(e=>{
+      const from=new URL(storage.records.steps.get(e.from_step_id).original_url).pathname.slice(1);
+      const to=new URL(storage.records.steps.get(e.to_step_id).original_url).pathname.slice(1);
+      return from+"->"+to;
+    }).sort();
+    assert.deepEqual(actual,Object.entries(graph).flatMap(([from,targets])=>targets.map(to=>from+"->"+to)).sort());
+    assert.equal(calls.length,Object.keys(graph).length);
+    assert.equal(storage.records.steps.size,Object.keys(graph).length);
+    // Repair adjacency from an older checkpoint without downgrading observed landing steps.
+    storage.records.edges.clear();
+    await explorer.run(job);
+    assert.equal(storage.records.edges.size,actual.length);
+    assert.equal(calls.length,Object.keys(graph).length);
+    assert.ok([...storage.records.steps.values()].every(s=>s.title&&s.classification_basis.method!=="unvisited_link"));
+  }
+});
 async function FAKEHTTP(t,handler) {
   const requests=[],server=http.createServer((req,res)=>{requests.push({url:req.url,method:req.method,headers:req.headers});handler(req,res);});
   await new Promise((resolve,reject)=>{server.once("error",reject);server.listen(0,"127.0.0.1",resolve);});

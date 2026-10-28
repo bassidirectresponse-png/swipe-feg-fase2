@@ -10,7 +10,7 @@ export function createFAKEWorkerStorage(job) {
     async persist(p){fence(p);
       for(const [table,rows] of Object.entries(p.batch))for(const row of rows) {
         const old=records[table].get(row.id);
-        if(table==="steps"&&old&&old.verification!=="inferred"&&row.verification==="inferred")continue;
+        if(table==="steps"&&old&&row.classification_basis?.method==="unvisited_link")continue;
         records[table].set(row.id,{...old,...structuredClone(row),...(table==="discoveries"?{status:old?.status||"new",version:old?.version||1}:{})});
       }
       return counts();
