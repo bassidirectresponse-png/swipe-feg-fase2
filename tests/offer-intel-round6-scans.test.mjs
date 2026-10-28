@@ -133,7 +133,8 @@ test('R6 scan handlers enforce real admin auth/UUID/scope and public allowlist',
  }
 });
 test('R6 all pixel families, no generic Bing ti false positive, and no CDN checkout',()=>{
- const source=`fbq('init','1');ttq.load('TT123');gtag('config','G-ABCD');GTM-AAAA;AW-123;
+ const source=`fbq('init','1');ttq.load('TT123');gtag('config','G-ABCD');gtag('config','AW-123');
+ (function(w,d,s,l,i){})(window,document,'script','dataLayer','GTM-AAAA');
  _tfa.push({id: 234});obApi('obAdvId','345');pintrk('load','456');snaptr('init','snap-id');
  var uetq=[];var o={ti:'567'};hjid:678;clarity('init','clarity123');`;
  assert.equal(new Set(pixelIds(source,root).map(p=>p.type)).size,12);
