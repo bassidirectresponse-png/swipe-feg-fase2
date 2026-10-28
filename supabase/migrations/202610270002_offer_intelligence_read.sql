@@ -59,7 +59,8 @@ begin
   end if;
   if scope is null then raise exception 'invalid_request'; end if;
   scope_sql:=case when resource='discoveries' then
-    'coalesce((t.data->>''ads_count'')::bigint,0)' else '0::bigint' end;
+    'case when jsonb_typeof(t.data->''ads_count'')=''number'' and (t.data->>''ads_count'') ~ ''^[0-9]{1,15}$''
+      then (t.data->>''ads_count'')::bigint else 0 end' else '0::bigint' end;
   execute format('
     with candidates as (
       select t.*,case when $1->>''sort''=''ads'' then %s else 0 end rank

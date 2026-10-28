@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createIntelHandlers } from "../netlify/functions/_offer-intel-api.mjs";
 import { createFAKEStorage } from "./offer-intel-FAKE-storage.mjs";
-import { publicFunnel, publicEvidence } from "../lib/offer-intel-public.mjs";
+import { publicFunnel, publicEvidence, publicDiscovery } from "../lib/offer-intel-public.mjs";
+import { encodeCursor, pagination } from "../lib/offer-intel-core.mjs";
 const ID="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",JOB="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const request=(route,body)=>new Request("https://benchmarkinggrupofeg.site/"+route,body?{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}:{});
 function fixture({auth={id:ID},admin=true,quota=true}={}) {
@@ -75,4 +76,30 @@ test("B3 summary shape and evidence/funnel never expose HTML or storage paths",a
   const funnel=publicFunnel({id:ID,start_step_id:JOB,steps:[{id:JOB,original_url:"https://example.com",screenshot_path:"private/raw",technologies:[]}],edges:[]});
   assert.equal(funnel.steps[0].screenshot_url,null);assert.equal(funnel.steps[0].screenshot_status,"unavailable");
   assert.equal(funnel.steps[0].screenshot_path,undefined);
+});
+test("QA-B02: unknown counts remain null; only known nonnegative integers are displayed",()=>{
+  for(const value of [null,undefined,-1,2.5,"3",false,NaN,Infinity,Number.MAX_SAFE_INTEGER+1])
+    assert.equal(publicDiscovery({data:{ads_count:value}}).ads_count,null);
+  for(const value of [0,1,15,Number.MAX_SAFE_INTEGER])
+    assert.equal(publicDiscovery({data:{ads_count:value}}).ads_count,value);
+});
+test("B3 funnel listing preserves steps_count",async()=>{
+  const f=fixture();
+  f.storage.read=async()=>({items:[{id:ID,investigation_id:JOB,title:"Funil",origin_url:"https://example.com",final_url:"https://example.com/vsl",steps_count:3,created_at:"2026-10-27T00:00:00.000Z"}]});
+  const result=await (await f.handlers.funnels(request("funnels?job_id="+JOB))).json();
+  assert.equal(result.items[0].steps_count,3);
+});
+test("QA-B03: B2/B3 cursors preserve exact microseconds and tied-ID boundary",async()=>{
+  const stamp="2026-10-27T12:00:00.123456+00:00",canonical=stamp.replace("+00:00","Z");
+  const cursor=pagination(new URLSearchParams({cursor:encodeCursor({id:JOB,created_at:stamp})})).cursor;
+  assert.equal(cursor.created_at,canonical);
+  // SQL comparison modeled with the exact timestamp string and descending UUID tie-breaker.
+  assert.ok(canonical===cursor.created_at&&ID<cursor.id);
+  const f=fixture(),base="discoveries?job_id="+JOB+"&limit=1";
+  const rows=[{...f.rows[0],id:JOB,created_at:stamp,rank:0},{...f.rows[1],id:ID,created_at:stamp,rank:0}];
+  f.storage.read=async q=>({items:rows.filter(r=>!q.cursor||(r.created_at.replace("+00:00","Z")===q.cursor.created_at&&r.id<q.cursor.id)).slice(0,q.limit+1)});
+  const page1=await (await f.handlers.discoveries(request(base))).json();
+  assert.equal(JSON.parse(Buffer.from(page1.next_cursor,"base64url")).created_at,canonical);
+  const page2=await (await f.handlers.discoveries(request(base+"&cursor="+page1.next_cursor))).json();
+  assert.equal(page2.items[0].id,ID);assert.equal(page2.next_cursor,null);
 });
