@@ -1198,7 +1198,7 @@ const oiBusy=new Set();
 async function oiJobAction(id,action,button){
   const lock=id+":"+action;
   if(oiBusy.has(lock))return;
-  if(action==="cancel"&&!confirm("Cancelar esta investigação? Os resultados já coletados são mantidos."))return;
+  if(action==="cancel"&&!confirm("Cancelar esta investigação? Novas etapas não serão iniciadas e os resultados já coletados são mantidos. Uma coleta de anúncios já enviada ao provedor pode continuar até terminar e consumir a cota do dia."))return;
   oiBusy.add(lock);button.setAttribute("aria-disabled","true");
   try{
     const r=await oiApi.jobAction(id,action),job=OfferIntel.formatJob(r);
