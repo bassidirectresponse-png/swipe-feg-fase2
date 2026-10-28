@@ -66,7 +66,7 @@ test("Creative Review: lista de pastas, mais recente primeiro, com status e cont
   seedCr();
   const out = run("crListHtml()");
   assert.ok(out.indexOf("Creative Review 28/10/2026") < out.indexOf("Creative Review 21/10/2026"));
-  assert.match(out, /href="\/creative-review\/2026-10-28"/); assert.match(out, /3 produtos · 30 anúncios/); assert.match(out, /— produtos · — anúncios/);
+  assert.match(out, /href="\/creative-review\/2026-10-28"/); assert.match(out, /3 produtos · 30 anúncios/); assert.ok(!out.includes("— produtos") && !out.includes("— anúncios"), "desconhecido some em vez de travessão");
   assert.match(out, /data-cr-run/); assert.match(out, /Concluído/); assert.match(out, /Falhou/);
 });
 
@@ -178,4 +178,20 @@ test("QA-CR-01: erro tardio de requisição antiga também é descartado", async
   run("crSettle('folder:2026-10-28',__n,false)"); await new Promise(r => setImmediate(r));
   failOld(); await new Promise(r => setImmediate(r));
   assert.equal(run("crStates['folder:2026-10-28'].status"), "ready");
+});
+
+test("Cabeçalho da pasta omite o total de anúncios quando desconhecido e soma quando os produtos trazem", () => {
+  const f = ctx.OfferIntel.formatReviewFolder({ report: { review_date: "2026-12-02", status: "succeeded" }, summary: null, products: [{ offer_id: "a1", offer_name: "A" }] });
+  run("crStates['folder:2026-12-02']={status:'ready',data:null}"); ctx.__f = f; run("crStates['folder:2026-12-02']={status:'ready',data:__f}");
+  const out = run("crFolderHtml({view:'folder',date:'2026-12-02'})");
+  assert.ok(!out.includes("— anúncios")); assert.match(out, /1 produtos/);
+  ctx.__g = ctx.OfferIntel.formatReviewFolder({ report: { review_date: "2026-12-09", status: "succeeded" }, products: [{ offer_id: "a1", ads_collected: 10 }, { offer_id: "a2" }] });
+  run("crStates['folder:2026-12-09']={status:'ready',data:__g}");
+  const partial = run("crFolderHtml({view:'folder',date:'2026-12-09'})");
+  assert.match(partial, /2 produtos/); assert.ok(!/2 produtos · \d+ anúncios/.test(partial), "QA-CR-03: total incompleto não é somado nem vira 0");
+  ctx.__h = ctx.OfferIntel.formatReviewFolder({ report: { review_date: "2026-12-16", status: "succeeded" }, products: [{ offer_id: "a1", ads_collected: 0 }] });
+  run("crStates['folder:2026-12-16']={status:'ready',data:__h}");
+  assert.match(run("crFolderHtml({view:'folder',date:'2026-12-16'})"), /1 produtos · 0 anúncios/, "zero conhecido continua zero");
+  seedCr();
+  assert.match(run("crFolderHtml({view:'folder',date:'2026-10-28'})"), /3 produtos · 148 anúncios/);
 });

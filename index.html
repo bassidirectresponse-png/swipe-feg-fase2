@@ -1603,6 +1603,7 @@
   .cr-head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;width:100%;}
   .cr-head h2{font-size:clamp(1.3rem,3vw,1.9rem);}
   .cr-crumbs ol{list-style:none;display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0;font-size:.84rem;color:var(--muted-fg);}
+  .cr-crumbs li{display:inline-flex;align-items:center;min-height:32px;}
   .cr-crumbs li+li::before{content:"›";margin-right:6px;}
   .cr-crumbs a{color:var(--accent);display:inline-flex;align-items:center;min-height:32px;}
   .cr-crumbs [aria-current]{color:var(--fg);font-weight:650;}
@@ -1666,7 +1667,9 @@
   .oi-wk__tabs{display:flex;gap:8px;flex-wrap:wrap;}
   .oi-wk__tabs .seg-btn{min-height:44px;}
   .oi-wk__printh{display:none;font-size:1.1rem;margin:12px 0;}
-  .oi-wk__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:14px;}
+  .oi-wk__list{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:700px){.oi-wk__list{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(min-width:1280px){.oi-wk__list{grid-template-columns:repeat(3,minmax(0,1fr));}}
   .oi-wk__ad{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;}
   .oi-wk__rank{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .oi-wk__pos{font-size:1.4rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent);}
@@ -1674,7 +1677,7 @@
   .oi-wk__chg{font-size:.8rem;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--border-2);}
   .oi-wk__chg--up{color:var(--accent);border-color:var(--accent);}
   .oi-wk__chg--down{color:var(--red);border-color:var(--red);}
-  .oi-wk__media{width:100%;aspect-ratio:1/1;max-height:340px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);display:grid;place-items:center;}
+  .oi-wk__media{width:100%;aspect-ratio:4/5;max-height:360px;border-radius:var(--radius-xs);overflow:hidden;background:var(--surface-2);display:grid;place-items:center;}
   .oi-wk__media video,.oi-wk__media>img{width:100%;height:100%;object-fit:contain;background:#000;}
   .oi-wk__media--none{color:var(--muted-fg);gap:6px;align-content:center;}
   .oi-wk__media--none .ico{width:34px;height:34px;}
@@ -1718,7 +1721,7 @@
   .oi-pres__info .oi-wk__ai dd{font-size:clamp(.95rem,1.4vw,1.2rem);}
   .oi-pres [aria-disabled="true"]{opacity:.4;}
   @media(max-width:900px){.oi-pres__ad{grid-template-columns:1fr;}.oi-pres__media .oi-wk__media{max-height:50vh;}.oi-pres__hint{display:none;}.oi-pres .btn{min-height:44px;}}
-  @media(max-width:700px){.oi-wk__list{grid-template-columns:1fr;}.oi-wk__actions .btn{flex:1 1 auto;}.oi-dx__tech{grid-template-columns:1fr;}}
+  @media(max-width:700px){.oi-wk__actions .btn{flex:1 1 auto;}.oi-dx__tech{grid-template-columns:1fr;}}
   @media print{
     @page{margin:12mm;}
     .topbar,.sidenav,#oiTray,#toast,.oi-bar,.oi-ctx,.oi-wk__actions,.oi-wk__tabs,.oi-wk__sel,.oi-pres,.skip-link,[data-oi-wk-run],.oi-wk__media video,.oi-wk__media--none,#pageResult{display:none!important;}
@@ -3498,22 +3501,24 @@ function crListHtml(){
   if(st.status!=="ready")return head+crStateBlock(st);
   if(!st.data.length)return head+oiStateHtml("empty",{title:"Nenhuma pasta ainda",text:"A primeira pasta aparece depois da próxima análise. Você pode rodar uma agora.",cta:`<span style="display:inline-block;margin-top:18px">${crRunBtn()}</span>`});
   const n=v=>v==null?"—":v.toLocaleString("pt-BR");
-  return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${n(m.productsCount)} produtos · ${n(m.adsCount)} anúncios${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}</span>${crProgress(m)}</span>${crStatusChip(m)}</a></li>`).join("")}</ul>`;
+  return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${[m.productsCount==null?"":n(m.productsCount)+" produtos",m.adsCount==null?"":n(m.adsCount)+" anúncios",m.finishedAt?"Atualizado em "+esc(m.finishedAt):""].filter(Boolean).join(" · ")||esc(m.statusLabel)}</span>${crProgress(m)}</span>${crStatusChip(m)}</a></li>`).join("")}</ul>`;
 }
 function crProductCard(p,date){
   const thumbs=p.top.map(t=>t.thumbUrl?`<img data-oi-img data-oi-ph="film" src="${esc(t.thumbUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="cr-thumb--none" aria-hidden="true">${ic("film")}</span>`).join("");
   return `<a class="cr-pcard" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
     <div class="cr-thumbs" aria-hidden="${p.top.length?"false":"true"}">${thumbs||`<span class="cr-thumb--none">${ic("film")}</span>`}</div>
-    <div class="oi-meta">${p.adsCollected==null?"—":p.adsCollected.toLocaleString("pt-BR")} anúncios · ${p.pagesCount==null?"—":p.pagesCount} Páginas</div>
+    <div class="oi-meta">${[p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios",p.pagesCount==null?"":p.pagesCount+" Páginas"].filter(Boolean).join(" · ")||"&nbsp;"}</div>
     ${p.summary.length?`<ul class="cr-bullets">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</a>`;
 }
 function crFolderHtml(route){
   const st=crEnsure(route),crumbs=crCrumbs([{label:"Creative Review",href:crPath()},{label:OfferIntel.reviewTitle(route.date)}]);
   if(st.status!=="ready"||!st.data)return crumbs+crStateBlock(st,{title:"Pasta não encontrada",text:"Não existe Creative Review para esta data.",cta:`<a class="btn btn--outline" data-nav href="${esc(crPath())}" style="margin-top:18px">Ver todas as pastas</a>`});
   const d=st.data,m=d.meta,n=v=>v==null?"—":v.toLocaleString("pt-BR");
+  const allKnown=d.products.length>0&&d.products.every(p=>p.adsCollected!=null),total=m.adsCount!=null?m.adsCount:allKnown?d.products.reduce((t,p)=>t+p.adsCollected,0):null;
+  const adsTxt=total==null?"":" · "+n(total)+" anúncios";
   const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?"Pasta parcial: parte da análise de IA não terminou, mas o ranking está completo.":"A geração desta pasta falhou."}${m.error?" "+esc(m.error):""}</div>`:"";
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn()}</div></div>
-    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos · ${n(m.adsCount==null&&d.products.length?d.products.reduce((t,p)=>t+(p.adsCollected||0),0):m.adsCount)} anúncios${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
+    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
   const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"Nenhuma oferta com biblioteca cadastrada foi analisada."});
   return crumbs+head+sum+grid;
