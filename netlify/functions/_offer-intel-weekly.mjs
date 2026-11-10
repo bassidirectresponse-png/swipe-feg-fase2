@@ -52,7 +52,10 @@ export function weeklyRuntime() {
       const response = await fetch(SUPABASE_URL + "/storage/v1/object/criativos/" + path, { method: "POST",
         headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": contentType, "x-upsert": "true" },
         body: buffer, signal: AbortSignal.timeout(90_000) });
-      if (!response.ok) throw new Error("armazenamento indisponível");
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(('Storage HTTP ' + response.status + ': ' + String(detail.message || detail.error || 'upload failed')).slice(0, 180));
+      }
     },
   });
   archive.verify = async url => {
