@@ -1,6 +1,9 @@
 // FAKE in-memory Creative Review storage for tests only. Mirrors the SQL RPC semantics of
 // supabase/migrations/202610280004_offer_intel_weekly.sql (lease fence, nonce, continue, USD ceilings in cents).
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+const weeklySchema = readFileSync(new URL("../supabase/migrations/202610280004_offer_intel_weekly.sql", import.meta.url), "utf8");
+const batchKeyCheck = new RegExp(weeklySchema.match(/batch_key text not null check \(batch_key ~ '([^']+)'\)/)[1]);
 import { IntelError } from "../lib/offer-intel-core.mjs";
 
 const CAPS = { apify: 1500, ai: 1000 };
@@ -75,6 +78,7 @@ export function createFAKEWeeklyStorage({ offers = [], discoveries = [], clock =
     },
     async run(p) {
       fenced(p);
+      if (!batchKeyCheck.test(p.batch_key)) throw new IntelError(400, "invalid_request", "batch_key violates SQL check constraint");
       const key = p.report_id + ":" + p.batch_key, row = runs.get(key);
       if (!row) {
         if (!p.patch) return null;

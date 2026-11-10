@@ -22,7 +22,7 @@ test('a transient dataset read failure preserves archived rows and does not conv
   const product=selectProducts({offers:[offer]})[0];
   await storage.saveProducts({...fence,products:[{...product,pages:product.sources,ads_collected:9}]});
   await storage.saveAds({...fence,ads:[{offer_id:offer.id,rank:1,ad_archive_id:'42',ad_ids:['42'],match_keys:[],media:{archived:true,thumb_url:'https://saved.example/42.jpg'},analysis}]});
-  await storage.run({...fence,batch_key:'original',patch:{state:'succeeded',page_ids:product.sources.map(s=>s.key),dataset_id:'dataset42',usd_est:0.24}});
+  await storage.run({...fence,batch_key:'a'.repeat(32),patch:{state:'succeeded',page_ids:product.sources.map(s=>s.key),dataset_id:'dataset42',usd_est:0.24}});
   const apify=createFAKEWeeklyApify();apify.items=async()=>{throw new Error('temporary read failure');};
   await assert.rejects(runCreativeReviewSlice({storage,report,apify,archive:async()=>{},claude:async()=>{},model:'claude-sonnet-5'}), /dataset|coleta/i);
   assert.equal((await storage.listAds(report.id))[0].media.thumb_url,'https://saved.example/42.jpg');
@@ -42,4 +42,28 @@ test('same-slice recovery generates a fresh executive summary after clearing the
   ai.countTokens=async()=>1000;
   await runCreativeReviewSlice({storage,report,apify,archive:async()=>{},claude:ai,model:'claude-sonnet-5'});
   assert.deepEqual((await storage.getReport({id:report.id})).summary.bullets,['Fresh 1','Fresh 2','Fresh 3','Fresh 4','Fresh 5']);
+});
+
+test('recovery batch keys satisfy the deployed SQL check and same-generation unknown starts are not posted again', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const sql = await readFile(new URL('../supabase/migrations/202610280004_offer_intel_weekly.sql', import.meta.url), 'utf8');
+  const check = new RegExp(sql.match(/batch_key text not null check \(batch_key ~ '([^']+)'\)/)[1]);
+  const {storage,report,fence}=await setup();
+  report.cost={recovery_requested:true};
+  await storage.checkpoint({...fence,patch:{cost:report.cost}});
+  const saveRun=storage.run;
+  storage.run=async args=>{
+    if (!check.test(args.batch_key)) throw new Error('SQL batch_key check constraint violated');
+    return saveRun(args);
+  };
+  const apify=createFAKEWeeklyApify({pendingPolls:100});
+  const deps={storage,report,apify,archive:async()=>{},claude:async()=>{},model:'claude-sonnet-5'};
+  const first=await runCreativeReviewSlice({...deps,deadline:Date.now()+1000});
+  assert.equal(first.done,false);
+  assert.equal(apify.starts.length,1);
+  const run=(await storage.listRuns(report.id))[0];
+  assert.ok(check.test(run.batch_key));
+  await storage.run({...fence,batch_key:run.batch_key,expected_state:'running',patch:{state:'unknown'}});
+  await runCreativeReviewSlice({...deps,report:await storage.getReport({id:report.id})});
+  assert.equal(apify.starts.length,1);
 });
