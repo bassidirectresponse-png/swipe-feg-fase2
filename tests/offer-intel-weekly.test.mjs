@@ -360,7 +360,7 @@ test("archive: Meta CDN download cap 150 MB video, fixed path, magic bytes", asy
   const big = createWeeklyArchive({ download: async () => Buffer.alloc(150 * 1024 * 1024 + 1), upload: async () => {}, publicUrl: p => p });
   await assert.rejects(big({ date: DATE, offer_id: offerId, ad_archive_id: "1", kind: "video", url: "https://video.fbcdn.net/x.mp4" }));
   const runtime = await readFile(new URL("netlify/functions/_offer-intel-weekly.mjs", root), "utf8");
-  assert.match(runtime, /safeRemoteFetch\(url, \{ allowedHostSuffixes: FB_MEDIA_HOSTS/);
+  assert.match(runtime, /safeRemoteFetch\(downloadUrl, \{ allowedHostSuffixes: archivedVideo/);
 });
 
 test("Apify adapter sends maxTotalChargeUsd and refuses unknown cost", async () => {
@@ -469,12 +469,6 @@ test("migration: only new offer_intel_weekly_* objects, RLS admin select, servic
   assert.match(sql, /to service_role;\s*commit;\s*$/);
 });
 
-test("Creative Review uses a valid allowlisted Claude model by default", async () => {
-  const { CREATIVE_REVIEW_MODEL } = await import("../netlify/functions/_offer-intel-weekly.mjs");
-  const { AI_LIMITS } = await import("../lib/offer-intel-weekly.mjs");
-  assert.equal(CREATIVE_REVIEW_MODEL, "claude-sonnet-5-5");
-  assert.ok(Object.hasOwn(AI_LIMITS.models, CREATIVE_REVIEW_MODEL));
-});
 
 test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usage mapped, failures explained", async () => {
   const { createWeeklyOpenRouter, imageTokenBound } = await import("../lib/offer-intel-weekly-worker.mjs");
@@ -504,14 +498,9 @@ test("OpenRouter adapter: model per kind, max_price pinned to the allowlist, usa
   await assert.rejects(unknown({ prompt: "p", maxTokens: 10, kind: "ad" }), /sem preço/);
 });
 
-test("Creative Review prefers OpenRouter when its key exists and falls back to Anthropic", async () => {
-  const { creativeReviewAi } = await import("../netlify/functions/_offer-intel-weekly.mjs");
-  const or = creativeReviewAi({ OPENROUTER_API_KEY: "FAKE-KEY" });
-  assert.equal(or.model, "google/gemini-3.8-flash");
-  assert.equal(or.claude.modelFor("week"), "anthropic/claude-sonnet-5.5");
-  const direct = creativeReviewAi({ ANTHROPIC_API_KEY: "FAKE-KEY" });
-  assert.equal(direct.model, "claude-sonnet-5-5");
-  assert.equal(direct.claude.modelFor, undefined);
+test("Creative Review uses collected evidence without creating any external model adapter", async () => {
+  const { creativeReviewReporting } = await import("../netlify/functions/_offer-intel-weekly.mjs");
+  assert.deepEqual(creativeReviewReporting({ OPENROUTER_API_KEY: "FAKE-KEY", ANTHROPIC_API_KEY: "FAKE-KEY" }), {analysisMode:'observed_data'});
 });
 
 test("first Creative Review folder marks nothing as new; DCO placeholders are stripped", async () => {

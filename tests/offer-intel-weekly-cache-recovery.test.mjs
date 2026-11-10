@@ -53,3 +53,16 @@ test('unknown starts without a terminal receipt remain reserved; the repair does
   apify.receipt=async()=>{throw new Error('no receipt');};await run();
   assert.equal(storage.ledger.find(x=>x.reservation===reservation).usd,15);assert.equal(apify.starts.length,0);
 });
+
+test('evidence mode completes every report section without calling or reserving an external model',async()=>{
+  const deps=await setup();
+  deps.claude=()=>{throw new Error('external models are disabled');};
+  const result=await runCreativeReviewSlice({...deps,analysisMode:'observed_data'});
+  assert.equal(result.status,'succeeded');
+  const saved=await deps.storage.getReport({id:deps.report.id});
+  assert.equal(saved.summary.bullets.length,5);assert.equal(saved.cost.analysis_mode,'observed_data');
+  assert.equal((await deps.storage.listProducts(deps.report.id))[0].summary.bullets.length,3);
+  const [ad]=await deps.storage.listAds(deps.report.id);assert.equal(ad.analysis.method,'observed_data');
+  assert.match(ad.analysis.formato,/não foi transcrito/);
+  assert.equal(deps.storage.ledger.filter(x=>x.kind==='ai').length,0);
+});

@@ -3,28 +3,16 @@ import { getStore } from '@netlify/blobs';
 import { recoveredMediaRow, recoveryBlobKey } from '../../lib/offer-intel-weekly-recovery.mjs';
 import { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, SUPABASE_URL, safeRemoteFetch, boundedBuffer } from "./_security.mjs";
 import { automationSigningSecret } from "./_supabase-admin.mjs";
-import { ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
 import { IntelError, UUID } from "../../lib/offer-intel-core.mjs";
 import { signedDispatch, verifyDispatch } from "../../lib/offer-intel-dispatch.mjs";
 import { reviewDate, isReviewDate, reviewTitle, publicReport, publicAd, publicProduct, validateBullets, isMoney } from "../../lib/offer-intel-weekly.mjs";
 import { createWeeklyStorage } from "../../lib/offer-intel-weekly-storage.mjs";
-import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createWeeklyClaude, createWeeklyOpenRouter } from "../../lib/offer-intel-weekly-worker.mjs";
+import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive } from "../../lib/offer-intel-weekly-worker.mjs";
 
 const METHODS = "GET, POST, OPTIONS";
 const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net", "medias.trendtrack.io"];
-// Direct Anthropic fallback (used only without OPENROUTER_API_KEY).
-export const CREATIVE_REVIEW_MODEL = String(process.env.CREATIVE_REVIEW_MODEL || "claude-sonnet-5-5").trim();
-// OpenRouter (preferred when its key exists): best cost/benefit measured on real ads on 28/10/2026 —
-// Gemini 3.8 Flash for the ~240 ad analyses, Claude Sonnet 5.5 for the product/executive summaries shown in the meeting.
-export const OPENROUTER_ADS_MODEL = String(process.env.OPENROUTER_MODEL_ADS || "google/gemini-3.8-flash").trim();
-export const OPENROUTER_SUMMARY_MODEL = String(process.env.OPENROUTER_MODEL_SUMMARY || "anthropic/claude-sonnet-5.5").trim();
-export function creativeReviewAi(env = process.env) {
-  const openRouterKey = String(env.OPENROUTER_API_KEY || "").trim();
-  if (openRouterKey) return { model: OPENROUTER_ADS_MODEL,
-    claude: createWeeklyOpenRouter({ key: openRouterKey, adsModel: OPENROUTER_ADS_MODEL, summaryModel: OPENROUTER_SUMMARY_MODEL }) };
-  return { model: CREATIVE_REVIEW_MODEL,
-    claude: createWeeklyClaude({ key: env.ANTHROPIC_API_KEY || "", model: CREATIVE_REVIEW_MODEL, url: ANTHROPIC_URL }) };
-}
+// Creative Review uses collected evidence locally; configured model keys are not consulted.
+export function creativeReviewReporting() { return { analysisMode: 'observed_data' }; }
 // Domain separation: a weekly signature is never valid for the investigation worker and vice versa.
 export const weeklySecret = secret => secret ? createHmac("sha256", secret).update("offer-intel-weekly/v1").digest("hex") : "";
 
@@ -44,7 +32,10 @@ export function weeklyRuntime() {
         if (createHash('sha256').update(buffer).digest('hex') !== expected) throw new Error('Arquivo recuperado inválido.');
         return buffer;
       }
-      const response = await safeRemoteFetch(url, { allowedHostSuffixes: FB_MEDIA_HOSTS, timeoutMs: 90_000 });
+      // The verified archive redirects videos to this public bucket; keep other destinations blocked.
+      const archivedVideo = /^https:\/\/medias\.trendtrack\.io\/facebook\/video\/[a-f0-9]{64}\.mp4$/.test(url);
+      const downloadUrl = archivedVideo ? 'https://s3.eu-central-003.backblazeb2.com/trendtrack-medias' + new URL(url).pathname : url;
+      const response = await safeRemoteFetch(downloadUrl, { allowedHostSuffixes: archivedVideo ? ['s3.eu-central-003.backblazeb2.com'] : FB_MEDIA_HOSTS, timeoutMs: 90_000 });
       if (!response.ok) throw new Error("download indisponível");
       return boundedBuffer(response, maxBytes);
     },
@@ -77,7 +68,7 @@ export function weeklyRuntime() {
     await getStore({ name: 'creative-review-recovery', consistency: 'strong' }).setJSON('reports/' + snapshot.review_date + '.json', snapshot);
   };
   return {
-    storage, secret, ...creativeReviewAi(),
+    storage, secret, ...creativeReviewReporting(),
     apify: createWeeklyApify({ token: String(process.env.APIFY_TOKEN || "").trim() }),
     archive,
     async dispatch(reportId, nonce) {
@@ -177,7 +168,7 @@ export function createWeeklyHandlers(overrides = {}) {
       const fence = { report_id: report.id, lease_token: report.lease_token };
       try {
         const result = await runCreativeReviewSlice({ report, storage: services.storage, apify: services.apify, archive: services.archive,
-          claude: services.claude, model: services.model, now: deps.now, deadline: Date.now() + (typeof deps.sliceMs === "function" ? deps.sliceMs() : deps.sliceMs) });
+          claude: services.claude, model: services.model, analysisMode: services.analysisMode, now: deps.now, deadline: Date.now() + (typeof deps.sliceMs === "function" ? deps.sliceMs() : deps.sliceMs) });
         if (!result.done) {
           const next = await services.storage.continue(fence);
           await services.dispatch(report.id, next.nonce);

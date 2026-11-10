@@ -93,11 +93,11 @@ test("Creative Review: produto com Top 10, origem da Página, breadcrumb e anter
   seedCr();
   const out = run(`crProductHtml({view:'product',date:'2026-10-28',offerId:'${OFFER_B}'})`);
   assert.equal((out.match(/<article class="oi-wk__ad"/g) || []).length, 10);
-  for (const t of ["Produto Demo Beta", "NOVO", "Subiu 4 posições", "Caiu 2 posições", "Encontrada", "Cadastrada", "Análise de IA", "Ver na Biblioteca", "← Produto anterior", "Próximo produto →"]) assert.ok(out.includes(t), t);
+  for (const t of ["Produto Demo Beta", "NOVO", "Subiu 4 posições", "Caiu 2 posições", "Encontrada", "Cadastrada", "Leitura do criativo", "Ver na Biblioteca", "← Produto anterior", "Próximo produto →"]) assert.ok(out.includes(t), t);
   assert.match(out, /href="\/creative-review\/2026-10-28\/11111111-1111-4111-8111-111111111111" rel="prev"/);
   assert.match(out, /href="\/creative-review\/2026-10-28\/33333333-3333-4333-8333-333333333333" rel="next"/);
   assert.match(out, /<a data-nav href="\/creative-review">Creative Review<\/a>/);
-  assert.match(out, /Resumo do produto indisponível/); assert.match(out, /Análise de IA indisponível para este anúncio/);
+  assert.match(out, /Resumo do produto indisponível/); assert.match(out, /Leitura do criativo ainda pendente/);
 });
 
 test("Creative Review: erro, não encontrado e carregando", () => {

@@ -3679,8 +3679,8 @@ function oiWkCopyHtml(a,full){
   return `<details class="oi-wk__copy oi-wk__copy--long"><summary><span class="oi-wk__short">${esc(t.slice(0,260).replace(/\s+\S*$/,""))}… <span class="oi-wk__more">ver tudo</span></span><span class="oi-wk__less">recolher</span></summary><p>${esc(t)}</p></details>`;
 }
 function oiWkAiHtml(a,open){
-  if(!a.analysis.length)return '<p class="oi-meta">Análise de IA indisponível para este anúncio.</p>';
-  return `<details class="oi-wk__ai"${open?" open":""}><summary>Análise de IA</summary><dl>${a.analysis.map(f=>`<div><dt>${esc(f.label)}</dt><dd>${esc(f.text)}</dd></div>`).join("")}</dl></details>`;
+  if(!a.analysis.length)return '<p class="oi-meta">Leitura do criativo ainda pendente.</p>';
+  return `<details class="oi-wk__ai"${open?" open":""}><summary>Leitura do criativo</summary><dl>${a.analysis.map(f=>`<div><dt>${esc(f.label)}</dt><dd>${esc(f.text)}</dd></div>`).join("")}</dl></details>`;
 }
 function oiWkDestHtml(a){return `<div class="oi-wk__dest">${a.ctaText?`<span class="oi-chip">CTA: ${esc(a.ctaText)}</span>`:""}${a.landingUrl?`<a href="${esc(a.landingUrl)}" target="_blank" rel="noopener noreferrer">Destino: ${esc(a.landingDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:""}</div>`;}
 function oiWkAdHtml(a,group){
