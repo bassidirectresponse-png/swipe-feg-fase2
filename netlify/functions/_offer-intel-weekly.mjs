@@ -30,23 +30,33 @@ export function weeklyRuntime() {
   const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const storage = createWeeklyStorage({ url: SUPABASE_URL, serviceKey });
   const secret = weeklySecret(automationSigningSecret());
+  const archivedChecks = new Map();
+  const archive = createWeeklyArchive({
+    publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
+    async download(url, maxBytes) {
+      const response = await safeRemoteFetch(url, { allowedHostSuffixes: FB_MEDIA_HOSTS, timeoutMs: 90_000 });
+      if (!response.ok) throw new Error("download indisponível");
+      return boundedBuffer(response, maxBytes);
+    },
+    async upload(path, buffer, contentType) {
+      const response = await fetch(SUPABASE_URL + "/storage/v1/object/criativos/" + path, { method: "POST",
+        headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": contentType, "x-upsert": "true" },
+        body: buffer, signal: AbortSignal.timeout(90_000) });
+      if (!response.ok) throw new Error("armazenamento indisponível");
+    },
+  });
+  archive.verify = async url => {
+    // Only our own public bucket is eligible for free archival reuse; never probe arbitrary stored URLs.
+    const prefix = SUPABASE_URL + '/storage/v1/object/public/criativos/';
+    if (typeof url !== 'string' || !url.startsWith(prefix)) return false;
+    if (!archivedChecks.has(url)) archivedChecks.set(url, fetch(url, { method: 'HEAD', redirect: 'error', signal: AbortSignal.timeout(15000) })
+      .then(res => res.ok && /^(image|video)\//.test(res.headers.get('content-type') || '')).catch(() => false));
+    return archivedChecks.get(url);
+  };
   return {
     storage, secret, ...creativeReviewAi(),
     apify: createWeeklyApify({ token: String(process.env.APIFY_TOKEN || "").trim() }),
-    archive: createWeeklyArchive({
-      publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
-      async download(url, maxBytes) {
-        const response = await safeRemoteFetch(url, { allowedHostSuffixes: FB_MEDIA_HOSTS, timeoutMs: 40_000 });
-        if (!response.ok) throw new Error("download indisponível");
-        return boundedBuffer(response, maxBytes);
-      },
-      async upload(path, buffer, contentType) {
-        const response = await fetch(SUPABASE_URL + "/storage/v1/object/criativos/" + path, { method: "POST",
-          headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": contentType, "x-upsert": "true" },
-          body: buffer, signal: AbortSignal.timeout(90_000) });
-        if (!response.ok) throw new Error("armazenamento indisponível");
-      },
-    }),
+    archive,
     async dispatch(reportId, nonce) {
       const origin = new URL(process.env.URL || "https://swipe.fegsys.com").origin;
       const response = await fetch(origin + "/.netlify/functions/offer-intel-weekly-background", {

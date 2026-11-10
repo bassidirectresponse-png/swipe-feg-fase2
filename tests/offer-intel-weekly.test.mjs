@@ -342,7 +342,7 @@ test("worker: is_new / rank_change against the previous Wednesday", async () => 
   assert.ok(rows.length && rows.every(r => r.is_new === false && Number.isInteger(r.rank_change)));
 });
 
-test("archive: Meta CDN download cap 25 MB video, fixed path, magic bytes", async () => {
+test("archive: Meta CDN download cap 150 MB video, fixed path, magic bytes", async () => {
   const offerId = randomUUID();
   assert.throws(() => weeklyMediaPath(DATE, offerId, "../1", "thumb", "jpg"));
   assert.throws(() => weeklyMediaPath("../x", offerId, "1", "thumb", "jpg"));
@@ -354,10 +354,10 @@ test("archive: Meta CDN download cap 25 MB video, fixed path, magic bytes", asyn
   assert.equal((await archive({ date: DATE, offer_id: offerId, ad_archive_id: "123", kind: "thumb", url: "https://scontent.fbcdn.net/x.jpg" })).url,
     "https://FAKE/creative-review/" + DATE + "/" + offerId + "/123-thumb.jpg");
   await archive({ date: DATE, offer_id: offerId, ad_archive_id: "123", kind: "video", url: "https://video.fbcdn.net/x.mp4" });
-  assert.deepEqual(limits, [8 * 1024 * 1024, 25 * 1024 * 1024]);
+  assert.deepEqual(limits, [8 * 1024 * 1024, 150 * 1024 * 1024]);
   assert.deepEqual(uploads.map(u => u[1]), ["image/jpeg", "video/mp4"]);
   await assert.rejects(archive({ date: DATE, offer_id: offerId, ad_archive_id: "1", kind: "video", url: "https://video.fbcdn.net/x.jpg" }));
-  const big = createWeeklyArchive({ download: async () => Buffer.alloc(25 * 1024 * 1024 + 1), upload: async () => {}, publicUrl: p => p });
+  const big = createWeeklyArchive({ download: async () => Buffer.alloc(150 * 1024 * 1024 + 1), upload: async () => {}, publicUrl: p => p });
   await assert.rejects(big({ date: DATE, offer_id: offerId, ad_archive_id: "1", kind: "video", url: "https://video.fbcdn.net/x.mp4" }));
   const runtime = await readFile(new URL("netlify/functions/_offer-intel-weekly.mjs", root), "utf8");
   assert.match(runtime, /safeRemoteFetch\(url, \{ allowedHostSuffixes: FB_MEDIA_HOSTS/);
