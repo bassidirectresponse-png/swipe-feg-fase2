@@ -1330,7 +1330,7 @@ function oiDomainScanHtml(route,st){
    ============================================================ */
 const CR_READY=true;
 const crStates={},crWindowByProduct={};
-let crRoute=null,crTimer=null,crClickBound=false,oiPres=null,crGen=0;
+let crRoute=null,crTimer=null,crClickBound=false,oiPres=null,crGen=0,crPendingRun=null;
 /* Invalida o cache: respostas de requisições iniciadas antes (inclusive polling silencioso) são descartadas. */
 function crInvalidate(){crGen++;Object.keys(crStates).forEach(k=>delete crStates[k]);}
 const CR_RUNNING_MS=8000;
@@ -1434,8 +1434,9 @@ function renderCreativeReview(){
   const area=$("#gridArea");if(!area)return;
   if(!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
   const route=crRoute||{view:"list"};
+  if(crPendingRun&&crPendingRun.routeKey!==crKey(route))crPendingRun=null;
   const html=route.view==="list"?crListHtml():route.view==="folder"?crFolderHtml(route):crProductHtml(route);
-  area.innerHTML=`<div class="oi cr">${html}</div>`;
+  area.innerHTML=`<div class="oi cr">${crRunConfirmHtml()}${html}</div>`;
   area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
   area.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
   if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);area.addEventListener("input",crOnSearch);}
@@ -1452,6 +1453,8 @@ function crOnSearch(event){
 }
 function crOnClick(event){
   if(activeSection!=="creativereview"||!crRoute)return;
+  const confirmRun=event.target.closest("[data-cr-confirm]");if(confirmRun){crConfirmRun(confirmRun);return;}
+  if(event.target.closest("[data-cr-cancel]")){crCancelRun();return;}
   const period=event.target.closest("[data-cr-window]");
   if(period&&crRoute.view==="product"){
     const days=Number(period.dataset.crWindow);if(![0,7,14,30].includes(days))return;
@@ -1479,12 +1482,29 @@ function crSchedule(route){
     setTimeout(()=>{if(activeSection==="creativereview")crSchedule(crRoute||r);},500);
   },CR_RUNNING_MS);
 }
-async function crRun(button){
+function crRunConfirmHtml(){
+  if(!crPendingRun)return "";
+  const date=crPendingRun.date,title=date?"Atualizar "+OfferIntel.reviewTitle(date)+"?":"Rodar o Creative Review agora?";
+  const description=date?"A análise será executada novamente na mesma pasta, com os anúncios disponíveis na coleta atual.":"A análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
+  return `<section class="oi-card cr-confirm" role="region" aria-labelledby="crConfirmTitle"><h3 id="crConfirmTitle">${esc(title)}</h3><p>${description}</p><p class="oi-note">A coleta consome o orçamento do Apify e da análise de IA, dentro dos limites configurados. Se já houver uma execução em andamento, nada novo é iniciado.</p><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-confirm>${date?"Confirmar atualização":"Confirmar execução"}</button><button type="button" class="btn btn--outline" data-cr-cancel>Cancelar</button></div></section>`;
+}
+function crRun(button){
   if(oiBusy.has("cr:run"))return;
-  const date=button.dataset&&button.dataset.crReviewDate||"";
-  const target=date?`Atualizar ${OfferIntel.reviewTitle(date)}?\n\nA análise será executada novamente na mesma pasta, com os anúncios disponíveis na coleta atual.`:"Rodar o Creative Review agora?\n\nA análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
-  if(!confirm(target+"\n\nA coleta consome o orçamento do Apify e da análise de IA, dentro dos limites configurados. Se já houver uma execução em andamento, nada novo é iniciado."))return;
-  oiBusy.add("cr:run");button.setAttribute("aria-disabled","true");
+  crPendingRun={date:button.dataset&&button.dataset.crReviewDate||"",routeKey:crKey(crRoute||{view:"list"})};
+  if(activeSection==="creativereview")renderCreativeReview();
+  const confirmButton=$("[data-cr-confirm]");if(confirmButton)confirmButton.focus();
+}
+function crCancelRun(){
+  if(oiBusy.has("cr:run"))return;
+  const date=crPendingRun&&crPendingRun.date;crPendingRun=null;
+  if(activeSection==="creativereview")renderCreativeReview();
+  const opener=date?$(`[data-cr-review-date="${date}"]`):$("[data-cr-run]");if(opener)opener.focus();
+}
+async function crConfirmRun(button){
+  if(oiBusy.has("cr:run")||!crPendingRun)return;
+  if(crPendingRun.routeKey!==crKey(crRoute||{view:"list"})){crCancelRun();return;}
+  const date=crPendingRun.date;crPendingRun=null;
+  oiBusy.add("cr:run");button.disabled=true;button.setAttribute("aria-disabled","true");button.textContent="Iniciando…";
   try{await oiApi.runReview(date||undefined);toast(date?"Atualização desta pasta iniciada":"Creative Review iniciado");crInvalidate();}
   catch(error){if(error.status===409){crInvalidate();toast("Já existe uma execução em andamento.",true);}else toast(error.message,true);}
   finally{oiBusy.delete("cr:run");}

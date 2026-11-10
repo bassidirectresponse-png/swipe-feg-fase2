@@ -129,17 +129,21 @@ test("Creative Review: apresentação percorre produto a produto e anúncio a an
 
 test("Rodar agora: confirmação, 1 POST por clique ativo, 409 com mensagem própria", async () => {
   const calls = [];
-  ctx.confirm = () => true; ctx.toast = (m, bad) => calls.push(["toast", m, !!bad]); ctx.activeSection = "outra"; run("Object.keys(crStates).forEach(k=>delete crStates[k]);crStates.list={status:'ready',data:[{status:'succeeded'}]}");
+  ctx.confirm = () => { throw new Error("native confirm must not open"); }; ctx.toast = (m, bad) => calls.push(["toast", m, !!bad]); ctx.activeSection = "outra"; run("Object.keys(crStates).forEach(k=>delete crStates[k]);crStates.list={status:'ready',data:[{status:'succeeded'}]}");
   let n = 0, fail;
   ctx.oiApi = { runReview: () => { n++; return new Promise((res, rej) => { fail = () => rej(Object.assign(new Error("x"), { status: 409 })); }); } };
   ctx.btn = { setAttribute() {} };
-  const p1 = run("crRun(btn)"); run("crRun(btn)");
+  run("crRun(btn)");
+  assert.equal(n, 0, "primeiro clique só abre confirmação inline");
+  const p1 = run("crConfirmRun(btn)"); run("crConfirmRun(btn)"); run("crRun(btn)");
   assert.equal(n, 1);
   fail(); await p1;
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["toast", "Já existe uma execução em andamento.", true]]);
   assert.equal(run("Object.keys(crStates).length"), 0, "QA-CR-02: 409 também invalida o cache para descobrir a execução atual");
-  ctx.confirm = () => false; calls.length = 0;
-  await run("crRun(btn)"); assert.equal(n, 1);
+  calls.length = 0;
+  run("crRun(btn);crCancelRun()");
+  await run("crConfirmRun(btn)"); assert.equal(n, 1);
+  assert.equal(run("crPendingRun"),null);
 });
 
 test("Creative Review: seção própria no menu, fora de OI_V2_READY, rota legada redireciona", () => {
@@ -199,12 +203,19 @@ test("Cabeçalho da pasta omite o total de anúncios quando desconhecido e soma 
 
 
 test("Recuperar pasta mantém a data escolhida na confirmação e na execução", async () => {
-  let sentDate, confirmation;
-  ctx.confirm = text => { confirmation = text; return true; };
+  let sentDate;
+  ctx.confirm = () => { throw new Error("native confirm must not open"); };
   ctx.oiApi = { runReview: async date => { sentDate = date; } };
   ctx.activeSection = "outra";
   ctx.btn = { dataset: { crReviewDate: "2026-10-28" }, setAttribute() {} };
-  await run("crRun(btn)");
+  run("crRun(btn)");
+  assert.equal(sentDate, undefined);
+  const confirmation=run("crRunConfirmHtml()");
+  assert.match(confirmation, /role="region" aria-labelledby="crConfirmTitle"/);
+  assert.match(confirmation, /Confirmar atualização/);
+  assert.match(confirmation, /Cancelar/);
+  assert.match(confirmation, /orçamento do Apify/);
+  await run("crConfirmRun(btn)");
   assert.equal(sentDate, "2026-10-28");
   assert.match(confirmation, /28\/10\/2026/);
   assert.match(confirmation, /mesma pasta/);
