@@ -132,3 +132,30 @@ test('old shared-page duplicate assignments cannot override unambiguous current 
     assert.deepEqual(rows.map(r => [r.offer_id, r.ad_archive_id]), [[ids[0], '123']]);
   }
 });
+
+test('new catalog domain, product path and known headline override an exclusive legacy page assignment', () => {
+  const headline = 'A better way to support your nightly sleep';
+  const cases = [
+    { names:['Omega','Sleep'], domains:['omega.example','sleep.example'], landing:'https://sleep.example/', headline:'' },
+    { names:['Omega','Sleep'], domains:['acme.example/omega','acme.example/sleep'], landing:'https://acme.example/sleep', headline:'' },
+    { names:['Omega','Sleep'], domains:['acme.example/','acme.example/'], landing:'https://other.example/', headline },
+  ];
+  for (const c of cases) {
+    const products = selectProducts({ offers:c.names.map((name,i)=>offer(i,`Acme - ${name}`,{
+      bibliotecas:[{link:page('99')}],dominios:[{linkDominio:'https://'+c.domains[i]}],...(i?{brandTopAds:[{headline}]}:{})
+    })) });
+    const legacy = [{offer_id:ids[0],ad_archive_id:'123',ad_ids:['123'],match_keys:[],rank:1}];
+    for (const input of [{existingRows:legacy},{previousRows:legacy}]) {
+      const {rows}=buildProductRanking({products,ads:[ad('123',{landing_url:c.landing,headline:c.headline})],...input});
+      assert.deepEqual(rows.map(r=>r.offer_id),[ids[1]],c.landing+' '+c.headline);
+    }
+  }
+});
+
+test('exclusive history remains a fallback for shared pages, while explicit ambiguous catalog IDs remain rejected', () => {
+  const legacy=[{offer_id:ids[0],ad_archive_id:'123',ad_ids:['123'],match_keys:[],rank:1}];
+  const offers=['Omega','Sleep'].map((name,i)=>offer(i,`Acme - ${name}`,{bibliotecas:[{link:page('99')}]}));
+  assert.deepEqual(buildProductRanking({products:selectProducts({offers}),ads:[ad('123')],existingRows:legacy}).rows.map(r=>r.offer_id),[ids[0]]);
+  for(const offer of offers) offer.data.brandTopAds=[{link:'https://www.facebook.com/ads/library/?id=123'}];
+  assert.deepEqual(buildProductRanking({products:selectProducts({offers}),ads:[ad('123',{ad_text:'Acme Sleep',landing_url:'https://sleep.example/'})],existingRows:legacy}).rows,[]);
+});
