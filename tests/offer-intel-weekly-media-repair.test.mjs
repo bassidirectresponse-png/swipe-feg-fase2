@@ -33,3 +33,9 @@ test('a row with no media remains incomplete, rather than becoming archived with
 test('archive accepts realistic HD creatives within a bounded memory limit',()=>{
   assert.ok(WEEKLY_MEDIA_LIMITS.video >= 45*1024*1024);assert.ok(WEEKLY_MEDIA_LIMITS.video <= 150*1024*1024);
 });
+test('a temporary storage probe failure preserves the existing file reference and remains explicitly incomplete',async()=>{
+  const archive=async()=>{throw new Error('should keep stored file');};archive.verify=async()=>{throw new Error('timeout');};
+  const input={...row,display_format:'image',media:{archived:true,thumb_url:'https://stored.example/keep.jpg'}};
+  const media=await repairMedia({...args,row:input,archive});
+  assert.equal(media.thumb_url,input.media.thumb_url);assert.equal(media.verification_error,true);assert.equal(mediaComplete({...input,media}),false);
+});

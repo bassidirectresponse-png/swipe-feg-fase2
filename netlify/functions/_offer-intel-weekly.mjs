@@ -49,8 +49,9 @@ export function weeklyRuntime() {
     // Only our own public bucket is eligible for free archival reuse; never probe arbitrary stored URLs.
     const prefix = SUPABASE_URL + '/storage/v1/object/public/criativos/';
     if (typeof url !== 'string' || !url.startsWith(prefix)) return false;
+    try { if (!new URL(url).href.startsWith(prefix)) return false; } catch { return false; }
     if (!archivedChecks.has(url)) archivedChecks.set(url, fetch(url, { method: 'HEAD', redirect: 'error', signal: AbortSignal.timeout(15000) })
-      .then(res => res.ok && /^(image|video)\//.test(res.headers.get('content-type') || '')).catch(() => false));
+      .then(res => res.status >= 500 || res.status === 429 ? null : res.ok && /^(image|video)\//.test(res.headers.get('content-type') || '')).catch(() => null));
     return archivedChecks.get(url);
   };
   return {
