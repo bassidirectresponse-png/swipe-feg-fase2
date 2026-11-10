@@ -67,3 +67,21 @@ test('recovery batch keys satisfy the deployed SQL check and same-generation unk
   await runCreativeReviewSlice({...deps,report:await storage.getReport({id:report.id})});
   assert.equal(apify.starts.length,1);
 });
+
+test('media-only recovery keeps completed rankings and summaries without reading datasets or expanding discovery', async () => {
+  const {storage,report,fence}=await setup();
+  const product=selectProducts({offers:[offer]})[0];
+  const summary={bullets:['Saved 1','Saved 2','Saved 3','Saved 4','Saved 5']};
+  await storage.checkpoint({...fence,patch:{summary,cost:{recovery_requested:true,sources_skipped:0}}});
+  Object.assign(report,await storage.getReport({id:report.id}));
+  await storage.saveProducts({...fence,products:[{...product,pages:[...product.sources,{key:'page:999',discovered:true,confirmed:true}],ads_collected:9,summary:{bullets:['One','Two','Three']}}]});
+  await storage.saveAds({...fence,ads:[{offer_id:offer.id,rank:1,ad_archive_id:'42',ad_ids:['42'],match_keys:[],display_format:'video',media:{archived:true,thumb_url:'https://saved.example/42.jpg',video_error:true,source_video_urls:['https://scontent.fbcdn.net/42.mp4']},analysis}]});
+  await storage.run({...fence,batch_key:'a'.repeat(32),patch:{state:'succeeded',page_ids:product.sources.map(s=>s.key),dataset_id:'paidDataset',usd_est:0.24}});
+  const apify=createFAKEWeeklyApify();apify.items=async()=>{throw new Error('must not read datasets for media-only repair');};
+  const archive=async()=>({url:'https://stored.example/42.mp4'});archive.verify=async()=>true;
+  const result=await runCreativeReviewSlice({storage,report,apify,archive,claude:async()=>{throw new Error('valid analyses must be reused');},model:'claude-sonnet-5'});
+  assert.equal(result.status,'succeeded');assert.equal(apify.starts.length,0);
+  assert.equal((await storage.getReport({id:report.id})).cost.recovery_scope,'pending_media');
+  assert.deepEqual((await storage.getReport({id:report.id})).summary.bullets,summary.bullets);
+  assert.equal((await storage.listProducts(report.id))[0].ads_collected,9);
+});
