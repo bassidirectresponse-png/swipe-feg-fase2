@@ -3544,7 +3544,7 @@ function crFolderHtml(route){
   const adsTxt=total==null?"":" · "+n(total)+" anúncios";
   const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?(String(m.error||"").trim()==="Parte das mídias não foi arquivada."?"Pasta parcial — o ranking está completo. Alguns vídeos grandes não foram guardados no Swipe; use \"Ver na Biblioteca\".":"Pasta parcial — algumas etapas não foram concluídas."+(m.error?" "+esc(m.error):"")):"A geração desta pasta falhou."+(m.error?" "+esc(m.error):"")} Use Recuperar pasta para executar novamente na mesma pasta.</div>`:"";
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn(route.date,m)}</div></div>
-    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
+    <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
   const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"A coleta ainda não retornou produtos. Use Recuperar pasta ou Atualizar pasta para executar a análise desta data."});
   const coverage=d.products.length?`<div class="cr-sectionhead"><div><h3>Produtos desta revisão</h3><p class="oi-note">Abra um produto para ver os criativos ranqueados, a copy e a análise detalhada.</p></div><label class="cr-search">Buscar produto<input type="search" data-cr-search placeholder="Marca ou produto" autocomplete="off"></label></div><p class="oi-meta" data-cr-search-status aria-live="polite"></p>`:"";
@@ -3628,7 +3628,7 @@ function crRunConfirmHtml(){
   if(!crPendingRun)return "";
   const date=crPendingRun.date,title=date?"Atualizar "+OfferIntel.reviewTitle(date)+"?":"Rodar o Creative Review agora?";
   const description=date?"A análise será executada novamente na mesma pasta. A recuperação pode reutilizar coletas anteriores; cada anúncio mostra sua data de observação.":"A análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
-  return `<section class="oi-card cr-confirm" role="region" aria-labelledby="crConfirmTitle"><h3 id="crConfirmTitle">${esc(title)}</h3><p>${description}</p><p class="oi-note">A coleta consome o orçamento do Apify e da análise de IA, dentro dos limites configurados. Se já houver uma execução em andamento, nada novo é iniciado.</p><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-confirm>${date?"Confirmar atualização":"Confirmar execução"}</button><button type="button" class="btn btn--outline" data-cr-cancel>Cancelar</button></div></section>`;
+  return `<section class="oi-card cr-confirm" role="region" aria-labelledby="crConfirmTitle"><h3 id="crConfirmTitle">${esc(title)}</h3><p>${description}</p><p class="oi-note">Os resultados já concluídos são reaproveitados. Se já houver uma execução em andamento, nada novo é iniciado.</p><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-confirm>${date?"Confirmar atualização":"Confirmar execução"}</button><button type="button" class="btn btn--outline" data-cr-cancel>Cancelar</button></div></section>`;
 }
 function crRun(button){
   if(oiBusy.has("cr:run"))return;
@@ -4905,7 +4905,7 @@ async function discoverOfferLibrariesAdmin(id,button){
   const status=$("#adminDiscoveryStatus"),force=button?.dataset?.discoverForce==="1";
   try{
     if(button)button.disabled=true;
-    if(status)status.textContent="Buscando outras bibliotecas do mesmo domínio/oferta (orçamento controlado)...";
+    if(status)status.textContent="Buscando outras bibliotecas do mesmo domínio/oferta...";
     const {data:{session}}=await sb.auth.getSession(),token=session&&session.access_token;
     if(!token)throw new Error("Sessão administrativa expirada.");
     const response=await fetch("/.netlify/functions/admin-offer-discovery",{

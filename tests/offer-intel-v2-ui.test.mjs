@@ -214,7 +214,7 @@ test("Recuperar pasta mantém a data escolhida na confirmação e na execução"
   assert.match(confirmation, /role="region" aria-labelledby="crConfirmTitle"/);
   assert.match(confirmation, /Confirmar atualização/);
   assert.match(confirmation, /Cancelar/);
-  assert.match(confirmation, /orçamento do Apify/);
+  assert.doesNotMatch(confirmation, /orçamento|custo|US\$/i);
   await run("crConfirmRun(btn)");
   assert.equal(sentDate, "2026-10-28");
   assert.match(confirmation, /28\/10\/2026/);

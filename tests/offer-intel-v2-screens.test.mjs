@@ -84,7 +84,7 @@ test("Creative Review: rotas /creative-review, data e produto", () => {
 test("Creative Review: lista ordena a mais recente primeiro e mantém desconhecidos nulos", () => {
   const list = OI.formatReviewList(FAKE_REVIEW_LIST.items);
   assert.deepEqual(list.map(x => x.date), ["2026-10-28", "2026-10-21", "2026-10-14"]);
-  assert.equal(list[0].title, "Creative Review 28/10/2026"); assert.equal(list[0].costLabel, "US$ 14,20"); assert.equal(list[0].productsCount, 3);
+  assert.equal(list[0].title, "Creative Review 28/10/2026"); assert.equal(list[0].costLabel, undefined); assert.equal(list[0].productsCount, 3);
   assert.equal(list[2].productsCount, null); assert.equal(list[2].adsCount, null); assert.equal(list[2].statusLabel, "Falhou");
   const running = OI.formatReviewMeta({ review_date: "2026-11-04", status: "running", phase: "coleta", progress: 42 });
   assert.equal(running.active, true); assert.equal(running.progress, 42); assert.equal(running.title, "Creative Review 04/11/2026");
