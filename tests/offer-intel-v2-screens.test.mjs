@@ -163,3 +163,12 @@ test("pasta preserva todos os produtos de Brands além de 200 ofertas", () => {
   assert.equal(folder.products.length, 225);
   assert.equal(folder.products.at(-1).offerId, "offer-224");
 });
+
+test("data de observação da coleta usa Brasília e não inventa timestamp em registros legados", () => {
+  const ad = OI.formatWeeklyAd({ observed_at: "2026-10-28T01:30:00.000Z", observed_from: "2026-10-21T15:00:00.000Z", mixed_observations: true });
+  assert.equal(ad.observedAt, "27/10/2026, 22:30");
+  assert.equal(ad.observedFrom, "21/10/2026, 12:00");
+  assert.equal(ad.mixedObservations, true);
+  assert.equal(OI.formatWeeklyAd({}).observedAt, "");
+  assert.equal(OI.formatWeeklyAd({ observed_at: "invalid" }).observedAt, "");
+});

@@ -1641,6 +1641,7 @@
   .cr-pcard[hidden]{display:none;}
   .cr-coverage{font-size:.78rem;color:var(--muted-fg);line-height:1.5;}
   .cr-coverage--pending{padding:8px 10px;background:var(--surface-2);border-radius:var(--radius-xs);}
+  .oi-meta.cr-observed,.cr-windows>.oi-meta{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.5;}
   .cr-windows{border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:6px;}
   .cr-windows dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0;}
   .cr-window{display:flex;flex-wrap:wrap;gap:6px;}
@@ -3568,8 +3569,8 @@ function crProductHtml(route){
   const days=crWindowByProduct[crKey(route)]||0,ranked=crWindowAds(d.ads,days);
   const period=days?`Janela de ${days} dias · ${ranked.length} de ${d.ads.length} criativos`:"Ranking geral";
   const selector=`<div class="cr-window" role="group" aria-label="Janela de análise">${[0,7,14,30].map(n=>`<button type="button" class="seg-btn${n===days?" active":""}" data-cr-window="${n}" aria-pressed="${n===days}">${n?n+" dias":"Todos"}</button>`).join("")}</div>`;
-  const ads=ranked.length?`<div class="oi-wk__list">${ranked.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:days&&d.ads.length?"Duração indisponível nesta coleta":"Sem anúncios neste produto",text:days&&d.ads.length?"Estes criativos ainda não têm dados para a janela selecionada. Selecione Todos para consultar o ranking geral.":"Nenhum anúncio ativo foi coletado para este produto nesta semana."});
-  return crumbs+head+`<div class="cr-sectionhead"><div><h3>Top criativos ativos</h3><p class="oi-note">Selecione a janela para ordenar os criativos deste Top 10 por dias na janela e repetições atuais. As janelas usam a data de início; não comprovam veiculação contínua nem histórico de repetições.</p></div>${selector}</div><p class="oi-meta" role="status">${period}</p>`+ads;
+  const ads=ranked.length?`<div class="oi-wk__list">${ranked.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:days&&d.ads.length?"Duração indisponível nesta coleta":"Sem anúncios neste produto",text:days&&d.ads.length?"Estes criativos ainda não têm dados para a janela selecionada. Selecione Todos para consultar o ranking geral.":"Nenhum anúncio ativo foi identificado nas coletas usadas nesta pasta."});
+  return crumbs+head+`<div class="cr-sectionhead"><div><h3>Top criativos da coleta</h3><p class="oi-note">Selecione a janela para ordenar os criativos deste Top 10 por duração na janela e repetições na coleta. As janelas usam as datas de início e observação; não comprovam veiculação contínua nem histórico de repetições. Pastas recuperadas podem reunir coletas de datas distintas; confira a observação em cada anúncio.</p></div>${selector}</div><p class="oi-meta" role="status">${period}</p>`+ads;
 }
 function renderCreativeReview(){
   const area=$("#gridArea");if(!area)return;
@@ -3626,7 +3627,7 @@ function crSchedule(route){
 function crRunConfirmHtml(){
   if(!crPendingRun)return "";
   const date=crPendingRun.date,title=date?"Atualizar "+OfferIntel.reviewTitle(date)+"?":"Rodar o Creative Review agora?";
-  const description=date?"A análise será executada novamente na mesma pasta, com os anúncios disponíveis na coleta atual.":"A análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
+  const description=date?"A análise será executada novamente na mesma pasta. A recuperação pode reutilizar coletas anteriores; cada anúncio mostra sua data de observação.":"A análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
   return `<section class="oi-card cr-confirm" role="region" aria-labelledby="crConfirmTitle"><h3 id="crConfirmTitle">${esc(title)}</h3><p>${description}</p><p class="oi-note">A coleta consome o orçamento do Apify e da análise de IA, dentro dos limites configurados. Se já houver uma execução em andamento, nada novo é iniciado.</p><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-confirm>${date?"Confirmar atualização":"Confirmar execução"}</button><button type="button" class="btn btn--outline" data-cr-cancel>Cancelar</button></div></section>`;
 }
 function crRun(button){
@@ -3664,8 +3665,9 @@ function oiWkBadges(a){
 }
 function oiWkMetrics(a){
   const n=v=>v==null?"—":v.toLocaleString("pt-BR");
-  const windows=a.windows&&a.windows.length?`<div class="cr-windows"><span class="oi-meta">Dias desde o início em cada janela</span><dl>${a.windows.map(w=>`<div${w.days===a.selectedWindow?' class="is-selected"':""}><dt>${w.days} dias</dt><dd>${n(w.activeDays)} / ${w.days}</dd></div>`).join("")}</dl><p class="oi-meta">Estimativa pela data de início e pela coleta atual.</p></div>`:"";
-  return `<dl class="oi-wk__metrics"><div><dt>Dias ativos</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições atuais</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`+windows;
+  const windows=a.windows&&a.windows.length?`<div class="cr-windows"><span class="oi-meta">Dias desde o início em cada janela</span><dl>${a.windows.map(w=>`<div${w.days===a.selectedWindow?' class="is-selected"':""}><dt>${w.days} dias</dt><dd>${n(w.activeDays)} / ${w.days}</dd></div>`).join("")}</dl><p class="oi-meta">Estimativa entre a data de início e a data da observação.</p></div>`:"";
+  const observed=a.observedAt?(a.mixedObservations&&a.observedFrom?`Observações de ${esc(a.observedFrom)} a ${esc(a.observedAt)}`:`Observado em ${esc(a.observedAt)}`)+" (Brasília)":"Data de observação indisponível";
+  return `<p class="oi-meta cr-observed">${observed}</p><dl class="oi-wk__metrics"><div><dt>Dias ativos na coleta</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições na coleta</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`+windows;
 }
 function oiWkPageLine(a){
   const src=a.pageSource==="encontrada"?"Encontrada":a.pageSource==="cadastrada"?"Cadastrada":"";

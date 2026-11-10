@@ -235,13 +235,13 @@ test("Janelas usam métricas de atividade explícitas e não inventam repetiçã
   ctx.__ad = ctx.OfferIntel.formatWeeklyAd({ days_active: 20, repetitions: 4, window_metrics: { "7d": { active_days: 7, basis: "current_active_snapshot" }, "14d": { active_days: 14, basis: "current_active_snapshot" }, "30d": { active_days: 20, basis: "current_active_snapshot" } } });
   const out = run("oiWkMetrics(__ad)");
   assert.match(out, /7 dias/); assert.match(out, /14 dias/); assert.match(out, /30 dias/);
-  assert.match(out, /coleta atual/);
-  assert.match(out, /Repetições atuais/);
+  assert.match(out, /data da observação/);
+  assert.match(out, /Repetições na coleta/);
   const unknown = run("oiWkMetrics(OfferIntel.formatWeeklyAd({}))");
   assert.doesNotMatch(unknown, /7 dias/);
 });
 
-test("Janela 7/14/30 reordena por duração na janela e repetições atuais sem alterar ranking geral", () => {
+test("Janela 7/14/30 reordena por duração na janela e repetições na coleta sem alterar ranking geral", () => {
   const ad = (id, rank, age, repetitions) => ctx.OfferIntel.formatWeeklyAd({ ad_archive_id: id, rank, days_active: age, repetitions, window_metrics: Object.fromEntries([7,14,30].map(days => [days+'d', { active_days: Math.min(age,days), basis:'current_active_snapshot' }])) });
   ctx.__windowAds = [ad('old',1,20,2),ad('repeat',2,10,9),ad('young',3,5,50),ctx.OfferIntel.formatWeeklyAd({ad_archive_id:'unknown',rank:4})];
   assert.equal(run("crWindowAds(__windowAds,0).map(a=>a.adArchiveId).join(',')"),'old,repeat,young,unknown');
@@ -268,4 +268,22 @@ test("Seletor de período começa em Todos e mostra período, contagem e posiç�
   assert.match(selected,/não comprovam veiculação contínua nem histórico de repetições/);
   assert.equal((selected.match(/<article class="oi-wk__ad"/g)||[]).length,3);
   run(`delete crWindowByProduct['product:2026-10-28:${OFFER_B}']`);
+});
+
+
+test("Criativos recuperados exibem a data real e distinguem observações de coletas diferentes", () => {
+  ctx.__observed = ctx.OfferIntel.formatWeeklyAd({ observed_at: "2026-10-28T01:30:00.000Z", days_active: 20, repetitions: 4 });
+  const single = run("oiWkMetrics(__observed)");
+  assert.match(single, /Observado em 27\/10\/2026, 22:30/);
+  assert.match(single, /Brasília/);
+  assert.match(single, /Dias ativos na coleta/);
+  assert.match(single, /Repetições na coleta/);
+  assert.doesNotMatch(single, /coleta atual|Repetições atuais/);
+  ctx.__mixed = ctx.OfferIntel.formatWeeklyAd({ observed_at: "2026-10-28T01:30:00.000Z", observed_from: "2026-10-21T15:00:00.000Z", mixed_observations: true });
+  assert.match(run("oiWkMetrics(__mixed)"), /Observações de 21\/10\/2026, 12:00 a 27\/10\/2026, 22:30/);
+  assert.match(run("oiWkMetrics(OfferIntel.formatWeeklyAd({}))"), /Data de observação indisponível/);
+  seedCr();
+  const detail = run("crProductHtml({view:'product',date:'2026-10-28',offerId:'22222222-2222-4222-8222-222222222222'})");
+  assert.match(detail, /Top criativos da coleta/);
+  assert.match(detail, /Pastas recuperadas podem reunir coletas de datas distintas/);
 });

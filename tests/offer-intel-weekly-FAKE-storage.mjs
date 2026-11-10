@@ -82,12 +82,13 @@ export function createFAKEWeeklyStorage({ offers = [], discoveries = [], clock =
       const key = p.report_id + ":" + p.batch_key, row = runs.get(key);
       if (!row) {
         if (!p.patch) return null;
-        const created = { report_id: p.report_id, batch_key: p.batch_key, provider_run_id: null, dataset_id: null, ...copy(p.patch) };
+        const created = { report_id: p.report_id, batch_key: p.batch_key, provider_run_id: null, dataset_id: null, created_at: new Date(clock()).toISOString(), updated_at: new Date(clock()).toISOString(), ...copy(p.patch) };
         runs.set(key, created); return copy(created);
       }
       if (p.patch) {
         if (p.expected_state !== row.state) throw conflict();
         for (const [k, v] of Object.entries(p.patch)) if (v !== undefined && v !== null) row[k] = v;
+        row.updated_at = new Date(clock()).toISOString();
       }
       return copy(row);
     },
