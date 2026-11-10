@@ -51,3 +51,23 @@ test('external recovery references require the exact ad ID and the validated arc
   const media=await repairMedia({...args,row:input,reusable:[donor],archive});
   assert.equal(calls[0].url,video);assert.equal(mediaComplete({...input,media}),true);
 });
+
+test('an explicit image format clears a stale video failure without requesting or substituting a video',async()=>{
+  const input={...row,display_format:'image'};const archive=async()=>{throw new Error('image already stored');};archive.verify=async()=>true;
+  const media=await repairMedia({...args,row:input,archive});assert.equal(media.video_error,false);assert.equal(media.video_url,null);assert.equal(mediaComplete({...input,media}),true);
+});
+test('prepared video cache is bound to exact ad id and a content hash',async()=>{
+  const {recoveredMediaRow,recoveryBlobKey}=await import('../lib/offer-intel-weekly-recovery.mjs');
+  const url='swipe-recovery://media/123/'+'b'.repeat(64)+'.mp4';
+  assert.equal(recoveryBlobKey(url),'media/123/'+'b'.repeat(64)+'.mp4');
+  assert.equal(recoveryBlobKey(url.replace('/123/','/../123/')),null);
+  assert.equal(recoveredMediaRow({provider:'meta-archive',ad_archive_id:'456',video_url:url},'456'),null);
+  assert.ok(recoveredMediaRow({provider:'meta-archive',ad_archive_id:'123',video_url:url},'123'));
+});
+test('expired workers become recoverable without leaking internal lease information',async()=>{
+  const {publicReport}=await import('../lib/offer-intel-weekly.mjs');const now=Date.parse('2026-11-10T20:00:00Z');
+  const input={review_date:'2026-10-28',status:'running',lease_until:'2026-11-10T19:55:00Z',updated_at:'2026-11-10T19:50:00Z'};
+  assert.equal(publicReport(input,now).status,'failed');assert.equal(publicReport(input,now).active,false);assert.equal(publicReport(input,now).lease_until,undefined);
+  assert.equal(publicReport({...input,lease_until:'2026-11-10T20:05:00Z'},now).active,true);
+  assert.equal(publicReport({...input,lease_until:null,updated_at:'2026-11-10T19:59:00Z'},now).active,true);
+});

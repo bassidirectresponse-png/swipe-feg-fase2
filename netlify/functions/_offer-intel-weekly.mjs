@@ -1,6 +1,6 @@
-import { createHmac } from "node:crypto";
+import { createHmac, createHash } from "node:crypto";
 import { getStore } from '@netlify/blobs';
-import { recoveredMediaRow } from '../../lib/offer-intel-weekly-recovery.mjs';
+import { recoveredMediaRow, recoveryBlobKey } from '../../lib/offer-intel-weekly-recovery.mjs';
 import { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, SUPABASE_URL, safeRemoteFetch, boundedBuffer } from "./_security.mjs";
 import { automationSigningSecret } from "./_supabase-admin.mjs";
 import { ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
@@ -36,6 +36,14 @@ export function weeklyRuntime() {
   const archive = createWeeklyArchive({
     publicUrl: path => SUPABASE_URL + "/storage/v1/object/public/criativos/" + path,
     async download(url, maxBytes) {
+      const key = recoveryBlobKey(url);
+      if (key) {
+        const bytes = await getStore({ name: 'creative-review-recovery', consistency: 'strong' }).get(key, { type: 'arrayBuffer' });
+        if (!bytes || bytes.byteLength > maxBytes) throw new Error('Arquivo recuperado indisponível.');
+        const buffer = Buffer.from(bytes), expected = key.split('/').at(-1).slice(0, -4);
+        if (createHash('sha256').update(buffer).digest('hex') !== expected) throw new Error('Arquivo recuperado inválido.');
+        return buffer;
+      }
       const response = await safeRemoteFetch(url, { allowedHostSuffixes: FB_MEDIA_HOSTS, timeoutMs: 90_000 });
       if (!response.ok) throw new Error("download indisponível");
       return boundedBuffer(response, maxBytes);
