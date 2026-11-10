@@ -1,4 +1,6 @@
 import { createHmac } from "node:crypto";
+import { getStore } from '@netlify/blobs';
+import { recoveredMediaRow } from '../../lib/offer-intel-weekly-recovery.mjs';
 import { authenticate, isAdmin, trustedOrigin, preflight, json, readJson, rateLimit, SUPABASE_URL, safeRemoteFetch, boundedBuffer } from "./_security.mjs";
 import { automationSigningSecret } from "./_supabase-admin.mjs";
 import { ANTHROPIC_URL } from "./_ad-video-analysis.mjs";
@@ -9,7 +11,7 @@ import { createWeeklyStorage } from "../../lib/offer-intel-weekly-storage.mjs";
 import { runCreativeReviewSlice, createWeeklyApify, createWeeklyArchive, createWeeklyClaude, createWeeklyOpenRouter } from "../../lib/offer-intel-weekly-worker.mjs";
 
 const METHODS = "GET, POST, OPTIONS";
-const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net"];
+const FB_MEDIA_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com", "akamaihd.net", "medias.trendtrack.io"];
 // Direct Anthropic fallback (used only without OPENROUTER_API_KEY).
 export const CREATIVE_REVIEW_MODEL = String(process.env.CREATIVE_REVIEW_MODEL || "claude-sonnet-5-5").trim();
 // OpenRouter (preferred when its key exists): best cost/benefit measured on real ads on 28/10/2026 —
@@ -53,6 +55,15 @@ export function weeklyRuntime() {
     if (!archivedChecks.has(url)) archivedChecks.set(url, fetch(url, { method: 'HEAD', redirect: 'error', signal: AbortSignal.timeout(15000) })
       .then(res => res.status >= 500 || res.status === 429 ? null : res.ok && /^(image|video)\//.test(res.headers.get('content-type') || '')).catch(() => null));
     return archivedChecks.get(url);
+  };
+  let recoveredAssets;
+  archive.recovered = async adId => {
+    recoveredAssets ||= getStore({ name: 'creative-review-recovery', consistency: 'strong' }).get('assets.json', { type: 'json' }).catch(() => null);
+    return recoveredMediaRow((await recoveredAssets)?.assets?.[adId], adId);
+  };
+  archive.audit = async snapshot => {
+    if (!isReviewDate(snapshot.review_date)) return;
+    await getStore({ name: 'creative-review-recovery', consistency: 'strong' }).setJSON('reports/' + snapshot.review_date + '.json', snapshot);
   };
   return {
     storage, secret, ...creativeReviewAi(),

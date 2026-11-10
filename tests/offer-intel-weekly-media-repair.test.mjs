@@ -39,3 +39,15 @@ test('a temporary storage probe failure preserves the existing file reference an
   const media=await repairMedia({...args,row:input,archive});
   assert.equal(media.thumb_url,input.media.thumb_url);assert.equal(media.verification_error,true);assert.equal(mediaComplete({...input,media}),false);
 });
+test('external recovery references require the exact ad ID and the validated archived-media host',async()=>{
+  const {recoveredMediaRow,recoveredMediaUrl}=await import('../lib/offer-intel-weekly-recovery.mjs');
+  const video='https://medias.trendtrack.io/facebook/video/'+'a'.repeat(64)+'.mp4';
+  assert.equal(recoveredMediaUrl(video),video);
+  for(const url of [video.replace('medias.trendtrack.io','medias.trendtrack.io.evil.example'),video.replace('https:','http:'),'https://medias.trendtrack.io/private/other'])assert.equal(recoveredMediaUrl(url),null);
+  assert.equal(recoveredMediaRow({provider:'trendtrack',ad_archive_id:'999',video_url:video},'123'),null);
+  const donor=recoveredMediaRow({provider:'trendtrack',ad_archive_id:'123',video_url:video},'123');
+  const calls=[];const archive=async input=>{calls.push(input);return{url:'https://stored.example/recovered.mp4'};};archive.verify=async()=>true;
+  const input={...row,display_format:null,media:{archived:true,thumb_url:'https://stored.example/thumb.jpg'}};
+  const media=await repairMedia({...args,row:input,reusable:[donor],archive});
+  assert.equal(calls[0].url,video);assert.equal(mediaComplete({...input,media}),true);
+});
