@@ -148,3 +148,18 @@ test("QA-UI-R6-01: scansByHost compara o timestamp bruto e normaliza www", () =>
   const dec = OI.formatScanSummary({ id: "dez", host: "a.com", created_at: "2026-12-01T00:00:00.000Z" }), jan = OI.formatScanSummary({ id: "jan", host: "a.com", created_at: "2027-01-02T00:00:00.000Z" });
   assert.equal(OI.scansByHost([dec, jan])["a.com"].id, "jan", "01/12/2026 > 02/01/2027 como texto não pode vencer");
 });
+
+
+test("cliente recupera uma pasta histórica usando review_date no POST", async () => {
+  let request;
+  const client = Api.createClient({ getToken: async () => "t", newKey: () => "k", fetch: async (url, init) => { request = init; return { ok: true, status: 200, json: async () => ({ ok: true }), headers: { get: () => null } }; } });
+  await client.runReview("2026-10-28");
+  assert.deepEqual(JSON.parse(request.body), { action: "run", review_date: "2026-10-28" });
+});
+
+test("pasta preserva todos os produtos de Brands além de 200 ofertas", () => {
+  const products = Array.from({ length: 225 }, (_, i) => ({ offer_id: `offer-${i}`, offer_name: `Marca - Produto ${i}` }));
+  const folder = OI.formatReviewFolder({ products });
+  assert.equal(folder.products.length, 225);
+  assert.equal(folder.products.at(-1).offerId, "offer-224");
+});

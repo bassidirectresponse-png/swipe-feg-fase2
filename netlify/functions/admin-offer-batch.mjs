@@ -42,14 +42,17 @@ function uniqueBy(current, added, field) {
 }
 
 function mergeAdsHistory(first, second) {
-  const byDate = new Map();
+  const byReading = new Map();
   for (const point of [...(Array.isArray(first) ? first : []), ...(Array.isArray(second) ? second : [])]) {
     const date = String(point?.d || "");
     const value = Number(point?.n);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value) || value < 0) continue;
-    byDate.set(date, { d: date, n: Math.round(value) });
+    // Timestamp identity preserves the morning/evening readings of one day.
+    const time = Date.parse(point?.at || "");
+    const at = Number.isFinite(time) ? new Date(time).toISOString() : "";
+    byReading.set(at ? `at:${at}` : `legacy:${date}`, { d: date, n: Math.round(value), ...(at ? { at } : {}) });
   }
-  return [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
+  return [...byReading.values()].sort((a, b) => (a.at || a.d).localeCompare(b.at || b.d));
 }
 
 function namesOf(row) {

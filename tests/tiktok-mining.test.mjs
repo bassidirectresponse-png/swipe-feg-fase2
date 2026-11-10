@@ -41,7 +41,7 @@ print(json.dumps({'kept':len(out['A']),'failed':len(out['B']),'reason':failures.
   assert.match(result.reason,/HTTP 502/);
 });
 
-test("lote parcial é salvo mas sinaliza pendência para recuperação diária",()=>{
+test("lote parcial é salvo mas sinaliza pendência para recuperação manual",()=>{
   const result=python(`import importlib.util,json,sys
 s=importlib.util.spec_from_file_location('miner','scripts/tiktok_mining.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 m.BOT_ACCESS_TOKEN='test';m.BRAND_NICHES={'A':{},'B':{}}

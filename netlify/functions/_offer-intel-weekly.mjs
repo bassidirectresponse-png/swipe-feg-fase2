@@ -48,7 +48,7 @@ export function weeklyRuntime() {
       },
     }),
     async dispatch(reportId, nonce) {
-      const origin = new URL(process.env.URL || "https://benchmarkinggrupofeg.site").origin;
+      const origin = new URL(process.env.URL || "https://swipe.fegsys.com").origin;
       const response = await fetch(origin + "/.netlify/functions/offer-intel-weekly-background", {
         method: "POST", ...signedDispatch(reportId, nonce, secret), signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new IntelError(503, "capability_unavailable", "Não foi possível iniciar o Creative Review.", true);
@@ -76,9 +76,9 @@ export function createWeeklyHandlers(overrides = {}) {
     if (!deps.isAdmin(user)) throw new IntelError(403, "forbidden", "Acesso restrito ao administrador.");
     return user;
   }
-  async function enqueue(services, { trigger, actor_id = null }) {
-    const review_date = reviewDate(deps.now());
+  async function enqueue(services, { trigger, actor_id = null, review_date = reviewDate(deps.now()), recover = false }) {
     const result = await services.storage.enqueue({ review_date, trigger, actor_id });
+    if (recover) await services.storage.prepareRecovery(result.report);
     await services.dispatch(result.report.id, result.nonce);
     return { review_date, report: result.report };
   }
@@ -89,11 +89,15 @@ export function createWeeklyHandlers(overrides = {}) {
       const user = await auth(req);
       if (req.method === "POST") {
         const body = await deps.readJson(req, { maxBytes: 1024 });
-        if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 1 || body.action !== "run")
+        if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !["action", "review_date"].includes(key)) || body.action !== "run" ||
+          ("review_date" in body && !isReviewDate(body.review_date)))
           throw new IntelError(400, "invalid_request", "Ação inválida.");
         const quota = await deps.rateLimit("offer-intel-weekly-run", user.id, { limit: 6, windowMs: 3_600_000 });
         if (!quota.allowed) throw new IntelError(429, "rate_limited", "Execuções demais; aguarde.", true, quota.retryAfter || 60);
-        const result = await enqueue(deps.getServices(), { trigger: "manual", actor_id: user.id });
+        const services = deps.getServices();
+        if (body.review_date && !await services.storage.getReport({date: body.review_date}))
+          throw new IntelError(404, "not_found", "Pasta não encontrada para recuperação.");
+        const result = await enqueue(services, { trigger: "manual", actor_id: user.id, ...(body.review_date ? {review_date: body.review_date, recover: true} : {}) });
         return deps.json(req, 202, { ok: true, report_id: result.report.id, review_date: result.review_date, title: reviewTitle(result.review_date),
           status: result.report.status }, METHODS);
       }

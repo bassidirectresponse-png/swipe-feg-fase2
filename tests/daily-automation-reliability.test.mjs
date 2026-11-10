@@ -15,14 +15,13 @@ test('daily collectors use stable Netlify endpoint with bounded auth retries',()
   }
   assert.doesNotMatch(read('scripts/tiktok_mining.py'),/benchmarkinggrupofeg\.site/);
 });
-test('TikTok recovery skips successful days and excludes reset runs',()=>{
+test('TikTok schedules only two weekly collections and keeps explicit manual controls',()=>{
   const source=read('.github/workflows/tiktok-mining.yml');
-  assert.match(source,/cron: "13 8 \* \* \*"/);
-  assert.match(source,/cron: "13 18 \* \* \*"/);
-  assert.match(source,/status=success/);
-  assert.match(source,/America\/Sao_Paulo/);
-  assert.match(source,/"reset" not in r\.get/);
-  assert.match(source,/steps\.daily\.outputs\.run == 'true' && inputs\.mode != 'reset'/);
+  const crons=[...source.matchAll(/cron: "([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(crons,['0 12 * * 2,5']);
+  assert.match(source,/workflow_dispatch:/);
+  assert.match(source,/inputs\.mode != 'reset'/);
+  assert.doesNotMatch(source,/steps\.daily|status=success/);
 });
 test('collectors report partial writes as failures and publish daily summaries',()=>{
   const ads=read('scripts/ads_scraper.py'),radar=read('scripts/tiktok_mining.py');

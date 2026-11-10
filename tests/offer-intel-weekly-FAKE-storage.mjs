@@ -16,6 +16,7 @@ export function createFAKEWeeklyStorage({ offers = [], discoveries = [], clock =
   const nonceFor = id => { const nonce = randomUUID(); dispatches.set(nonce, { report_id: id, used: false, expires: clock() + 300_000 }); return nonce; };
   const fake = {
     reports, products, ads, runs, dispatches, ledger, calls: [],
+    async prepareRecovery(report) { reports.get(report.id).cost.recovery_requested = true; },
     async enqueue({ review_date, trigger, actor_id }) {
       let r = [...reports.values()].find(x => x.review_date === review_date);
       if (!r) {

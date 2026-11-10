@@ -73,7 +73,7 @@ test("Creative Review: lista de pastas, mais recente primeiro, com status e cont
 test("Creative Review: pasta com resumo executivo, grade de produtos e escape", () => {
   seedCr();
   const out = run("crFolderHtml({view:'folder',date:'2026-10-28'})");
-  for (const t of ["Resumo executivo", "Produto Demo Alfa", "NOVO LÍDER", "Apresentar", "Imprimir / PDF", "Rodar agora", "Resumo do produto indisponível"]) assert.ok(out.includes(t), t);
+  for (const t of ["Resumo executivo", "Produto Demo Alfa", "NOVO LÍDER", "Apresentar", "Imprimir / PDF", "Atualizar pasta", "Resumo do produto indisponível"]) assert.ok(out.includes(t), t);
   assert.match(out, /href="\/creative-review\/2026-10-28\/11111111-1111-4111-8111-111111111111"/);
   assert.match(out, /Produto Demo Gama &lt;b&gt;/); assert.ok(!out.includes("Gama <b>"));
   assert.match(out, /aria-label="Você está em"/); assert.match(out, /Creative Review 28\/10\/2026/);
@@ -147,7 +147,8 @@ test("Creative Review: seção própria no menu, fora de OI_V2_READY, rota legad
   assert.match(html, /const OI_V2_READY=(true|false);/);
   assert.match(html, /key:"creativereview",label:"Creative Review"/);
   assert.match(html, /creativereview:"creative-review"/);
-  assert.match(html, /html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\);html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
+  assert.match(html, /if\(key==="tiktok"&&isAdmin\)html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\)/);
+  assert.doesNotMatch(html, /navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\)/);
   assert.match(html, /\^\\\/inteligencia\\\/semanal\\\/\?\$/);
   assert.match(html, /r\.section==="creativereview"\)&&!isAdmin/);
 });
@@ -194,4 +195,66 @@ test("Cabeçalho da pasta omite o total de anúncios quando desconhecido e soma 
   assert.match(run("crFolderHtml({view:'folder',date:'2026-12-16'})"), /1 produtos · 0 anúncios/, "zero conhecido continua zero");
   seedCr();
   assert.match(run("crFolderHtml({view:'folder',date:'2026-10-28'})"), /3 produtos · 148 anúncios/);
+});
+
+
+test("Recuperar pasta mantém a data escolhida na confirmação e na execução", async () => {
+  let sentDate, confirmation;
+  ctx.confirm = text => { confirmation = text; return true; };
+  ctx.oiApi = { runReview: async date => { sentDate = date; } };
+  ctx.activeSection = "outra";
+  ctx.btn = { dataset: { crReviewDate: "2026-10-28" }, setAttribute() {} };
+  await run("crRun(btn)");
+  assert.equal(sentDate, "2026-10-28");
+  assert.match(confirmation, /28\/10\/2026/);
+  assert.match(confirmation, /mesma pasta/);
+  assert.doesNotMatch(confirmation, /quarta-feira corrente/);
+});
+
+test("Pasta com falha oferece recuperação da própria data, sem prometer ranking completo", () => {
+  ctx.__failed = ctx.OfferIntel.formatReviewFolder({ report: { review_date: "2026-10-21", status: "failed" }, products: [] });
+  run("crStates['folder:2026-10-21']={status:'ready',data:__failed}");
+  const out = run("crFolderHtml({view:'folder',date:'2026-10-21'})");
+  assert.match(out, /data-cr-review-date="2026-10-21"[^>]*>Recuperar pasta/);
+  assert.match(out, /mesma pasta/);
+  assert.doesNotMatch(out, /ranking está completo/);
+});
+
+test("Janelas usam métricas de atividade explícitas e não inventam repetição histórica", () => {
+  ctx.__ad = ctx.OfferIntel.formatWeeklyAd({ days_active: 20, repetitions: 4, window_metrics: { "7d": { active_days: 7, basis: "current_active_snapshot" }, "14d": { active_days: 14, basis: "current_active_snapshot" }, "30d": { active_days: 20, basis: "current_active_snapshot" } } });
+  const out = run("oiWkMetrics(__ad)");
+  assert.match(out, /7 dias/); assert.match(out, /14 dias/); assert.match(out, /30 dias/);
+  assert.match(out, /coleta atual/);
+  assert.match(out, /Repetições atuais/);
+  const unknown = run("oiWkMetrics(OfferIntel.formatWeeklyAd({}))");
+  assert.doesNotMatch(unknown, /7 dias/);
+});
+
+test("Janela 7/14/30 reordena por duração na janela e repetições atuais sem alterar ranking geral", () => {
+  const ad = (id, rank, age, repetitions) => ctx.OfferIntel.formatWeeklyAd({ ad_archive_id: id, rank, days_active: age, repetitions, window_metrics: Object.fromEntries([7,14,30].map(days => [days+'d', { active_days: Math.min(age,days), basis:'current_active_snapshot' }])) });
+  ctx.__windowAds = [ad('old',1,20,2),ad('repeat',2,10,9),ad('young',3,5,50),ctx.OfferIntel.formatWeeklyAd({ad_archive_id:'unknown',rank:4})];
+  assert.equal(run("crWindowAds(__windowAds,0).map(a=>a.adArchiveId).join(',')"),'old,repeat,young,unknown');
+  assert.equal(run("crWindowAds(__windowAds,7).map(a=>a.adArchiveId).join(',')"),'repeat,old,young');
+  assert.equal(run("crWindowAds(__windowAds,14).map(a=>a.adArchiveId).join(',')"),'old,repeat,young');
+  assert.equal(run("crWindowAds(__windowAds,30).map(a=>a.adArchiveId).join(',')"),'old,repeat,young');
+  assert.equal(run("crWindowAds(__windowAds,7)[0].generalRank"),2);
+  assert.equal(run("crWindowAds(__windowAds,7)[0].rank"),1);
+  assert.equal(run("__windowAds[1].rank"),2);
+  assert.equal(run("crWindowAds(__windowAds,7)[0].repetitions"),9);
+});
+
+test("Seletor de período começa em Todos e mostra período, contagem e posição geral ao filtrar", () => {
+  seedCr();
+  const route = `{view:'product',date:'2026-10-28',offerId:'${OFFER_B}'}`;
+  const normal=run(`crProductHtml(${route})`);
+  assert.match(normal,/data-cr-window="0" aria-pressed="true">Todos/);
+  for (const days of [7,14,30]) assert.ok(normal.includes(`data-cr-window="${days}" aria-pressed="false">${days} dias`));
+  run(`crStates['product:2026-10-28:${OFFER_B}'].data.ads=__windowAds;crWindowByProduct['product:2026-10-28:${OFFER_B}']=7`);
+  const selected=run(`crProductHtml(${route})`);
+  assert.match(selected,/data-cr-window="7" aria-pressed="true">7 dias/);
+  assert.match(selected,/Janela de 7 dias · 3 de 4 criativos/);
+  assert.match(selected,/Posição geral #2/);
+  assert.match(selected,/não comprovam veiculação contínua nem histórico de repetições/);
+  assert.equal((selected.match(/<article class="oi-wk__ad"/g)||[]).length,3);
+  run(`delete crWindowByProduct['product:2026-10-28:${OFFER_B}']`);
 });

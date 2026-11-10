@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Mineração diária de vídeos do TikTok por nicho — Swipe FEG.
+Mineração de vídeos do TikTok por nicho (duas vezes por semana) — Swipe FEG.
 
 Para cada nicho (mapa NICHES) busca vídeos por palavras-chave/hashtags, extrai
 métricas (views, likes, comentários, shares, saves, duração, data, autor, som,
@@ -680,7 +680,7 @@ def main():
             report.write(f"\nRadar TikTok: {total} coletados; {ins} novos; {upd} atualizados; {update_failed} falhas de gravação.\n")
     provider_failures = {n: reason for n, reason in failures.items() if reason != "nenhum vídeo orgânico relevante após os filtros"}
     if update_failed or provider_failures:
-        raise RuntimeError("Radar atualizado parcialmente; a recuperação diária precisa concluir os itens pendentes")
+        raise RuntimeError("Radar atualizado parcialmente; execute uma recuperação manual dos nichos pendentes ou aguarde a próxima coleta programada")
 
 
 if __name__ == "__main__":

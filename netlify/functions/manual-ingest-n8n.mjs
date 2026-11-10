@@ -170,7 +170,7 @@ function offerData(item, previous, batchDate) {
     adsLibraryApprox: item.activeAdsApprox,
     adsLibraryCheckedAt: `${checkedAt.slice(8, 10)}/${checkedAt.slice(5, 7)}/${checkedAt.slice(0, 4)}`,
     adsUpdatedAt: recordedAt,
-    adsHistory: [...list(previous?.adsHistory).filter(point => point?.d !== checkedAt), { d: checkedAt, at: recordedAt, n: item.activeAds }],
+    adsHistory: [...list(previous?.adsHistory), { d: checkedAt, at: recordedAt, n: item.activeAds }],
   };
   return {
     ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "",

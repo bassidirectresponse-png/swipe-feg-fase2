@@ -1329,7 +1329,7 @@ function oiDomainScanHtml(route,st){
    Rotas: /creative-review · /creative-review/AAAA-MM-DD · /creative-review/AAAA-MM-DD/:offerId
    ============================================================ */
 const CR_READY=true;
-const crStates={};
+const crStates={},crWindowByProduct={};
 let crRoute=null,crTimer=null,crClickBound=false,oiPres=null,crGen=0;
 /* Invalida o cache: respostas de requisições iniciadas antes (inclusive polling silencioso) são descartadas. */
 function crInvalidate(){crGen++;Object.keys(crStates).forEach(k=>delete crStates[k]);}
@@ -1375,20 +1375,23 @@ function crStateBlock(st,notFound){
   if(st.status==="error")return oiStateHtml("error",{error:st.error});
   return oiStateHtml("empty",notFound);
 }
-function crRunBtn(){return `<button type="button" class="btn btn--outline" data-cr-run>Rodar agora</button>`;}
+function crRunBtn(date,meta){
+  const label=meta&&meta.active?"Em andamento":date?(meta&&(meta.status==="failed"||meta.status==="partial")?"Recuperar pasta":"Atualizar pasta"):"Rodar agora";
+  return `<button type="button" class="btn btn--outline" data-cr-run${date?` data-cr-review-date="${esc(date)}"`:""}${meta&&meta.active?" disabled":""}>${label}</button>`;
+}
 function crListHtml(){
   const st=crEnsure({view:"list"});
-  const head=`<div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>Pastas semanais</h2><p class="oi-note">Toda terça às 22h (Brasília) a análise roda sozinha e cria a pasta da quarta-feira seguinte.</p></div><div class="oi-links">${crRunBtn()}</div></div>`;
+  const head=`<div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>Pastas semanais</h2><p class="oi-note">Toda terça às 22h (Brasília). Todas as ofertas de Brands, bibliotecas cadastradas e novas páginas encontradas, em uma pasta para a reunião de quarta.</p></div><div class="oi-links">${crRunBtn()}</div></div>`;
   if(st.status!=="ready")return head+crStateBlock(st);
   if(!st.data.length)return head+oiStateHtml("empty",{title:"Nenhuma pasta ainda",text:"A primeira pasta aparece depois da próxima análise. Você pode rodar uma agora.",cta:`<span style="display:inline-block;margin-top:18px">${crRunBtn()}</span>`});
   const n=v=>v==null?"—":v.toLocaleString("pt-BR");
-  return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${[m.productsCount==null?"":n(m.productsCount)+" produtos",m.adsCount==null?"":n(m.adsCount)+" anúncios",m.finishedAt?"Atualizado em "+esc(m.finishedAt):""].filter(Boolean).join(" · ")||esc(m.statusLabel)}</span>${crProgress(m)}</span>${crStatusChip(m)}</a></li>`).join("")}</ul>`;
+  return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${[m.productsCount==null?"":n(m.productsCount)+" produtos",m.adsCount==null?"":n(m.adsCount)+" anúncios",m.finishedAt?"Atualizado em "+esc(m.finishedAt):""].filter(Boolean).join(" · ")||esc(m.statusLabel)}</span>${crProgress(m)}</span>${crStatusChip(m)}</a>${m.status==="failed"||m.status==="partial"?`<div class="cr-folder__recovery"><span class="oi-meta">${m.status==="failed"?"Coleta interrompida. Recupere esta pasta para concluir a análise.":"Há etapas pendentes nesta pasta."}</span>${crRunBtn(m.date,m)}</div>`:""}</li>`).join("")}</ul>`;
 }
 function crProductCard(p,date){
   const thumbs=p.top.map(t=>t.thumbUrl?`<img data-oi-img data-oi-ph="film" src="${esc(t.thumbUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="cr-thumb--none" aria-hidden="true">${ic("film")}</span>`).join("");
-  return `<a class="cr-pcard" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
+  return `<a class="cr-pcard" data-cr-product="${esc(p.name+" "+p.brand)}" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
     <div class="cr-thumbs" aria-hidden="${p.top.length?"false":"true"}">${thumbs||`<span class="cr-thumb--none">${ic("film")}</span>`}</div>
-    <div class="oi-meta">${[p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios",p.pagesCount==null?"":p.pagesCount+" Páginas"].filter(Boolean).join(" · ")||"&nbsp;"}</div>
+    ${p.statusLabel?`<p class="cr-coverage${p.noLibrary?" cr-coverage--pending":""}">${esc(p.statusLabel)}</p>`:""}<div class="oi-meta">${[p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios",p.pagesCount==null?"":p.pagesCount+" Páginas"].filter(Boolean).join(" · ")||"&nbsp;"}</div>
     ${p.summary.length?`<ul class="cr-bullets">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</a>`;
 }
 function crFolderHtml(route){
@@ -1397,12 +1400,19 @@ function crFolderHtml(route){
   const d=st.data,m=d.meta,n=v=>v==null?"—":v.toLocaleString("pt-BR");
   const allKnown=d.products.length>0&&d.products.every(p=>p.adsCollected!=null),total=m.adsCount!=null?m.adsCount:allKnown?d.products.reduce((t,p)=>t+p.adsCollected,0):null;
   const adsTxt=total==null?"":" · "+n(total)+" anúncios";
-  const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?(String(m.error||"").trim()==="Parte das mídias não foi arquivada."?"Pasta parcial — o ranking está completo. Alguns vídeos grandes não foram guardados no Swipe; use \"Ver na Biblioteca\".":"Pasta parcial — o ranking está completo."+(m.error?" "+esc(m.error):"")):"A geração desta pasta falhou."+(m.error?" "+esc(m.error):"")}</div>`:"";
-  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn()}</div></div>
+  const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?(String(m.error||"").trim()==="Parte das mídias não foi arquivada."?"Pasta parcial — o ranking está completo. Alguns vídeos grandes não foram guardados no Swipe; use \"Ver na Biblioteca\".":"Pasta parcial — algumas etapas não foram concluídas."+(m.error?" "+esc(m.error):"")):"A geração desta pasta falhou."+(m.error?" "+esc(m.error):"")} Use Recuperar pasta para executar novamente na mesma pasta.</div>`:"";
+  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn(route.date,m)}</div></div>
     <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}${m.costLabel?" · Custo estimado "+esc(m.costLabel):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
-  const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"Nenhuma oferta com biblioteca cadastrada foi analisada."});
-  return crumbs+head+sum+grid;
+  const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"A coleta ainda não retornou produtos. Use Recuperar pasta ou Atualizar pasta para executar a análise desta data."});
+  const coverage=d.products.length?`<div class="cr-sectionhead"><div><h3>Produtos desta revisão</h3><p class="oi-note">Abra um produto para ver os criativos ranqueados, a copy e a análise detalhada.</p></div><label class="cr-search">Buscar produto<input type="search" data-cr-search placeholder="Marca ou produto" autocomplete="off"></label></div><p class="oi-meta" data-cr-search-status aria-live="polite"></p>`:"";
+  return crumbs+head+sum+coverage+grid;
+}
+function crWindowAds(ads,days){
+  if(![7,14,30].includes(days))return ads;
+  return ads.map(ad=>({ad,window:ad.windows.find(w=>w.days===days)})).filter(row=>row.window&&row.window.activeDays!=null)
+    .sort((a,b)=>b.window.activeDays-a.window.activeDays||(b.ad.repetitions||0)-(a.ad.repetitions||0)||(a.ad.rank||0)-(b.ad.rank||0))
+    .map((row,i)=>({...row.ad,rank:i+1,generalRank:row.ad.rank,rankChange:0,selectedWindow:days}));
 }
 function crProductHtml(route){
   const st=crEnsure(route),fst=crEnsure({view:"folder",date:route.date});
@@ -1413,9 +1423,12 @@ function crProductHtml(route){
   const prev=i>0?list[i-1]:null,next=i>=0&&i<list.length-1?list[i+1]:null;
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">${esc(OfferIntel.reviewTitle(route.date))}</div><h2>${esc(p.name)}</h2><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||"",p.pagesCount==null?"":p.pagesCount+" Páginas",p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios coletados"].filter(Boolean).join(" · "))}</span></div>
     <div class="oi-wk__actions">${nav(prev,"← Produto anterior",'rel="prev"')}${nav(next,"Próximo produto →",'rel="next"')}<button type="button" class="btn btn--accent" data-cr-present>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button></div></div>
-    ${p.summary.length?`<ul class="cr-bullets cr-bullets--lg">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</div>`;
-  const ads=d.ads.length?`<div class="oi-wk__list">${d.ads.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:"Sem anúncios neste produto",text:"Nenhum anúncio ativo foi coletado para este produto nesta semana."});
-  return crumbs+head+ads;
+    ${p.statusLabel?`<p class="cr-coverage${p.noLibrary?" cr-coverage--pending":""}">${esc(p.statusLabel)}</p>`:""}${p.summary.length?`<ul class="cr-bullets cr-bullets--lg">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</div>`;
+  const days=crWindowByProduct[crKey(route)]||0,ranked=crWindowAds(d.ads,days);
+  const period=days?`Janela de ${days} dias · ${ranked.length} de ${d.ads.length} criativos`:"Ranking geral";
+  const selector=`<div class="cr-window" role="group" aria-label="Janela de análise">${[0,7,14,30].map(n=>`<button type="button" class="seg-btn${n===days?" active":""}" data-cr-window="${n}" aria-pressed="${n===days}">${n?n+" dias":"Todos"}</button>`).join("")}</div>`;
+  const ads=ranked.length?`<div class="oi-wk__list">${ranked.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:days&&d.ads.length?"Duração indisponível nesta coleta":"Sem anúncios neste produto",text:days&&d.ads.length?"Estes criativos ainda não têm dados para a janela selecionada. Selecione Todos para consultar o ranking geral.":"Nenhum anúncio ativo foi coletado para este produto nesta semana."});
+  return crumbs+head+`<div class="cr-sectionhead"><div><h3>Top criativos ativos</h3><p class="oi-note">Selecione a janela para ordenar os criativos deste Top 10 por dias na janela e repetições atuais. As janelas usam a data de início; não comprovam veiculação contínua nem histórico de repetições.</p></div>${selector}</div><p class="oi-meta" role="status">${period}</p>`+ads;
 }
 function renderCreativeReview(){
   const area=$("#gridArea");if(!area)return;
@@ -1425,13 +1438,26 @@ function renderCreativeReview(){
   area.innerHTML=`<div class="oi cr">${html}</div>`;
   area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
   area.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
-  if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);}
+  if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);area.addEventListener("input",crOnSearch);}
   const retry=$("[data-oi-retry]",area);if(retry)retry.addEventListener("click",()=>{delete crStates[crKey(route)];renderCreativeReview();});
   const result=$("#pageResult");if(result)result.textContent="";
   crSchedule(route);
 }
+function crOnSearch(event){
+  if(activeSection!=="creativereview"||!event.target.matches("[data-cr-search]"))return;
+  const area=$("#gridArea"),q=event.target.value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");
+  let shown=0;const cards=area.querySelectorAll("[data-cr-product]");
+  cards.forEach(card=>{const text=card.dataset.crProduct.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");card.hidden=!text.includes(q);if(!card.hidden)shown++;});
+  const status=area.querySelector("[data-cr-search-status]");if(status)status.textContent=q?`${shown} de ${cards.length} produtos encontrados`:"";
+}
 function crOnClick(event){
   if(activeSection!=="creativereview"||!crRoute)return;
+  const period=event.target.closest("[data-cr-window]");
+  if(period&&crRoute.view==="product"){
+    const days=Number(period.dataset.crWindow);if(![0,7,14,30].includes(days))return;
+    crWindowByProduct[crKey(crRoute)]=days;renderCreativeReview();
+    const selected=$(`[data-cr-window="${days}"]`);if(selected)selected.focus();return;
+  }
   if(event.target.closest("[data-cr-run]")){crRun(event.target.closest("[data-cr-run]"));return;}
   const pr=event.target.closest("[data-cr-present]");if(pr){if(pr.getAttribute("aria-disabled")!=="true")crPresent(pr);return;}
   if(event.target.closest("[data-cr-print]"))window.print();
@@ -1455,9 +1481,11 @@ function crSchedule(route){
 }
 async function crRun(button){
   if(oiBusy.has("cr:run"))return;
-  if(!confirm("Rodar o Creative Review agora?\n\nA coleta consome o orçamento do Apify (teto de US$ 15 por semana) e a análise de IA (teto de US$ 10). Atualiza a pasta da quarta-feira corrente; se já houver uma execução em andamento, nada novo é iniciado."))return;
+  const date=button.dataset&&button.dataset.crReviewDate||"";
+  const target=date?`Atualizar ${OfferIntel.reviewTitle(date)}?\n\nA análise será executada novamente na mesma pasta, com os anúncios disponíveis na coleta atual.`:"Rodar o Creative Review agora?\n\nA análise cria ou atualiza a pasta da próxima reunião de quarta-feira.";
+  if(!confirm(target+"\n\nA coleta consome o orçamento do Apify e da análise de IA, dentro dos limites configurados. Se já houver uma execução em andamento, nada novo é iniciado."))return;
   oiBusy.add("cr:run");button.setAttribute("aria-disabled","true");
-  try{await oiApi.runReview();toast("Creative Review iniciado");crInvalidate();}
+  try{await oiApi.runReview(date||undefined);toast(date?"Atualização desta pasta iniciada":"Creative Review iniciado");crInvalidate();}
   catch(error){if(error.status===409){crInvalidate();toast("Já existe uma execução em andamento.",true);}else toast(error.message,true);}
   finally{oiBusy.delete("cr:run");}
   if(activeSection==="creativereview")renderCreativeReview();
@@ -1473,7 +1501,11 @@ function oiWkBadges(a){
   const chg=a.rankChange>0?`<span class="oi-wk__chg oi-wk__chg--up"><span aria-hidden="true">↑${a.rankChange}</span><span class="oi-sr">Subiu ${a.rankChange} ${a.rankChange===1?"posição":"posições"}</span></span>`:a.rankChange<0?`<span class="oi-wk__chg oi-wk__chg--down"><span aria-hidden="true">↓${-a.rankChange}</span><span class="oi-sr">Caiu ${-a.rankChange} ${a.rankChange===-1?"posição":"posições"}</span></span>`:"";
   return (a.isNew?'<span class="oi-wk__new">NOVO</span>':"")+chg;
 }
-function oiWkMetrics(a){const n=v=>v==null?"—":v.toLocaleString("pt-BR");return `<dl class="oi-wk__metrics"><div><dt>Dias ativos</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`;}
+function oiWkMetrics(a){
+  const n=v=>v==null?"—":v.toLocaleString("pt-BR");
+  const windows=a.windows&&a.windows.length?`<div class="cr-windows"><span class="oi-meta">Dias desde o início em cada janela</span><dl>${a.windows.map(w=>`<div${w.days===a.selectedWindow?' class="is-selected"':""}><dt>${w.days} dias</dt><dd>${n(w.activeDays)} / ${w.days}</dd></div>`).join("")}</dl><p class="oi-meta">Estimativa pela data de início e pela coleta atual.</p></div>`:"";
+  return `<dl class="oi-wk__metrics"><div><dt>Dias ativos</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições atuais</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`+windows;
+}
 function oiWkPageLine(a){
   const src=a.pageSource==="encontrada"?"Encontrada":a.pageSource==="cadastrada"?"Cadastrada":"";
   return `<div class="oi-wk__page"><b>${esc(a.pageName||"Página sem nome")}</b>${src?`<span class="oi-chip">${src}</span>`:""}</div>`;
@@ -1489,7 +1521,7 @@ function oiWkAiHtml(a,open){
 }
 function oiWkDestHtml(a){return `<div class="oi-wk__dest">${a.ctaText?`<span class="oi-chip">CTA: ${esc(a.ctaText)}</span>`:""}${a.landingUrl?`<a href="${esc(a.landingUrl)}" target="_blank" rel="noopener noreferrer">Destino: ${esc(a.landingDisplay)} <span aria-hidden="true">↗</span><span class="oi-sr"> (abre em nova aba)</span></a>`:""}</div>`;}
 function oiWkAdHtml(a,group){
-  return `<article class="oi-wk__ad" aria-label="Anúncio ${a.rank||""} de ${esc(group)}"><div class="oi-wk__rank"><span class="oi-wk__pos" aria-hidden="true">#${a.rank||"—"}</span><span class="oi-sr">Posição ${a.rank||"sem posição"}</span>${oiWkBadges(a)}</div>
+  return `<article class="oi-wk__ad" aria-label="Anúncio ${a.rank||""} de ${esc(group)}"><div class="oi-wk__rank"><span class="oi-wk__pos" aria-hidden="true">#${a.rank||"—"}</span><span class="oi-sr">Posição ${a.rank||"sem posição"}</span>${oiWkBadges(a)}${a.generalRank?`<span class="oi-meta">Posição geral #${a.generalRank}</span>`:""}</div>
     ${oiWkMediaHtml(a)}<div class="oi-wk__body">${oiWkPageLine(a)}${oiWkMetrics(a)}${oiWkCopyHtml(a)}${oiWkDestHtml(a)}<div class="oi-links">${oiExtLink(a.libraryUrl,"Ver na Biblioteca")}</div>${oiWkAiHtml(a)}</div></article>`;
 }
 /* Apresentação: capa (resumo executivo) → por produto: slide do produto → um slide por anúncio. */
@@ -2004,7 +2036,7 @@ function renderSideNav(){
   /* As seções ocultas e seus registros permanecem no armazenamento. */
   html+=`<div class="snav__group snav__group--brands">${ic("trending")}FEG Brands</div>`;
   html+=`<nav class="sidenav__body" aria-label="Navegação FEG Brands">`;
-  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);if(key==="brandsvalidated"&&isAdmin){html+=navItem(SECTIONS.find(s=>s.key==="creativereview"));html+=navItem(SECTIONS.find(s=>s.key==="inteligencia"));}});
+  BRANDS_NAV_ORDER.forEach(key=>{const section=SECTIONS.find(s=>s.key===key);if(section)html+=navItem(section);if(key==="tiktok"&&isAdmin)html+=navItem(SECTIONS.find(s=>s.key==="creativereview"));});
   html+=`</nav><div class="sidenav__footer">${ic("trending")}<span><strong>Inteligência de mercado</strong>Grupo FEG · Brands</span></div>`;
   nav.innerHTML=html;
   $(".sidenav__body",nav).scrollTop=scrollTop;

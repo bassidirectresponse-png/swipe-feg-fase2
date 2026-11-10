@@ -42,6 +42,7 @@ const item = (page, { days = 10, collation = 1, text, video, landing = "https://
 const itemsFor = (perSource = 15) => url => {
   const u = new URL(url), page = u.searchParams.get("view_all_page_id"), q = u.searchParams.get("q");
   if (page) return Array.from({ length: perSource }, (_, i) => item(page, { days: (i * 7) % 120, collation: 1 + (i % 5) }));
+  if (["zeta sem biblioteca", "gama"].includes(q)) return []; // no active matching ads, even after discovery search
   const domain = /\./.test(q) ? q : null;
   return Array.from({ length: perSource }, (_, i) => item(String(70_000 + i), { days: i * 3,
     landing: domain && i % 3 === 0 ? "https://alheio.example/x" : "https://" + (domain || "loja.example") + "/oferta",
@@ -126,9 +127,10 @@ test("products: every current menu offer, all libraries + CONFIRMED discoveries 
     { ...discovery(a.id, "666"), scope_key: "url:abc" }] });
   assert.deepEqual(products.map(p => p.offer_name), ["Alpha", "Gama sem biblioteca", "Beta"]);
   const alpha = products[0];
-  assert.deepEqual(alpha.sources.map(s => [s.key.startsWith("q:") ? "q" : s.key, s.origin]), [["page:111", "cadastrada"], ["q", "cadastrada"], ["page:222", "encontrada"]]);
-  assert.equal(products[1].sources.length, 0);
-  assert.deepEqual(products[2].sources.map(s => s.origin), ["cadastrada", "encontrada"]);
+  assert.deepEqual(alpha.sources.filter(s => !s.generated).map(s => [s.key.startsWith("q:") ? "q" : s.key, s.origin]), [["page:111", "cadastrada"], ["q", "cadastrada"], ["page:222", "encontrada"]]);
+  assert.equal(products[1].sources.filter(s => !s.generated).length, 0);
+  assert.ok(products[1].sources.some(s => s.generated));
+  assert.deepEqual(products[2].sources.filter(s => !s.generated).map(s => s.origin), ["cadastrada", "encontrada"]);
 });
 
 test("collection plan: never above US$ 15, round-robin by least coverage, fail closed on unknown price/balance", () => {
@@ -137,10 +139,10 @@ test("collection plan: never above US$ 15, round-robin by least coverage, fail c
   const none = { offer_id: "c", sources: [] };
   const plan = planCollection([big, small, none]);
   const chosen = plan.batches.flatMap(b => b.sources.map(s => s.key));
-  assert.ok(plan.usd_planned <= 15); assert.equal(chosen.length, 62); // 62 × 40 × 0.006 = 14.88
+  assert.ok(plan.usd_planned <= 15); assert.equal(chosen.length, 72); // adaptive samples cover every source under the same ceiling
   assert.deepEqual(chosen.slice(0, 4), ["page:9", "page:100", "page:8", "page:101"]);
-  assert.ok(plan.batches.every(b => b.sources.length <= 10 && b.max_items === b.sources.length * 40));
-  assert.equal(planCollection([big], { spentUsd: 14.9 }).batches.length, 0);
+  assert.ok(plan.batches.every(b => b.sources.length <= 10 && b.max_items === b.sources.length * b.ads_per_source));
+  assert.equal(planCollection([big], { spentUsd: 14.95 }).batches.length, 0);
   for (const spentUsd of [NaN, -1, Infinity, null, "0", undefined === 1]) assert.equal(planCollection([big], { spentUsd }).batches.length, 0, String(spentUsd));
   assert.equal(planCollection([big], { limits: { ...WEEKLY_LIMITS, usd_per_ad: 0 } }).batches.length, 0);
   const input = weeklyActorInput([REAL.page("1"), "https://evil.example/"]);
@@ -231,8 +233,8 @@ test("worker: full run → Top 10 per product, media, analyses, 3-bullet product
   for (const o of offers.slice(0, 3)) assert.equal(ads.filter(a => a.offer_id === o.id).length, 10);
   assert.ok(ads.every(a => a.media.archived && validateAnalysis(a.analysis)));
   assert.ok(archive.uploads.every(p => p.startsWith("creative-review/" + DATE + "/")));
-  assert.ok(products.filter(p => p.pages.length).every(p => validateBullets(p.summary, 3)));
-  assert.equal(products.find(p => !p.pages.length).offer_name, "Zeta sem biblioteca");
+  assert.ok(products.filter(p => p.pages.some(s => !s.generated)).every(p => validateBullets(p.summary, 3)));
+  assert.equal(products.find(p => p.pages.every(s => s.generated)).offer_name, "Zeta sem biblioteca");
   assert.equal(out.report.summary.bullets.length, 5);
   const first = ads.filter(a => a.offer_id === offers[0].id);
   assert.ok(first.some(a => a.page_source === "encontrada") && first.some(a => a.page_source === "cadastrada"));
@@ -267,7 +269,7 @@ test("worker: Apify reservations never exceed US$ 15 (many sources) and reruns r
   const cents = kind => storage.ledger.filter(l => l.kind === kind).reduce((s, l) => s + Math.round(l.usd * 100), 0);
   const out = await runAll(storage, { apify, archive, claude: okClaude() });
   assert.ok(cents("apify") <= 1500, "apify " + cents("apify")); assert.ok(cents("ai") <= 1000, "ai " + cents("ai"));
-  assert.ok(out.report.cost.sources_skipped > 0);
+  assert.equal(out.report.cost.sources_skipped, 0, "smaller per-source samples cover every source within the cap");
   const starts = apify.starts.length;
   await runAll(storage, { apify, archive, claude: okClaude() });
   assert.equal(apify.starts.length, starts, "rerun of the same Wednesday: no new POST");
@@ -430,7 +432,7 @@ test("background: HMAC domain separation, single-use nonce, self re-dispatch unt
   const text = await (await h.api(req("GET", "?date=" + DATE))).text(), folder = JSON.parse(text);
   assert.deepEqual(Object.keys(folder).sort(), ["ok", "products", "report", "summary"]);
   assert.equal(folder.summary.bullets.length, 5);
-  assert.deepEqual(folder.products.map(p => [p.offer_name, p.no_library, p.status_label]), [["Alpha", false, null], ["Gama", true, "Sem biblioteca cadastrada"], ["Beta", false, null]]);
+  assert.deepEqual(folder.products.map(p => [p.offer_name, p.no_library, p.status_label]), [["Alpha", false, null], ["Gama", true, "Sem biblioteca cadastrada; busca por domínio/produto"], ["Beta", false, null]]);
   assert.equal(folder.products[0].top.length, 3); assert.equal(folder.products[0].summary.bullets.length, 3);
   const detail = await (await h.api(req("GET", "?date=" + DATE + "&offer_id=" + offers[0].id))).json();
   assert.equal(detail.ads.length, 10); assert.deepEqual(detail.ads.map(a => a.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -556,4 +558,17 @@ test("image dimensions from archived bytes bound the image tokens; unknown or ov
     fetcher: async (url, init) => { calls.push(JSON.parse(init.body)); return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }], usage: {} })); } });
   await ai({ prompt: "p", image: "https://x/no-dims.png", maxTokens: 10, kind: "ad" });
   assert.equal(calls[0].messages[0].content.length, 1, "string image without dimensions is not sent");
+});
+
+test('explicit folder recovery retries failed collection with a NEW reservation and preserves successful sources', async () => {
+  const {storage} = scenario({products:1,withSearch:false});
+  const broken=createFAKEWeeklyApify({startError:new Error('provider unavailable')});
+  await runAll(storage,{apify:broken,archive:FAKEArchive(),claude:okClaude()});
+  const old=[...storage.reports.values()][0];
+  await storage.prepareRecovery(old);
+  const working=createFAKEWeeklyApify({itemsFor:itemsFor(12)});
+  const out=await runAll(storage,{apify:working,archive:FAKEArchive(),claude:okClaude()});
+  assert.ok(working.starts.length>0);assert.equal(out.report.id,old.id);
+  assert.ok([...storage.ads.values()].length>0);
+  assert.ok(storage.ledger.filter(x=>x.kind==='apify').length>1);
 });

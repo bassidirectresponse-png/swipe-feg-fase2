@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createWeeklyHandlers} from '../netlify/functions/_offer-intel-weekly.mjs';
+import {createFAKEWeeklyStorage} from './offer-intel-weekly-FAKE-storage.mjs';
+const make=()=>{const storage=createFAKEWeeklyStorage(); const queued=[];const h=createWeeklyHandlers({trustedOrigin:()=>true,authenticate:async()=>({id:'admin'}),isAdmin:()=>true,rateLimit:async()=>({allowed:true}),now:()=>new Date('2026-11-10T16:00:00Z'),getServices:()=>({storage,dispatch:async(id)=>queued.push(id)})});return{storage,queued,h};};
+const req=body=>new Request('https://swipe.fegsys.com/.netlify/functions/offer-intel-weekly',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+test('dated recovery preserves existing folder id and date, never creates a replacement week',async()=>{const {storage,h}=make();const {report}=await storage.enqueue({review_date:'2026-11-04',trigger:'schedule'});Object.assign(storage.reports.get(report.id),{status:'failed'});const r=await h.api(req({action:'run',review_date:'2026-11-04'}));assert.equal(r.status,202);const d=await r.json();assert.equal(d.report_id,report.id);assert.equal(d.review_date,'2026-11-04');assert.equal(storage.reports.size,1);});
+test('dated recovery accepts only an existing Wednesday and rejects arbitrary fields',async()=>{const {h}=make();for(const review_date of ['2026-11-03','nonsense'])assert.equal((await h.api(req({action:'run',review_date}))).status,400);assert.equal((await h.api(req({action:'run',review_date:'2026-11-04'}))).status,404);assert.equal((await h.api(req({action:'run',force:true}))).status,400);});

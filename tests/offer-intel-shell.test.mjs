@@ -59,7 +59,7 @@ test("a casca integra rota, sidebar admin-only, abas e estados sem dados falsos"
   assert.match(html, /inteligencia:"inteligencia"\}/);
   assert.match(html, /if\(section==="inteligencia"\)\{const oi=OfferIntel\.parsePath/);
   assert.match(html, /if\(activeSection==="inteligencia"\)\{renderOfferIntel\(\);return;\}/);
-  assert.match(html, /if\(key==="brandsvalidated"&&isAdmin\)\{html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\);html\+=navItem\(SECTIONS\.find\(s=>s\.key==="inteligencia"\)\);\}/);
+  assert.match(html, /if\(key==="tiktok"&&isAdmin\)html\+=navItem\(SECTIONS\.find\(s=>s\.key==="creativereview"\)\)/);
   assert.match(html, /aria-label="Áreas de Inteligência de Ofertas"/);
   assert.match(html, /aria-current="page"/);
   assert.match(html, /const OI_BACKEND_READY=(true|false)/);
