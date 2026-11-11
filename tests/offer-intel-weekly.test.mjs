@@ -354,7 +354,7 @@ test("archive: Meta CDN download cap 150 MB video, fixed path, magic bytes", asy
   assert.equal((await archive({ date: DATE, offer_id: offerId, ad_archive_id: "123", kind: "thumb", url: "https://scontent.fbcdn.net/x.jpg" })).url,
     "https://FAKE/creative-review/" + DATE + "/" + offerId + "/123-thumb.jpg");
   await archive({ date: DATE, offer_id: offerId, ad_archive_id: "123", kind: "video", url: "https://video.fbcdn.net/x.mp4" });
-  assert.deepEqual(limits, [8 * 1024 * 1024, 150 * 1024 * 1024]);
+  assert.deepEqual(limits, [8 * 1024 * 1024, 50 * 1024 * 1024]);
   assert.deepEqual(uploads.map(u => u[1]), ["image/jpeg", "video/mp4"]);
   await assert.rejects(archive({ date: DATE, offer_id: offerId, ad_archive_id: "1", kind: "video", url: "https://video.fbcdn.net/x.jpg" }));
   const big = createWeeklyArchive({ download: async () => Buffer.alloc(150 * 1024 * 1024 + 1), upload: async () => {}, publicUrl: p => p });

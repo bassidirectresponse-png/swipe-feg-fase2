@@ -39,6 +39,10 @@ export function weeklyRuntime() {
       const downloadUrl = archivedVideo ? 'https://s3.eu-central-003.backblazeb2.com/trendtrack-medias' + new URL(url).pathname : url;
       const response = await safeRemoteFetch(downloadUrl, { allowedHostSuffixes: archivedVideo ? ['s3.eu-central-003.backblazeb2.com'] : FB_MEDIA_HOSTS, timeoutMs: 90_000 });
       if (!response.ok) throw new Error("download indisponível");
+      if (Number(response.headers.get("content-length")) > maxBytes) {
+        await response.body?.cancel().catch(() => {});
+        throw new Error("Arquivo acima do limite de armazenamento; tentando a próxima versão.");
+      }
       return boundedBuffer(response, maxBytes);
     },
     async upload(path, buffer, contentType) {
