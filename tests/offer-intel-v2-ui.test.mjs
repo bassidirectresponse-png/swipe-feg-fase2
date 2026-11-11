@@ -303,3 +303,12 @@ test('recortes indexados usam rankings próprios e isolam referências inativas'
  assert.equal(run("crWindowAds(__periodAds,14,'new').map(a=>a.adArchiveId).join(',')"),'older,fresh');
  assert.equal(run("crWindowAds(__periodAds,7,'history').map(a=>a.adArchiveId).join(',')"),'history');
 });
+
+test('apresentação recompõe os slides quando todos os detalhes já estão no cache',async()=>{
+ seedCr();ctx.__folder={...ctx.__f,products:[ctx.__f.products[1]],days:0,mode:'new'};
+ run(`var savedRender=oiPresRender;oiPresRender=()=>{};var session={products:{},slides:oiPresBuild(__folder,{}),i:1,loading:true};oiPres=session;`);
+ await run("oiPresLoadProducts(session,__folder,'2026-10-28')");
+ assert.equal(run("session.slides.filter(s=>s.type==='ad').length"),10);
+ assert.equal(run('session.loading'),false);
+ run('oiPresRender=savedRender;oiPres=null;');
+});

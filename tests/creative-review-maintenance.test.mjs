@@ -44,7 +44,7 @@ test('recovery starts directly at media with a fenced lease, retaining folder an
   const s = setup(); assert.equal((await s.request()).status, 202);
   assert.deepEqual(s.calls.map(c => c[0]), ['runtime', 'enqueue', 'claim', 'checkpoint', 'continue', 'dispatch']);
   const patch = s.calls[3][1]; assert.equal(patch.report_id, 'saved-folder'); assert.equal(patch.lease_token, 'lease');
-  assert.equal(patch.patch.phase, 'media'); assert.equal(patch.patch.cost.recovery_scope, 'pending_media');
+  assert.equal(patch.patch.phase, 'media'); assert.equal(patch.patch.cost.recovery_scope, 'missing_media');
   assert.equal(patch.patch.cost.recovery_requested, false); assert.deepEqual(s.calls.at(-1), ['dispatch', 'saved-folder', 'next']);
   assert.deepEqual(s.ads, [{ id: 'saved-ad', analysis: { existing: true } }]);
 });

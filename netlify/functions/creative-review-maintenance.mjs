@@ -53,10 +53,10 @@ export function createMaintenanceHandler({ verify = verifyGithubAutomationToken,
       if (!claimed?.lease_token) return reply(409, { ok: false, error: 'Pasta em processamento.' });
       const fence = { report_id: claimed.id, lease_token: claimed.lease_token };
       await storage.checkpoint({ ...fence, patch: { phase: 'media', progress: 40,
-        cost: { recovery_generation: randomUUID(), recovery_requested: false, reindex_periods: body.action === 'reindex_periods', recovery_scope: body.action === 'reindex_periods' ? 'saved_periods' : 'pending_media' } } });
+        cost: { recovery_generation: randomUUID(), recovery_requested: false, reindex_periods: body.action === 'reindex_periods', recovery_scope: body.action === 'reindex_periods' ? 'saved_periods' : 'missing_media' } } });
       const next = await storage.continue(fence);
       await dispatch(claimed.id, next.nonce);
-      return reply(202, { ok: true, report_id: claimed.id, review_date: report.review_date, scope: 'pending_media' });
+      return reply(202, { ok: true, report_id: claimed.id, review_date: report.review_date, scope: body.action === 'reindex_periods' ? 'saved_periods' : 'missing_media' });
     } catch (error) {
       return reply([400, 409, 413, 415].includes(error?.status) ? error.status : 503,
         { ok: false, error: 'Não foi possível concluir a manutenção.', code: error?.code || 'unavailable' });
