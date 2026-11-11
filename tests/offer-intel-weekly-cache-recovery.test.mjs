@@ -66,3 +66,19 @@ test('evidence mode completes every report section without calling or reserving 
   assert.match(ad.analysis.formato,/não foi transcrito/);
   assert.equal(deps.storage.ledger.filter(x=>x.kind==='ai').length,0);
 });
+
+test('media-only recovery also completes reports for products with no ranked ads, without new collection',async()=>{
+ const deps=await setup();await runCreativeReviewSlice({...deps,analysisMode:'observed_data'});
+ const q=await deps.storage.enqueue({review_date:deps.report.review_date,trigger:'manual'});
+ const report=await deps.storage.claim({report_id:q.report.id,nonce:q.nonce});
+ const fence={report_id:report.id,lease_token:report.lease_token},emptyId=randomUUID();
+ const products=await deps.storage.listProducts(report.id);
+ await deps.storage.saveProducts({...fence,products:[...products,{offer_id:emptyId,position:2,offer_name:'Empty product',pages:[],ads_collected:0,summary:null}]});
+ Object.assign(report,await deps.storage.checkpoint({...fence,patch:{phase:'media',cost:{recovery_generation:'test-media'}}}));
+ deps.apify.start=()=>{throw new Error('new collection forbidden');};
+ const result=await runCreativeReviewSlice({...deps,report,analysisMode:'observed_data'});
+ assert.equal(result.status,'succeeded');
+ const saved=await deps.storage.listProducts(report.id);
+ assert.match(saved.find(p=>p.offer_id===emptyId).summary.bullets[0],/nenhum criativo elegível/);
+ assert.deepEqual(saved.find(p=>p.offer_id===products[0].offer_id).summary,products[0].summary);
+});

@@ -1,6 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {observedAdAnalysis,observedProductSummary}from'../lib/offer-intel-weekly-evidence.mjs';
 import {validateAnalysis,validateBullets}from'../lib/offer-intel-weekly.mjs';
+test('empty product report explains the observed absence without claiming the brand has no campaigns',()=>{
+ const result=observedProductSummary({ads_collected:0,pages:[{},{}]},[]);
+ assert.ok(validateBullets(result,3));assert.match(result.bullets[0],/0 anúncios/);assert.match(result.bullets[1],/7, 14 e 30/);
+ assert.match(result.bullets[1],/não comprova ausência/);assert.match(result.bullets[2],/2 fontes/);
+});
 test('observed analysis quotes source claims and does not invent an absent mechanism or audience',()=>{
  const ad={ad_text:'A new daily routine.',display_format:'video',days_active:14,repetitions:3,media:{observed_at:'2026-11-10T10:00:00Z'}};
  const result=observedAdAnalysis(ad);assert.ok(validateAnalysis(result));assert.match(result.gancho,/A new daily routine/);assert.match(result.mecanismo,/Não identificado/);assert.match(result.publico,/não explicitado/);assert.match(result.por_que_funciona,/não comprovam vendas/);
