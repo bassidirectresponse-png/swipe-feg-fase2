@@ -254,18 +254,18 @@ test("Janela 7/14/30 reordena por duração na janela e repetições na coleta s
   assert.equal(run("crWindowAds(__windowAds,7)[0].repetitions"),9);
 });
 
-test("Seletor de período começa em Todos e mostra período, contagem e posição geral ao filtrar", () => {
+test("Seletor de período começa em Geral e mostra período, contagem e posição geral ao filtrar", () => {
   seedCr();
   const route = `{view:'product',date:'2026-10-28',offerId:'${OFFER_B}'}`;
   const normal=run(`crProductHtml(${route})`);
-  assert.match(normal,/data-cr-window="0" aria-pressed="true">Todos/);
+  assert.match(normal,/data-cr-window="0" aria-pressed="true">Geral/);
   for (const days of [7,14,30]) assert.ok(normal.includes(`data-cr-window="${days}" aria-pressed="false">${days} dias`));
-  run(`crStates['product:2026-10-28:${OFFER_B}'].data.ads=__windowAds;crWindowByProduct['product:2026-10-28:${OFFER_B}']=7`);
+  run(`crStates['product:2026-10-28:${OFFER_B}'].data.ads=__windowAds;crWindowByProduct['product:2026-10-28:${OFFER_B}']=7;crModeByProduct['product:2026-10-28:${OFFER_B}']='lasting'`);
   const selected=run(`crProductHtml(${route})`);
   assert.match(selected,/data-cr-window="7" aria-pressed="true">7 dias/);
-  assert.match(selected,/Janela de 7 dias · 3 de 4 criativos/);
+  assert.match(selected,/Permanência nos últimos 7 dias · 3 criativos/);
   assert.match(selected,/Posição geral #2/);
-  assert.match(selected,/não comprovam veiculação contínua nem histórico de repetições/);
+  assert.match(selected,/Repetições são as registradas na coleta/);
   assert.equal((selected.match(/<article class="oi-wk__ad"/g)||[]).length,3);
   run(`delete crWindowByProduct['product:2026-10-28:${OFFER_B}']`);
 });
@@ -286,4 +286,20 @@ test("Criativos recuperados exibem a data real e distinguem observações de col
   const detail = run("crProductHtml({view:'product',date:'2026-10-28',offerId:'22222222-2222-4222-8222-222222222222'})");
   assert.match(detail, /Top criativos da coleta/);
   assert.match(detail, /Pastas recuperadas podem reunir coletas de datas distintas/);
+});
+
+test('apresentação respeita seleção, apresenta todos com seleção vazia e não reutiliza resumo global para um recorte',()=>{
+ seedCr();
+ run(`crRoute={view:'folder',date:'2026-10-28'};oiPres=null;crSelection('2026-10-28').clear();var originalOpen=oiOpenPresentation;oiOpenPresentation=(opener,folder)=>{globalThis.capturedFolder=folder;};crPresent(null);`);
+ assert.equal(ctx.capturedFolder.products.length,3);assert.equal(ctx.capturedFolder.summary.length,5);
+ run(`crSelection('2026-10-28').add('${OFFER_B}');crPresent(null);`);
+ assert.equal(ctx.capturedFolder.products.length,1);assert.equal(ctx.capturedFolder.products[0].offerId,OFFER_B);assert.equal(ctx.capturedFolder.summary.length,0);
+ run(`crSelection('2026-10-28').clear();oiOpenPresentation=originalOpen;`);
+});
+test('recortes indexados usam rankings próprios e isolam referências inativas',()=>{
+ ctx.__periodAds=[{adArchiveId:'general',rank:1,generalRank:1,periodsIndexed:true,periodRanks:{lasting_7:1},windows:[]},{adArchiveId:'fresh',rank:20,generalRank:null,periodsIndexed:true,periodRanks:{new_7:1,new_14:2},windows:[]},{adArchiveId:'older',rank:21,generalRank:null,periodsIndexed:true,periodRanks:{new_14:1},windows:[]},{adArchiveId:'history',historical:true,rank:1,generalRank:null,windows:[]}];
+ assert.equal(run("crWindowAds(__periodAds,0,'new').map(a=>a.adArchiveId).join(',')"),'general');
+ assert.equal(run("crWindowAds(__periodAds,7,'new').map(a=>a.adArchiveId).join(',')"),'fresh');
+ assert.equal(run("crWindowAds(__periodAds,14,'new').map(a=>a.adArchiveId).join(',')"),'older,fresh');
+ assert.equal(run("crWindowAds(__periodAds,7,'history').map(a=>a.adArchiveId).join(',')"),'history');
 });

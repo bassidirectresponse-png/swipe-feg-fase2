@@ -107,7 +107,7 @@ test("Creative Review: pasta e produto seguem o contrato 10.5", () => {
   assert.equal(a3.pageSource, "encontrada"); assert.equal(a1.pageSource, "cadastrada");
   assert.equal(a1.analysis.length, 8); assert.equal(p.ads[5].analysis.length, 0);
   assert.equal(a1.libraryUrl, "https://www.facebook.com/ads/library/?id=1000000001");
-  assert.equal(OI.formatReviewProduct({ ads: new Array(15).fill({}) }).ads.length, 10);
+  assert.equal(OI.formatReviewProduct({ ads: new Array(100).fill({}) }).ads.length, 80);
 });
 
 test("score desconhecido e mídia insegura nos anúncios", () => {

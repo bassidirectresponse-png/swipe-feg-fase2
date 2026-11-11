@@ -1,3 +1,4 @@
+import { withPeriodStorage } from '../../lib/offer-intel-weekly-periods.mjs';
 import { createHmac, createHash } from "node:crypto";
 import { getStore } from '@netlify/blobs';
 import { recoveredMediaRow, recoveryBlobKey } from '../../lib/offer-intel-weekly-recovery.mjs';
@@ -18,7 +19,8 @@ export const weeklySecret = secret => secret ? createHmac("sha256", secret).upda
 
 export function weeklyRuntime() {
   const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  const storage = createWeeklyStorage({ url: SUPABASE_URL, serviceKey });
+  const recoveryStore = getStore({ name: 'creative-review-recovery', consistency: 'strong' });
+  const storage = withPeriodStorage(createWeeklyStorage({ url: SUPABASE_URL, serviceKey }), recoveryStore);
   const secret = weeklySecret(automationSigningSecret());
   const archivedChecks = new Map();
   const archive = createWeeklyArchive({
@@ -63,6 +65,8 @@ export function weeklyRuntime() {
     recoveredAssets ||= getStore({ name: 'creative-review-recovery', consistency: 'strong' }).get('assets.json', { type: 'json' }).catch(() => null);
     return recoveredMediaRow((await recoveredAssets)?.assets?.[adId], adId);
   };
+  archive.dataset = id => recoveryStore.get('datasets/' + id + '.json', { type: 'json' });
+  archive.historical = date => recoveryStore.get('history/' + date + '.json', { type: 'json' });
   archive.audit = async snapshot => {
     if (!isReviewDate(snapshot.review_date)) return;
     await getStore({ name: 'creative-review-recovery', consistency: 'strong' }).setJSON('reports/' + snapshot.review_date + '.json', snapshot);

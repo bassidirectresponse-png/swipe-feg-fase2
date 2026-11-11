@@ -18,7 +18,7 @@ export function createMaintenanceHandler({ verify = verifyGithubAutomationToken,
     try {
       const body = await readJson(req, { maxBytes: 1024 });
       if (!body || Array.isArray(body) || Object.keys(body).some(k => !['action', 'review_date'].includes(k)) ||
-          !['inspect', 'cache_report', 'recover_media'].includes(body.action) || !isReviewDate(body.review_date))
+          !['inspect', 'cache_report', 'recover_media', 'reindex_periods'].includes(body.action) || !isReviewDate(body.review_date))
         return reply(400, { ok: false, error: 'Ação inválida.' });
       const { storage, dispatch, apify } = runtime();
       const report = await storage.getReport({ date: body.review_date });
@@ -53,7 +53,7 @@ export function createMaintenanceHandler({ verify = verifyGithubAutomationToken,
       if (!claimed?.lease_token) return reply(409, { ok: false, error: 'Pasta em processamento.' });
       const fence = { report_id: claimed.id, lease_token: claimed.lease_token };
       await storage.checkpoint({ ...fence, patch: { phase: 'media', progress: 40,
-        cost: { recovery_generation: randomUUID(), recovery_requested: false, recovery_scope: 'pending_media' } } });
+        cost: { recovery_generation: randomUUID(), recovery_requested: false, reindex_periods: body.action === 'reindex_periods', recovery_scope: body.action === 'reindex_periods' ? 'saved_periods' : 'pending_media' } } });
       const next = await storage.continue(fence);
       await dispatch(claimed.id, next.nonce);
       return reply(202, { ok: true, report_id: claimed.id, review_date: report.review_date, scope: 'pending_media' });

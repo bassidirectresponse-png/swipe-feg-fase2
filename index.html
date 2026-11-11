@@ -1220,11 +1220,11 @@
   .tranalysis .ccmd-tbl{min-width:760px;}
   .tranalysis-empty{min-height:150px;display:grid;place-items:center;text-align:center;color:var(--faint);padding:28px;}
   .ad-report{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;overflow:hidden;}
-  .ad-report__bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;}
+  .ad-report__bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);color:var(--muted-fg);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;}
   .ad-report__body{max-height:min(72vh,820px);overflow:auto;padding:20px;font-size:.92rem;line-height:1.65;}
   .ad-report__body h3,.ad-report__body h4,.ad-report__body h5,.ad-report__body h6{margin:22px 0 10px;color:var(--fg);line-height:1.25;}
   .ad-report__body p{margin:8px 0}.ad-report__body ul,.ad-report__body ol{padding-left:22px;margin:8px 0}.ad-report__body .ccmd-tblwrap{overflow:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px}.ad-report__body .ccmd-tbl{min-width:760px}
-  .ad-report__empty{padding:28px;color:var(--muted);text-align:center;}
+  .ad-report__empty{padding:28px;color:var(--muted-fg);text-align:center;}
   .trdoc__head{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);}
   .trdoc__title{font-size:.82rem;font-weight:800;color:var(--fg);}
   .trdoc__state{font-size:.72rem;color:var(--muted-fg);display:inline-flex;align-items:center;gap:6px;text-align:right;}
@@ -1745,6 +1745,19 @@
   .oi-pres [aria-disabled="true"]{opacity:.4;}
   @media(max-width:900px){.oi-pres__ad{grid-template-columns:1fr;}.oi-pres__media .oi-wk__media{max-height:50vh;}.oi-pres__hint{display:none;}.oi-pres .btn{min-height:44px;}}
   @media(max-width:700px){.oi-wk__actions .btn{flex:1 1 auto;}.oi-dx__tech{grid-template-columns:1fr;}}
+  .cr-selectcard{border:1px solid var(--border);border-radius:var(--r,12px);overflow:hidden;display:flex;flex-direction:column;background:var(--surface);}
+  .cr-selectcard[hidden]{display:none;}.cr-selectcard:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+  .cr-selectcard__check{display:flex;gap:10px;align-items:center;padding:12px 16px;font-size:12px;min-height:44px;cursor:pointer;border-bottom:1px solid var(--border);color:var(--muted-fg);}
+  .cr-selectcard__check input{width:18px;height:18px;accent-color:var(--accent);}.cr-selectcard .cr-pcard{border:0;border-radius:0;flex:1;}
+  .cr-selection{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--border);margin-bottom:20px;}.cr-selection p{margin:6px 0 0;}
+  .cr-filter{display:flex;gap:14px;flex-wrap:wrap;align-items:end;}.cr-filter label{display:grid;gap:6px;font-size:12px;color:var(--muted-fg);}
+  .cr-filter select,.oi-pres__jump select{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-height:44px;max-width:100%;}
+  .oi-pres__jump{max-width:min(360px,100%);}.oi-pres__progress{width:100%;height:3px;accent-color:var(--accent);border:0;}
+  .oi-pres__cover{max-width:72rem;margin:clamp(20px,5vh,70px) auto;gap:24px;}.oi-pres__cover h2{line-height:1.08;letter-spacing:-.035em;max-width:20ch;}
+  .oi-pres__cover li{font-size:clamp(1rem,1.4vw,1.25rem);line-height:1.65;}.oi-pres__subtitle{font-size:clamp(1.15rem,2vw,1.6rem);color:var(--muted-fg);}
+  .oi-pres__agenda{display:flex;gap:8px;flex-wrap:wrap;}.oi-pres__agenda button{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;text-align:left;}.oi-pres__agenda button:hover{border-color:var(--accent);}
+  .oi-pres__media{position:sticky;top:0;}.oi-pres__info{padding:8px 16px 40px 0;}.oi-pres__info .oi-wk__ai dd{font-size:clamp(.95rem,1.1vw,1.1rem);line-height:1.65;}
+  @media(max-width:900px){.oi-pres__media{position:static;}.oi-pres__ad{height:auto;}.oi-pres__info{padding-right:0;}.oi-pres__bar{gap:8px;}.oi-pres__count{width:100%;font-size:12px;}.oi-pres__jump{flex:1;min-width:0;}.cr-filter{width:100%;}.cr-selection .oi-links{width:100%;}}
   @media print{
     @page{margin:12mm;}
     .topbar,.sidenav,#oiTray,#toast,.oi-bar,.oi-ctx,.oi-wk__actions,.oi-wk__tabs,.oi-wk__sel,.oi-pres,.skip-link,[data-oi-wk-run],.oi-wk__media video,.oi-wk__media--none,#pageResult{display:none!important;}
@@ -3529,12 +3542,20 @@ function crListHtml(){
   const n=v=>v==null?"—":v.toLocaleString("pt-BR");
   return head+`<ul class="cr-folders">${st.data.map(m=>`<li><a class="cr-folder" data-nav href="${esc(crPath(m.date))}"><span class="cr-folder__ico" aria-hidden="true">${ic("folder")}</span><span class="cr-folder__main"><b>${esc(m.title)}</b><span class="oi-meta">${[m.productsCount==null?"":n(m.productsCount)+" produtos",m.adsCount==null?"":n(m.adsCount)+" anúncios",m.finishedAt?"Atualizado em "+esc(m.finishedAt):""].filter(Boolean).join(" · ")||esc(m.statusLabel)}</span>${crProgress(m)}</span>${crStatusChip(m)}</a>${m.status==="failed"||m.status==="partial"?`<div class="cr-folder__recovery"><span class="oi-meta">${m.status==="failed"?"Coleta interrompida. Recupere esta pasta para concluir a análise.":"Há etapas pendentes nesta pasta."}</span>${crRunBtn(m.date,m)}</div>`:""}</li>`).join("")}</ul>`;
 }
+const crSelectionByDate=Object.create(null),crModeByProduct=Object.create(null);
+function crSelection(date){return crSelectionByDate[date]||(crSelectionByDate[date]=new Set());}
+function crUpdateSelection(){
+  const area=$("#gridArea"),count=crSelection(crRoute.date).size;
+  area.querySelectorAll("[data-cr-present]").forEach(b=>{b.textContent=count?`Apresentar ${count} selecionados`:"Apresentar todos";});
+  const label=area.querySelector("[data-cr-selection-status]");if(label)label.textContent=count?`${count} produtos selecionados. A busca não altera a seleção.`:"Nenhum selecionado: todos os produtos entram na apresentação.";
+  const clear=area.querySelector("[data-cr-clear-selection]");if(clear)clear.disabled=!count;
+}
 function crProductCard(p,date){
   const thumbs=p.top.map(t=>t.thumbUrl?`<img data-oi-img data-oi-ph="film" src="${esc(t.thumbUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:`<span class="cr-thumb--none" aria-hidden="true">${ic("film")}</span>`).join("");
-  return `<a class="cr-pcard" data-cr-product="${esc(p.name+" "+p.brand)}" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
+  return `<article class="cr-selectcard" data-cr-product="${esc(p.name+" "+p.brand)}"><label class="cr-selectcard__check"><input type="checkbox" data-cr-select="${esc(p.offerId)}" ${crSelection(date).has(p.offerId)?"checked":""} aria-label="Incluir ${esc(p.name)} na apresentação"><span>Incluir na apresentação</span></label><a class="cr-pcard" data-nav href="${esc(crPath(date,p.offerId))}"><div class="cr-pcard__top"><div><b class="cr-pcard__name">${esc(p.name)}</b><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</span></div>${p.isNewLeader?'<span class="oi-wk__new">NOVO LÍDER</span>':""}</div>
     <div class="cr-thumbs" aria-hidden="${p.top.length?"false":"true"}">${thumbs||`<span class="cr-thumb--none">${ic("film")}</span>`}</div>
     ${p.statusLabel?`<p class="cr-coverage${p.noLibrary?" cr-coverage--pending":""}">${esc(p.statusLabel)}</p>`:""}<div class="oi-meta">${[p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios",p.pagesCount==null?"":p.pagesCount+" Páginas"].filter(Boolean).join(" · ")||"&nbsp;"}</div>
-    ${p.summary.length?`<ul class="cr-bullets">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</a>`;
+    ${p.summary.length?`<ul class="cr-bullets">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</a></article>`;
 }
 function crFolderHtml(route){
   const st=crEnsure(route),crumbs=crCrumbs([{label:"Creative Review",href:crPath()},{label:OfferIntel.reviewTitle(route.date)}]);
@@ -3543,17 +3564,23 @@ function crFolderHtml(route){
   const allKnown=d.products.length>0&&d.products.every(p=>p.adsCollected!=null),total=m.adsCount!=null?m.adsCount:allKnown?d.products.reduce((t,p)=>t+p.adsCollected,0):null;
   const adsTxt=total==null?"":" · "+n(total)+" anúncios";
   const banner=m.active?`<div class="banner banner--warn" role="status">${ic("pulse")}Pasta em geração. Esta tela atualiza sozinha; os produtos aparecem conforme a análise avança.</div>`:(m.status==="failed"||m.status==="partial")?`<div class="banner banner--warn" role="alert">${ic("alert")}${m.status==="partial"?(String(m.error||"").trim()==="Parte das mídias não foi arquivada."?"Pasta parcial — o ranking está completo. Alguns vídeos grandes não foram guardados no Swipe; use \"Ver na Biblioteca\".":"Pasta parcial — algumas etapas não foram concluídas."+(m.error?" "+esc(m.error):"")):"A geração desta pasta falhou."+(m.error?" "+esc(m.error):"")} Use Recuperar pasta para executar novamente na mesma pasta.</div>`:"";
-  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn(route.date,m)}</div></div>
+  const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">Creative Review</div><h2>${esc(m.title)}</h2></div><div class="oi-wk__actions"><button type="button" class="btn btn--accent" data-cr-present${d.products.length?"":" disabled"}>Apresentar todos</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button>${crRunBtn(route.date,m)}</div></div>
     <div class="oi-links">${crStatusChip(m)}<span class="oi-meta">${n(m.productsCount==null?d.products.length:m.productsCount)} produtos${adsTxt}${m.finishedAt?" · Atualizado em "+esc(m.finishedAt):""}</span></div>${crProgress(m)}${banner}</div>`;
   const sum=d.summary.length?`<section class="oi-card oi-wk__sum" aria-labelledby="crSum"><h3 id="crSum">Resumo executivo</h3><ul>${d.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></section>`:(m.active?"":`<section class="oi-card oi-wk__sum"><h3>Resumo executivo</h3><p class="oi-note">O resumo desta semana não está disponível.</p></section>`);
   const grid=d.products.length?`<div class="cr-grid">${d.products.map(p=>crProductCard(p,route.date)).join("")}</div>`:oiStateHtml("empty",{title:m.active?"Analisando os produtos…":"Nenhum produto nesta pasta",text:m.active?"Os produtos aparecem aqui conforme forem concluídos.":"A coleta ainda não retornou produtos. Use Recuperar pasta ou Atualizar pasta para executar a análise desta data."});
   const coverage=d.products.length?`<div class="cr-sectionhead"><div><h3>Produtos desta revisão</h3><p class="oi-note">Abra um produto para ver os criativos ranqueados, a copy e a análise detalhada.</p></div><label class="cr-search">Buscar produto<input type="search" data-cr-search placeholder="Marca ou produto" autocomplete="off"></label></div><p class="oi-meta" data-cr-search-status aria-live="polite"></p>`:"";
-  return crumbs+head+sum+coverage+grid;
+  const selection=d.products.length?`<div class="cr-selection"><div><b>Monte sua apresentação</b><p class="oi-note" data-cr-selection-status aria-live="polite">${crSelection(route.date).size?crSelection(route.date).size+" produtos selecionados.":"Nenhum selecionado: todos os produtos entram na apresentação."}</p></div><div class="oi-links"><button type="button" class="btn btn--outline btn--sm" data-cr-clear-selection ${crSelection(route.date).size?"":"disabled"}>Limpar seleção</button><button type="button" class="btn btn--accent btn--sm" data-cr-present>${crSelection(route.date).size?"Apresentar "+crSelection(route.date).size+" selecionados":"Apresentar todos"}</button></div></div>`:"";
+  return crumbs+head+sum+coverage+selection+grid;
 }
-function crWindowAds(ads,days){
-  if(![7,14,30].includes(days))return ads;
-  return ads.map(ad=>({ad,window:ad.windows.find(w=>w.days===days)})).filter(row=>row.window&&row.window.activeDays!=null)
-    .sort((a,b)=>b.window.activeDays-a.window.activeDays||(b.ad.repetitions||0)-(a.ad.repetitions||0)||(a.ad.rank||0)-(b.ad.rank||0))
+function crWindowAds(ads,days,mode="lasting"){
+  if(mode==="history")return ads.filter(a=>a.historical).map((a,i)=>({...a,rank:i+1}));
+  const active=ads.filter(a=>!a.historical);
+  if(![7,14,30].includes(days))return active.filter(a=>a.generalRank!==null).sort((a,b)=>a.rank-b.rank).slice(0,10);
+  if(active.some(a=>a.periodsIndexed))return active.filter(a=>a.periodRanks&&a.periodRanks[mode+"_"+days])
+    .sort((a,b)=>a.periodRanks[mode+"_"+days]-b.periodRanks[mode+"_"+days])
+    .map(a=>({...a,rank:a.periodRanks[mode+"_"+days],generalRank:a.generalRank,rankChange:0,selectedWindow:days}));
+  return active.map(ad=>({ad,window:ad.windows.find(w=>w.days===days)})).filter(row=>row.window&&row.window.activeDays!=null&&(mode!=="new"||row.window.startedWithin===true))
+    .sort((a,b)=>mode==="new"?(b.ad.repetitions||0)-(a.ad.repetitions||0):b.window.activeDays-a.window.activeDays||(b.ad.repetitions||0)-(a.ad.repetitions||0)||(a.ad.rank||0)-(b.ad.rank||0))
     .map((row,i)=>({...row.ad,rank:i+1,generalRank:row.ad.rank,rankChange:0,selectedWindow:days}));
 }
 function crProductHtml(route){
@@ -3566,11 +3593,11 @@ function crProductHtml(route){
   const head=`<div class="oi-card cr-folderhead"><div class="cr-head"><div><div class="eyebrow">${esc(OfferIntel.reviewTitle(route.date))}</div><h2>${esc(p.name)}</h2><span class="oi-meta">${esc([p.brand,SEC_SHORT[p.section]||"",p.pagesCount==null?"":p.pagesCount+" Páginas",p.adsCollected==null?"":p.adsCollected.toLocaleString("pt-BR")+" anúncios coletados"].filter(Boolean).join(" · "))}</span></div>
     <div class="oi-wk__actions">${nav(prev,"← Produto anterior",'rel="prev"')}${nav(next,"Próximo produto →",'rel="next"')}<button type="button" class="btn btn--accent" data-cr-present>Apresentar</button><button type="button" class="btn btn--outline" data-cr-print>Imprimir / PDF</button></div></div>
     ${p.statusLabel?`<p class="cr-coverage${p.noLibrary?" cr-coverage--pending":""}">${esc(p.statusLabel)}</p>`:""}${p.summary.length?`<ul class="cr-bullets cr-bullets--lg">${p.summary.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:'<p class="oi-meta">Resumo do produto indisponível.</p>'}</div>`;
-  const days=crWindowByProduct[crKey(route)]||0,ranked=crWindowAds(d.ads,days);
-  const period=days?`Janela de ${days} dias · ${ranked.length} de ${d.ads.length} criativos`:"Ranking geral";
-  const selector=`<div class="cr-window" role="group" aria-label="Janela de análise">${[0,7,14,30].map(n=>`<button type="button" class="seg-btn${n===days?" active":""}" data-cr-window="${n}" aria-pressed="${n===days}">${n?n+" dias":"Todos"}</button>`).join("")}</div>`;
-  const ads=ranked.length?`<div class="oi-wk__list">${ranked.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:days&&d.ads.length?"Duração indisponível nesta coleta":"Sem anúncios neste produto",text:days&&d.ads.length?"Estes criativos ainda não têm dados para a janela selecionada. Selecione Todos para consultar o ranking geral.":"Nenhum anúncio ativo foi identificado nas coletas usadas nesta pasta."});
-  return crumbs+head+`<div class="cr-sectionhead"><div><h3>Top criativos da coleta</h3><p class="oi-note">Selecione a janela para ordenar os criativos deste Top 10 por duração na janela e repetições na coleta. As janelas usam as datas de início e observação; não comprovam veiculação contínua nem histórico de repetições. Pastas recuperadas podem reunir coletas de datas distintas; confira a observação em cada anúncio.</p></div>${selector}</div><p class="oi-meta" role="status">${period}</p>`+ads;
+  const days=crWindowByProduct[crKey(route)]||0,mode=crModeByProduct[crKey(route)]||"new",ranked=crWindowAds(d.ads,days,mode);
+  const period=mode==="history"?`Referências históricas · ${ranked.length} criativos inativos`:days?`${mode==="new"?"Iniciados":"Permanência"} nos últimos ${days} dias · ${ranked.length} criativos · referência: ${OfferIntel.reviewTitle(route.date)}`:"Ranking geral · Top 10 ativos na coleta";
+  const selector=`<div class="cr-filter"><label>Critério<select data-cr-mode><option value="new" ${mode==="new"?"selected":""}>Novos no período</option><option value="lasting" ${mode==="lasting"?"selected":""}>Maior permanência</option>${d.ads.some(a=>a.historical)?`<option value="history" ${mode==="history"?"selected":""}>Histórico inativo</option>`:""}</select></label><div class="cr-window" role="group" aria-label="Janela de análise">${[0,7,14,30].map(n=>`<button type="button" class="seg-btn${n===days?" active":""}" data-cr-window="${n}" aria-pressed="${n===days}">${n?n+" dias":"Geral"}</button>`).join("")}</div></div>`;
+  const ads=ranked.length?`<div class="oi-wk__list">${ranked.map(a=>oiWkAdHtml(a,p.name)).join("")}</div>`:oiStateHtml("empty",{title:days?"Nenhum criativo elegível neste período":"Sem anúncios ativos nesta coleta",text:days?"Nenhum criativo da amostra atende a este recorte. Amplie a janela ou consulte Maior permanência.":d.ads.some(a=>a.historical)?"Há referências disponíveis em Histórico inativo. Elas não entram nos rankings de anúncios ativos.":"Nenhum anúncio ativo foi identificado nas fontes vinculadas."});
+  return crumbs+head+`<div class="cr-sectionhead"><div><h3>Top criativos da coleta</h3><p class="oi-note">Novos no período usa a data de início; Maior permanência prioriza duração e repetição. As janelas são cumulativas e terminam na data da pasta, por isso podem compartilhar anúncios. Repetições são as registradas na coleta, não o total de duplicações criado em cada período. Pastas recuperadas podem reunir coletas de datas distintas; confira a observação de cada anúncio.${d.ads.some(a=>a.periodsIndexed)?" O recorte considera a coleta completa, antes do Top 10.":" Esta pasta usa os criativos já disponíveis no ranking."}</p></div>${selector}</div><p class="oi-meta" role="status">${period}</p>`+ads;
 }
 function renderCreativeReview(){
   const area=$("#gridArea");if(!area)return;
@@ -3581,10 +3608,15 @@ function renderCreativeReview(){
   area.innerHTML=`<div class="oi cr">${crRunConfirmHtml()}${html}</div>`;
   area.querySelectorAll("img[data-oi-img]").forEach(img=>{img.addEventListener("error",()=>oiImgFallback(img),{once:true});if(img.complete&&img.naturalWidth===0&&img.getAttribute("src"))oiImgFallback(img);});
   area.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
-  if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);area.addEventListener("input",crOnSearch);}
+  if(!crClickBound){crClickBound=true;area.addEventListener("click",crOnClick);area.addEventListener("input",crOnSearch);area.addEventListener("change",crOnChange);}
   const retry=$("[data-oi-retry]",area);if(retry)retry.addEventListener("click",()=>{delete crStates[crKey(route)];renderCreativeReview();});
   const result=$("#pageResult");if(result)result.textContent="";
   crSchedule(route);
+}
+function crOnChange(event){
+  if(activeSection!=="creativereview"||!crRoute)return;
+  if(event.target.matches("[data-cr-select]")){const set=crSelection(crRoute.date),id=event.target.dataset.crSelect;event.target.checked?set.add(id):set.delete(id);crUpdateSelection();}
+  if(event.target.matches("[data-cr-mode]")){crModeByProduct[crKey(crRoute)]=event.target.value;renderCreativeReview();$("[data-cr-mode]")?.focus();}
 }
 function crOnSearch(event){
   if(activeSection!=="creativereview"||!event.target.matches("[data-cr-search]"))return;
@@ -3595,6 +3627,7 @@ function crOnSearch(event){
 }
 function crOnClick(event){
   if(activeSection!=="creativereview"||!crRoute)return;
+  if(event.target.closest("[data-cr-clear-selection]")){crSelection(crRoute.date).clear();$("#gridArea").querySelectorAll("[data-cr-select]").forEach(c=>{c.checked=false;});crUpdateSelection();return;}
   const confirmRun=event.target.closest("[data-cr-confirm]");if(confirmRun){crConfirmRun(confirmRun);return;}
   if(event.target.closest("[data-cr-cancel]")){crCancelRun();return;}
   const period=event.target.closest("[data-cr-window]");
@@ -3661,13 +3694,13 @@ function oiWkMediaHtml(a,cls){
 }
 function oiWkBadges(a){
   const chg=a.rankChange>0?`<span class="oi-wk__chg oi-wk__chg--up"><span aria-hidden="true">↑${a.rankChange}</span><span class="oi-sr">Subiu ${a.rankChange} ${a.rankChange===1?"posição":"posições"}</span></span>`:a.rankChange<0?`<span class="oi-wk__chg oi-wk__chg--down"><span aria-hidden="true">↓${-a.rankChange}</span><span class="oi-sr">Caiu ${-a.rankChange} ${a.rankChange===-1?"posição":"posições"}</span></span>`:"";
-  return (a.isNew?'<span class="oi-wk__new">NOVO</span>':"")+chg;
+  return (a.historical?'<span class="oi-chip">Histórico · inativo</span>':"")+(a.isNew?'<span class="oi-wk__new">NOVO</span>':"")+chg;
 }
 function oiWkMetrics(a){
   const n=v=>v==null?"—":v.toLocaleString("pt-BR");
   const windows=a.windows&&a.windows.length?`<div class="cr-windows"><span class="oi-meta">Dias desde o início em cada janela</span><dl>${a.windows.map(w=>`<div${w.days===a.selectedWindow?' class="is-selected"':""}><dt>${w.days} dias</dt><dd>${n(w.activeDays)} / ${w.days}</dd></div>`).join("")}</dl><p class="oi-meta">Estimativa entre a data de início e a data da observação.</p></div>`:"";
   const observed=a.observedAt?(a.mixedObservations&&a.observedFrom?`Observações de ${esc(a.observedFrom)} a ${esc(a.observedAt)}`:`Observado em ${esc(a.observedAt)}`)+" (Brasília)":"Data de observação indisponível";
-  return `<p class="oi-meta cr-observed">${observed}</p><dl class="oi-wk__metrics"><div><dt>Dias ativos na coleta</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições na coleta</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`+windows;
+  return `<p class="oi-meta cr-observed">${observed}</p><dl class="oi-wk__metrics"><div><dt>${a.historical?"Duração histórica informada":"Dias ativos na coleta"}</dt><dd>${n(a.daysActive)}</dd></div><div><dt>Repetições na coleta</dt><dd>${n(a.repetitions)}</dd></div><div><dt>Score</dt><dd class="oi-wk__score">${a.score==null?"—":a.score.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}</dd></div></dl>`+windows;
 }
 function oiWkPageLine(a){
   const src=a.pageSource==="encontrada"?"Encontrada":a.pageSource==="cadastrada"?"Cadastrada":"";
@@ -3691,7 +3724,10 @@ function oiWkAdHtml(a,group){
 function crPresent(opener){
   const route=crRoute;if(!route||route.view==="list"||oiPres)return;
   const fst=crEnsure({view:"folder",date:route.date});if(fst.status!=="ready"||!fst.data)return;
-  const folder=fst.data;
+  const selected=route.view==="product"?new Set([route.offerId]):crSelection(route.date);
+  const folder={...fst.data,products:fst.data.products.filter(p=>!selected.size||selected.has(p.offerId)),selection:!!selected.size,
+    days:route.view==="product"?crWindowByProduct[crKey(route)]||0:0,mode:route.view==="product"?crModeByProduct[crKey(route)]||"new":"new"};
+  if(folder.selection)folder.summary=[];
   oiOpenPresentation(opener,folder,route.view==="product"?route.offerId:"");
 }
 function oiPresBuild(folder,products){
@@ -3699,18 +3735,19 @@ function oiPresBuild(folder,products){
   folder.products.forEach(p=>{
     const detail=products[p.offerId];
     out.push({type:"product",product:p,index:folder.products.indexOf(p)+1,total:folder.products.length});
-    if(detail&&detail.ads)detail.ads.forEach(a=>out.push({type:"ad",product:p,ad:a,total:detail.ads.length}));
+    if(detail&&detail.ads){const visible=crWindowAds(detail.ads,folder.days||0,folder.mode||"new");visible.forEach(a=>out.push({type:"ad",product:p,ad:a,total:visible.length}));if(!visible.length)out.push({type:"empty",product:p});}
     else out.push({type:"missing",product:p});
   });
   return out;
 }
 function oiPresSlideHtml(sl){
   const e=esc;
-  if(sl.type==="cover"){const m=sl.folder.meta;return `<div class="oi-pres__cover"><div class="eyebrow">Creative Review</div><h2>${e(m.title)}</h2>${sl.folder.summary.length?`<h3>Resumo executivo</h3><ul>${sl.folder.summary.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`:'<p class="oi-note">Resumo indisponível.</p>'}</div>`;}
+  if(sl.type==="cover"){const m=sl.folder.meta;return `<div class="oi-pres__cover"><div class="eyebrow">Creative Review</div><h2>${e(m.title)}</h2>${sl.folder.selection?`<p class="oi-pres__subtitle">${sl.folder.products.length} produtos · seleção para esta apresentação</p>`:""}<div class="oi-pres__agenda">${sl.folder.products.map(p=>`<button type="button" data-oi-pres-jump="${e(p.offerId)}">${e(p.name)}</button>`).join("")}</div>${sl.folder.summary.length?`<h3>Resumo executivo</h3><ul>${sl.folder.summary.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`:""}</div>`;}
   if(sl.type==="product"){const p=sl.product;return `<div class="oi-pres__cover"><div class="eyebrow">Produto ${sl.index} de ${sl.total}</div><h2>${e(p.name)}</h2><p class="oi-meta">${e([p.brand,SEC_SHORT[p.section]||""].filter(Boolean).join(" · "))}</p>${p.summary.length?`<ul>${p.summary.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`:'<p class="oi-note">Resumo do produto indisponível.</p>'}</div>`;}
+  if(sl.type==="empty")return `<div class="oi-pres__cover"><div class="eyebrow">Cobertura da coleta</div><h2>${e(sl.product.name)}</h2><p class="oi-pres__subtitle">Nenhum anúncio ativo elegível neste recorte.</p><p class="oi-note">O relatório do produto preserva as fontes e explica a cobertura. Referências inativas ficam no filtro Histórico inativo.</p></div>`;
   if(sl.type==="missing")return `<div class="oi-pres__cover"><h2>${e(sl.product.name)}</h2><p class="oi-note">Não foi possível carregar os anúncios deste produto.</p></div>`;
   const a=sl.ad;
-  return `<div class="oi-pres__ad"><div class="oi-pres__media">${oiWkMediaHtml(a,"oi-wk__media--big")}</div><div class="oi-pres__info"><div class="oi-wk__rank"><span class="oi-chip">${e(sl.product.name)}</span><span class="oi-wk__pos">#${a.rank||"—"}</span>${oiWkBadges(a)}</div><h2>${e(a.pageName||"Página sem nome")}</h2>${oiWkMetrics(a)}${oiWkCopyHtml(a,true)}${oiWkDestHtml(a)}${oiWkAiHtml(a,true)}</div></div>`;
+  return `<div class="oi-pres__ad"><div class="oi-pres__media">${oiWkMediaHtml(a,"oi-wk__media--big")}</div><div class="oi-pres__info"><div class="oi-wk__rank"><span class="oi-chip">${e(sl.product.name)}</span><span class="oi-wk__pos">#${a.rank||"—"}</span>${oiWkBadges(a)}</div><h2>${e(a.pageName||"Página sem nome")}</h2>${a.historical?'<span class="oi-chip">Histórico · inativo na fonte</span>':""}${oiWkMetrics(a)}${oiWkAiHtml(a,true)}${oiWkCopyHtml(a,false)}${oiWkDestHtml(a)}<div class="oi-links">${oiExtLink(a.libraryUrl,"Ver na Biblioteca")}</div></div></div>`;
 }
 function oiPresLabel(sl,i,n){
   if(sl.type==="cover")return `Capa · slide 1 de ${n}`;
@@ -3722,9 +3759,11 @@ function oiPresRender(){
   const host=$("#oiPresSlide",oiPres.el),n=oiPres.slides.length;
   if(!n){host.innerHTML='<div class="oi-pres__cover"><p class="oi-note" role="status">Carregando produtos…</p></div>';$("#oiPresCount",oiPres.el).textContent="Carregando…";return;}
   const sl=oiPres.slides[oiPres.i];
-  host.innerHTML=oiPresSlideHtml(sl);host.scrollTop=0;
+  host.querySelectorAll("video").forEach(v=>v.pause());host.innerHTML=oiPresSlideHtml(sl);host.scrollTop=0;
+  const progress=$("[data-oi-pres-progress]",oiPres.el);if(progress){progress.max=n;progress.value=oiPres.i+1;}
+  const jump=$("[data-oi-pres-product]",oiPres.el);if(jump)jump.value=sl.product?.offerId||"";
   $("#oiPresCount",oiPres.el).textContent=oiPresLabel(sl,oiPres.i,n)+(oiPres.loading?" · carregando…":"");
-  $("[data-oi-pres-prev]",oiPres.el).setAttribute("aria-disabled",String(oiPres.i===0));$("[data-oi-pres-next]",oiPres.el).setAttribute("aria-disabled",String(oiPres.i===n-1));
+  $("[data-oi-pres-prev]",oiPres.el).disabled=oiPres.i===0;$("[data-oi-pres-next]",oiPres.el).disabled=oiPres.i===n-1;
   host.querySelectorAll("video[data-oi-vid]").forEach(oiVideoGuard);
   host.querySelectorAll("img[data-oi-img]").forEach(img=>img.addEventListener("error",()=>oiImgFallback(img),{once:true}));
 }
@@ -3733,12 +3772,12 @@ function oiPresKey(ev){
   if(!oiPres)return;
   const k=ev.key,t=ev.target,typing=t&&(t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA");
   if(k==="Escape"){ev.preventDefault();ev.stopPropagation();oiClosePresentation();return;}
-  if(typing)return;
+  if(typing&&k!=="Tab"||t?.tagName==="VIDEO"&&k!=="Tab")return;
   if(k==="ArrowRight"||k==="PageDown"||(k===" "&&!(t&&(t.tagName==="BUTTON"||t.tagName==="VIDEO"||t.tagName==="SUMMARY")))){ev.preventDefault();oiPresGo(1);}
   else if(k==="ArrowLeft"||k==="PageUp"){ev.preventDefault();oiPresGo(-1);}
   else if(k==="Home"){ev.preventDefault();oiPres.i=0;oiPresRender();}
   else if(k==="End"){ev.preventDefault();oiPres.i=Math.max(0,oiPres.slides.length-1);oiPresRender();}
-  else if(k==="Tab"){const f=[...oiPres.el.querySelectorAll("button:not([hidden]),a[href],video[controls],summary")];if(!f.length)return;const i=f.indexOf(document.activeElement);ev.preventDefault();f[(i+(ev.shiftKey?-1:1)+f.length)%f.length].focus();}
+  else if(k==="Tab"){const f=[...oiPres.el.querySelectorAll("button:not([hidden]):not(:disabled),select,a[href],video[controls],summary")];if(!f.length)return;const i=f.indexOf(document.activeElement);ev.preventDefault();f[(i+(ev.shiftKey?-1:1)+f.length)%f.length].focus();}
 }
 function oiPresFullscreenChange(){if(oiPres&&oiPres.fs&&!document.fullscreenElement)oiClosePresentation();}
 /* Carrega o Top 10 de cada produto (4 em paralelo) enquanto o primeiro slide já aparece. */
@@ -3753,7 +3792,7 @@ async function oiPresLoadProducts(session,folder,date){let j0;
       try{products[id]=await oiApi.getReviewProduct(date,id).then(OfferIntel.formatReviewProduct);}catch(_){products[id]=null;}
       if(oiPres!==session)return;
       const cur=session.slides[session.i];session.slides=oiPresBuild(folder,products);
-      if(cur){const j=session.slides.findIndex(s=>s.type===cur.type&&s.product===cur.product&&s.ad===cur.ad);session.i=j>=0?j:Math.min(session.i,session.slides.length-1);}
+      if(cur){const j=session.slides.findIndex(s=>s.type===cur.type&&s.product===cur.product&&s.ad?.adArchiveId===cur.ad?.adArchiveId);session.i=j>=0?j:Math.min(session.i,session.slides.length-1);}
       if(!cur||cur.type==="missing"||session.i!==(j0=session.i))oiPresRender();else{$("#oiPresCount",session.el).textContent=oiPresLabel(session.slides[session.i],session.i,session.slides.length)+(session.loading?" · carregando…":"");}
     }
   };
@@ -3763,9 +3802,12 @@ async function oiPresLoadProducts(session,folder,date){let j0;
 function oiOpenPresentation(opener,folder,startOfferId){
   if(oiPres)return;
   const route=crRoute,el=document.createElement("div");el.className="oi-pres";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Modo apresentação");el.tabIndex=-1;
-  el.innerHTML=`<div class="oi-pres__bar"><span class="oi-pres__count" id="oiPresCount" aria-live="polite"></span><span class="oi-meta oi-pres__hint">← → trocam de slide · Esc sai</span><div class="oi-links"><button type="button" class="btn btn--outline btn--sm" data-oi-pres-prev aria-label="Slide anterior">←</button><button type="button" class="btn btn--outline btn--sm" data-oi-pres-next aria-label="Próximo slide">→</button><button type="button" class="btn btn--accent btn--sm" data-oi-pres-close>Sair (Esc)</button></div></div><div class="oi-pres__slide" id="oiPresSlide"></div>`;
+  el.innerHTML=`<div class="oi-pres__bar"><span class="oi-pres__count" id="oiPresCount" aria-live="polite"></span><label class="oi-pres__jump"><span class="oi-sr">Ir para produto</span><select data-oi-pres-product><option value="">Visão geral</option>${folder.products.map(p=>`<option value="${esc(p.offerId)}">${esc(p.name)}</option>`).join("")}</select></label><div class="oi-links"><button type="button" class="btn btn--outline btn--sm" data-oi-pres-prev aria-label="Slide anterior">←</button><button type="button" class="btn btn--outline btn--sm" data-oi-pres-next aria-label="Próximo slide">→</button><button type="button" class="btn btn--accent btn--sm" data-oi-pres-close>Sair (Esc)</button></div></div><progress class="oi-pres__progress" data-oi-pres-progress max="1" value="0" aria-label="Progresso da apresentação"></progress><div class="oi-pres__slide" id="oiPresSlide"></div>`;
+  const jump=id=>{if(!oiPres)return;const i=oiPres.slides.findIndex(s=>id?s.type==="product"&&s.product.offerId===id:s.type==="cover");if(i>=0){oiPres.i=i;oiPresRender();}};
+  el.addEventListener("change",ev=>{if(ev.target.matches("[data-oi-pres-product]"))jump(ev.target.value);});
   el.addEventListener("click",ev=>{
-    if(ev.target.closest("[data-oi-pres-close]"))oiClosePresentation();
+    if(ev.target.closest("[data-oi-pres-jump]"))jump(ev.target.closest("[data-oi-pres-jump]").dataset.oiPresJump);
+    else if(ev.target.closest("[data-oi-pres-close]"))oiClosePresentation();
     else if(ev.target.closest("[data-oi-pres-prev]"))oiPresGo(-1);
     else if(ev.target.closest("[data-oi-pres-next]"))oiPresGo(1);
   });
@@ -3782,7 +3824,7 @@ function oiClosePresentation(){
   if(!oiPres)return;
   const {el,opener}=oiPres;oiPres=null;
   document.removeEventListener("keydown",oiPresKey,true);document.removeEventListener("fullscreenchange",oiPresFullscreenChange);
-  el.remove();document.body.classList.remove("oi-pres-open");
+  el.querySelectorAll("video").forEach(v=>v.pause());el.remove();document.body.classList.remove("oi-pres-open");
   try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});}catch(_){}
   if(opener&&opener.isConnected)opener.focus();
 }
