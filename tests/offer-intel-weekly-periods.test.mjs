@@ -27,3 +27,35 @@ test('historical evidence never exposes active window metrics or arbitrary ranki
  const row=publicAd({ad_archive_id:'123456',historical:true,rank:1,general_rank:null,period_ranks:{new_7:2,token:'secret'},media:{},started_at:'2026-01-01',days_active:10});
  assert.deepEqual(row.window_metrics,{});assert.deepEqual(row.period_ranks,{new_7:2});assert.equal(row.general_rank,null);
 });
+
+test('cached reindex completes supplemental media and reports without calling a collection provider',async()=>{
+ const {createFAKEWeeklyStorage}=await import('./offer-intel-weekly-FAKE-storage.mjs');
+ const {runCreativeReviewSlice}=await import('../lib/offer-intel-weekly-worker.mjs');
+ const {buildProductRanking,normalizeAd,validateAnalysis,validateBullets}=await import('../lib/offer-intel-weekly.mjs');
+ const base=createFAKEWeeklyStorage(),memory=new Map(),storage=withPeriodStorage(base,{get:async k=>memory.get(k),setJSON:async(k,v)=>memory.set(k,structuredClone(v))});
+ const queued=await storage.enqueue({review_date:'2026-11-11',trigger:'manual'}),claimed=await storage.claim({report_id:queued.report.id,nonce:queued.nonce}),f={report_id:claimed.id,lease_token:claimed.lease_token};
+ const p={...product,offer_name:'Test product',position:1,pages:product.sources,ads_collected:2};
+ const items=[1000,2000].map((id,i)=>({adArchiveId:String(id),pageId:'123456',startDate:i?'2026-11-09':'2026-10-01',snapshot:{body:{text:'Unique creative '+id},display_format:'image',images:[{original_image_url:'https://scontent.fbcdn.net/unique-image-'+id+'.jpg'}]}}));
+ const all=buildProductRanking({ads:items.map(i=>normalizeAd(i,'2026-11-11T12:00:00Z')),products:[product]}).rows;
+ await storage.saveProducts({...f,products:[p]});await storage.saveAds({...f,ads:[all[0]]});
+ base.runs.set('paid',{report_id:claimed.id,state:'succeeded',dataset_id:'paid',page_ids:['page:123456'],created_at:'2026-11-11T12:00:00Z'});
+ const report=await storage.checkpoint({...f,patch:{phase:'media',cost:{reindex_periods:true,sources_skipped:0}}});
+ const archive=async({ad_archive_id})=>({url:'https://test.supabase.co/storage/v1/object/public/criativos/'+ad_archive_id+'.jpg'});
+ archive.dataset=async()=>items;archive.historical=async()=>[];
+ const result=await runCreativeReviewSlice({report,storage,archive,analysisMode:'observed_data',apify:new Proxy({},{get(){throw Error('provider must not be called');}})});
+ assert.equal(result.status,'succeeded');assert.equal(base.ads.size,1,'SQL general ranking was retained');
+ const rows=await storage.listAds(report.id);assert.equal(rows.length,2);assert.ok(rows.every(a=>a.media.archived&&validateAnalysis(a.analysis)));
+ assert.ok(validateBullets((await storage.listProducts(report.id))[0].summary,3));assert.equal(base.ledger.length,0);
+});
+
+test('absent media payload is explicit coverage and never hides a broken provided asset',async()=>{
+ const {repairMedia,mediaSourceAbsent,mediaComplete}=await import('../lib/offer-intel-weekly-recovery.mjs');
+ const archive=async()=>{throw Error('no source expected');};
+ const empty={ad_archive_id:'1000',display_format:null,media:{source_thumb_urls:[],source_video_urls:[],observed_at:'2026-11-11T01:00:00Z'}};
+ const media=await repairMedia({row:empty,archive,generation:'one'});
+ assert.equal(mediaSourceAbsent({...empty,media}),true);assert.equal(mediaComplete({...empty,media}),false);
+ assert.equal(mediaSourceAbsent({...empty,display_format:'video',media}),false);
+ assert.equal(mediaSourceAbsent({...empty,media:{...media,source_thumb_url:'https://scontent.fbcdn.net/expired-image.jpg'}}),false);
+ const broken=await repairMedia({row:{...empty,display_format:'image'},archive,generation:'one'});
+ assert.equal(broken.error,true);assert.notEqual(broken.source_not_provided,true);
+});
