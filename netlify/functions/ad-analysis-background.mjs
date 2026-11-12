@@ -96,12 +96,19 @@ async function completeReport(input) {
   return finalized;
 }
 
-async function saveToCard(input, report) {
-  if (!input.cardId) return;
+async function readLinkedCard(input) {
+  if (!input.cardId) return null;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/offers?id=eq.${encodeURIComponent(input.cardId)}&select=data`, { headers: await supabaseAdminHeaders({ accept: "application/json" }), signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw new Error(`card HTTP ${response.status}`);
   const row = (await response.json())[0];
   if (!row) throw new Error("card não encontrado");
+  return row;
+}
+const archivedOrganic = row => row?.data?.division === "organic" || row?.data?.kind === "organic";
+async function saveToCard(input, report) {
+  if (!input.cardId) return;
+  const row = await readLinkedCard(input);
+  if (archivedOrganic(row)) return;
   const now = new Date().toISOString();
   const patch = { adVisualAnalysis: report, adAnalysisStatus: "complete", adAnalysisPromptVersion: AD_ANALYSIS_PROMPT_VERSION, adAnalysisUpdatedAt: now, adAnalysisDuration: Number(input.duration) };
   await mergeSupabaseOfferData(input.cardId, patch, { ...(row.data || {}), ...patch });
@@ -116,6 +123,10 @@ export default async (req) => {
     const body = JSON.parse(await req.text() || "{}");
     job = await store.get(String(body.id || ""), { type: "json" });
     if (!job || job.jobKey !== body.key || job.status === "complete") return;
+    if (archivedOrganic(await readLinkedCard(job.input))) {
+      job.status = "cancelled"; job.message = "Módulo desativado; histórico preservado."; job.updatedAt = new Date().toISOString();
+      await store.setJSON(job.id, job); return;
+    }
     if (!validAdDuration(job.input && job.input.duration)) throw new Error("duração incompatível com anúncio");
     job.status = "working"; job.progress = 20; job.message = "Lendo vídeo, copy e linha do tempo…"; job.updatedAt = new Date().toISOString(); await store.setJSON(job.id, job);
     const report = await completeReport(job.input);

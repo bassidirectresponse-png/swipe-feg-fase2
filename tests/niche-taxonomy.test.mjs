@@ -60,3 +60,14 @@ test('migration fingerprints ignore only taxonomy and detect altered links or de
  assert.notEqual(integrityHash(rows),integrityHash([]));
  assert.notEqual(integrityHash(rows),integrityHash([{...rows[0],data:{...rows[0].data,links:['changed']}}]));
 });
+
+test('shared analysis scan skips archived organic cards while retaining other creatives',()=>{
+ const code=`import sys,json
+sys.path.insert(0,'scripts')
+import analisar_anuncios as a
+rows=[{'id':'organic','data':{'kind':'criativo','division':'organic','transcricao':'Original','video':'https://example.com/video.mp4'}},{'id':'kept','data':{'kind':'criativo','transcricao':'Original','video':'https://example.com/video.mp4'}}]
+a.request=lambda *args,**kw:(200,json.dumps(rows).encode())
+eligible,long=a.fetch_candidates('fixture')
+print(json.dumps([r['id'] for r in eligible]))`;
+ assert.deepEqual(JSON.parse(execFileSync('python3',['-c',code],{encoding:'utf8'})),['kept']);
+});

@@ -125,6 +125,8 @@ def fetch_candidates(token):
     stale_before = datetime.now(timezone.utc) - timedelta(minutes=LOCK_MINUTES)
     for row in rows:
         data = row.get("data") or {}
+        if data.get("division") == "organic" or data.get("kind") == "organic":
+            continue
         if data.get("kind") not in KINDS or not str(data.get("transcricao") or "").strip():
             continue
         if not video_url(data):
