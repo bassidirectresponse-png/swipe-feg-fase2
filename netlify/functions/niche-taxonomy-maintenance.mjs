@@ -1,9 +1,16 @@
+import {createHash} from 'node:crypto';
 import {getStore} from '@netlify/blobs';
 import {verifyGithubAutomationToken} from './_github-oidc.mjs';
 import {readJson,SUPABASE_URL} from './_security.mjs';
 import {supabaseAdminHeaders,mergeSupabaseOfferData} from './_supabase-admin.mjs';
 import {taxonomy} from '../../lib/niche-taxonomy.mjs';
 const reply=(status,body)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
+const TAXONOMY_FIELDS=new Set(['nicho','subnicho','taxonomyOriginal','taxonomyVersion','taxonomyStatus']);
+// Compare all IDs and all non-taxonomy values before/after, including nested links and metrics.
+export function integrityHash(rows){
+ const stable=v=>Array.isArray(v)?v.map(stable):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;
+ return createHash('sha256').update(JSON.stringify(stable(rows.map(r=>({id:r.id,data:Object.fromEntries(Object.entries(r.data||{}).filter(([k])=>!TAXONOMY_FIELDS.has(k)))}))))).digest('hex');
+}
 const UUID=/^[0-9a-f-]{36}$/i;
 // A fixed, versioned data migration. No caller-supplied patches, deletion or arbitrary queries.
 export function createTaxonomyMaintenance({verify=verifyGithubAutomationToken,headers=supabaseAdminHeaders,merge=mergeSupabaseOfferData,store=()=>getStore({name:'niche-taxonomy-backups',consistency:'strong'}),fetcher=fetch}={}){
@@ -15,7 +22,7 @@ export function createTaxonomyMaintenance({verify=verifyGithubAutomationToken,he
    if(!body||!['inspect','apply'].includes(body.action)||Object.keys(body).some(k=>!['action','after'].includes(k))||(body.after&&!UUID.test(body.after)))return reply(400,{ok:false,error:'Ação inválida'});
    const h=await headers();const query=new URLSearchParams({select:'id,data',order:'id',limit:'80'});if(body.after)query.set('id','gt.'+body.after);
    const r=await fetcher(`${SUPABASE_URL}/rest/v1/offers?${query}`,{headers:h,signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('catalog-read');
-   const rows=await r.json(),result={ok:true,version:taxonomy.version,scanned:rows.length,changed:0,review:0,archived:0,counts:{},sample:[],after:rows.at(-1)?.id||body.after||null,done:rows.length<80};
+   const rows=await r.json(),result={ok:true,version:taxonomy.version,scanned:rows.length,integrity:integrityHash(rows),changed:0,review:0,archived:0,counts:{},sample:[],after:rows.at(-1)?.id||body.after||null,done:rows.length<80};
    const backup=body.action==='apply'?store():null;
    const writes=[];
    for(const row of rows){

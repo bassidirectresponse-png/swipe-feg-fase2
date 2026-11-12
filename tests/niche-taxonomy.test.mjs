@@ -44,3 +44,19 @@ test('Skin Care headline is not displaced by a secondary cholesterol mention',()
  const text='Common supplement could help fight psoriasis, scientists discover. A study examines psoriasis treatment and cholesterol benefits.';
  assert.equal(taxonomy.classify(text).nicho,'Skin Care');
 });
+
+
+test('manual imports normalize legacy groups and retain ambiguous classification evidence',async()=>{
+ const {normalizeTaxonomy}=await import('../netlify/functions/manual-ingest-n8n.mjs');
+ const d={kind:'oferta',nomeOferta:'Example',nicho:'Sono/ Beleza',subnicho:'Sono',bibliotecas:[{link:'original'}]};
+ const next=normalizeTaxonomy(d);assert.equal(next.nicho,'Saúde geral');assert.equal(next.subnicho,'Sono');assert.deepEqual(next.bibliotecas,d.bibliotecas);
+ const pending=normalizeTaxonomy({...d,nicho:'Unknown',subnicho:''});assert.equal(pending.taxonomyStatus,'review');assert.equal(pending.taxonomyOriginal.nicho,'Unknown');
+ const updated=normalizeTaxonomy({...next,nicho:'Pet',subnicho:'Dental'});assert.equal(updated.nicho,'Pet');assert.equal(updated.subnicho,'Dental');
+});
+test('migration fingerprints ignore only taxonomy and detect altered links or deleted IDs',async()=>{
+ const {integrityHash}=await import('../netlify/functions/niche-taxonomy-maintenance.mjs');
+ const rows=[{id:'one',data:{nicho:'Sono/ Beleza',subnicho:'Sono',favorites:['u'],links:['original']}}];
+ assert.equal(integrityHash(rows),integrityHash(rows.map(r=>({...r,data:{...r.data,...taxonomy.migrationPatch(r.data)}}))));
+ assert.notEqual(integrityHash(rows),integrityHash([]));
+ assert.notEqual(integrityHash(rows),integrityHash([{...rows[0],data:{...rows[0].data,links:['changed']}}]));
+});

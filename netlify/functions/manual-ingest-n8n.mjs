@@ -12,6 +12,12 @@ import {
 import { supabaseAdminHeaders } from "./_supabase-admin.mjs";
 import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 
+import {taxonomy} from "../../lib/niche-taxonomy.mjs";
+
+export function normalizeTaxonomy(data) {
+  return {...data, ...taxonomy.migrationPatch({...data, taxonomyVersion: null})};
+}
+
 const METHODS = "POST, OPTIONS";
 const ALLOWED_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated", "presell", "criativo"]);
 const OFFER_KINDS = new Set(["oferta", "brandsgeneral", "brandsvalidated"]);
@@ -96,7 +102,7 @@ function normalizeItem(raw, index) {
   if (checkedAt && !/^\d{4}-\d{2}-\d{2}$/.test(checkedAt)) errors.push(`item ${index + 1}: activeAdsCheckedAt precisa ser AAAA-MM-DD`);
   if ((raw?.activeAdsApprox || checkedAt) && (raw?.activeAds ?? raw?.numAdsAtivos) == null) errors.push(`item ${index + 1}: informe activeAds para registrar a leitura`);
   return {
-    kind, name, niche, brand: clean(raw?.brand || raw?.marca || raw?.nomeMarca, 140),
+    kind, name, niche, subniche: clean(raw?.subniche || raw?.subnicho, 90), brand: clean(raw?.brand || raw?.marca || raw?.nomeMarca, 140),
     activeAds: Number.isFinite(Number(raw?.activeAds ?? raw?.numAdsAtivos)) ? Math.max(0, Math.round(Number(raw.activeAds ?? raw.numAdsAtivos))) : null,
     activeAdsApprox: raw?.activeAdsApprox === true, activeAdsCheckedAt: checkedAt,
     offerTags: [...new Set(tags)],
@@ -173,7 +179,7 @@ function offerData(item, previous, batchDate) {
     adsHistory: [...list(previous?.adsHistory), { d: checkedAt, at: recordedAt, n: item.activeAds }],
   };
   return {
-    ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "",
+    ...(previous || {}), kind: item.kind, nomeOferta: item.name, nomeMarca: item.brand || previous?.nomeMarca || "", nicho: item.niche || previous?.nicho || "", subnicho: item.subniche || (item.niche && item.niche !== previous?.nicho ? "" : previous?.subnicho) || "",
     ...(item.kind === "brandsvalidated" && !previous?.kind ? { bmAccess: false } : {}),
     formato: item.format || previous?.formato || "", imagemProduto: item.image || previous?.imagemProduto || "",
     numAdsAtivos: item.activeAds == null ? previous?.numAdsAtivos || "" : String(item.activeAds),
@@ -197,22 +203,24 @@ function standaloneData(item, batchDate, ad) {
   const isCreative = item.kind === "criativo";
   const url = ad?.url || item.adUrl;
   return isCreative ? {
-    kind: "criativo", nome: item.name, nicho: item.niche, plataforma: item.platform, linkAnuncio: url,
+    kind: "criativo", nome: item.name, nicho: item.niche, subnicho: item.subniche || "", plataforma: item.platform, linkAnuncio: url,
     video: item.video, copy: item.copy, transcricao: item.copy, copyLink: item.copyLink,
     transcriptionStatus: item.copy ? "completed" : "pending", transcricaoStatus: item.copy ? "completed" : "pending",
     mediaArchiveStatus: item.video ? "completed" : "pending", fbIngestStatus: item.video ? "completed" : "pending",
     ingestionSource: "n8n-manual", ingestionDate: batchDate,
   } : {
-    kind: item.kind, nome: item.name, nicho: item.niche, link: item.domains[0]?.offer || item.adUrl || "",
+    kind: item.kind, nome: item.name, nicho: item.niche, subnicho: item.subniche || "", link: item.domains[0]?.offer || item.adUrl || "",
     imagem: item.image, ingestionSource: "n8n-manual", ingestionDate: batchDate,
   };
 }
 
 async function createRow(data) {
+  data = normalizeTaxonomy(data);
   const result = await rest("offers?select=*", { method: "POST", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ data }) });
   return result[0];
 }
 async function patchRow(id, data) {
+  data = normalizeTaxonomy(data);
   const result = await rest(`offers?id=eq.${encodeURIComponent(id)}&select=*`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ data }) });
   return result[0];
 }
