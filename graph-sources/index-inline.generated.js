@@ -6,20 +6,19 @@ const DEFAULT_URL="https://pkvzwtstidtobpdngxnd.supabase.co";
 const DEFAULT_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrdnp3dHN0aWR0b2JwZG5neG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4MTM1MTUsImV4cCI6MjEwMTM4OTUxNX0.UvV333OkHrp5Yvxn3vyxnkF_KXMBTu-82qFx-Jocc-0";
 const LEGACY_SUPABASE_REFS=["ppaajtzbhjixhyfidojd"];
 const HIGH_VOLUME=1000;
-const NICHOS=["Emagrecimento","Disfunção Erétil","Memória","Próstata","Diabetes / Glicose","Neuropatia","Visão","Audição","Articulações / Dores","Cabelo / Unhas","Sono / Ansiedade","Energia / Testosterona","Detox / Intestino","Menopausa","Imunidade","Outro"];
-const BRAND_NICHE_ORDER=["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"];
-const RADAR_TOPICS={"Saúde masculina":["Testosterona","Libido","Próstata","Geral"],"Saúde feminina":["Menopausa","Hormônios","Geral"],"Saúde Cardiovascular":["Coração","Pressão arterial","Colesterol","Geral"],"Saúde íntima / libido":["Libido","Saúde sexual","Saúde íntima","Geral"],"Sono/ Beleza":["Sono","Pele","Beleza","Geral"],"Saúde Geral/Nutrição":["Nutrição","Intestino","Imunidade","Articulações","Geral"],"Pet":["Articulações","Pele e pelagem","Nutrição","Colágeno","Geral"]};
-const RADAR_NICHES=[...BRAND_NICHE_ORDER,"Pet"];
+const NICHOS=SwipeTaxonomy.names;
+const BRAND_NICHE_ORDER=SwipeTaxonomy.names.filter(n=>n!=="Pet");
+const RADAR_TOPICS=SwipeTaxonomy.topics;
+const RADAR_NICHES=SwipeTaxonomy.names;
 const BRAND_NICHE_REVIEW="Pendente de revisão";
 const SECTIONS=[
   {key:"oferta",label:"Swipe de Ofertas",icon:"cart",newLabel:"Nova oferta",statLabel:"Ofertas",emptyTitle:"Nenhuma oferta ainda",searchPlaceholder:"Buscar oferta, marca ou nicho...",subHtml:'Bibliotecas, domínios, checkouts, criativos e sinais de tráfego reunidos em uma única visão.'},
   {key:"criativo",label:"Swipe de Criativos",icon:"play",newLabel:"Novo criativo",statLabel:"Criativos",emptyTitle:"Nenhum criativo ainda",searchPlaceholder:"Buscar criativo, marca ou nicho...",subHtml:'Vídeos, transcrições e anúncios vencedores organizados por nicho e plataforma.'},
-  {key:"organic",label:"Swipe Organic",icon:"sparkles",newLabel:"Novo orgânico",statLabel:"Criativos orgânicos",emptyTitle:"Nenhum criativo orgânico ainda",searchPlaceholder:"Buscar criativo orgânico ou hook...",subHtml:'Banco de criativos orgânicos para pesquisa de referências, formatos e ideias de hooks — sem separação por nicho.'},
   {key:"presell",label:"Presell / Advertorial",icon:"newspaper",newLabel:"Novo presell",statLabel:"Presells",emptyTitle:"Nenhum presell ainda",searchPlaceholder:"Buscar presell, marca ou nicho...",subHtml:'Swipe de <b>presells e advertoriais</b> — print, link e comentários por nicho.'},
   {key:"megabrain",label:"Mega Brain — Copy Validadas",icon:"brain",newLabel:"Nova copy validada",statLabel:"Validados",emptyTitle:"Nada validado ainda",searchPlaceholder:"Buscar copy, criativo ou nicho...",subHtml:'<b>Mega Brain — Copy Validadas</b>: banco interno da empresa com copy e criativos validados, separados por nicho.'},
   {key:"megabrainfegsys",label:"Fegsys",icon:"pulse",newLabel:"",statLabel:"Criativos encontrados",emptyTitle:"Nenhum criativo sincronizado",searchPlaceholder:"Buscar criativo no Fegsys...",subHtml:'<b>Fegsys</b>: resultados de vendas e mídia sincronizados automaticamente.'},
-  {key:"noticia",label:"Notícias 24 Horas",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias 24 Horas</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
-  {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados diariamente.'},
+  {key:"noticia",label:"Notícias",icon:"clock",newLabel:"Nova notícia",statLabel:"Notícias",emptyTitle:"Nenhuma notícia ainda",searchPlaceholder:"Buscar notícia ou nicho...",subHtml:'<b>Notícias</b> — principais notícias por nicho, buscadas automaticamente e salvas aqui.'},
+  {key:"tiktok",label:"Radar TikTok",icon:"play",newLabel:"Novo TikTok",statLabel:"Vídeos",emptyTitle:"Nenhum vídeo minerado ainda",searchPlaceholder:"Buscar vídeo, autor, hashtag ou nicho...",subHtml:'<b>Radar TikTok</b> — vídeos orgânicos minerados por nicho e ordenados por views e engajamento, atualizados às terças e sextas.'},
   {key:"brandsgeneral",label:"Ofertas de Brands no Geral",icon:"search",newLabel:"Nova oferta de Brands",statLabel:"Ofertas em spy",emptyTitle:"Nenhuma oferta de Brands mapeada",searchPlaceholder:"Buscar produto, marca, concorrente ou nicho...",subHtml:'<b>FEG Brands · Ofertas no Geral</b> — monitoramento de produtos DTC, concorrentes, páginas, anúncios e sinais de mercado.'},
   {key:"brandsvalidated",label:"Ofertas Brands",icon:"trending",newLabel:"Nova oferta Brands",statLabel:"Ofertas Brands",emptyTitle:"Nenhuma oferta Brands",searchPlaceholder:"Buscar produto Brands, marca ou categoria...",subHtml:'<b>FEG Brands · Ofertas Brands</b> — produtos organizados por categoria, com histórico de anúncios e métricas da BM quando disponíveis.'},
   {key:"brandcreative",label:"Swipe de Criativos",icon:"play",newLabel:"",statLabel:"Top ads",emptyTitle:"Acervo de top ads em preparação",searchPlaceholder:"Buscar top ad ou marca...",subHtml:'<b>FEG Brands · Swipe de Criativos</b> — originais dos top ads das ofertas, organizados por marca.'},
@@ -38,7 +37,7 @@ const RADAR_GENERATION="offers-topics-2026-10-05";
 const BRAND_CREATIVE_GENERATION="offer-topads-2026-10-07";
 function brandCreativeArchived(d){return d?.kind==="criativo"&&d.division==="fegbrands"&&d.brandCreativeGeneration!==BRAND_CREATIVE_GENERATION;}
 function syncRadarGeneration(rows){return rows.some(row=>row?.data?.kind==="tiktok"&&row.data.radarGeneration===RADAR_GENERATION);}
-function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(brandCreativeArchived(d))return"brandcreative-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";if(d.kind==="criativo"&&d.division==="organic")return"organic";const k=d.kind||"oferta";if(k==="brandsgeneral")return"brandsvalidated";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
+function sectionOf(o){const d=(o&&o.data)||{};if(d.kind==="organic"||d.division==="organic")return"organic-archive";if(["noticia","tiktok"].includes(d.kind)&&!feedClassification(o))return d.kind+"-review";if(d.kind==="tiktok"&&d.radarGeneration!==RADAR_GENERATION)return"tiktok-archive";if(brandCreativeArchived(d))return"brandcreative-archive";if(d.kind==="megabrain"&&d.source==="fegsys")return"megabrainfegsys";if(d.kind==="criativo"&&d.division==="fegbrands")return"brandcreative";const k=d.kind||"oferta";if(k==="brandsgeneral")return"brandsvalidated";return SECTIONS.some(s=>s.key===k)?k:"oferta";}
 const BRAND_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative"]);
 const OFFER_TAGS={insider:{label:"Insider",className:"insider",icon:"trending"},new:{label:"Nova",className:"new",icon:"sparkles"},potential:{label:"Potencial",className:"potential",icon:"pulse"},scale:{label:"Escala",className:"scale",icon:"trending"}};
 const BRAND_TAGS_PUBLISHED=true;
@@ -68,8 +67,8 @@ async function saveTagEditor(){
   }catch(error){console.warn("Não foi possível salvar tags",error);toast("Falha ao salvar tags; nada foi alterado",true);}finally{button.disabled=false;}
 }
 /* Agrupamento visual da navegação. A classificação dos dados continua separada. */
-const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok","inteligencia","creativereview"]);
-const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"];
+const BRANDS_NAV_SECTIONS=new Set(["brandsgeneral","brandsvalidated","brandcreative","megabrainfegsys","noticia","tiktok","inteligencia","creativereview"]);
+const BRANDS_NAV_ORDER=["brandsvalidated","brandcreative","megabrainfegsys","noticia","tiktok"];
 const BRAND_OFFER_SECTIONS=new Set(["brandsgeneral","brandsvalidated"]);
 const ADMIN_SECTIONS=new Set(["updates"]);
 
@@ -79,7 +78,7 @@ let fBrandStage="brandsgeneral",fBmPrints=[],fBrandTopAds=[],fBrandSemrush1m="",
 let editingTagOfferId=null,tagDraft=[];
 let activeZone=null;
 let formDirty=false, saving=false;
-let activeSection="oferta", critPlatform="all", tiktokSort="views", tiktokSubniche="", tiktokAuthor="", newsSubniche="", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
+let activeSection="oferta", critPlatform="all", tiktokSort="views", tiktokSubniche="", tiktokAuthor="", newsSubniche="", newsPeriod="all", brainSort="metrica", brainAuthor="", offerSort="active_ads", offerDirection="desc", offerTagFilter="";
 let updates=[],updatesTotal=0;
 let brainPeriod="7d",brainDateFrom="",brainDateTo="",fegsysSalesMin="",fegsysSalesMax="",fegsysCards=[],fegsysTotals=null,fegsysSyncedAt="",fegsysCoverage=null,fegsysSourceStatus=null,fegsysLoading=false,fegsysLoadedKey="",fegsysError="",fegsysMatches=0;
 let sKind=null, sEditingId=null, sItem={}, sFormDirty=false, sSaving=false, pendingCloseForm="offer";
@@ -325,7 +324,7 @@ function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").clas
 function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList.remove("hidden");}
 function initSupabase(u,k){try{currentSbUrl=String(u||"").replace(/\/+$/,"");currentSbKey=k;sb=window.supabase.createClient(currentSbUrl,k);return true;}catch(e){console.error(e);return false;}}
 
-function readCache(){try{const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
+function readCache(){try{if(localStorage.getItem("feg_taxonomy_version")!==SwipeTaxonomy.version){localStorage.removeItem(LS.cache);localStorage.setItem("feg_taxonomy_version",SwipeTaxonomy.version);return null;}const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
@@ -517,7 +516,7 @@ $("#copySql").addEventListener("click",e=>{e.stopPropagation();navigator.clipboa
 const NO_NICHE="__none__";
 const INSIDER_NICHES=BRAND_NICHE_ORDER;
 const BRAND_CATEGORIES=["SUPPLEMENTS","PET","SKIN CARE"];
-const INSIDER_PRODUCT_OVERRIDES={"ultima-peak":{name:"Ultima Peak",niche:"Saúde masculina"},"primal-viking":{name:"Primal Viking",niche:"Saúde masculina"},"mars-men":{name:"Mars Men Boost",niche:"Saúde masculina"},"mars-men-boost":{name:"Mars Men Boost",niche:"Saúde masculina"},"joymode":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"joymode-hard":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"ancestral-supplements":{name:"Ancestral Supplements",niche:"Saúde Geral/Nutrição"}};
+const INSIDER_PRODUCT_OVERRIDES={"ultima-peak":{name:"Ultima Peak",niche:"Saúde masculina"},"primal-viking":{name:"Primal Viking",niche:"Saúde masculina"},"mars-men":{name:"Mars Men Boost",niche:"Saúde masculina"},"mars-men-boost":{name:"Mars Men Boost",niche:"Saúde masculina"},"joymode":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"joymode-hard":{name:"JOYMODE HARD+",niche:"Saúde masculina"},"ancestral-supplements":{name:"Ancestral Supplements",niche:"Saúde geral"}};
 const BRAND_CREATIVE_NICHE_OVERRIDES={"balls-n-brains":"Saúde masculina"};
 function insiderOverride(o){if(!o||sectionOf(o)!=="brandsvalidated")return null;const d=o.data||{},names=[d.nomeOferta,d.nomeMarca].map(routeSlug);return names.map(name=>INSIDER_PRODUCT_OVERRIDES[name]).find(Boolean)||null;}
 function insiderProductName(o){return (insiderOverride(o)||{}).name||String(((o||{}).data||{}).nomeOferta||"Produto sem nome").trim();}
@@ -531,20 +530,16 @@ function insiderCategoryOf(o){
 }
 /* A estrutura por nicho/produto é pública; somente edição e manutenção exigem admin. */
 function isInsiderAdminArea(){return activeSection==="brandsvalidated";}
-function nicheOf(o){return ((o.data||{}).nicho||"").trim();}
-function newsNicheOf(o){return RADAR_NICHES.find(n=>sameNiche(n,nicheOf(o)))||"";}
-function newsTopicOf(o){const niche=newsNicheOf(o);return (RADAR_TOPICS[niche]||[]).find(t=>sameNiche(t,(o.data||{}).subnicho||"Geral"))||"Geral";}
-function newsItems(){return offers.filter(o=>sectionOf(o)==="noticia"&&newsNicheOf(o));}
+const taxonomyRows=new WeakMap();
+function feedClassification(o){if(!o||!o.data)return null;const previous=taxonomyRows.get(o.data);if(previous!==undefined)return previous;const c=SwipeTaxonomy.classify(SwipeTaxonomy.content(o.data));taxonomyRows.set(o.data,c);return c;}
+function nicheOf(o){const d=o.data||{};if(["noticia","tiktok"].includes(d.kind))return feedClassification(o)?.nicho||"";return (SwipeTaxonomy.remap(d.nicho,d.subnicho,SwipeTaxonomy.content(d))||{}).nicho||String(d.nicho||"").trim();}
+function newsNicheOf(o){return feedClassification(o)?.nicho||"";}
+function newsTopicOf(o){return feedClassification(o)?.subnicho||"";}
+function feedItems(kind){const seen=new Set();return offers.filter(o=>{if(sectionOf(o)!==kind)return false;const d=o.data||{},key=kind==="tiktok"?d.videoId:String(d.link||o.id).replace(/[?#].*$/,"").replace(/\/$/,"");if(seen.has(key))return false;seen.add(key);return true;});}
+function newsItems(){return feedItems("noticia");}
 function catalogNiches(){const names=new Map(BRAND_NICHE_ORDER.map(n=>[nicheRouteKey(n),n]));offers.filter(o=>BRAND_OFFER_SECTIONS.has(sectionOf(o))).forEach(o=>{const raw=sectionOf(o)==="brandsvalidated"?insiderNicheOf(o):nicheOf(o),name=brandNicheCanonical(raw);if(raw&&name!==BRAND_NICHE_REVIEW)names.set(nicheRouteKey(name),name);});return [...names.values()];}
-function brandNicheCanonical(raw){
-  const value=String(raw||"").trim(),key=value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
-  if(!key)return BRAND_NICHE_REVIEW;
-  if(key.includes("disfuncao eretil")||key==="saude masculina")return BRAND_NICHE_ORDER[0];
-  if(key==="saude feminina")return BRAND_NICHE_ORDER[1];
-  const known=BRAND_NICHE_ORDER.find(n=>nicheRouteKey(n)===nicheRouteKey(value));
-  if(known)return known;
-  return NICHOS.some(n=>sameNiche(n,value))?BRAND_NICHE_REVIEW:value;
-}
+function brandNicheCanonical(raw){return SwipeTaxonomy.canonicalGroup(raw)||BRAND_NICHE_REVIEW;}
+
 function brandNameOf(o){const d=o&&o.data||{};return String(BRAND_OFFER_SECTIONS.has(sectionOf(o))?(d.nomeOferta||d.nomeMarca):(d.nomeProduto||d.produto||d.marca||d.nomeMarca||"Produto sem nome")||"Produto sem nome").trim();}
 function brandKeyOf(o){return nicheRouteKey(brandNameOf(o));}
 function brandHubItems(){return offers.filter(o=>sectionOf(o)==="brandcreative");}
@@ -559,7 +554,7 @@ function brandHubNicheOf(o){
   return match?brandNicheCanonical(sectionOf(match)==="brandsvalidated"?insiderNicheOf(match):nicheOf(match)):BRAND_NICHE_REVIEW;
 }
 function filtered(){
-  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():offers.filter(o=>sectionOf(o)===activeSection);
+  let list=activeSection==="megabrainfegsys"?[...fegsysCards]:activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():activeSection==="tiktok"?feedItems("tiktok"):offers.filter(o=>sectionOf(o)===activeSection);
   if(activeSection==="criativo"||activeSection==="brandcreative")list=list.filter(o=>((o.data||{}).plataforma||"meta")==="meta");
   if(activeSection==="megabrainfegsys"){
     const min=fegsysSalesMin===""?null:Number(fegsysSalesMin),max=fegsysSalesMax===""?null:Number(fegsysSalesMax);
@@ -569,7 +564,8 @@ function filtered(){
     if(brainAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===brainAuthor);
   }
   if(activeNiche){list=list.filter(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderCategoryOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"?newsNicheOf(o):nicheOf(o);return activeNiche===NO_NICHE?!n||n===BRAND_NICHE_REVIEW:sameNiche(n,activeNiche);});}
-  if(activeSection==="tiktok"){if(tiktokSubniche)list=list.filter(o=>sameNiche((o.data||{}).subnicho||"Geral",tiktokSubniche));if(tiktokAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===tiktokAuthor);}
+  if(activeSection==="tiktok"){if(tiktokSubniche)list=list.filter(o=>sameNiche(newsTopicOf(o),tiktokSubniche));if(tiktokAuthor)list=list.filter(o=>String((o.data||{}).autor||"")===tiktokAuthor);}
+  if(activeSection==="noticia"&&newsPeriod!=="all")list=list.filter(o=>{const time=Date.parse((o.data||{}).publishedAt||(o.data||{}).dataPub||"");return Number.isFinite(time)&&time>=Date.now()-Number(newsPeriod)*86400000;});
   if(activeSection==="noticia"&&newsSubniche)list=list.filter(o=>sameNiche(newsTopicOf(o),newsSubniche));
   if((activeSection==="brandcreative"||activeSection==="brandsgeneral")&&activeBrand)list=list.filter(o=>brandKeyOf(o)===activeBrand);
   if(isInsiderAdminArea()&&activeBrand)list=list.filter(o=>insiderProductKey(o)===activeBrand);
@@ -609,7 +605,7 @@ function offerSortFn(a,b){
   const ad=String((a&&a.created_at)||""),bd=String((b&&b.created_at)||"");if(ad!==bd)return bd.localeCompare(ad);
   return String(((a&&a.data)||{}).nomeOferta||"").localeCompare(String(((b&&b.data)||{}).nomeOferta||""),"pt-BR");
 }
-const RECENT_FIRST_SECTIONS=new Set(["criativo","organic"]);
+const RECENT_FIRST_SECTIONS=new Set(["criativo"]);
 function recentFirstFn(a,b){
   const at=Date.parse((a&&a.created_at)||"")||0,bt=Date.parse((b&&b.created_at)||"")||0;
   if(at!==bt)return bt-at;
@@ -1820,19 +1816,19 @@ async function oiJobAction(id,action,button){
   if(activeSection==="inteligencia")renderOfferIntel();
 }
 /* ===== Sidebar de navegação (seções + nichos aninhados) ===== */
-const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",organic:"Swipe Organic",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias 24h",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL",inteligencia:"Inteligência de Ofertas",creativereview:"Creative Review"};
+const SEC_SHORT={oferta:"Swipe de Ofertas",presell:"Presell",criativo:"Swipe de Criativos",megabrain:"Mega Brain",megabrainfegsys:"Fegsys",noticia:"Notícias",tiktok:"Radar TikTok",brandsgeneral:"Ofertas no Geral",brandsvalidated:"Ofertas Brands",brandcreative:"Swipe de Criativos",updates:"Atualizações",transcritor:"Transcritor",vsldissector:"Dissecador de VSL",inteligencia:"Inteligência de Ofertas",creativereview:"Creative Review"};
 
 /* ============================================================
    ITEM 5 — ROTEAMENTO REAL (History API, path-based)
    Camada ADITIVA: a URL é a fonte da verdade de seção/nicho/filtros/modal.
    Não reescreve o pipeline — deriva o estado global e chama renderGrid().
    ============================================================ */
-const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",organic:"swipe-organic",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl",creativereview:"creative-review",inteligencia:"inteligencia"};
+const SEC2PATH={oferta:"ofertas",presell:"presell",criativo:"criativos",megabrain:"mega-brain",megabrainfegsys:"fegsys",noticia:"noticias",tiktok:"radar-tiktok",brandsgeneral:"feg-brands-geral",brandsvalidated:"feg-brands-insider",brandcreative:"feg-brands-criativos",updates:"atualizacoes",transcritor:"transcritor",vsldissector:"dissecador-vsl",creativereview:"creative-review",inteligencia:"inteligencia"};
 const PATH2SEC=Object.fromEntries(Object.entries(SEC2PATH).map(([k,v])=>[v,k]));
 PATH2SEC["mega-brain-fegsys"]="megabrainfegsys"; // compatibilidade com links antigos
 PATH2SEC["feg-brands-validadas"]="brandsvalidated"; // compatibilidade com links antigos
 const NICHE_SECTIONS=new Set(["oferta","presell","criativo","megabrain","megabrainfegsys","noticia","tiktok","brandsgeneral","brandsvalidated","brandcreative"]);
-const FLAT_DETAIL_SECTIONS=new Set(["organic","transcritor"]);
+const FLAT_DETAIL_SECTIONS=new Set(["transcritor"]);
 let routeReady=false;
 function routeSlug(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
 function nicheRouteKey(niche){return niche===NO_NICHE?NO_NICHE:routeSlug(niche);}
@@ -1845,7 +1841,7 @@ function canonicalNiche(niche){
 function catSlug(niche){return niche===NO_NICHE?"sem-nicho":(niche?routeSlug(niche):"todos");}
 function nicheFromSlug(section,slug){
   if(!slug||slug==="todos")return "";
-  if(section==="noticia")return RADAR_NICHES.find(n=>nicheRouteKey(n)===slug)||null;
+  if(section==="noticia"||section==="tiktok")return RADAR_NICHES.find(n=>nicheRouteKey(n)===slug)||null;
   if(section==="brandsvalidated"){
     const category=BRAND_CATEGORIES.find(n=>nicheRouteKey(n)===slug);if(category)return category;
     const legacy=offers.find(o=>sectionOf(o)==="brandsvalidated"&&nicheRouteKey(nicheOf(o))===slug);
@@ -1869,6 +1865,7 @@ function qsFromState(){
   if((BRAND_OFFER_SECTIONS.has(activeSection)||activeSection==="brandcreative")&&activeBrand)p.set("marca",activeBrand);
   if(activeSection==="tiktok"){if(tiktokSort&&tiktokSort!=="views")p.set("ordem",tiktokSort);if(tiktokSubniche)p.set("tema",tiktokSubniche);if(tiktokAuthor)p.set("perfil",tiktokAuthor);}
   if(activeSection==="noticia"&&newsSubniche)p.set("tema",newsSubniche);
+  if(activeSection==="noticia"&&newsPeriod!=="all")p.set("periodo",newsPeriod);
   if((activeSection==="megabrain"||activeSection==="megabrainfegsys")&&brainSort&&brainSort!=="metrica")p.set("ordem",brainSort);
   if(activeSection==="megabrain"&&brainAuthor)p.set("autor",brainAuthor);
   if(activeSection==="megabrainfegsys"){if(brainPeriod!=="7d")p.set("periodo",brainPeriod);if(brainPeriod==="custom"&&brainDateFrom)p.set("de",brainDateFrom);if(brainPeriod==="custom"&&brainDateTo)p.set("ate",brainDateTo);if(fegsysSalesMin!=="")p.set("vendas_min",fegsysSalesMin);if(fegsysSalesMax!=="")p.set("vendas_max",fegsysSalesMax);}
@@ -1905,6 +1902,7 @@ function parseLocation(){
   const seg=path.split("/").filter(Boolean);
   const q=new URLSearchParams(location.search);
   if(!seg.length)return {section:"brandsvalidated",niche:"",id:null,notFound:false,q};
+  if(["swipe-organic","swipe-organico","organic"].includes(seg[0]))return {section:"brandsvalidated",niche:"",id:null,notFound:false,q,retired:true};
   const section=PATH2SEC[seg[0]];
   if(!section)return {notFound:true,q};
   if(section==="creativereview"){const cr=OfferIntel.parseReviewPath(path);return {section,niche:"",id:null,notFound:cr.notFound,q,cr};}
@@ -1915,13 +1913,9 @@ function parseLocation(){
     if(seg[1]!=null){niche=nicheFromSlug(section,seg[1]);if(niche===null){niche="";notFound=true;}}
     if(seg[2]!=null)id=seg[2];
   }else{
-    const legacyOrganicDetail=section==="organic"&&seg.length===3&&seg[1]==="todos";
-    if(legacyOrganicDetail)id=seg[2];
-    else{
+
       if(seg.length>2||!FLAT_DETAIL_SECTIONS.has(section)&&seg[1]!=null)return {section,niche:"",id:null,notFound:true,q};
       if(seg[1]!=null)id=seg[1];
-    }
-    if(legacyOrganicDetail)return {section,niche,id,notFound:false,q,legacyOrganicDetail:true};
   }
   return {section,niche,id,notFound,q};
 }
@@ -1941,14 +1935,19 @@ function applyRoute(){
   if(!routeReady)return;
   if(/^\/feg-brands-geral(?:\/|$)/.test(location.pathname))try{history.replaceState(history.state,"",location.pathname.replace(/^\/feg-brands-geral(?=\/|$)/,"/feg-brands-insider")+location.search+location.hash);}catch(_){}
   if(/^\/inteligencia\/semanal\/?$/.test(location.pathname))try{history.replaceState(history.state,"","/creative-review");}catch(_){}
+  const legacyParts=decodeURIComponent(location.pathname).split("/").filter(Boolean),legacySection=PATH2SEC[legacyParts[0]];
+  if(legacyParts[1]&&["noticia","tiktok","oferta","presell","criativo","brandcreative"].includes(legacySection)){
+    const params=new URLSearchParams(location.search),linked=legacyParts[2]?itemById(legacyParts[2]):null,mapped=linked?{nicho:nicheOf(linked),subnicho:linked.data?.subnicho||""}:SwipeTaxonomy.route(legacyParts[1].replace(/-/g," "),params.get("tema")||"");
+    if(mapped.nicho){if(params.has("tema")){if(mapped.subnicho)params.set("tema",mapped.subnicho);else params.delete("tema");}const next="/"+legacyParts[0]+"/"+routeSlug(mapped.nicho)+(legacyParts[2]?"/"+legacyParts[2]:"")+(params.size?"?"+params:"");if(next!==location.pathname+location.search)history.replaceState(history.state,"",next);}
+  }
   const r=parseLocation();
   if(r.notFound){renderNotFound();return;}
   if((ADMIN_SECTIONS.has(r.section)||r.section==="inteligencia"||r.section==="creativereview")&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
-  activeSection=r.section;
+  activeSection=r.section;document.body.classList.toggle("feed-view",["noticia","tiktok"].includes(activeSection));
   oiRoute=r.section==="inteligencia"?r.oi:null;
   crRoute=r.section==="creativereview"?r.cr:null;
   if(oiRoute&&oiRoute.redirect){try{history.replaceState(history.state,"",OfferIntel.buildPath(oiRoute));}catch(_){}}
-  if(r.legacyOrganicDetail){try{history.replaceState(history.state,"",offerPath(itemById(r.id)||{id:r.id,data:{kind:"criativo",division:"organic"}})+location.search);}catch(_){}}
+  if(r.retired){history.replaceState(history.state,"","/feg-brands-insider/todos");toast("Esta seção foi desativada. O histórico foi preservado.");}
   if(activeSection==="updates")markUpdatesSeen();
   activeNiche=r.niche||"";
   if(activeSection==="brandsvalidated"&&r.id){const item=itemById(r.id);if(item&&sectionOf(item)==="brandsvalidated"&&!sameNiche(activeNiche,insiderCategoryOf(item))){activeNiche=insiderCategoryOf(item);try{history.replaceState(history.state,"",listPath(activeSection,activeNiche)+"/"+r.id+location.search);}catch(_){}}}
@@ -1962,6 +1961,7 @@ function applyRoute(){
     offerTagFilter=activeSection==="brandsvalidated"&&OFFER_TAGS[r.q.get("tag")]?r.q.get("tag"):"";
   }
   if(activeSection==="tiktok"){tiktokSort=r.q.get("ordem")||"views";tiktokSubniche=(RADAR_TOPICS[activeNiche]||[]).find(topic=>sameNiche(topic,r.q.get("tema")))||"";tiktokAuthor=r.q.get("perfil")||"";}else{tiktokSubniche="";tiktokAuthor="";}
+  newsPeriod=activeSection==="noticia"&&["1","7","14","30"].includes(r.q.get("periodo"))?r.q.get("periodo"):"all";
   newsSubniche=activeSection==="noticia"?(RADAR_TOPICS[activeNiche]||[]).find(topic=>sameNiche(topic,r.q.get("tema")))||"":"";
   if(activeSection==="megabrain"||activeSection==="megabrainfegsys"){
     brainSort=r.q.get("ordem")||"metrica";brainAuthor=activeSection==="megabrain"?(r.q.get("autor")||""):"";
@@ -2033,14 +2033,14 @@ function renderSideNav(){
   const nav=$("#sideNav");if(!nav)return;
   const scrollTop=$(".sidenav__body",nav)?.scrollTop||0;
   const counts={};SECTIONS.forEach(s=>counts[s.key]=0);
-  offers.forEach(o=>{const k=sectionOf(o);if(k==="noticia"&&!newsNicheOf(o))return;counts[k]=(counts[k]||0)+1;});
+  offers.forEach(o=>{const k=sectionOf(o);counts[k]=(counts[k]||0)+1;});counts.noticia=newsItems().length;counts.tiktok=feedItems("tiktok").length;
   counts.megabrainfegsys=fegsysCards.length;
   counts.updates=updatesTotal;
 
   /* nichos somente nas seções que realmente usam essa taxonomia */
   let nicheHtml="";
   if(NICHE_SECTIONS.has(activeSection)&&activeSection!=="megabrainfegsys"){
-    const secOffers=activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():offers.filter(o=>sectionOf(o)===activeSection);
+    const secOffers=activeSection==="brandcreative"?brandHubItems():activeSection==="noticia"?newsItems():activeSection==="tiktok"?feedItems("tiktok"):offers.filter(o=>sectionOf(o)===activeSection);
     const ncByKey=new Map();let none=0;
     secOffers.forEach(o=>{const n=activeSection==="brandcreative"?brandHubNicheOf(o):isInsiderAdminArea()?insiderCategoryOf(o):activeSection==="brandsgeneral"?brandNicheCanonical(nicheOf(o)):activeSection==="noticia"?newsNicheOf(o):nicheOf(o);if(!n||n===BRAND_NICHE_REVIEW){none++;return;}const key=nicheRouteKey(n),entry=ncByKey.get(key);if(entry)entry.count++;else ncByKey.set(key,{name:canonicalNiche(n),count:1});});
     const nc=new Map([...ncByKey.values()].map(entry=>[entry.name,entry.count]));
@@ -2065,7 +2065,7 @@ function renderSideNav(){
     };
     nicheHtml+='<span class="snav__niches-title">'+((activeSection==="noticia"||activeSection==="tiktok")?"Temas e nichos":activeSection==="brandsvalidated"?"Categorias e produtos":"Nichos e produtos")+'</span>';
     nicheHtml+=nitem("","Todos",secOffers.length,activeNiche==="");
-    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected){nicheHtml+=productMenu(n);if(activeSection==="tiktok"||activeSection==="noticia")nicheHtml+='<div class="snav__brands">'+(RADAR_TOPICS[n]||[]).map(topic=>{const count=secOffers.filter(o=>sameNiche(nicheOf(o),n)&&sameNiche(activeSection==="noticia"?newsTopicOf(o):((o.data||{}).subnicho||"Geral"),topic)).length;return '<a class="snav__brand'+(sameNiche(activeSection==="noticia"?newsSubniche:tiktokSubniche,topic)?' active':'')+'" data-nav href="'+esc(listPath(activeSection,n)+'?tema='+encodeURIComponent(topic))+'"><span>'+esc(topic)+'</span><span class="cnt">'+count+'</span></a>';}).join('')+'</div>';}});
+    ordered.forEach(n=>{const selected=sameNiche(activeNiche,n);nicheHtml+=nitem(n,n,ncByKey.get(nicheRouteKey(n))?.count||0,selected);if(selected){nicheHtml+=productMenu(n);if(activeSection==="tiktok"||activeSection==="noticia")nicheHtml+='<div class="snav__brands">'+(RADAR_TOPICS[n]||[]).map(topic=>{const count=secOffers.filter(o=>sameNiche(nicheOf(o),n)&&sameNiche(newsTopicOf(o),topic)).length;return '<a class="snav__brand'+(sameNiche(activeSection==="noticia"?newsSubniche:tiktokSubniche,topic)?' active':'')+'" data-nav href="'+esc(listPath(activeSection,n)+'?tema='+encodeURIComponent(topic))+'"><span>'+esc(topic)+'</span><span class="cnt">'+count+'</span></a>';}).join('')+'</div>';}});
     if(none&&activeSection!=="noticia"){const pendingActive=activeNiche===NO_NICHE;nicheHtml+=nitem(NO_NICHE,BRAND_SECTIONS.has(activeSection)?"Pendente de revisão":"Sem nicho",none,pendingActive);if(pendingActive)nicheHtml+=productMenu(NO_NICHE);}
   }
 
@@ -2507,7 +2507,6 @@ function cardFor(o){
     case "brandcreative":return brandCreativeCard(o);
     case "presell":return presellCard(o);
     case "criativo":return criativoCard(o);
-    case "organic":return criativoCard(o);
     case "megabrain":case "megabrainfegsys":return megabrainCard(o);
     case "noticia":return noticiaCard(o);
     case "tiktok":return tiktokCard(o);
@@ -2517,7 +2516,7 @@ function cardFor(o){
 const GRID_PAGE_OPTIONS=[20,50,100];
 let gridPage=1,gridPageSize=20,gridPageKey="",gridSearchTimer=0;
 try{const saved=+localStorage.getItem("feg_grid_page_size");if(GRID_PAGE_OPTIONS.includes(saved))gridPageSize=saved;}catch(e){}
-function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,tiktokSubniche,newsSubniche,brainSort,brainAuthor,offerSort,offerDirection,offerTagFilter,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
+function currentGridKey(){return [activeSection,activeNiche,activeBrand,searchTerm,critPlatform,tiktokSort,tiktokSubniche,newsSubniche,newsPeriod,brainSort,brainAuthor,offerSort,offerDirection,offerTagFilter,brainPeriod,brainDateFrom,brainDateTo,fegsysSalesMin,fegsysSalesMax,fegsysLoadedKey,gridPageSize].join("\u0001");}
 function pagedItems(items){
   const size=gridPageSize,key=currentGridKey();
   if(key!==gridPageKey){gridPageKey=key;gridPage=1;}
@@ -2630,7 +2629,7 @@ function renderGrid(skipNav){
   if(activeSection==="vsldissector"){renderVslDissector();return;}
   if(activeSection==="updates"){renderUpdates();return;}
   const cfg=sectionCfg(activeSection);
-  const manualSecCount=activeSection==="brandcreative"?brandHubItems().length:activeSection==="noticia"?newsItems().length:offers.filter(o=>sectionOf(o)===activeSection).length;
+  const manualSecCount=activeSection==="brandcreative"?brandHubItems().length:activeSection==="noticia"?newsItems().length:activeSection==="tiktok"?feedItems("tiktok").length:offers.filter(o=>sectionOf(o)===activeSection).length;
   const list=filtered();
   const secCount=activeSection==="megabrainfegsys"?fegsysCards.length:manualSecCount;
   $("#statTotal").textContent=secCount;
@@ -2640,11 +2639,11 @@ function renderGrid(skipNav){
   if(shownWrap){shownWrap.style.display=filtering?"":"none";const sn=$("#statShown");if(sn)sn.textContent=list.length;}
   const area=$("#gridArea");
   if(secCount===0){
-    const help=activeSection==="brandcreative"?"Os criativos anteriores foram retirados desta seção. Os top ads das ofertas aparecerão aqui depois que os vídeos originais forem baixados e enviados. Os anúncios nos cards das ofertas permanecem disponíveis.":activeSection==="tiktok"?"O Radar foi reiniciado. Novos vídeos orgânicos aparecerão após a próxima mineração por nicho.":activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
+    const help=activeSection==="brandcreative"?"Os criativos anteriores foram retirados desta seção. Os top ads das ofertas aparecerão aqui depois que os vídeos originais forem baixados e enviados. Os anúncios nos cards das ofertas permanecem disponíveis.":activeSection==="tiktok"?"Nenhum vídeo relevante neste recorte. Novos resultados aparecerão quando a coleta encontrar conteúdo relacionado ao nicho." :activeSection==="noticia"?"Nenhuma notícia relevante neste recorte. Ajuste os filtros ou aguarde a próxima coleta.":activeSection==="megabrainfegsys"?(fegsysLoading?"A primeira sincronização está em andamento.":fegsysError?"Use Atualizar agora depois de corrigir o acesso indicado acima.":"Use Atualizar agora para buscar os dados do período selecionado."):(isAdmin?`Clique em <b style="color:var(--accent)">${esc(cfg.newLabel)}</b> para começar.`:"Somente leitura — aguarde o admin adicionar itens.");
     area.innerHTML=`<div class="empty"><h2>${esc(cfg.emptyTitle)}</h2><p>${help}</p></div>`;return;
   }
   if(list.length===0){
-    area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>Nenhum item corresponde a este filtro.</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
+    area.innerHTML=`<div class="empty"><h2>Nada encontrado</h2><p>${["noticia","tiktok"].includes(activeSection)?"Nenhum conteúdo relevante neste nicho e período.":"Nenhum item corresponde a este filtro."}</p><button class="btn btn--outline" id="clearFilters" style="margin-top:18px">Limpar filtros</button></div>`;
     const cf=$("#clearFilters");if(cf)cf.addEventListener("click",()=>{const si=$("#searchInput");if(si)si.value="";critPlatform="all";brainAuthor="";fegsysSalesMin="";fegsysSalesMax="";searchTerm="";navigate(listPath(activeSection,""));});
     return;
   }
@@ -3100,7 +3099,7 @@ function openForm(id){
       <div class="field big"><label class="lbl">Nome da oferta *</label><input type="text" id="f_nomeOferta" placeholder="Ex: Performance Masculina XYZ" value="${esc(d.nomeOferta)}"></div>
       <div class="row">
         <div class="field"><label class="lbl">Nome da marca</label><input type="text" id="f_nomeMarca" placeholder="Marca" value="${esc(d.nomeMarca)}"></div>
-        <div class="field"><label class="lbl">${isBrand?"Nicho observado (opcional)":"Nicho"}</label><input list="nichos" id="f_nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(d.nicho)}"><datalist id="nichos">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
+        <div class="field"><label class="lbl">${isBrand?"Nicho observado (opcional)":"Nicho"}</label><input list="nichos" id="f_nicho" placeholder="Saúde geral, Nutrição/Emagrecimento, Skin Care..." value="${esc(d.nicho)}"><datalist id="nichos">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div><div class="field"><label class="lbl" for="f_subnicho">Subnicho</label><input id="f_subnicho" list="offerTopics" value="${esc(d.subnicho||"")}" placeholder="Selecione um tema do nicho"><datalist id="offerTopics">${(RADAR_TOPICS[SwipeTaxonomy.canonicalGroup(d.nicho)]||[]).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div>
       </div>
       <div class="${isBrand?"row3":"row"}">
         <div class="field"><label class="lbl">Formato do produto</label><input type="text" id="f_formato" placeholder="cápsula, sachê, gummy, líquido..." value="${esc(d.formato)}"></div>
@@ -3253,7 +3252,7 @@ function buildPayload(){
   }
   const payload=Object.assign(legacy,{
     tipoTrafego:"meta",
-    nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),
+    nomeOferta:val("f_nomeOferta"),nomeMarca:val("f_nomeMarca"),nicho:val("f_nicho"),subnicho:val("f_subnicho"),
     formato:val("f_formato"),numAdsAtivos:val("f_numAdsAtivos"),
     bibliotecas:fBibliotecas.filter(x=>x.nome||x.link),
     imagemProduto:fProductImg||"",
@@ -3263,6 +3262,7 @@ function buildPayload(){
     funil:val("f_funil"),advertorialLink:val("f_advertorialLink"),
     driveLinks:val("f_driveLinks")
   });
+  const mappedTaxonomy=SwipeTaxonomy.remap(payload.nicho,payload.subnicho,SwipeTaxonomy.content(payload));if(mappedTaxonomy)Object.assign(payload,mappedTaxonomy,{taxonomyVersion:SwipeTaxonomy.version,taxonomyStatus:"classified"});
   if(fBrandStage==="brandsvalidated")Object.assign(payload,{
     kind:"brandsvalidated",
     brandCategory:val("f_brandCategory")||"SUPPLEMENTS",
@@ -3306,11 +3306,7 @@ function nextCreativeName(niche){
   const max=offers.reduce((n,o)=>{if((o.data||{}).kind!=="criativo")return n;const m=String(o.data.nome||"").match(rx);return m?Math.max(n,+m[1]):n;},0);
   return `[ADS ${code}][${String(max+1).padStart(2,"0")}]`;
 }
-function nextOrganicNames(total){
-  const rx=/^\[ORG ED\]\[(\d+)\]$/i;
-  const max=offers.reduce((n,o)=>{const d=(o&&o.data)||{};if(d.kind!=="criativo"||d.division!=="organic")return n;const m=String(d.nome||"").match(rx);return m?Math.max(n,+m[1]):n;},0);
-  return Array.from({length:total},(_,index)=>`[ORG ED][${String(max+index+1).padStart(2,"0")}]`);
-}
+
 async function syncOfferCreatives(offerRow){
   const d=offerRow&&offerRow.data||{};
   const items=[
@@ -3918,6 +3914,8 @@ function preserveOpenFilter(el){
   }
   return true;
 }
+function feedFilterHtml(){const topic=activeSection==="noticia"?newsSubniche:tiktokSubniche;return `<label class="brainfilter"><span>Nicho</span><select data-feed-niche aria-label="Filtrar por nicho"><option value="">Todos os nichos</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,activeNiche)?" selected":""}>${esc(n)}</option>`).join("")}</select></label><label class="brainfilter"><span>Subnicho</span><select data-feed-topic aria-label="Filtrar por subnicho" ${activeNiche?"":"disabled"}><option value="">Todos os subnichos</option>${(RADAR_TOPICS[activeNiche]||[]).map(t=>`<option value="${esc(t)}"${t===topic?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`;}
+function wireFeedFilters(el){el.querySelector('[data-feed-niche]')?.addEventListener('change',e=>{activeNiche=e.target.value;newsSubniche="";tiktokSubniche="";navigate(currentPath());});el.querySelector('[data-feed-topic]')?.addEventListener('change',e=>{if(activeSection==="noticia")newsSubniche=e.target.value;else tiktokSubniche=e.target.value;navigate(currentPath());});}
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
   // Jobs atualizam a grade enquanto o menu nativo está aberto. Não substituir
@@ -3950,12 +3948,16 @@ function renderSubFilter(){
     });
     return;
   }
+  if(activeSection==="noticia"){
+    el.style.display="";el.innerHTML=`<div class="subfilter__row">${feedFilterHtml()}<label class="brainfilter"><span>Período</span><select data-news-period aria-label="Período das notícias">${[["all","Todo o histórico"],["1","Últimas 24 horas"],["7","Últimos 7 dias"],["14","Últimos 14 dias"],["30","Últimos 30 dias"]].map(([v,l])=>`<option value="${v}"${v===newsPeriod?" selected":""}>${l}</option>`).join("")}</select></label></div>`;wireFeedFilters(el);el.querySelector('[data-news-period]').addEventListener('change',e=>{newsPeriod=e.target.value;navigate(currentPath());});return;
+  }
   if(activeSection==="tiktok"){
     el.style.display="";
     const opts=[["views","Mais views"],["engajamento","Engajamento"],["likes","Likes"],["comentarios","Comentários"],["recente","Recentes"]];
-    const scoped=offers.filter(o=>sectionOf(o)==="tiktok"&&(!activeNiche||sameNiche(nicheOf(o),activeNiche))&&(!tiktokSubniche||sameNiche((o.data||{}).subnicho||"Geral",tiktokSubniche)));
+    const scoped=offers.filter(o=>sectionOf(o)==="tiktok"&&(!activeNiche||sameNiche(nicheOf(o),activeNiche))&&(!tiktokSubniche||sameNiche(newsTopicOf(o),tiktokSubniche)));
     const authors=[...new Set(scoped.map(o=>String((o.data||{}).autor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
-    el.innerHTML=`<div class="subfilter__row"><label class="brainfilter"><span>Perfil orgânico</span><select id="tiktokAuthorFilter" aria-label="Filtrar perfil orgânico"><option value="">Todos os perfis</option>${authors.map(author=>`<option value="${esc(author)}"${tiktokAuthor===author?" selected":""}>@${esc(author)}</option>`).join("")}</select></label><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div></div>`;
+    el.innerHTML=`<div class="subfilter__row">${feedFilterHtml()}<label class="brainfilter"><span>Perfil orgânico</span><select id="tiktokAuthorFilter" aria-label="Filtrar perfil orgânico"><option value="">Todos os perfis</option>${authors.map(author=>`<option value="${esc(author)}"${tiktokAuthor===author?" selected":""}>@${esc(author)}</option>`).join("")}</select></label><div class="seg">${opts.map(([v,l])=>`<button type="button" class="seg-btn${tiktokSort===v?" active":""}" data-ttsort="${v}">${l}</button>`).join("")}</div></div>`;
+    wireFeedFilters(el);
     $("#tiktokAuthorFilter",el).addEventListener("change",e=>{tiktokAuthor=e.target.value;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);});
     $$(".seg-btn",el).forEach(b=>b.addEventListener("click",()=>{tiktokSort=b.dataset.ttsort;try{history.replaceState(null,"",currentPath());}catch(_){}renderGrid(true);}));
     return;
@@ -3986,17 +3988,10 @@ function renderSubFilter(){
     wireFegsysPanel(el);
     return;
   }
-  if(activeSection!=="criativo"&&activeSection!=="brandcreative"&&activeSection!=="organic"){el.innerHTML="";el.style.display="none";return;}
+  if(activeSection!=="criativo"&&activeSection!=="brandcreative"){el.innerHTML="";el.style.display="none";return;}
   // Nesta etapa o acervo fica vazio, sem o importador legado de Balls n Brains.
   if(activeSection==="brandcreative"){el.innerHTML="";el.style.display="none";return;}
   el.style.display="";
-  if(activeSection==="organic"){
-    const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar pasta de orgânicos</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" multiple webkitdirectory directory hidden>`:"";
-    el.innerHTML=`<div class="subfilter__row"><div class="sort-reference" role="status">Acervo único, sem separação por nichos.</div>${bulk}</div>`;
-    const batchButton=$("#creativeBatchImport"),batchFiles=$("#creativeBatchFiles");
-    if(batchButton&&batchFiles){batchButton.addEventListener("click",()=>batchFiles.click());batchFiles.addEventListener("change",()=>{const files=[...(batchFiles.files||[])];if(files.length)importCreativeBatch(files,"",false,true);});}
-    return;
-  }
   const opts=[["meta","Meta Ads"]];
   const bulk=isAdmin?`<button type="button" class="btn btn--outline btn--sm" id="creativeBatchImport">${ic("upload")}Importar pasta</button><input id="creativeBatchFiles" type="file" accept="video/mp4,video/webm,video/quicktime,video/*,application/json,.json" multiple webkitdirectory directory hidden>`:"";
   el.innerHTML=`<div class="subfilter__row">${brandNavHtml()}<div class="seg">${opts.map(([v,l])=>`<span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>${l}</span>`).join("")}</div>${bulk}</div>`;
@@ -4199,7 +4194,7 @@ let furPhase="biblia", furBusy=false, furAbort=null, furRestoredKey="";
 let furState={nicho:"",biblia:"",voc:"",briefing:"",nCorpos:3,nHooks:3,anuncios:[]};
 function furStorageKey(){return FUR_STORE+":"+String(($("#whoami")&&$("#whoami").textContent)||"usuario").trim().toLowerCase();}
 function furPersist(){try{localStorage.setItem(furStorageKey(),JSON.stringify({version:2,phase:furPhase,state:furState,updatedAt:new Date().toISOString()}));}catch(_){}}
-function furRestore(){const key=furStorageKey();if(furRestoredKey===key)return;furRestoredKey=key;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(!saved||saved.version!==2||!saved.state)return;const s=saved.state;furPhase=FUR_PHASES.some(p=>p.key===saved.phase)?saved.phase:"biblia";furState={nicho:String(s.nicho||""),biblia:String(s.biblia||""),voc:String(s.voc||""),briefing:String(s.briefing||""),nCorpos:Math.max(1,Math.min(8,parseInt(s.nCorpos,10)||3)),nHooks:Math.max(1,Math.min(6,parseInt(s.nHooks,10)||3)),anuncios:Array.isArray(s.anuncios)?s.anuncios:[]};}catch(_){}}
+function furRestore(){const key=furStorageKey();if(furRestoredKey===key)return;furRestoredKey=key;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(!saved||saved.version!==2||!saved.state)return;const s=saved.state;furPhase=FUR_PHASES.some(p=>p.key===saved.phase)?saved.phase:"biblia";furState={nicho:SwipeTaxonomy.canonicalGroup(s.nicho)||String(s.nicho||""),biblia:String(s.biblia||""),voc:String(s.voc||""),briefing:String(s.briefing||""),nCorpos:Math.max(1,Math.min(8,parseInt(s.nCorpos,10)||3)),nHooks:Math.max(1,Math.min(6,parseInt(s.nHooks,10)||3)),anuncios:Array.isArray(s.anuncios)?s.anuncios:[]};}catch(_){}}
 function furMarkdown(src){return ccMarkdown(src);}   // reaproveita o renderer do Feguinho
 function furHasDoc(k){if(k==="anuncios")return furState.anuncios.length>0;return !!String(furState[k]||"").trim();}
 function furReset(){
@@ -4693,7 +4688,7 @@ const creativeTranslations=new Set();
 let creativeTranslationQueue=[],creativeTranslationActive=0;
 function creativeNeedsTranslation(o){
   const d=(o&&o.data)||{},status=String(d.transcricaoPtStatus||"").toLowerCase();
-  if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic")return false;if(brandCreativeArchived(d))return false;
   const retryAt=Date.parse(d.transcricaoPtProximaTentativa||"");
   return d.kind==="criativo"&&String(d.transcricao||"").trim()&&!String(d.transcricaoPt||"").trim()&&!["working","processing"].includes(status)&&(!Number.isFinite(retryAt)||retryAt<=Date.now());
 }
@@ -5299,11 +5294,10 @@ function presellCard(o){
 }
 function criativoCard(o){
   const d=o.data||{};
-  const organic=sectionOf(o)==="organic";
-  const collectionLabel=organic?"VIDEO ORGANICO":d.collectionLabel;
+  const collectionLabel=d.collectionLabel;
   const collection=collectionLabel?`<div class="collection-flag">${ic("user")}${esc(collectionLabel)}</div>`:"";
   const tab=d.plataforma==="taboola";
-  const badge=organic?`<span class="tbadge"><span class="tdot"></span>Organic</span>`:tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
+  const badge=tab?`<span class="tbadge tbadge--native"><span class="tdot"></span>Taboola</span>`:`<span class="tbadge tbadge--fb"><span class="tdot"></span>Meta Ads</span>`;
   const va=videoOfCrv(d);
   /* A plataforma descreve a origem do anúncio, não o tipo da mídia. Criativos
      nativos também podem ter MP4 e devem usar o primeiro frame como capa. */
@@ -5315,12 +5309,12 @@ function criativoCard(o){
   const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
-  const chips=organic?`<div class="card__chips"><span class="chip accent">Swipe Organic</span><span class="chip">Banco de hooks</span></div>`:(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
+  const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
   const fbwork=st==="working"||st==="queued"?`<div class="fbwork">${ic("download")}Anexando mídia ao card…</div>`
     :st==="retry_scheduled"?`<div class="fbwork">${ic("clock")}Nova tentativa de mídia agendada</div>`:"";
   return card({
     id:o.id,variant:"kcard",
-    head:`${badge}<span class="ktag">${ic(organic?"sparkles":"play")}${organic?"Swipe Organic":"Criativo"}</span>`,
+    head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
     media:creativeCardMedia(d,hasVid?va:""),
     body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}${creativeUploadMeta(o)}`,
     chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
@@ -5454,7 +5448,7 @@ function tiktokThumb(d){
   return `<div class="cmedia cmedia--empty ttmedia">${ic("play")}<span>Sem capa</span>${dur}</div>`;
 }
 function tiktokCard(o){
-  const d=o.data||{};
+  const d={...o.data,...feedClassification(o)};
   const eng=d.engajamento?(d.engajamento*100).toFixed(1)+"%":"–";
   return card({
     id:o.id,variant:"kcard ttcard",
@@ -5780,7 +5774,7 @@ function fbStatusOf(o){
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 function offerCreativeNeedsArchive(o){
   const d=(o&&o.data)||{},status=String(d.mediaArchiveStatus||d.fbIngestStatus||"").toLowerCase();
-  if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic")return false;if(brandCreativeArchived(d))return false;
   if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
   if(String(d.video||d.print||"").trim())return false;
   if(["queued","working","processing"].includes(status))return fbArchiveIsStale(d);
@@ -6072,12 +6066,12 @@ function openSimpleView(o,skipOpen){
   const kvs=[];
   if(d.nicho)kvs.push(`<div class="kv"><div class="k">Nicho</div><div class="v" style="color:var(--accent)">${esc(d.nicho)}</div></div>`);
   if(kind==="presell")kvs.push(`<div class="kv"><div class="k">Origem</div><div class="v">${d.tipoTrafego==="native"?"Native · Taboola":"Meta Ads"}</div></div>`);
-  if(kind==="criativo"&&logicalKind!=="organic"){
+  if(kind==="criativo"){
     kvs.push(`<div class="kv"><div class="k">Plataforma</div><div class="v">${d.plataforma==="taboola"?"Taboola":"Meta Ads"}</div></div>`);
     if(d.fbDaysActive!=null)kvs.push(`<div class="kv"><div class="k">No ar (Facebook)</div><div class="v" style="color:var(--accent)">${esc(fbDaysText(d))}</div></div>`);
     if(d.fbPageName)kvs.push(`<div class="kv"><div class="k">Página</div><div class="v">${esc(d.fbPageName)}</div></div>`);
     if(d.fbMetrics&&d.fbMetrics.impressions!=null)kvs.push(`<div class="kv"><div class="k">Impressões (FB)</div><div class="v">${esc(String(d.fbMetrics.impressions))}</div></div>`);
-    if(d.collectionLabel||logicalKind==="organic")kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(logicalKind==="organic"?"VIDEO ORGANICO":d.collectionLabel)}</div></div>`);
+    if(d.collectionLabel)kvs.push(`<div class="kv"><div class="k">Coleção</div><div class="v" style="color:var(--accent);font-weight:800">${esc(d.collectionLabel)}</div></div>`);
   }
   if(kind==="criativo"){
     const uploadDate=creativeUploadDate(o);
@@ -6196,7 +6190,7 @@ function openSimpleView(o,skipOpen){
   const asideHtml=noAside?"":`<aside class="sidebar"><div class="note"><div class="nk">★ Comentário / orientação</div><div class="nbody ${d.comentario?"":"empty"}">${d.comentario?esc(d.comentario):"Sem comentários."}</div></div></aside>`;
   $("#viewBody").innerHTML=`<div class="view-grid${noAside?" view-grid--full":""}"><div>
     <section class="sec"><div class="prod-head"><div class="info">
-      ${d.collectionLabel||logicalKind==="organic"?`<div class="collection-flag">${ic("user")}${esc(logicalKind==="organic"?"VIDEO ORGANICO":d.collectionLabel)}</div>`:""}
+      ${d.collectionLabel?`<div class="collection-flag">${ic("user")}${esc(d.collectionLabel)}</div>`:""}
       <div class="brand">${esc(kind==="noticia"?(d.fonte||cfg.label):(d.marca||cfg.label))}</div>
       <h2>${esc(d.nome||"Sem título")}</h2>
       <div class="kvs">${kvs.join("")}</div>
@@ -6218,14 +6212,14 @@ function openSimpleView(o,skipOpen){
 
 /* ===== FORM DOS NOVOS SWIPES ===== */
 function blankSimple(kind){
-  const base={kind,nome:"",nicho:"",marca:"",link:"",print:"",comentario:""};
+  const base={kind,nome:"",nicho:"",subnicho:"",marca:"",link:"",print:"",comentario:""};
   if(kind==="presell")base.tipoTrafego="meta";
-  if(kind==="criativo"||kind==="organic")Object.assign(base,{plataforma:kind==="organic"?"organic":"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
+  if(kind==="criativo")Object.assign(base,{plataforma:"meta",linkAnuncio:"",video:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"",copyLink:""});
   if(kind==="megabrain")Object.assign(base,{autor:"",metricaTipo:"vendas",metricaValor:"",linkDrive:"",copy:"",copyLink:"",video:"",transcricao:""});
   if(kind==="noticia")Object.assign(base,{subnicho:"Geral",fonte:"Manual",dataPub:"",engajamento:"",resumo:""});
   return base;
 }
-function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="organic"?"Ex: Hook orgânico 01":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
+function placeholderFor(k){return k==="presell"?"Ex: Advertorial matéria — Próstata":k==="criativo"?"Ex: VSL feminina — dor emocional":k==="noticia"?"Ex: Novo estudo sobre emagrecimento com GLP-1":"Ex: VSL Emagrecimento — ângulo médico";}
 function setSimpleSaveState(s){const e=$("#simpleSaveState");if(!e)return;const map={saved:["","Salvo"],unsaved:["warn","Não salvo"],saving:["saving","Salvando…"],error:["err","Erro ao salvar"],new:["","Novo"]};const m=map[s]||map.new;e.className="save-state"+(m[0]?" "+m[0]:"");e.innerHTML='<span class="ssdot"></span>'+m[1];}
 function sMarkDirty(){sFormDirty=true;setSimpleSaveState("unsaved");}
 
@@ -6270,29 +6264,13 @@ async function uploadVideoFile(file){
 }
 
 let creativeBatchWorking=false;
-function organicSourceFile(file){
+function creativeSourceFile(file){
   const raw=String(file.webkitRelativePath||file.name||"").replace(/\\/g,"/").replace(/^\/+/,"");
   const parts=raw.split("/").filter(Boolean);if(parts.length>1)parts.shift();
   return parts.join("/")||String(file.name||"");
 }
 function naturalFileCompare(a,b){return String(a||"").localeCompare(String(b||""),"pt-BR",{numeric:true,sensitivity:"base"});}
-async function buildOrganicManifest(files,existingSources){
-  const candidates=files.filter(file=>{
-    const name=String(file.name||"");
-    return !name.startsWith("._")&&!/^\.DS_Store$/i.test(name)&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(name)||!name.includes("."));
-  }).map(file=>({file,sourceFile:organicSourceFile(file)})).sort((a,b)=>naturalFileCompare(a.sourceFile,b.sourceFile));
-  if(!candidates.length)throw new Error("nenhum vídeo válido foi encontrado na pasta");
-  const keys=new Set(),duplicates=[];
-  for(const item of candidates){const key=item.sourceFile.toLowerCase();if(keys.has(key))duplicates.push(item.sourceFile);keys.add(key);}
-  if(duplicates.length)throw new Error(`há caminhos duplicados no lote: ${duplicates.slice(0,3).join(", ")}`);
-  const pending=candidates.filter(item=>!existingSources.has(`ad feg ed|${item.sourceFile.toLowerCase()}`));
-  const names=nextOrganicNames(pending.length),records=[];
-  for(let index=0;index<pending.length;index++){
-    const item=pending[index],mediaInfo=await inspectUploadFile(item.file,["video"],VIDEO_MAX);
-    records.push({...item,mediaInfo,nome:names[index]});
-  }
-  return {records,skipped:candidates.length-pending.length,total:candidates.length};
-}
+
 const SPY_BATCH_MANIFEST="swipe-import.json";
 function nextCreativeNamesFor(records){
   const maxByCode=new Map();
@@ -6315,7 +6293,7 @@ async function buildSpyCreativeManifest(files,existingSources,existingHashes,exi
   if(sourceRecords.length>150)throw new Error("o lote excede o limite seguro de 150 criativos");
   const mediaFiles=files.filter(file=>!String(file.name||"").startsWith("._")&&(/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||"")));
   const byPath=new Map(),byName=new Map();
-  for(const file of mediaFiles){byPath.set(organicSourceFile(file).toLowerCase(),file);byName.set(String(file.name||"").toLowerCase(),file);}
+  for(const file of mediaFiles){byPath.set(creativeSourceFile(file).toLowerCase(),file);byName.set(String(file.name||"").toLowerCase(),file);}
   const manifestHashes=new Set(),manifestSources=new Set(),prepared=[],skippedRecords=[];
   const allowedNiches=new Set(["Emagrecimento","Disfunção Erétil","Memória","Diabetes/Glicose","Pressão Alta","Visão"]);
   for(const source of sourceRecords){
@@ -6336,12 +6314,12 @@ async function buildSpyCreativeManifest(files,existingSources,existingHashes,exi
   const names=nextCreativeNamesFor(prepared);prepared.forEach((record,index)=>record.nome=names[index]);
   return {records:prepared,skipped:skippedRecords.length,total:sourceRecords.length,duplicatesRemoved:Number(parsed&&parsed.duplicatesRemoved||0)};
 }
-async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,organicMode=false){
+async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false){
   if(!requireAdmin()||creativeBatchWorking)return;
   const brandNiche=activeNiche&&activeNiche!==NO_NICHE?activeNiche:"";
   let videos=files.filter(file=>brandMode?/^(video|image)\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v|jpe?g|png|webp)$/i.test(file.name||""):/^video\//i.test(file.type||"")||/\.(mp4|mov|webm|m4v)$/i.test(file.name||""));
   if(!videos.length){toast(brandMode?"Selecione vídeos ou imagens da Balls n Brains.":"Selecione pelo menos um arquivo de vídeo.",true);return;}
-  const defaultBatchName=organicMode?"AD FEG ED":brandMode?"Balls n Brains":"WL FEG";
+  const defaultBatchName=brandMode?"Balls n Brains":"WL FEG";
   const button=$("#creativeBatchImport"),existingSources=new Set(
     offers.filter(row=>(row.data||{}).kind==="criativo")
       .map(row=>`${String((row.data||{}).importBatch||"").toLowerCase()}|${String((row.data||{}).sourceFile||"").toLowerCase()}`)
@@ -6350,13 +6328,8 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
   ),existingLinks=new Set(
     offers.filter(row=>(row.data||{}).kind==="criativo").map(row=>canonicalCreativeUrl((row.data||{}).linkAnuncio||"")).filter(Boolean)
   );
-  let organicManifest=null,spyManifest=null;
-  if(organicMode){
-    try{if(button){button.disabled=true;button.innerHTML=ic("pulse")+"Validando 0/…";}organicManifest=await buildOrganicManifest(files,existingSources);videos=organicManifest.records;}
-    catch(error){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote não aplicado: ${String(error&&error.message||error)}`,true);return;}
-    if(!videos.length){if(button){button.disabled=false;button.innerHTML=ic("upload")+"Importar pasta de orgânicos";}toast(`Lote validado: os ${organicManifest.total} vídeos já estão no Swipe Organic.`);return;}
-    toast(`Lote validado: ${organicManifest.total} vídeos · ${videos.length} para importar${organicManifest.skipped?` · ${organicManifest.skipped} já existentes`:""}.`);
-  }else if(!brandMode&&files.some(file=>String(file.name||"").toLowerCase()===SPY_BATCH_MANIFEST)){
+  let spyManifest=null;
+  if(!brandMode&&files.some(file=>String(file.name||"").toLowerCase()===SPY_BATCH_MANIFEST)){
     try{
       if(button){button.disabled=true;button.innerHTML=ic("pulse")+"Validando manifesto…";}
       spyManifest=await buildSpyCreativeManifest(files,existingSources,existingHashes,existingLinks);videos=spyManifest.records;
@@ -6365,14 +6338,14 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
     toast(`Lote validado: ${spyManifest.total} únicos · ${videos.length} para importar${spyManifest.skipped?` · ${spyManifest.skipped} já existentes`:""}${spyManifest.duplicatesRemoved?` · ${spyManifest.duplicatesRemoved} duplicados removidos na origem`:""}.`);
   }
   creativeBatchWorking=true;if(button)button.disabled=true;
-  let imported=0,skipped=(organicManifest?.skipped||0)+(spyManifest?.skipped||0),failed=0,firstFailure="";
+  let imported=0,skipped=(spyManifest?.skipped||0),failed=0,firstFailure="";
   for(let index=0;index<videos.length;index++){
-    const record=(organicMode||spyManifest)?videos[index]:null,file=record?record.file:videos[index],sourceFile=record?record.sourceFile:String(file.name||`criativo-${index+1}.mp4`),batchName=record?.importBatch||defaultBatchName,dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
+    const record=spyManifest?videos[index]:null,file=record?record.file:videos[index],sourceFile=record?record.sourceFile:String(file.name||`criativo-${index+1}.mp4`),batchName=record?.importBatch||defaultBatchName,dedupeKey=`${batchName.toLowerCase()}|${sourceFile.toLowerCase()}`;
     if(existingSources.has(dedupeKey)){skipped++;continue;}
     if(button)button.innerHTML=ic("upload")+`Importando ${index+1}/${videos.length}…`;
     let mediaInfo;try{mediaInfo=(record&&record.mediaInfo)||await inspectUploadFile(file,brandMode?["video","image"]:["video"],VIDEO_MAX);}catch(error){failed++;firstFailure||=(error&&error.message)||"arquivo inválido";continue;}
     const uid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
-    const storagePath=organicMode?`organic/ad-feg-ed/${uid}.${mediaInfo.ext}`:brandMode?`brands/balls-n-brains/creatives/${uid}.${mediaInfo.ext}`:`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
+    const storagePath=brandMode?`brands/balls-n-brains/creatives/${uid}.${mediaInfo.ext}`:`criativo/wl-feg/${uid}.${mediaInfo.ext}`;
     let uploadError=null,uploadToken="";
     try{
       uploadToken=await storageSignedUploadWithProgress(file,storagePath,percent=>{
@@ -6387,12 +6360,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
       if(!publicUrl)throw new Error("o armazenamento não retornou o link público");
       const originalName=record?.originalName||sourceFile.replace(/\.[^.]+$/,"");
       const isVideo=mediaInfo.kind==="video";
-      data=organicMode?{
-        kind:"criativo",division:"organic",collectionLabel:"VIDEO ORGANICO",nome:record.nome,nomeOriginal:originalName,nicho:"",marca:"FEG Organic",
-        plataforma:"organic",linkAnuncio:"",video:publicUrl,print:"",copyLink:"",transcricao:"",transcricaoPt:"",transcricaoPtStatus:"pending",
-        transcriptionRequired:true,transcriptionStatus:"pending",transcricaoStatus:"pending",transcriptionAttempts:0,transcriptionProvider:"faster-whisper",transcriptionVersion:"1",
-        importBatch:batchName,sourceKey:`organic/ad-feg-ed/${sourceFile.toLowerCase()}`,sourceFile
-      }:brandMode?{
+      data=brandMode?{
         kind:"criativo",division:"fegbrands",brandSlug:"balls-n-brains",collectionLabel:"Balls n Brains",nome:nextCreativeName("Balls n Brains"),nomeOriginal:originalName,nicho:brandNiche,marca:"Balls n Brains",
         plataforma:"meta",linkAnuncio:"",video:isVideo?publicUrl:"",print:isVideo?"":publicUrl,copyLink:"",transcricao:"",transcricaoPt:"",
         transcriptionStatus:isVideo?"pending":"",transcricaoStatus:isVideo?"pending":"",transcriptionAttempts:0,transcriptionProvider:isVideo?"faster-whisper":"",transcriptionVersion:isVideo?"1":"",
@@ -6428,7 +6396,7 @@ async function importCreativeBatch(files,niche="Emagrecimento",brandMode=false,o
     offers.push(savedRow);existingSources.add(dedupeKey);if(record?.sourceHash)existingHashes.add(record.sourceHash);if(record?.linkAnuncio)existingLinks.add(canonicalCreativeUrl(record.linkAnuncio));imported++;
   }
   creativeBatchWorking=false;
-  if(button){button.disabled=false;button.innerHTML=ic("upload")+(organicMode?"Importar pasta de orgânicos":brandMode?"Importar top ads":"Importar pasta");}
+  if(button){button.disabled=false;button.innerHTML=ic("upload")+(brandMode?"Importar top ads":"Importar pasta");}
   renderGrid();writeCache();
   toast(`${imported} vídeo${imported===1?"":"s"} importado${imported===1?"":"s"}${skipped?` · ${skipped} já existia${skipped===1?"":"m"}`:""}${failed?` · ${failed} falha${failed===1?"":"s"}${firstFailure?`: ${firstFailure}`:""}`:""}`,!!failed);
 }
@@ -6459,7 +6427,7 @@ function openSimpleForm(kind,id){
 function renderSimpleForm(){
   const k=sKind, it=sItem;
   const nomeField=`<div class="field big"><label class="lbl">Nome / identificação *</label><input type="text" id="s_nome" data-sk="nome" placeholder="${esc(placeholderFor(k))}" value="${esc(it.nome)}"></div>`;
-  const nichoField=k==="noticia"?`<div class="field"><label class="lbl">Nicho de Ofertas *</label><select data-sk="nicho"><option value="">Selecione o nicho</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,it.nicho)?" selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label class="lbl">Nicho</label><input list="nichosGlobal" data-sk="nicho" placeholder="Emagrecimento, Disfunção Erétil, Memória..." value="${esc(it.nicho)}"></div>`;
+  const nichoField=k==="noticia"?`<div class="field"><label class="lbl">Nicho de Ofertas *</label><select data-sk="nicho"><option value="">Selecione o nicho</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,it.nicho)?" selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label class="lbl">Nicho</label><input list="nichosGlobal" data-sk="nicho" placeholder="Saúde geral, Nutrição/Emagrecimento, Skin Care..." value="${esc(it.nicho)}"></div>`;
   const marcaField=`<div class="field"><label class="lbl">Marca / fonte (opcional)</label><input type="text" data-sk="marca" placeholder="Marca ou conta de origem" value="${esc(it.marca)}"></div>`;
   const comentField=`<div class="field"><label class="lbl">★ Comentário / orientação</label><textarea data-sk="comentario" placeholder="Observações, por que salvou, insights...">${esc(it.comentario)}</textarea></div>`;
   const printField=`<div class="field"><label class="lbl">Print / screenshot (cole, arraste ou clique)</label><div class="dz" data-zone="s|print" tabindex="0"></div></div>`;
@@ -6484,17 +6452,16 @@ function renderSimpleForm(){
       <div class="fsec__title"><span class="num">03</span> Comentário</div>
       ${comentField}
     </div>`;
-  }else if(k==="criativo"||k==="organic"){
-    const organic=k==="organic";
+  }else if(k==="criativo"){
     html=`
     <div class="fsec">
-      <div class="fsec__title"><span class="num">01</span> ${organic?"Identificação":"Meta Ads & Identificação"}</div>
-      ${organic?"":`<div class="field"><label class="lbl">Plataforma do criativo</label><div class="seg" id="sPlatSeg"><span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</span></div></div>`}
+      <div class="fsec__title"><span class="num">01</span> Meta Ads & Identificação</div>
+      <div class="field"><label class="lbl">Plataforma do criativo</label><div class="seg" id="sPlatSeg"><span class="seg-btn active"><span class="sdot" style="background:var(--fb)"></span>Meta Ads</span></div></div>
       ${nomeField}
-      ${organic?marcaField:`<div class="row">${nichoField}${marcaField}</div>`}
-      ${organic?"":`<div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
+      <div class="row">${nichoField}${marcaField}</div>
+      <div class="field" style="margin-bottom:0"><label class="lbl">Link do anúncio</label><input type="url" data-sk="linkAnuncio" placeholder="https://... — biblioteca, página ou anúncio original" value="${esc(it.linkAnuncio||"")}">
         <div class="fsec__hint" style="margin-top:8px">Se for um link de <b>anúncio do Facebook</b>, ao salvar o criativo é baixado automaticamente (vídeo salvo no acervo + "ativo há X dias"). Views/likes não são públicos nos anúncios do FB.</div>
-      </div>`}
+      </div>
     </div>
     <div class="fsec only-video">
       <div class="fsec__title"><span class="num">02</span> Vídeo do criativo</div>
@@ -6505,11 +6472,11 @@ function renderSimpleForm(){
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("type")} Tradução em português</label><textarea data-sk="transcricaoPt" placeholder="Gerada automaticamente e mantida separada do texto original.">${esc(it.transcricaoPt||"")}</textarea><div class="fsec__hint" style="margin-top:8px">Se ficar em branco, o sistema traduz automaticamente após concluir a transcrição original.</div></div>
       <div class="field" style="margin-top:20px;margin-bottom:0"><label class="lbl">${ic("file")} Link da copy no Drive (opcional)</label><input type="url" data-sk="copyLink" placeholder="https://docs.google.com/... ou https://drive.google.com/..." value="${esc(it.copyLink||"")}"></div>
     </div>
-    ${organic?"":`<div class="fsec">
+    <div class="fsec">
       <div class="fsec__title"><span class="num">03</span> Imagem</div>
       <div class="fsec__hint">Print ou imagem do criativo do Meta Ads.</div>
       ${printField}
-    </div>`}`;
+    </div>`;
   }else if(k==="noticia"){
     html=`
     <div class="fsec">
@@ -6570,7 +6537,7 @@ function renderSimpleForm(){
   body.innerHTML=`<datalist id="nichosGlobal">${NICHOS.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`+html;
   body.dataset.plat="meta";
   wireZones(body);
-  if(k==="criativo"||k==="organic"||k==="megabrain")wireVideoUpload();
+  if(k==="criativo"||k==="megabrain")wireVideoUpload();
 }
 $("#simpleFormBody").addEventListener("input",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();}});
 $("#simpleFormBody").addEventListener("change",e=>{const t=e.target;if(t.dataset.sk!=null){sItem[t.dataset.sk]=t.value;sMarkDirty();if(sKind==="noticia"&&t.dataset.sk==="nicho"){sItem.subnicho="Geral";const topic=$("#newsTopicSelect");if(topic)topic.innerHTML=(RADAR_TOPICS[t.value]||["Geral"]).map(value=>`<option value="${esc(value)}"${value==="Geral"?" selected":""}>${esc(value)}</option>`).join("");}}});
@@ -6589,13 +6556,14 @@ async function saveSimpleForm(){
   sSaving=true;setSimpleSaveState("saving");setSync("load","Salvando");
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
-  const p=Object.assign({},sItem);p.kind=sKind==="organic"?"criativo":sKind;if(sKind==="organic"){p.division="organic";p.plataforma="organic";p.nicho="";}
-  if(sKind==="noticia"){const canonical=RADAR_NICHES.find(n=>sameNiche(n,p.nicho));if(!canonical){sSaving=false;setSimpleSaveState("error");toast("Selecione um nicho de Ofertas.",true);return false;}p.nicho=canonical;p.subnicho=(RADAR_TOPICS[canonical]||[]).find(topic=>sameNiche(topic,p.subnicho))||"Geral";}
+  const p=Object.assign({},sItem);p.kind=sKind;const mapped=SwipeTaxonomy.remap(p.nicho,p.subnicho,SwipeTaxonomy.content(p));if(mapped)Object.assign(p,mapped,{taxonomyVersion:SwipeTaxonomy.version,taxonomyStatus:"classified"});
+  if(sKind==="noticia"&&!SwipeTaxonomy.classify(SwipeTaxonomy.content(p))){sSaving=false;setSimpleSaveState("error");toast("Inclua título e resumo com contexto de um nicho válido.",true);return false;}
+  if(sKind==="noticia"){const canonical=RADAR_NICHES.find(n=>sameNiche(n,p.nicho));if(!canonical){sSaving=false;setSimpleSaveState("error");toast("Selecione um nicho de Ofertas.",true);return false;}p.nicho=canonical;const classified=SwipeTaxonomy.classify(SwipeTaxonomy.content(p));p.nicho=classified.nicho;p.subnicho=classified.subnicho;p.taxonomyVersion=SwipeTaxonomy.version;p.taxonomyStatus="classified";}
   if(sKind==="presell")p.tipoTrafego="meta";
   if(sKind==="criativo")p.plataforma="meta";
   const old=sEditingId?((offers.find(x=>x.id===sEditingId)||{}).data||{}):{},videoChanged=String(p.video||"")!==String(old.video||""),transcriptChanged=String(p.transcricao||"")!==String(old.transcricao||"");
-  if((sKind==="criativo"||sKind==="organic")&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
-  if((sKind==="criativo"||sKind==="organic"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
+  if((sKind==="criativo")&&(videoChanged||transcriptChanged)&&String(p.transcricaoPt||"")===String(old.transcricaoPt||"")){p.transcricaoPt="";p.transcricaoPtStatus="pending";p.transcricaoPtError="";}
+  if((sKind==="criativo"||sKind==="megabrain")&&String(p.video||"").trim()&&!String(p.transcricao||"").trim()&&(!sEditingId||videoChanged||!["pending","processing","retry_scheduled"].includes(String(p.transcriptionStatus||"")))){
     p.transcriptionStatus="pending";p.transcriptionAttempts=0;p.transcriptionStartedAt="";p.transcriptionCompletedAt="";p.transcriptionLastError="";p.transcriptionNextRetryAt="";p.transcriptionProvider="faster-whisper";p.transcriptionVersion="1";p.transcricaoStatus="pending";
   }
   /* Só os novos registros (ou os que já carregam a marca) recebem o aviso.

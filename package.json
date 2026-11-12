@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/validate-build.mjs && node scripts/prepare_public.mjs",
+    "build": "npm run taxonomy:check && node scripts/validate-build.mjs && node scripts/prepare_public.mjs",
     "test": "node --test tests/*.test.mjs",
     "benchmark": "node tests/performance.mjs",
     "backup:supabase": "node scripts/backup_supabase_metadata.mjs",
@@ -13,7 +13,9 @@
     "bm:sync": "node scripts/sync_admin_bm_history.mjs",
     "bm:check": "node scripts/sync_admin_bm_history.mjs --check",
     "security:secrets": "node scripts/secret-scan.mjs",
-    "security:csp": "node scripts/csp-hashes.mjs --check"
+    "security:csp": "node scripts/csp-hashes.mjs --check",
+    "taxonomy:sync": "node scripts/sync_niche_catalog.mjs",
+    "taxonomy:check": "node scripts/sync_niche_catalog.mjs --check"
   },
   "dependencies": {
     "@netlify/blobs": "9.1.5"

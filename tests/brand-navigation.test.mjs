@@ -27,12 +27,11 @@ test("Radar usa as divisões de Brands e subnichos na coleta", () => {
   const radar = execFileSync("python3", ["scripts/tiktok_mining.py", "--list-taxonomy"], { cwd: fileURLToPath(new URL("..", import.meta.url)) });
   const info = JSON.parse(radar.toString());
   assert.equal(info.provider_calls, 0);
-  for (const niche of ["Saúde masculina", "Saúde feminina", "Saúde Cardiovascular", "Saúde íntima / libido", "Sono/ Beleza", "Saúde Geral/Nutrição", "Pet"]) {
+  for (const niche of ["Saúde masculina", "Saúde feminina", "Saúde Cardiovascular", "Libido / Saúde sexual", "Skin Care", "Saúde geral", "Nutrição/Emagrecimento", "Pet"]) {
     assert.ok(info.brands_prepared[niche]?.queries.length);
-    assert.ok(info.brands_prepared[niche]?.must.length);
     assert.ok(Object.keys(info.brands_prepared[niche]?.topics).length);
   }
-  assert.deepEqual(Object.keys(info.brands_prepared["Saúde masculina"].topics),["Testosterona","Libido","Próstata"]);
+  assert.deepEqual(Object.keys(info.brands_prepared["Saúde masculina"].topics),["Testosterona","Próstata","Libido","Geral"]);
 });
 
 test("Radar TikTok de Brands limita a coleta diária e preserva a taxonomia Insider", () => {
@@ -59,8 +58,8 @@ test("Radar novo conserva geração e não duplica vídeos entre nichos", () => 
   const code = `import importlib.util,json\n`+
     `s=importlib.util.spec_from_file_location('miner','scripts/tiktok_mining.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n`+
     `m.PROVIDER='apify';m.MAX_PER_NICHE=2;m.fetch_niche=lambda queries,count:[('apify',{'id':v}) for v in ['shared',queries[0]+'-1',queries[0]+'-2']]\n`+
-    `m.normalize=lambda provider,v,n:{'videoId':v['id'],'dataPub':m.NOW,'isAd':False,'views':100,'faixa':'mid','caption':'test','hashtags':[]}\n`+
-    `m.relevant=lambda rec,must:True\n`+
+    `m.normalize=lambda provider,v,n:{'videoId':v['id'],'dataPub':m.NOW,'isAd':False,'views':100,'faixa':'mid','caption':n,'hashtags':[]}\n`+
+    `m.classify=lambda text:{'nicho':text.split('.')[0],'subnicho':'Geral'}\n`+
     `out=m.collect({'A':{'queries':['a'],'must':[]},'B':{'queries':['b'],'must':[]}})\n`+
     `print(json.dumps({n:[(v['videoId'],v['radarGeneration']) for v in rows] for n,rows in out.items()}))`;
   const output = execFileSync("python3", ["-c",code], { cwd: fileURLToPath(new URL("..", import.meta.url)) }).toString();

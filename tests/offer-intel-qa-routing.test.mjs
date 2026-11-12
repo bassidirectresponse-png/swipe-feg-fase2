@@ -28,7 +28,7 @@ function FAKE_parser(path, search = "") {
 test("QA route behavior keeps legacy Radar, offers and flat/legacy Organic details", () => {
   for (const [path, section, id] of [
     ["/radar-tiktok/pet/video1", "tiktok", "video1"], ["/ofertas/todos/offer1", "oferta", "offer1"],
-    ["/swipe-organic/item1", "organic", "item1"], ["/swipe-organic/todos/item1", "organic", "item1"],
+    ["/swipe-organic/item1", "brandsvalidated", null], ["/swipe-organic/todos/item1", "brandsvalidated", null],
     ["/transcritor/tr1", "transcritor", "tr1"]
   ]) {
     const result = FAKE_parser(path, "?q=pet");
@@ -42,7 +42,7 @@ test("QA applyRoute denies non-admin before changing section, drawing or fetchin
   for (const section of ["inteligencia", "updates"]) {
     const calls = [];
     const c = FAKE_context({
-      routeReady: true, location: { pathname: "/inteligencia/descobertas" },
+      PATH2SEC: {}, routeReady: true, location: { pathname: "/inteligencia/descobertas" },
       parseLocation: () => ({ section, notFound: false }), ADMIN_SECTIONS: new Set(["updates"]), isAdmin: false,
       activeSection: "tiktok", renderNotFound: message => calls.push(message),
       renderGrid: () => assert.fail("must not render protected area"), fetch: () => assert.fail("must not fetch")

@@ -68,6 +68,7 @@ function isFreshWork(data, fields, now, staleMs) {
 }
 
 export function mediaArchiveDue(data = {}, now = Date.now()) {
+  if (data.kind === "organic" || data.division === "organic") return false;
   if (brandCreativeArchived(data)) return false;
   if (data.kind !== "criativo" || !data.sourceOfferId || !isFacebookUrl(data.linkAnuncio) || hasStoredMedia(data)) return false;
   const retryAt = timestamp(data.mediaArchiveNextRetryAt);
@@ -80,6 +81,7 @@ export function mediaArchiveDue(data = {}, now = Date.now()) {
 }
 
 export function transcriptionDue(data = {}, now = Date.now()) {
+  if (data.kind === "organic" || data.division === "organic") return false;
   if (brandCreativeArchived(data)) return false;
   if (!["criativo", "megabrain"].includes(data.kind) || !isStorageVideo(data.video) || transcriptionComplete(data)) return false;
   const retryAt = timestamp(data.transcriptionNextRetryAt);

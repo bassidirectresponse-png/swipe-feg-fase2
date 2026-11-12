@@ -2,15 +2,9 @@ import { SUPABASE_URL } from "./_security.mjs";
 import { supabaseAdminAuth } from "./_supabase-admin.mjs";
 import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 
-const TOPICS = {
-  "Saúde masculina": ["Testosterona", "Libido", "Próstata", "Geral"],
-  "Saúde feminina": ["Menopausa", "Hormônios", "Geral"],
-  "Saúde Cardiovascular": ["Coração", "Pressão arterial", "Colesterol", "Geral"],
-  "Saúde íntima / libido": ["Libido", "Saúde sexual", "Saúde íntima", "Geral"],
-  "Sono/ Beleza": ["Sono", "Pele", "Beleza", "Geral"],
-  "Saúde Geral/Nutrição": ["Nutrição", "Intestino", "Imunidade", "Articulações", "Geral"],
-  "Pet": ["Articulações", "Pele e pelagem", "Nutrição", "Colágeno", "Geral"],
-};
+import {taxonomy} from "../../lib/niche-taxonomy.mjs";
+import {validateContent, unseenRows} from "../../lib/niche-ingestion.mjs";
+const TOPICS = taxonomy.topics;
 const SOURCES = new Set(["ScienceDaily", "CNN Health", "NBC News"]);
 const HOSTS = new Set(["sciencedaily.com", "www.sciencedaily.com", "cnn.com", "www.cnn.com", "nbcnews.com", "www.nbcnews.com", "today.com", "www.today.com"]);
 
@@ -21,9 +15,10 @@ function json(status, body) {
   });
 }
 
-function validRow(row) {
+export function validRow(row) {
   const data = row?.data;
   if (!data || data.kind !== "noticia" || !TOPICS[data.nicho]?.includes(data.subnicho)) return false;
+  if (!validateContent(data)) return false;
   if (!SOURCES.has(data.fonte) || data.categoria !== "portal" || data.topic !== "portais-rss") return false;
   if (typeof data.nome !== "string" || !data.nome.trim() || data.nome.length > 300) return false;
   if (typeof data.link !== "string" || data.link.length > 2000) return false;
@@ -45,6 +40,8 @@ export default async function handler(request) {
   try {
     const admin = await supabaseAdminAuth();
     if (admin.mode !== "service_role") return json(503, { error: "serviço indisponível" });
+    rows = await unseenRows(rows, SUPABASE_URL, {apikey:admin.apikey,Authorization:`Bearer ${admin.token}`});
+    if(!rows.length)return json(201,{inserted:0});
     const result = await fetch(`${SUPABASE_URL}/rest/v1/offers`, {
       method: "POST",
       headers: { apikey: admin.apikey, Authorization: `Bearer ${admin.token}`, "Content-Type": "application/json", Prefer: "return=minimal" },

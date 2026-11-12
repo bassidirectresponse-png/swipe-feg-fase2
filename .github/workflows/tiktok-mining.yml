@@ -44,6 +44,7 @@ jobs:
       MAX_PER_NICHE: "50"
       MAX_AGE_DAYS: "60"
       PER_KEYWORD: "20"
+      RADAR_QUERY_LIMIT: "3" # rodízio de consultas específicas; sem ampliar o volume por nicho
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout

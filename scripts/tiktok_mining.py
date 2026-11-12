@@ -47,88 +47,21 @@ RADAR_GENERATION = os.environ.get("RADAR_GENERATION", "offers-topics-2026-10-05"
 BUCKET = "criativos"        # reusa o bucket existente (bot já tem permissão), prefixo tiktok/
 NOW = int(time.time())
 
-# Taxonomia por nicho:
-#   queries -> o que buscar no TikTok (inclui os fármacos/ângulos de DR)
-#   must    -> termos que PRECISAM aparecer na legenda/hashtags p/ o vídeo
-#              contar como do nicho (filtro de relevância; corta o viral que
-#              só "encostou" no termo). Use termos distintivos (substring).
-NICHES = {
-    "Emagrecimento": {
-        "queries": ["weight loss", "ozempic", "mounjaro", "wegovy", "glp-1 weight loss",
-                    "semaglutide", "tirzepatide", "weight loss journey", "belly fat"],
-        "must": ["weight loss", "weightloss", "lose weight", "losing weight", "lost weight",
-                 "fat loss", "fatloss", "belly fat", "body fat", "ozempic", "mounjaro",
-                 "wegovy", "zepbound", "glp-1", "glp1", "semaglutide", "tirzepatide",
-                 "slim down", "obesity", "overweight", "calorie deficit", "metabolism",
-                 "weightlossjourney", "skinny"],
-    },
-    "Diabetes / Glicose": {
-        "queries": ["blood sugar", "type 2 diabetes", "a1c", "insulin resistance",
-                    "glucose control", "prediabetes", "diabetic"],
-        "must": ["blood sugar", "bloodsugar", "type 2 diabetes", "type 1 diabetes",
-                 "diabetic", "diabetes", "a1c", "insulin", "glucose", "prediabetes",
-                 "prediabetic", "hyperglycemia", "metformin", "glycemic", "sugar spike"],
-    },
-    "Disfunção Erétil": {
-        "queries": ["erectile dysfunction", "low testosterone", "male enhancement",
-                    "testosterone boost", "libido", "mens health"],
-        "must": ["erectile", "erection", "testosterone", "low t", "libido", "impotence",
-                 "male enhancement", "mens health", "men's health", "virility", "stamina in bed",
-                 "sexual health", "sperm", "semen", "blood flow"],
-    },
-    "Memória": {
-        "queries": ["memory loss", "brain fog", "dementia", "alzheimer",
-                    "cognitive decline", "memory improvement", "forgetfulness"],
-        "must": ["memory", "memory loss", "memoryloss", "forget", "forgetful", "forgetting",
-                 "dementia", "alzheimer", "cognitive", "cognition", "brain fog", "brainfog",
-                 "recall", "nootropic", "mental clarity", "brain health"],
-    },
-    "Neuropatia": {
-        "queries": ["neuropathy", "nerve pain", "peripheral neuropathy",
-                    "diabetic neuropathy", "tingling feet", "nerve damage"],
-        "must": ["neuropathy", "neuropathic", "nerve pain", "nerve damage",
-                 "peripheral neuropathy", "tingling", "numbness", "burning feet",
-                 "pins and needles", "sciatica"],
-    },
-    "Próstata": {
-        "queries": ["enlarged prostate", "prostate health", "bph", "prostate problems",
-                    "frequent urination", "prostatitis"],
-        "must": ["prostate", "prostatitis", "bph", "enlarged prostate", "frequent urination",
-                 "urinary", "bladder", "nocturia", "pee at night"],
-    },
-    "Visão": {
-        "queries": ["vision loss", "eye health", "macular degeneration",
-                    "blurry vision", "eyesight", "glaucoma"],
-        "must": ["vision", "eyesight", "eye health", "macular", "glaucoma", "cataract",
-                 "blurry vision", "blurred vision", "retina", "optic nerve", "eye floaters"],
-    },
-    "Audição": {
-        "queries": ["tinnitus", "ringing in ears", "hearing loss", "ear ringing"],
-        "must": ["tinnitus", "ringing in ears", "ringing ears", "ears ringing", "hearing loss",
-                 "hearing", "ear ringing", "hearing aid", "hard of hearing"],
-    },
-}
-
-# As divisões são as mesmas de Ofertas Brands, incluindo Pet. Uma execução por divisão
-# consulta seus assuntos específicos; cada vídeo recebe também um subnicho.
-BRAND_NICHES = {
-    "Saúde masculina": {"queries": ["testosterone health", "male libido", "prostate health", "mens health"], "must": ["testosterone", "libido", "prostate", "men's health", "mens health", "male health"], "topics": {"Testosterona": ["testosterone", "low t"], "Libido": ["libido", "sex drive"], "Próstata": ["prostate", "bph"]}},
-    "Saúde feminina": {"queries": ["menopause health", "female hormones", "womens health"], "must": ["menopause", "perimenopause", "female hormones", "hormonal health", "women's health", "womens health"], "topics": {"Menopausa": ["menopause", "perimenopause"], "Hormônios": ["hormone", "hormonal"]}},
-    "Saúde Cardiovascular": {"queries": ["heart disease symptoms", "high blood pressure", "lower cholesterol", "heart health tips"], "must": ["heart health", "heart disease", "cardiovascular", "blood pressure", "hypertension", "cholesterol"], "topics": {"Coração": ["heart", "cardiovascular"], "Pressão arterial": ["blood pressure", "hypertension"], "Colesterol": ["cholesterol"]}},
-    "Saúde íntima / libido": {"queries": ["sexual wellness", "libido health", "intimate health"], "must": ["sexual wellness", "sexual health", "libido", "intimate health"], "topics": {"Libido": ["libido", "sex drive"], "Saúde sexual": ["sexual health", "sexual wellness"], "Saúde íntima": ["intimate health", "intimate wellness"]}},
-    "Sono/ Beleza": {"queries": ["sleep health", "skin health", "beauty wellness"], "must": ["sleep", "insomnia", "skin health", "beauty wellness", "skin care"], "topics": {"Sono": ["sleep", "insomnia"], "Pele": ["skin", "skincare"], "Beleza": ["beauty"]}},
-    "Saúde Geral/Nutrição": {"queries": ["nutrition tips", "gut health", "supplements", "collagen benefits"], "must": ["nutrition", "nutritional", "supplement", "gut health", "vitamin", "immune", "joint", "collagen"], "topics": {"Nutrição": ["nutrition", "vitamin", "supplement"], "Intestino": ["gut", "digestive"], "Imunidade": ["immune", "immunity"], "Articulações": ["joint", "collagen"]}},
-    "Pet": {"queries": ["dog joint health", "dog skin health", "pet nutrition", "dog collagen"], "must": ["dog", "dogs", "pet", "pets", "cat", "cats"], "topics": {"Articulações": ["joint", "mobility", "arthritis"], "Pele e pelagem": ["skin", "coat", "itch"], "Nutrição": ["nutrition", "food", "diet"], "Colágeno": ["collagen"]}},
-}
-
+# Catalog shared by UI, RSS, ingestion and migration. No loose-word fallback.
+sys.path.insert(0, os.path.dirname(__file__))
+from niche_taxonomy import NICHES as BRAND_NICHES, classify, VERSION
+NICHES = BRAND_NICHES
 
 def topic_of(rec, cfg):
-    hay = ((rec.get("caption") or "") + " " + " ".join(rec.get("hashtags") or [])).lower()
-    for topic, terms in cfg.get("topics", {}).items():
-        if any(term in hay for term in terms):
-            return topic
-    return "Geral"
+    result = classify((rec.get('caption') or '') + '. ' + ' '.join(rec.get('hashtags') or []))
+    return result['subnicho'] if result else None
 
+def niche_queries(cfg):
+    queries = cfg['queries']
+    # Rotate across every subniche without multiplying paid requests per run.
+    limit = int(os.environ.get('RADAR_QUERY_LIMIT', '3'))
+    offset = (NOW // (3 * 86400) * limit) % len(queries)
+    return (queries + queries)[offset:offset + min(limit, len(queries))]
 
 def brand_signal(author):
     """Sinal conservador de perfil comercial; não equivale a marca verificada."""
@@ -545,7 +478,7 @@ def collect(niches=None, failures=None):
     prefetched = {}
     if PROVIDER == "apify" and len(niches) > 1:
         with ThreadPoolExecutor(max_workers=min(3, len(niches))) as pool:
-            jobs = {n: pool.submit(fetch_niche, cfg["queries"] if isinstance(cfg, dict) else cfg, PER_KEYWORD)
+            jobs = {n: pool.submit(fetch_niche, niche_queries(cfg) if isinstance(cfg, dict) else cfg, PER_KEYWORD)
                     for n, cfg in niches.items()}
             for nicho, job in jobs.items():
                 try:
@@ -554,7 +487,7 @@ def collect(niches=None, failures=None):
                     failures[nicho] = str(error)[:180]
                     prefetched[nicho] = []
     for nicho, cfg in niches.items():
-        queries = cfg["queries"] if isinstance(cfg, dict) else cfg
+        queries = niche_queries(cfg) if isinstance(cfg, dict) else cfg
         must = cfg.get("must", []) if isinstance(cfg, dict) else []
         got = {}
         off = 0                            # descartados por não serem do nicho
@@ -573,10 +506,13 @@ def collect(niches=None, failures=None):
             rec["radarGeneration"] = RADAR_GENERATION
             if too_old(rec["dataPub"]) or rec["isAd"]:
                 continue
-            if not relevant(rec, must):    # filtro de relevância por nicho
+            match = classify((rec.get("caption") or "") + ". " + " ".join(rec.get("hashtags") or []))
+            if not match or match["nicho"] != nicho:
                 off += 1
                 continue
-            rec["subnicho"] = topic_of(rec, cfg) if isinstance(cfg, dict) else "Geral"
+            rec["subnicho"] = match["subnicho"]
+            rec["taxonomyVersion"] = VERSION
+            rec["taxonomyStatus"] = "classified"
             vid = rec["videoId"]
             if vid in seen:                # já num nicho -> não duplica
                 continue
@@ -586,8 +522,6 @@ def collect(niches=None, failures=None):
         for r in ranked:
             seen[r["videoId"]] = r
         per_niche[nicho] = ranked
-        if not ranked and nicho not in failures:
-            failures[nicho] = "nenhum vídeo orgânico relevante após os filtros"
         print(f"  {nicho:22} {len(ranked):>3} vídeos "
               f"(viral {sum(r['faixa']=='viral' for r in ranked)}, "
               f"high {sum(r['faixa']=='high' for r in ranked)}, "
@@ -621,7 +555,9 @@ def main():
         for nicho, reason in failures.items():
             print(f"::warning::Radar TikTok {nicho}: {reason}", file=sys.stderr)
     if not total:
-        raise RuntimeError("Radar não foi atualizado: nenhum nicho retornou vídeos relevantes")
+        if failures: raise RuntimeError("Radar não foi atualizado: as fontes falharam; acervo preservado")
+        print("Nenhum vídeo relevante neste período; acervo existente preservado.")
+        return
 
     # amostra
     print("\nAmostras (top por nicho):")

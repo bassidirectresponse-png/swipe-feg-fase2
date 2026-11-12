@@ -1,4 +1,4 @@
-name: Notícias 24h — ingestão diária
+name: Notícias — ingestão diária
 
 # Roda todo dia às 09:00 UTC (06:00 BRT) e também sob demanda pela aba Actions.
 # Diferente das rotinas da nuvem (CCR), os runners do GitHub Actions têm

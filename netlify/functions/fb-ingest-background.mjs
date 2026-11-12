@@ -98,6 +98,7 @@ export const handler = async (event) => {
     if (!existing.ok) throw new Error("oferta não encontrada");
     const rows = await existing.json();
     if (!Array.isArray(rows) || rows.length !== 1) throw new Error("oferta não encontrada");
+    if (rows[0].data.kind === "organic" || rows[0].data.division === "organic") return { statusCode: 202, body: "" };
     if (brandCreativeArchived(rows[0].data)) return { statusCode: 202, body: "" };
 
     if (body.batch === true) {

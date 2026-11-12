@@ -3,10 +3,11 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+const catalog=JSON.parse(readFileSync(new URL("../lib/niche-catalog.json",import.meta.url),"utf8"));
 const docs=readFileSync(new URL("../docs/insider-offer-standard.md",import.meta.url),"utf8");
 
 test("Insider mantém a taxonomia e as atribuições aprovadas para todos os leitores",()=>{
-  for(const niche of ["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição"])assert.ok(html.includes(niche));
+  for(const niche of ["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Libido / Saúde sexual","Skin Care","Saúde geral","Nutrição/Emagrecimento"])assert.ok(catalog.groups.some(g=>g.name===niche));
   for(const product of ["Ultima Peak","Primal Viking","Mars Men Boost","JOYMODE HARD+","Ancestral Supplements"])assert.ok(html.includes(product));
   assert.match(html,/function insiderOverride\(o\)\{if\(!o\|\|sectionOf\(o\)!=="brandsvalidated"\)/);
   assert.match(html,/function isInsiderAdminArea\(\)\{return activeSection==="brandsvalidated";\}/);

@@ -7,7 +7,7 @@ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 
 test("Ofertas Brands usam três categorias sem alterar Radar e Notícias",()=>{
   assert.match(html,/const BRAND_CATEGORIES=\["SUPPLEMENTS","PET","SKIN CARE"\]/);
-  assert.match(html,/const RADAR_NICHES=\[\.\.\.BRAND_NICHE_ORDER,"Pet"\]/);
+  assert.match(html,/const RADAR_NICHES=SwipeTaxonomy.names/);
   assert.match(html,/const ordered=activeSection==="brandsvalidated"\?BRAND_CATEGORIES/);
   assert.match(html,/const requested=r\.q\.get\("sort"\)\|\|\(activeSection==="brandsvalidated"\?"spend_7d":"active_ads"\)/);
   assert.doesNotMatch(html,/if\(offerSort==="spend_7d"\|\|offerSort==="sales_7d"\)return `<div class="brandhub/);

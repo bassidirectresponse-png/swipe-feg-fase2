@@ -3,8 +3,9 @@ import {supabaseAdminAuth} from "./_supabase-admin.mjs";
 import {verifyGithubAutomationToken} from "./_github-oidc.mjs";
 
 const GENERATION="offers-topics-2026-10-05";
-const NICHES=new Set(["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima / libido","Sono/ Beleza","Saúde Geral/Nutrição","Pet"]);
-const TOPICS={"Saúde masculina":["Testosterona","Libido","Próstata","Geral"],"Saúde feminina":["Menopausa","Hormônios","Geral"],"Saúde Cardiovascular":["Coração","Pressão arterial","Colesterol","Geral"],"Saúde íntima / libido":["Libido","Saúde sexual","Saúde íntima","Geral"],"Sono/ Beleza":["Sono","Pele","Beleza","Geral"],"Saúde Geral/Nutrição":["Nutrição","Intestino","Imunidade","Articulações","Geral"],"Pet":["Articulações","Pele e pelagem","Nutrição","Colágeno","Geral"]};
+import {taxonomy} from "../../lib/niche-taxonomy.mjs";
+import {validateContent, unseenRows} from "../../lib/niche-ingestion.mjs";
+const NICHES=new Set(taxonomy.names), TOPICS=taxonomy.topics;
 const MAX_ROWS=400,MAX_BYTES=2*1024*1024;
 const json=(status,body)=>Response.json(body,{status,headers:{"Cache-Control":"no-store","Content-Type":"application/json; charset=utf-8"}});
 
@@ -34,19 +35,21 @@ export default async function handler(request){
   const seen=new Set();
   for(const row of rows){
     const id=String(row?.videoId||"");
-    if(row?.kind!=="tiktok"||row.radarGeneration!==GENERATION||!NICHES.has(row.nicho)||!TOPICS[row.nicho].includes(row.subnicho)||row.isAd||!/^[0-9]{10,25}$/.test(id)||seen.has(id)||!/^https:\/\/(?:www\.)?tiktok\.com\//.test(String(row.url||"")))return json(400,{ok:false,error:"vídeo ou nicho inválido"});
+    if(row?.kind!=="tiktok"||row.radarGeneration!==GENERATION||!NICHES.has(row.nicho)||!TOPICS[row.nicho].includes(row.subnicho)||!validateContent(row)||row.isAd||!/^[0-9]{10,25}$/.test(id)||seen.has(id)||!/^https:\/\/(?:www\.)?tiktok\.com\//.test(String(row.url||"")))return json(400,{ok:false,error:"vídeo ou nicho inválido"});
     seen.add(id);
   }
   try{
     const admin=await supabaseAdminAuth();
     if(admin.mode!=="service_role")return json(503,{ok:false,error:"credencial de serviço indisponível"});
+    const unique=await unseenRows(rows.map(data=>({data})),SUPABASE_URL,{apikey:admin.apikey,Authorization:`Bearer ${admin.token}`});
+    if(!unique.length)return json(200,{ok:true,inserted:0,generation:GENERATION});
     const response=await fetch(`${SUPABASE_URL}/rest/v1/offers`,{
       method:"POST",
       headers:{apikey:admin.apikey,Authorization:`Bearer ${admin.token}`,"Content-Type":"application/json",Prefer:"return=minimal"},
-      body:JSON.stringify(rows.map(data=>({data}))),
+      body:JSON.stringify(unique),
       signal:AbortSignal.timeout(25_000),
     });
     if(!response.ok){console.error("github-tiktok-ingest Supabase",response.status);return json(502,{ok:false,error:"gravação dos vídeos falhou"});}
-    return json(200,{ok:true,inserted:rows.length,generation:GENERATION});
+    return json(200,{ok:true,inserted:unique.length,generation:GENERATION});
   }catch(error){console.error("github-tiktok-ingest",String(error?.message||error).slice(0,160));return json(503,{ok:false,error:"ingestão temporariamente indisponível"});}
 }

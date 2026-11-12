@@ -33,7 +33,7 @@ def fetch(queries,count):
  return [('apify',{'id':'12345678901'})]
 m.fetch_niche=fetch
 m.normalize=lambda provider,v,n:{'videoId':v['id'],'dataPub':m.NOW,'isAd':False,'views':100,'faixa':'low','caption':'test','hashtags':[]}
-m.relevant=lambda rec,must:True
+m.classify=lambda text:{'nicho':'A','subnicho':'Geral'}
 failures={};out=m.collect({'A':{'queries':['a'],'must':[]},'B':{'queries':['b'],'must':[]}},failures)
 print(json.dumps({'kept':len(out['A']),'failed':len(out['B']),'reason':failures.get('B')}))`);
   assert.equal(result.kept,1);

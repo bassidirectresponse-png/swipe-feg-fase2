@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Ingestão diária de "Notícias 24 Horas" para o dashboard Swipe FEG.
+Ingestão diária de "Notícias" para o dashboard Swipe FEG.
 
 Busca notícias dos mesmos nichos de Ofertas/Radar TikTok em feeds RSS de
 saúde (ScienceDaily, CNN Health, NBC News), monta linhas kind:"noticia", deduplica
@@ -26,6 +26,7 @@ import os, sys, json, re, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pkvzwtstidtobpdngxnd.supabase.co").rstrip("/")
 ANON = os.environ.get(
@@ -42,75 +43,15 @@ MAX_PER_NICHE = int(os.environ.get("MAX_PER_NICHE", "8"))
 MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "14"))
 UA = "Mozilla/5.0 (compatible; SwipeFEG-Noticias/1.0; +https://github.com/bassidirectresponse-png/swipe-feg-fase2)"
 
-# Os sete nichos e respectivos temas espelham RADAR_TOPICS em index.html.
-SD = "https://www.sciencedaily.com/rss"
-NICHE_FEEDS = {
-    "Saúde masculina": [(f"{SD}/health_medicine/men%27s_health.xml", "ScienceDaily"), (f"{SD}/health_medicine/prostate_health.xml", "ScienceDaily")],
-    "Saúde feminina": [(f"{SD}/health_medicine/women%27s_health.xml", "ScienceDaily")],
-    "Saúde Cardiovascular": [(f"{SD}/health_medicine/heart_disease.xml", "ScienceDaily"), (f"{SD}/health_medicine/hypertension.xml", "ScienceDaily")],
-    "Saúde íntima / libido": [(f"{SD}/health_medicine/sexual_health.xml", "ScienceDaily")],
-    "Sono/ Beleza": [(f"{SD}/health_medicine/sleep_disorders.xml", "ScienceDaily"), (f"{SD}/health_medicine/skin_care.xml", "ScienceDaily")],
-    "Saúde Geral/Nutrição": [(f"{SD}/health_medicine/nutrition.xml", "ScienceDaily"), (f"{SD}/health_medicine/immune_system.xml", "ScienceDaily")],
-    "Pet": [(f"{SD}/plants_animals/veterinary_medicine.xml", "ScienceDaily"), (f"{SD}/plants_animals/dogs.xml", "ScienceDaily"), (f"{SD}/plants_animals/cats.xml", "ScienceDaily")],
-}
-
-# Pools amplos só entram após correspondência textual com um tema permitido.
-POOL_FEEDS = [
-    ("http://rss.cnn.com/rss/cnn_health.rss", "CNN Health"),
-    ("https://feeds.nbcnews.com/nbcnews/public/health", "NBC News"),
-]
-TOPIC_TERMS = {
-    "Saúde masculina": {
-        "Testosterona": ["testosterone", "androgen", "male hormone"],
-        "Libido": ["male libido", "erectile dysfunction", "men's sexual", "impotence"],
-        "Próstata": ["prostate", "bph", "prostatitis"],
-        "Geral": ["men's health", "male health", "men's wellness"],
-    },
-    "Saúde feminina": {
-        "Menopausa": ["menopause", "perimenopause", "postmenopausal"],
-        "Hormônios": ["female hormone", "women's hormone", "estrogen", "progesterone"],
-        "Geral": ["women's health", "female health", "women's wellness"],
-    },
-    "Saúde Cardiovascular": {
-        "Coração": ["heart disease", "heart health", "cardiovascular", "cardiac", "heart attack"],
-        "Pressão arterial": ["blood pressure", "hypertension", "hypertensive"],
-        "Colesterol": ["cholesterol", "ldl", "hdl"],
-        "Geral": ["blood circulation", "vascular health", "circulatory health"],
-    },
-    "Saúde íntima / libido": {
-        "Libido": ["libido", "sex drive"],
-        "Saúde sexual": ["sexual health", "sexual wellness", "sexual function"],
-        "Saúde íntima": ["intimate health", "vaginal health", "vaginal microbiome"],
-        "Geral": ["sexual medicine", "reproductive health"],
-    },
-    "Sono/ Beleza": {
-        "Sono": ["sleep health", "sleep quality", "insomnia", "sleep disorder", "sleep apnea"],
-        "Pele": ["skin health", "skin care", "skincare", "dermatology"],
-        "Beleza": ["beauty health", "healthy aging skin", "hair growth"],
-        "Geral": ["sleep and skin", "beauty sleep"],
-    },
-    "Saúde Geral/Nutrição": {
-        "Nutrição": ["nutrition", "nutritional", "dietary supplement", "vitamin deficiency", "vitamin supplement", "healthy diet"],
-        "Intestino": ["gut health", "gut microbiome", "digestive health", "intestinal health"],
-        "Imunidade": ["immune health", "immune system", "immunity"],
-        "Articulações": ["joint health", "joint pain", "arthritis"],
-        "Geral": ["general health", "wellness supplement"],
-    },
-    "Pet": {
-        "Articulações": ["pet arthritis", "dog arthritis", "cat arthritis", "canine joint", "feline joint"],
-        "Pele e pelagem": ["pet skin", "dog skin", "cat skin", "pet coat", "dog coat", "cat coat"],
-        "Nutrição": ["pet nutrition", "dog nutrition", "cat nutrition", "pet diet", "dog diet", "cat diet"],
-        "Colágeno": ["pet collagen", "dog collagen", "cat collagen"],
-        "Geral": ["pet health", "dog health", "cat health", "veterinary", "canine health", "feline health"],
-    },
-}
+# Shared closed taxonomy: collect only niche-specific feeds, never general news pools.
+sys.path.insert(0, os.path.dirname(__file__))
+from niche_taxonomy import GROUPS, TOPICS as TOPIC_TERMS, classify, VERSION
+NICHE_FEEDS = {g['name']: [(f['url'], f['source']) for f in g['feeds']] for g in GROUPS}
+POOL_FEEDS = []
 
 def classify_topic(niche, item):
-    hay = (item["title"] + " " + item["summary"]).casefold()
-    for topic, terms in TOPIC_TERMS[niche].items():
-        if any(re.search(r"(?<![\w])" + re.escape(term) + r"(?![\w])", hay) for term in terms):
-            return topic
-    return None
+    result = classify(item['title'] + '. ' + item['summary'])
+    return result['subnicho'] if result and result['nicho'] == niche else None
 
 # =============================== helpers HTTP ================================
 def http_get(url, timeout=20):
@@ -209,7 +150,7 @@ def parse_feed(raw):
                 date = parse_date(c.text)
         if title and link:
             items.append({"title": strip_html(title), "link": link.strip(),
-                          "date": date, "summary": one_sentence(summary)})
+                          "date": date, "summary": strip_html(summary)[:3000]})
     return items
 
 # =============================== dedup / URL =================================
@@ -221,8 +162,7 @@ def norm_url(u):
 def fetch_existing_urls(token):
     status, txt = sb_request("GET", "/rest/v1/offers?select=data&data->>kind=eq.noticia", token=token)
     if status != 200:
-        print(f"[aviso] não consegui ler existentes (HTTP {status}); seguindo sem dedup remoto", file=sys.stderr)
-        return set()
+        raise RuntimeError(f"Não foi possível verificar duplicados: HTTP {status}")
     urls = set()
     for row in json.loads(txt):
         link = (row.get("data") or {}).get("link")
@@ -234,18 +174,21 @@ def fetch_existing_urls(token):
 def recent_enough(dt):
     if dt is None:
         return True  # sem data: aceita (feeds são reverse-chron)
-    return dt >= datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
+    return datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS) <= dt <= datetime.now(timezone.utc) + timedelta(hours=24)
 
 def make_row(nicho, subnicho, it, fonte, categoria):
     dt = it["date"]
     return {
         "kind": "noticia",
+        "taxonomyVersion": VERSION,
+        "taxonomyStatus": "classified",
         "nicho": nicho,
         "subnicho": subnicho,
         "nome": it["title"][:300],
         "link": it["link"],
         "fonte": fonte,
         "dataPub": dt.strftime("%Y-%m-%d") if dt else "",
+        "publishedAt": dt.isoformat() if dt else "",
         "engajamento": "",
         "resumo": it["summary"],
         "categoria": categoria,
@@ -257,11 +200,22 @@ def collect():
     """Coleta candidatos por nicho a partir dos feeds dedicados + pools."""
     by_niche = {n: [] for n in NICHE_FEEDS}
 
+    urls = list(dict.fromkeys(url for feeds in NICHE_FEEDS.values() for url, _ in feeds))
+    def fetch_feed(url):
+        try: return parse_feed(http_get(url))
+        except Exception as error:
+            print(f"[aviso] feed indisponível {url}: {error}", file=sys.stderr)
+            return None
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        fetched = dict(zip(urls, pool.map(fetch_feed, urls)))
+    if urls and all(items is None for items in fetched.values()):
+        raise RuntimeError("Nenhuma fonte de notícias respondeu; acervo existente preservado")
+
     # 1) feeds dedicados: ainda exigimos evidência textual do nicho/tema.
     for nicho, feeds in NICHE_FEEDS.items():
         for url, fonte in feeds:
             try:
-                items = parse_feed(http_get(url))
+                items = fetched[url] or []
             except Exception as e:
                 print(f"[aviso] feed falhou ({fonte} {url}): {e}", file=sys.stderr)
                 continue
@@ -270,21 +224,6 @@ def collect():
                 if topic and recent_enough(it["date"]):
                     by_niche[nicho].append(make_row(nicho, topic, it, fonte, "portal"))
 
-    # 2) pools cross-nicho, roteados por palavra-chave
-    for url, fonte in POOL_FEEDS:
-        try:
-            items = parse_feed(http_get(url))
-        except Exception as e:
-            print(f"[aviso] pool falhou ({fonte} {url}): {e}", file=sys.stderr)
-            continue
-        for it in items:
-            if not recent_enough(it["date"]):
-                continue
-            for nicho in NICHE_FEEDS:
-                topic = classify_topic(nicho, it)
-                if topic:
-                    by_niche[nicho].append(make_row(nicho, topic, it, fonte, "portal"))
-                    break
     return by_niche
 
 def dedup_and_limit(by_niche, existing):
@@ -327,7 +266,7 @@ def insert_rows(token, rows):
 
 # =============================== main ================================
 def main():
-    print(f"== Notícias 24h · ingestão RSS · {datetime.now(timezone.utc).isoformat()} ==")
+    print(f"== Notícias · ingestão RSS · {datetime.now(timezone.utc).isoformat()} ==")
     by_niche = collect()
     total_cand = sum(len(v) for v in by_niche.values())
     print(f"candidatos coletados: {total_cand}")

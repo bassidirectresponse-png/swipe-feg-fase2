@@ -53,7 +53,7 @@ test("Feguinho e Furtado não aparecem na navegação nem possuem rotas", () => 
 });
 
 test("navegação publica Brands sem apagar as rotas e registros antigos", () => {
-  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsvalidated","brandcreative","organic","megabrainfegsys","noticia","tiktok"\]/);
+  assert.match(html, /const BRANDS_NAV_ORDER=\["brandsvalidated","brandcreative","megabrainfegsys","noticia","tiktok"\]/);
   assert.match(html, /brandsgeneral:"feg-brands-geral"/);
   assert.match(html, /const entries=\[\["brandsvalidated","Ofertas Brands"\]\]/);
   assert.match(html, /fBrandStage=isBrand\?"brandsvalidated":"oferta"/);
@@ -339,7 +339,7 @@ test("FEG Brands reúne ofertas e o hub visual por nicho/marca para todos", () =
   assert.match(html, /key:"brandcreative",label:"Swipe de Criativos"/);
   assert.match(html, /Balls n Brains/);
   assert.match(html, /html\+=`<div class="snav__group snav__group--brands">\$\{ic\("trending"\)\}FEG Brands<\/div>`/);
-  assert.match(html, /const BRAND_NICHE_ORDER=\["Saúde masculina","Saúde feminina","Saúde Cardiovascular","Saúde íntima \/ libido","Sono\/ Beleza","Saúde Geral\/Nutrição"\]/);
+  assert.match(html, /const BRAND_NICHE_ORDER=SwipeTaxonomy.names/);
   assert.match(html, /function renderAdminGeneral\(items\)/);
   assert.match(html, /function catalogNiches\(\)/);
   assert.match(html, /Pendente de revisão/);

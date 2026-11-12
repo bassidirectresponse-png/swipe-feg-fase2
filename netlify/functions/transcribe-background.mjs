@@ -172,6 +172,7 @@ export const handler = async (event) => {
       if (!quota.allowed) throw new Error("limite temporário de transcrições atingido");
     }
     const current = await loadOffer(id, token, internal);
+    if (current.kind === "organic" || current.division === "organic") return { statusCode: 202, body: "" };
     if (brandCreativeArchived(current)) return { statusCode: 202, body: "" };
     const videoUrl = storageVideoUrl(internal ? current.video : body.videoUrl);
     if (!videoUrl || !["criativo", "megabrain"].includes(current.kind)) throw new Error("requisição inválida");

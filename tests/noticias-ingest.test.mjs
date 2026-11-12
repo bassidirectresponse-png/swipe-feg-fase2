@@ -9,15 +9,16 @@ const script = await readFile(new URL("scripts/noticias_ingest.py", root), "utf8
 const workflow = await readFile(new URL(".github/workflows/noticias-24h.yml", root), "utf8");
 const oidc = await readFile(new URL("netlify/functions/_github-oidc.mjs", root), "utf8");
 const endpoint = await readFile(new URL("netlify/functions/github-news-ingest.mjs", root), "utf8");
-const topics = JSON.parse(html.match(/const RADAR_TOPICS=(\{[^;]+\});/)[1]);
+const catalog = JSON.parse(await readFile(new URL("lib/niche-catalog.json",root),"utf8"));
+const topics=Object.fromEntries(catalog.groups.map(g=>[g.name,g.topics.map(t=>t.name)]));
 
-test("notícias usa exatamente os sete nichos e temas de Ofertas/Radar", () => {
+test("notícias usa o cadastro central de nichos e temas de Ofertas/Radar", () => {
   const python = `import json, sys\nsys.path.insert(0, 'scripts')\nimport noticias_ingest as n\nprint(json.dumps({'niches': list(n.NICHE_FEEDS), 'topics': {k: list(v) for k,v in n.TOPIC_TERMS.items()}}, ensure_ascii=False))`;
   const actual = JSON.parse(execFileSync("python3", ["-c", python], { cwd: new URL(".", root), encoding: "utf8" }));
   assert.deepEqual(actual.niches, Object.keys(topics));
   assert.deepEqual(actual.topics, topics);
-  assert.match(html, /function newsItems\(\)\{return offers\.filter\(o=>sectionOf\(o\)==="noticia"&&newsNicheOf\(o\)\);\}/);
-  assert.match(html, /if\(section==="noticia"\)return RADAR_NICHES/);
+  assert.match(html, /function newsItems\(\)\{return feedItems\("noticia"\);\}/);
+  assert.match(html, /if\(section==="noticia"\|\|section==="tiktok"\)return RADAR_NICHES/);
 });
 
 test("coleta ignora assuntos antigos e notícias sem relação com o nicho", () => {

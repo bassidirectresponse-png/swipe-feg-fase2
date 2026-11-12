@@ -48,7 +48,7 @@ test("acervo anterior de Brands fica arquivado sem atingir ofertas, Organic ou R
   const classify = new Function("brandCreativeArchived", "RADAR_GENERATION", "SECTIONS", `${functionSource("sectionOf").split("\n")[0]}; return sectionOf;`)(brandCreativeArchived, "radar", [{key:"brandsvalidated"},{key:"organic"},{key:"criativo"}]);
   assert.equal(classify({data:old}),"brandcreative-archive");
   assert.equal(classify({data:{kind:"brandsvalidated"}}),"brandsvalidated");
-  assert.equal(classify({data:{kind:"criativo",division:"organic"}}),"organic");
+  assert.equal(classify({data:{kind:"criativo",division:"organic"}}),"organic-archive");
   assert.equal(classify({data:{kind:"criativo"}}),"criativo");
 });
 
