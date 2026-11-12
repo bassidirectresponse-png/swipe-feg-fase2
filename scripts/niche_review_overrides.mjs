@@ -96,3 +96,22 @@ imageGroups.push(
  ['Pet','Pele e pelagem','Imagem e legenda identificam produto de higiene/perfume para cão.','dd8c1386'],
  ['Pet','Geral','Imagem contextualiza pedido de ajuda como dor e sofrimento do cão.','6acd7862']
 );
+
+// Final review of the full captions (not just the truncated titles) and saved cover text.
+editorialGroups.push(
+ ['Pet','Nutrição','Legenda descreve explicitamente vegetais oferecidos ao filhote ou café da manhã dos cães.','2482d555 cfec86ad'],
+ ['Nutrição/Emagrecimento','Nutrição','Receita com frutas descrita como colágeno/Botox comestível; classificação alimentar, sem validar a promessa.','cc489dc3'],
+ ['Skin Care','Pele','Legenda completa detalha limpeza dupla, máscara facial, SPF, massagem e cuidados com a pele.','ce746c82']
+);
+imageGroups.push(
+ ['Nutrição/Emagrecimento','Nutrição','Legenda e rótulos na imagem identificam apresentação de xaropes ZERO no contexto alimentar.','f9ff10b3'],
+ ['Saúde masculina','Testosterona','Legenda identifica testosterona e a imagem explicita duração de ciclo de uso.','eafc889a']
+);
+excludedGroups.push(
+ ['Passeio e socialização em carrinho para cachorro; vacinação é apenas contexto incidental, sem conteúdo dos subnichos de saúde.','9bf5536c'],
+ ['Relato afetivo sobre envelhecimento do cão, sem orientação ou condição de saúde/nutrição identificada.','db1f6d84'],
+ ['Legenda humorística sobre criança; pressão alta usada como expressão incidental, sem contexto de saúde.','a3769117']
+);
+imageExcluded.push(
+ ['Imagem sobre aspiração profissional de se tornar veterinário; sem tema de saúde ou nutrição do animal.','9af0246d']
+);

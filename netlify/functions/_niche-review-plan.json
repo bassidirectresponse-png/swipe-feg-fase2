@@ -6749,11 +6749,13 @@
    "hash": "507dcf90ef28269ce372ac979a3bb9dc5dfab0abbf2d982af5f274c9cfd37c0d",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Pet",
+    "subnicho": "Nutrição",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Legenda descreve explicitamente vegetais oferecidos ao filhote ou café da manhã dos cães.",
      "sourceIds": [
       "2482d555-0ec4-4947-b9ae-744fd07fd564"
      ]
@@ -28480,14 +28482,20 @@
    "hash": "08492a027cee7650104cacf9bb85350b012606c750c228b47f010802e4cc2c92",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "out_of_scope",
+    "nicho": "",
+    "subnicho": "",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_image_review",
+     "reason": "Imagem sobre aspiração profissional de se tornar veterinário; sem tema de saúde ou nutrição do animal.",
      "sourceIds": [
       "9af0246d-862c-4d01-88a5-d7db5356f33d"
-     ]
+     ],
+     "image": {
+      "url": "https://pkvzwtstidtobpdngxnd.supabase.co/storage/v1/object/public/criativos/tiktok/7688046052351560991.jpg",
+      "sha256": "97cd7010ea7ab5be820771c2b15a17160c9c9cc2e74ad40c5b493deb2b24b720"
+     }
     }
    }
   },
@@ -28540,11 +28548,13 @@
    "hash": "25106f0d179a169961348269ff3c4a98d7ad23a20c474d404f90aa8be48ce58d",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "out_of_scope",
+    "nicho": "",
+    "subnicho": "",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Passeio e socialização em carrinho para cachorro; vacinação é apenas contexto incidental, sem conteúdo dos subnichos de saúde.",
      "sourceIds": [
       "9bf5536c-f32e-4437-a5c6-0484a54667ed"
      ]
@@ -29625,11 +29635,13 @@
    "hash": "751dad17e1f64beaf670678c9d99f4f3758d5a2d57ce38e830cdf048c3545d40",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "out_of_scope",
+    "nicho": "",
+    "subnicho": "",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Legenda humorística sobre criança; pressão alta usada como expressão incidental, sem contexto de saúde.",
      "sourceIds": [
       "a3769117-f576-4c43-9da8-42769cee4d61"
      ]
@@ -36175,11 +36187,13 @@
    "hash": "d6324ccf4922466c3d44fc811beeeb6a219d526b1abea4d08953c3b3bc735392",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Nutrição/Emagrecimento",
+    "subnicho": "Nutrição",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Receita com frutas descrita como colágeno/Botox comestível; classificação alimentar, sem validar a promessa.",
      "sourceIds": [
       "cc489dc3-d2d3-47e4-a0a2-07b6875b4cf9"
      ]
@@ -36477,11 +36491,13 @@
    "hash": "671f2f27479409a283df62b62ef0cd0990831ff60d6896b3314c2a4d2e17a3bd",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Skin Care",
+    "subnicho": "Pele",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Legenda completa detalha limpeza dupla, máscara facial, SPF, massagem e cuidados com a pele.",
      "sourceIds": [
       "ce746c82-0b49-4a61-8181-ad322f1a792a"
      ]
@@ -36974,11 +36990,13 @@
    "hash": "76bfa73cdc769e54482dff93724e2a6320e65a508103875a04e2ffd5ea9e6b64",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Pet",
+    "subnicho": "Nutrição",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Legenda descreve explicitamente vegetais oferecidos ao filhote ou café da manhã dos cães.",
      "sourceIds": [
       "cfec86ad-be57-4099-b3f6-e420fcce25a9"
      ]
@@ -39639,11 +39657,13 @@
    "hash": "e8436e35c4670f346d78c54f2e78fed3b9f7744cedf9537654848c90fce3e927",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "out_of_scope",
+    "nicho": "",
+    "subnicho": "",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_evidence_review",
+     "reason": "Relato afetivo sobre envelhecimento do cão, sem orientação ou condição de saúde/nutrição identificada.",
      "sourceIds": [
       "db1f6d84-bced-4a0d-9e17-6f7ed8c44156"
      ]
@@ -42356,14 +42376,20 @@
    "hash": "171d452eb2dd80225ffc72a637c18c485e33771343fada51b581f424ca413c67",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Saúde masculina",
+    "subnicho": "Testosterona",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_image_review",
+     "reason": "Legenda identifica testosterona e a imagem explicita duração de ciclo de uso.",
      "sourceIds": [
       "eafc889a-21b9-4954-b8cf-b617184890fd"
-     ]
+     ],
+     "image": {
+      "url": "https://pkvzwtstidtobpdngxnd.supabase.co/storage/v1/object/public/criativos/tiktok/7694812545173015838.jpg",
+      "sha256": "8df9282d9e0d327914ad89c31e8265b6bf3869e14d001775c735d9f759aa52bc"
+     }
     }
    }
   },
@@ -45434,14 +45460,20 @@
    "hash": "a891f20d325e1a492ce04bf378291fddfcc495117a80ae181e67b389721e4000",
    "related": [],
    "patch": {
-    "taxonomyStatus": "review",
+    "taxonomyStatus": "classified",
+    "nicho": "Nutrição/Emagrecimento",
+    "subnicho": "Nutrição",
     "taxonomyReview": {
      "version": "2026-11-12.review-1",
-     "method": "insufficient_saved_evidence",
-     "reason": "Texto/metadados salvos não permitem determinar um nicho/subnicho com segurança.",
+     "method": "saved_image_review",
+     "reason": "Legenda e rótulos na imagem identificam apresentação de xaropes ZERO no contexto alimentar.",
      "sourceIds": [
       "f9ff10b3-bba1-4012-93d6-3bac23b70e3e"
-     ]
+     ],
+     "image": {
+      "url": "https://pkvzwtstidtobpdngxnd.supabase.co/storage/v1/object/public/criativos/tiktok/7697676041799617824.jpg",
+      "sha256": "b54e52e7df7527ef70282fcdfe4fd63cad32c768299edcbe8dbeb450218ee448"
+     }
     }
    }
   },
