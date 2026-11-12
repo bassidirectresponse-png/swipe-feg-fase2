@@ -3914,8 +3914,19 @@ function preserveOpenFilter(el){
   }
   return true;
 }
-function feedFilterHtml(){const topic=activeSection==="noticia"?newsSubniche:tiktokSubniche;return `<label class="brainfilter"><span>Nicho</span><select data-feed-niche aria-label="Filtrar por nicho"><option value="">Todos os nichos</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,activeNiche)?" selected":""}>${esc(n)}</option>`).join("")}</select></label><label class="brainfilter"><span>Subnicho</span><select data-feed-topic aria-label="Filtrar por subnicho" ${activeNiche?"":"disabled"}><option value="">Todos os subnichos</option>${(RADAR_TOPICS[activeNiche]||[]).map(t=>`<option value="${esc(t)}"${t===topic?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`;}
-function wireFeedFilters(el){el.querySelector('[data-feed-niche]')?.addEventListener('change',e=>{activeNiche=e.target.value;newsSubniche="";tiktokSubniche="";navigate(currentPath());});el.querySelector('[data-feed-topic]')?.addEventListener('change',e=>{if(activeSection==="noticia")newsSubniche=e.target.value;else tiktokSubniche=e.target.value;navigate(currentPath());});}
+function feedTopicOptionsHtml(niche,topic){return '<option value="">Todos os subnichos</option>'+(RADAR_TOPICS[niche]||[]).map(t=>`<option value="${esc(t)}"${t===topic?" selected":""}>${esc(t)}</option>`).join("");}
+function feedFilterHtml(){const topic=activeSection==="noticia"?newsSubniche:tiktokSubniche;return `<label class="brainfilter"><span>Nicho</span><select data-feed-niche aria-label="Filtrar por nicho"><option value="">Todos os nichos</option>${RADAR_NICHES.map(n=>`<option value="${esc(n)}"${sameNiche(n,activeNiche)?" selected":""}>${esc(n)}</option>`).join("")}</select></label><label class="brainfilter"><span>Subnicho</span><select data-feed-topic aria-label="Filtrar por subnicho" ${activeNiche?"":"disabled"}>${feedTopicOptionsHtml(activeNiche,topic)}</select></label>`;}
+function wireFeedFilters(el){
+  el.querySelector('[data-feed-niche]')?.addEventListener('change',e=>{
+    activeNiche=e.target.value;newsSubniche="";tiktokSubniche="";tiktokAuthor="";
+    // Keep the focused native menu intact, but update its dependent control now.
+    // Waiting for blur can leave Subnicho disabled while focus moves to another select.
+    const topic=el.querySelector('[data-feed-topic]');if(topic){topic.disabled=!activeNiche;topic.innerHTML=feedTopicOptionsHtml(activeNiche,"");topic.value="";}
+    const author=el.querySelector('#tiktokAuthorFilter');if(author)author.value="";
+    navigate(currentPath());
+  });
+  el.querySelector('[data-feed-topic]')?.addEventListener('change',e=>{if(activeSection==="noticia")newsSubniche=e.target.value;else tiktokSubniche=e.target.value;navigate(currentPath());});
+}
 function renderSubFilter(){
   const el=$("#subFilter");if(!el)return;
   // Jobs atualizam a grade enquanto o menu nativo está aberto. Não substituir
