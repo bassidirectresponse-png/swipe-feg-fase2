@@ -2491,7 +2491,7 @@ function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").clas
 function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList.remove("hidden");}
 function initSupabase(u,k){try{currentSbUrl=String(u||"").replace(/\/+$/,"");currentSbKey=k;sb=window.supabase.createClient(currentSbUrl,k);return true;}catch(e){console.error(e);return false;}}
 
-function readCache(){try{if(localStorage.getItem("feg_taxonomy_version")!==SwipeTaxonomy.version){localStorage.removeItem(LS.cache);localStorage.setItem("feg_taxonomy_version",SwipeTaxonomy.version);return null;}const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
+function readCache(){try{if(localStorage.getItem("feg_taxonomy_version")!==SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion){localStorage.removeItem(LS.cache);localStorage.setItem("feg_taxonomy_version",SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion);return null;}const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
@@ -2698,7 +2698,7 @@ function insiderCategoryOf(o){
 /* A estrutura por nicho/produto é pública; somente edição e manutenção exigem admin. */
 function isInsiderAdminArea(){return activeSection==="brandsvalidated";}
 const taxonomyRows=new WeakMap();
-function feedClassification(o){if(!o||!o.data)return null;const previous=taxonomyRows.get(o.data);if(previous!==undefined)return previous;const c=SwipeTaxonomy.classify(SwipeTaxonomy.content(o.data));taxonomyRows.set(o.data,c);return c;}
+function feedClassification(o){if(!o||!o.data)return null;const previous=taxonomyRows.get(o.data);if(previous!==undefined)return previous;const reviewed=SwipeTaxonomy.reviewedClassification(o.data);const c=reviewed!==undefined?reviewed:SwipeTaxonomy.classify(SwipeTaxonomy.content(o.data));taxonomyRows.set(o.data,c);return c;}
 function nicheOf(o){const d=o.data||{};if(["noticia","tiktok"].includes(d.kind))return feedClassification(o)?.nicho||"";return (SwipeTaxonomy.remap(d.nicho,d.subnicho,SwipeTaxonomy.content(d))||{}).nicho||String(d.nicho||"").trim();}
 function newsNicheOf(o){return feedClassification(o)?.nicho||"";}
 function newsTopicOf(o){return feedClassification(o)?.subnicho||"";}
@@ -8723,7 +8723,7 @@ async function saveSimpleForm(){
   sSaving=true;setSimpleSaveState("saving");setSync("load","Salvando");
   await compressSimpleImages();
   $$(".dz",$("#simpleFormBody")).forEach(paintZone);
-  const p=Object.assign({},sItem);p.kind=sKind;const mapped=SwipeTaxonomy.remap(p.nicho,p.subnicho,SwipeTaxonomy.content(p));if(mapped)Object.assign(p,mapped,{taxonomyVersion:SwipeTaxonomy.version,taxonomyStatus:"classified"});
+  const p=Object.assign({},sItem);delete p.taxonomyReview;p.kind=sKind;const mapped=SwipeTaxonomy.remap(p.nicho,p.subnicho,SwipeTaxonomy.content(p));if(mapped)Object.assign(p,mapped,{taxonomyVersion:SwipeTaxonomy.version,taxonomyStatus:"classified"});
   if(sKind==="noticia"&&!SwipeTaxonomy.classify(SwipeTaxonomy.content(p))){sSaving=false;setSimpleSaveState("error");toast("Inclua título e resumo com contexto de um nicho válido.",true);return false;}
   if(sKind==="noticia"){const canonical=RADAR_NICHES.find(n=>sameNiche(n,p.nicho));if(!canonical){sSaving=false;setSimpleSaveState("error");toast("Selecione um nicho de Ofertas.",true);return false;}p.nicho=canonical;const classified=SwipeTaxonomy.classify(SwipeTaxonomy.content(p));p.nicho=classified.nicho;p.subnicho=classified.subnicho;p.taxonomyVersion=SwipeTaxonomy.version;p.taxonomyStatus="classified";}
   if(sKind==="presell")p.tipoTrafego="meta";

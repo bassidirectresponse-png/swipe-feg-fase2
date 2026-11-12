@@ -5,7 +5,7 @@ import {readJson,SUPABASE_URL} from './_security.mjs';
 import {supabaseAdminHeaders,mergeSupabaseOfferData} from './_supabase-admin.mjs';
 import {taxonomy} from '../../lib/niche-taxonomy.mjs';
 const reply=(status,body)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const TAXONOMY_FIELDS=new Set(['nicho','subnicho','taxonomyOriginal','taxonomyVersion','taxonomyStatus']);
+const TAXONOMY_FIELDS=new Set(['nicho','subnicho','taxonomyOriginal','taxonomyVersion','taxonomyStatus','taxonomyReview']);
 // Compare all IDs and all non-taxonomy values before/after, including nested links and metrics.
 export function integrityHash(rows){
  const stable=v=>Array.isArray(v)?v.map(stable):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;

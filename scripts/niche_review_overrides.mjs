@@ -1,0 +1,98 @@
+// Editorial decisions from the saved captions, product labels and existing import catalog.
+// Prefixes are expanded only when they identify exactly one source record.
+export const editorialGroups=[
+ ['Saúde geral','Sono','Relato ou orientação explícita sobre sono, privação, horário, exame ou fisiologia do sono.',
+  '0dae5110 54044aab c985acaa d18d7734 ff874013 fbfcb805 84aa4c68 ed0760a3 ee924611 874ef86c 897e5e88 8cc59942 914361a0 97ab6a70 dcafa677 c8508d34 739399e3 7112aa66 7c789a57 bab35b22 bac127c3 ecd3cc6e'],
+ ['Nutrição/Emagrecimento','Nutrição','Legenda descreve alimentação, nutrientes, ingrediente de suplemento ou seu uso; sem inferir efeito terapêutico.',
+  '06707a79 06ca3178 12a51845 32f821c7 3d8d3495 3e4faa7d 4288f7d4 487b8cd3 6a143bb0 6e34f461 6f3d531a 71f18c96 75f477b0 796ec83a 7e47e7ed 8fe8f677 99ccbfc2 9d1d703a a4b52427 a5a0dcb7 ab1ba45d bd9aeaf6 c2e0ab0c d0459570 d73a3c97 efa9b484 ef8fc8a0 f9d9fe13 8527e8ef 2714a1a9 48805dcf 54221409'],
+ ['Saúde Cardiovascular','Pressão arterial','Legenda descreve pressão arterial com relato, medição, risco ou medida proposta.',
+  '1495cc4e 1fb2ea5c 2b1be3f8 30639fcb 5f60b14e 87e1f99f 9fcdb6ab c7336ec5 d4679724 d62cf88f'],
+ ['Saúde Cardiovascular','Colesterol','Texto relaciona colesterol a exames, estatinas ou alimentação.', 'abf55c82 d2b55e86 f0a272c3'],
+ ['Saúde masculina','Testosterona','Uso, acompanhamento ou modulação de testosterona explicitamente descritos.',
+  '2ea253df 77d5d164 a221edf3 a9e58d90 df732c10 db850455'],
+ ['Libido / Saúde sexual','Libido','Texto aborda desejo sexual em contexto hormonal ou de relacionamento.',
+  '0fb65bf7 405c0360 9840de00 bf1dad89 a8030893 f5bac7e0'],
+ ['Saúde masculina','Libido','Texto compara medicamentos identificados para função erétil.','41b43b65'],
+ ['Saúde feminina','Saúde íntima','Contexto explícito de saúde íntima feminina, HPV, equilíbrio vaginal ou exame ginecológico.',
+  '163f10aa 6bd621ef 6faf54d7 717b3342 840abb39 a5c05240 abe29866 b0e1eccc bc78bc3b d3f0be5f d591eda5 d80327c6 dba74199 e1e895a2'],
+ ['Saúde feminina','Menopausa','Relato de sintomas ou mudanças na transição da menopausa.',
+  '7b55518d 808cc2ea 99e35d60 d71d2cc4 e253cbff c08b03ad'],
+ ['Saúde feminina','Hormônios','Texto relaciona ciclo/condição hormonal feminina a peso ou suplementação.','419efc35 b7ebeec4'],
+ ['Skin Care','Pele','Uso de produto de pele, cuidados cutâneos ou estudo sobre coceira humana explícitos.',
+  'f227ec51 cfa4dbdb ebef467c'],
+ ['Skin Care','Antissinais','Texto associa colágeno ao rosto ou às rugas, não apenas à beleza genérica.','22c89b18 55e5456c'],
+ ['Pet','Pele e pelagem','Cuidados com pele, banho ou pelagem do animal descritos.', '173fdfa7 17eb2b91'],
+ ['Pet','Geral','Relato veterinário explícito: consulta, cirurgia, recuperação ou doença do animal.',
+  '18f920d1 49adadb1 5f8301a4 5fdd42a9 9db7e0b1 f9a9cf9a f9d7cbdd'],
+ ['Pet','Coceira','Legenda identifica alergias no cão.','5cde0f7b'],
+ ['Pet','Articulações','Artrose ou condição de mobilidade do animal explicitamente identificada.','7cad6d9d'],
+ ['Pet','Nutrição','Alimentação ou suplemento para o animal explicitamente identificados.',
+  '7f78c581 a3581d79 e7799545 d243b720 fc18d552'],
+ ['Saúde geral','Memória','Notícia sobre função cognitiva, aprendizado ou prejuízo cerebral em humanos.',
+  '084feaba 696bd91d bd549322'],
+ ['Saúde geral','Intestino','Resumo menciona explicitamente microbioma intestinal e antibióticos.','d8e360d1'],
+ ['Saúde geral','Geral','Estudo de envelhecimento e função muscular ou neurológica sem subnicho mais específico.',
+  '6517a3eb 9f614225 a7d121d0 db805c12'],
+];
+export const excludedGroups=[
+ ['Entretenimento, meme, aniversário, rotina ou aparência do animal; sem tema dos subnichos de saúde/nutrição.',
+  '030a883b 0aab6ff9 12f332ac 13a631bc 2898a404 35b56a68 40e21716 472aa3f2 4b117010 4bf3f529 4c42b586 4e089dcb 542ac385 62161550 6fa1ec1e 7747dfbd 78ff15f2 7a606a8f 800012bb 811a9950 83a16285 87e76205 94d06d73 96b0df78 9907ff79 b86df5b2 ba6755c0 bc91ac1c c836e484 cb2368c2 cc737748 d387ceb5 d55bb0a4 d9b4a369 e6ece2b9 f11b89b5 f68b37f1'],
+ ['Notícia de ambiente, anatomia geral, química, zoologia ou tema fora dos subnichos trabalhados.',
+  '4c8b545d 550ef5cd 5d5d7b7d 672487a1 6b127091 aae920a0 d02c1857 f4b75a86 c458e42c'],
+];
+export const productGroups=[
+ ['Saúde geral','Geral','Produto de drenagem/suporte linfático identificado no nome e formato.','42463842 8a9ee4ef ac233883 acc0b5ee'],
+ ['Saúde Cardiovascular','Geral','Descrição salva do produto confirma suporte à circulação sanguínea.','43c5bd7d'],
+ ['Nutrição/Emagrecimento','Nutrição','Extrato/órgãos usados como suplementação nutricional; não atribuído a uma única promessa de anúncio.','46541bb7 6e2619c1'],
+ ['Saúde geral','Intestino','Anúncio já coletado de Oil of Oregano, do domínio Resilia, descreve suporte intestinal; anúncios de alho da mesma marca não foram usados.','619d0e28'],
+ ['Saúde geral','Geral','Produto Sea Moss e página mucus vinculada: suporte respiratório; outros ângulos não definem uma doença única.','77980a01'],
+ ['Saúde geral','Geral','Card reúne R-Alpha-Lipoic-Acid e Nattokinase com indicações distintas; mantido no grupo geral sem impor apenas um dos produtos.','791ccb29'],
+ ['Saúde geral','Sono','Produto Collagen Mouth Tape é fita bucal voltada ao sono.','a605140b'],
+ ['Saúde Cardiovascular','Geral','Anúncios já coletados do produto Fermented Garlic no domínio vinculado descrevem suporte cardiovascular.','aae43a35'],
+ ['Saúde geral','Fígado','Nome do produto Happy Liver e formato em cápsulas confirmam o tema.','abda48e7'],
+ ['Saúde feminina','Saúde íntima','Produto Intimate Probiotic Gel for Women explicitamente identificado.','c0d3c790'],
+ ['Saúde masculina','Testosterona','Anúncio salvo do Zapply T1 identifica suplemento masculino de suporte à testosterona.','cb417139'],
+ ['Saúde geral','Geral','Astaxanthin com múltiplas finalidades nos anúncios salvos; sem escolher arbitrariamente pele, fígado ou circulação.','d9a86663 f9785ac8'],
+ ['Saúde geral','Diabetes / açúcar no sangue','Anúncio salvo do produto Ceylon Cinnamon no domínio Metabolae identifica suporte à glicemia.','f2f2faf8'],
+ ['Nutrição/Emagrecimento','Emagrecimento','Anúncio salvo do Liquid L-Carnitine 4000mg no domínio Jcked relaciona produto à gordura corporal.','f5197a64'],
+ ['Saúde geral','Geral','Categoria original Pulmão e identidade do produto confirmam saúde respiratória.','57012243 e795a578'],
+ ['Saúde Cardiovascular','Pressão arterial','Categoria original explícita Pressão Arterial.','b80a059f'],
+ ['Saúde Cardiovascular','Pressão arterial','Rótulo editorial do material: BLOOD PRESSURE.','ac9d8863 d8487f3d'],
+ ['Saúde geral','Memória','Rótulo editorial do advertorial: MEMORY / ADV.','fc3d3f32'],
+ ['Saúde masculina','Libido','Catálogo local offer_batch_july22_catalog identifica Power Up Max / powerupmax.app como Disfunção erétil.','07672c45'],
+];
+export const imageGroups=[
+ ['Pet','Pele e pelagem','Imagem e legenda mostram cão com lesão cutânea, infecção e tratamento com xampu.','0130b9a3'],
+ ['Pet','Nutrição','Texto da imagem identifica alimento, petisco, suplemento ou nutrição do animal.','165b340d 22c87fa7 7ee048de b1f876e9 b13d669f'],
+ ['Libido / Saúde sexual','Libido','Texto da imagem explicita libido feminina.','2157bb63'],
+ ['Saúde masculina','Libido','Imagem identifica explicitamente disfunção erétil.','31a91621'],
+ ['Saúde masculina','Testosterona','Imagem aborda testosterona baixa, efeitos do uso ou regulação hormonal.','38764ba8 5a158707 826eab51'],
+ ['Saúde feminina','Hormônios','Imagem discute uso de testosterona e hormônios em mulheres.','5ca98a8e'],
+ ['Saúde feminina','Menopausa','Imagem associa irritabilidade ao período da menopausa.','48b51c09'],
+ ['Nutrição/Emagrecimento','Nutrição','Imagem identifica suplemento, alimento proteico, composição da dieta ou pesquisa de suplementação.',
+  '749693a9 7bc7f539 90321a3b 86d93725 a1a8e080 e7ecf9b9'],
+ ['Pet','Geral','Imagem identifica cirurgia ou problema de saúde no animal.','73c73762 b0eebfe4 e7007781'],
+ ['Pet','Articulações','Imagem descreve lesão no joelho do cão e recomendação veterinária.','9d7bb3d3'],
+ ['Pet','Pele e pelagem','Imagem e legenda descrevem banho e remoção de pelos do cão.','82d49b78'],
+ ['Libido / Saúde sexual','Saúde sexual','Imagem identifica profissional de medicina sexual e legenda discute fatores que afetam desejo sexual.','a70168ff'],
+ ['Saúde geral','Sono','Texto da imagem aborda duração de seis versus doze horas de sono.','ba359ba0'],
+ ['Skin Care','Pele','Imagem mostra rotina humana com máscara facial de colágeno; o cão é incidental.','cd1e4dc9'],
+];
+export const imageExcluded=[
+ ['Imagem confirma meme, carro de corrida, divulgação de criadores ou adoção de animais, sem relação temática.',
+  '6b1bd462 8ac70f15 fbb2e2fc 5ffdc4b5'],
+];
+editorialGroups.push(
+ ['Pet','Nutrição','Legenda completa descreve demonstração UGC de alimento para cães e seus ingredientes.','37b84838'],
+ ['Nutrição/Emagrecimento','Emagrecimento','Legenda relata transformação com perda de aproximadamente 20 libras.','ebcde3ee'],
+ ['Saúde geral','Sono','Relato explícito de hipersonia/problemas de sono ou cansaço após acordar.','86941758 40582ced'],
+ ['Pet','Geral','Legenda completa trata de sinais de mal-estar em cão idoso, limitação de expectativa de vida ou atendimento veterinário.','a677ea0d 4f55abdf ac7caf6e'],
+ ['Nutrição/Emagrecimento','Nutrição','Legenda identifica suplemento de colágeno e comentário discute o preço do produto.','8440b1a2'],
+ ['Libido / Saúde sexual','Libido','Oferta promove explicitamente libido/desejo sexual no texto salvo.','86ac56e0'],
+ ['Saúde feminina','Menopausa','Legenda aborda a campanha de conscientização e experiência com a menopausa.','665f3275']
+);
+imageGroups.push(
+ ['Nutrição/Emagrecimento','Nutrição','Texto da imagem identifica conteúdo de fatos sobre nutrição; legenda identifica nutricionista registrado.','8aca7c86'],
+ ['Pet','Pele e pelagem','Imagem e legenda identificam produto de higiene/perfume para cão.','dd8c1386'],
+ ['Pet','Geral','Imagem contextualiza pedido de ajuda como dor e sofrimento do cão.','6acd7862']
+);
