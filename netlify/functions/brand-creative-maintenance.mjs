@@ -1,8 +1,9 @@
 import {verifyGithubAutomationToken} from './_github-oidc.mjs';
 import {readJson} from './_security.mjs';
-import {listArchiveBrands,readArchiveBrand,archiveCreatives,reconcileBrand} from './_brand-archive.mjs';
+import {listArchiveBrands,readArchiveBrand,archiveCreatives,reconcileBrand,saveBrandCreativeMedia} from './_brand-archive.mjs';
 import {references,mediaOf,matchCreative} from '../../lib/brand-media-archive.mjs';
-import {startBrandCollection,brandCollectionStatus} from './_brand-apify-media.mjs';
+import {startBrandCollection,brandCollectionStatus,resolveBrandMedia} from './_brand-apify-media.mjs';
+import {mergeSupabaseOfferData} from './_supabase-admin.mjs';
 import dispatch from './_offer-creative-archive-dispatch.mjs';
 const reply=(status,body)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 export function createBrandMaintenance({verify=verifyGithubAutomationToken}={}){return async req=>{
@@ -10,13 +11,30 @@ export function createBrandMaintenance({verify=verifyGithubAutomationToken}={}){
   try{await verify(String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,''),new Set(['brands-cli-token.yml']));}catch{return reply(401,{ok:false});}
   try{
     const body=await readJson(req,{maxBytes:2048});
-    if(!body||Object.keys(body).some(k=>!['action','offerId','runId'].includes(k))||!['inspect','reconcile','collect','status','dispatch'].includes(body.action))return reply(400,{ok:false});
+    if(!body||Object.keys(body).some(k=>!['action','offerId','runId'].includes(k))||!['inspect','reconcile','collect','status','dispatch','recover'].includes(body.action))return reply(400,{ok:false});
     if(body.offerId&&!/^[a-f0-9]{8}-[a-f0-9-]{27}$/i.test(body.offerId))return reply(400,{ok:false});
     if(body.action==='status'){
       if(!/^[A-Za-z0-9]{10,30}$/.test(body.runId||''))return reply(400,{ok:false});
       return reply(200,{ok:true,...await brandCollectionStatus(body.runId)});
     }
     if(body.action==='dispatch')return dispatch();
+    if(body.action==='recover'){
+      if(!body.offerId)return reply(400,{ok:false});
+      const brand=await readArchiveBrand(body.offerId),rows=await archiveCreatives(body.offerId);
+      let saved=0,unavailable=0,processing=0;
+      for(const ref of references(brand.data)){
+        const row=matchCreative(rows,brand.id,ref);
+        if(!row || mediaOf(row.data).length || !ref.link)continue;
+        try{const result=await resolveBrandMedia(ref.link);await saveBrandCreativeMedia(row.id,result.media,result.source);saved++;}
+        catch(error){
+          if(error?.code==='BRAND_MEDIA_SOURCE_REQUIRED'){
+            await mergeSupabaseOfferData(row.id,{mediaArchiveStatus:'source_required',mediaArchiveError:error.message,mediaArchiveNextRetryAt:'',fbIngestStatus:'error',fbIngestError:error.message});unavailable++;
+          }else if(error?.code==='BRAND_MEDIA_PROCESSING')processing++;
+          else throw error;
+        }
+      }
+      return reply(200,{ok:true,...await reconcileBrand(brand.id),saved,unavailable,processing});
+    }
     if(body.action==='reconcile'){
       if(!body.offerId)return reply(400,{ok:false});
       return reply(200,{ok:true,...await reconcileBrand(body.offerId)});
