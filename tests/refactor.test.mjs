@@ -400,7 +400,8 @@ test("cards de Brands exibem resumo completo da BM, prints e top ads", () => {
   assert.match(html, /brandTopAds:fBrandTopAds\.filter/);
   assert.doesNotMatch(html, /data-zone="brandsemrush1m"/);
   assert.doesNotMatch(html, /data-zone="brandsemrush3m"/);
-  assert.match(html, /Link do Facebook/);
+  assert.match(html, /Arquivo original necessário/);
+  assert.match(html, /Arquivamento pendente/);
   assert.doesNotMatch(html, /triggerBrandFbIngest/);
   assert.match(html, /case "brandsgeneral":case "brandsvalidated":return brandCard\(o\)/);
   assert.match(html, /Ads ativos na biblioteca/);
