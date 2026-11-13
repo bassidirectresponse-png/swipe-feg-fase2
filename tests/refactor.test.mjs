@@ -510,7 +510,7 @@ test("cards carregam antes das consultas complementares do administrador", async
   assert.ok(source,"função de carregamento encontrada");
   let rendered = false, status = "";
   const context = {
-    sb:{from:()=>({select:()=>({order:()=>({range:()=>Promise.resolve({data:[{id:"card-1",data:{kind:"brandsvalidated"}}],error:null})})})})},
+    loadOfferPage:async()=>({rows:[{id:"card-1",data:{kind:"brandsvalidated"}}],pageSize:100}),
     setSync:(_,value)=>{status=value;},isAdmin:true,offers:[],routeReady:false,
     applyRoute:()=>{rendered=true;},writeCache:()=>{},syncRadarGeneration:()=>{},
     loadAdminEnhancements:()=>new Promise(()=>{}),
