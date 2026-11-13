@@ -5,7 +5,7 @@ import { supabaseAdminHeaders, mergeSupabaseOfferData, shallowDataPatch } from '
 import { acquireAutomationLock, releaseAutomationLock } from './_automation-lock.mjs';
 import { applyArchivedMedia } from './_creative-integrity.mjs';
 import { detectMedia } from '../../lib/apify-brand-archive.mjs';
-import { ownedMedia, hasInsiderData, adKey, stableCreativeId, mediaOf, references, brandCreativeFields, matchCreative } from '../../lib/brand-media-archive.mjs';
+import { ownedMedia, assetIdentity, hasInsiderData, adKey, stableCreativeId, mediaOf, references, brandCreativeFields, matchCreative } from '../../lib/brand-media-archive.mjs';
 import { BRAND_CREATIVE_GENERATION } from '../../lib/brand-creative-policy.mjs';
 
 export function brandArchiveSourceKey(d) { return createHash("sha256").update(JSON.stringify([d.brandTopAds || [], d.criativos || []])).digest("hex"); }
@@ -31,14 +31,14 @@ export async function verifiedMedia(asset) {
   if (!ownedMedia(asset?.url)) return null;
   const key='verified/'+createHash('sha256').update(asset.url).digest('hex')+'.json';
   const previous=await store().get(key,{type:'json'});
-  if (previous?.ok && Date.now()-Date.parse(previous.checkedAt)<86400000) return {...asset,...previous.asset};
+  if (previous?.ok && previous.asset?.etag && Date.now()-Date.parse(previous.checkedAt)<86400000) return {...asset,...previous.asset};
   try {
     const response=await fetch(asset.url,{headers:{Range:'bytes=0-63'},signal:AbortSignal.timeout(12000),redirect:'error'});
     if (![200,206].includes(response.status)) return null;
     const reader=response.body.getReader();const first=await reader.read();await reader.cancel();
     const detected=detectMedia(Buffer.from(first.value || []));
     if (detected.type!==asset.type) return null;
-    const saved={...asset,type:detected.type,checkedAt:new Date().toISOString()};
+    const saved={...asset,type:detected.type,etag:response.headers.get('etag') || '',bytes:Number(response.headers.get('content-range')?.split('/').at(-1) || response.headers.get('content-length') || 0),checkedAt:new Date().toISOString()};
     await store().setJSON(key,{ok:true,checkedAt:saved.checkedAt,asset:saved});
     return saved;
   } catch { return null; }
@@ -79,7 +79,27 @@ export async function reconcileBrand(id) {
     const queue=[...new Map(candidates.map(m=>[m.url,m])).values()];
     await Promise.all(Array.from({length:5},async()=>{while(queue.length){const a=queue.shift(),v=await verifiedMedia(a);if(v)verified.set(v.url,v);}}));
     let created=0,updated=0;
-    for(const ref of references(offer.data)) {
+    const canonical=new Map(),identityRows=new Map();
+    for(const duplicate of rows.filter(r=>r.data.mediaDuplicateOf)){
+      const primary=rows.find(r=>r.id===duplicate.data.mediaDuplicateOf);
+      const primaryAsset=mediaOf(primary?.data).map(m=>verified.get(m.url)).find(Boolean);
+      if(primaryAsset)for(const asset of mediaOf(duplicate.data))if(assetIdentity(verified.get(asset.url))===assetIdentity(primaryAsset))canonical.set(asset.url,primaryAsset);
+    }
+    const originals=rows.filter(r=>r.data.brandCreativeGeneration===BRAND_CREATIVE_GENERATION).sort((a,b)=>Number(!!b.data.sourceFile)-Number(!!a.data.sourceFile)||a.id.localeCompare(b.id));
+    for(const row of originals){
+      const assets=mediaOf(row.data).map(m=>verified.get(m.url)).filter(Boolean);
+      if(assets.length!==1)continue;
+      const identity=assetIdentity(assets[0]),primary=identityRows.get(identity);
+      if(!primary){identityRows.set(identity,row);continue;}
+      const primaryAsset=mediaOf(primary.data).map(m=>verified.get(m.url)).find(Boolean);
+      canonical.set(assets[0].url,primaryAsset);
+      const links=[...new Set([primary.data.linkAnuncio,...(primary.data.sourceAdLinks||[]),row.data.linkAnuncio,...(row.data.sourceAdLinks||[])].filter(Boolean))];
+      await patchCreative(primary,{...primary.data,linkAnuncio:primary.data.linkAnuncio||row.data.linkAnuncio||'',sourceAdLinks:links});
+      await patchCreative(row,{...row.data,mediaDuplicateOf:primary.id,brandCreativeGeneration:BRAND_CREATIVE_GENERATION+'-duplicate'});
+    }
+    const canonicalMedia=assets=>mediaOf({media:assets.map(m=>canonical.get(m.url)||m)});
+    for(const originalRef of references(offer.data)) {
+      const ref={...originalRef,video:'',img:'',media:canonicalMedia(mediaOf(originalRef))};
       let row=matchCreative(rows,id,ref);
       const ready=mediaOf({media:[...mediaOf(row?.data),...mediaOf(ref)]}).filter(m=>verified.has(m.url)).map(m=>verified.get(m.url));
       const next={...(row?.data || {}),...fields};
@@ -104,19 +124,23 @@ export async function reconcileBrand(id) {
     }
     const active=rows.filter(r=>r.data.brandCreativeGeneration===BRAND_CREATIVE_GENERATION);
     // Keep historical archive entries; add only verified assets, once per URL.
-    const gallery=[...(offer.data.brandArchivedAds || [])], seen=new Set(gallery.flatMap(ad=>mediaOf(ad).map(m=>m.url)));
+    const gallery=[],seen=new Set();
+    for(const ad of offer.data.brandArchivedAds || []){
+      const media=canonicalMedia(mediaOf(ad)).filter(m=>!seen.has(m.url));
+      media.forEach(m=>seen.add(m.url));if(media.length)gallery.push({...ad,media});
+    }
     for(const row of active){
       const media=mediaOf(row.data).filter(m=>verified.has(m.url)&&!seen.has(m.url)).map(m=>verified.get(m.url));
       if(!media.length)continue;media.forEach(m=>seen.add(m.url));
       gallery.push({creativeId:row.id,title:row.data.nome,link:row.data.linkAnuncio || '',media,source:'linked-creative',capturedAt:new Date().toISOString()});
     }
     const topAds=(offer.data.brandTopAds || []).map(ad=>{
-      const key=adKey(ad.link),row=key&&active.find(r=>adKey(r.data.linkAnuncio)===key);
+      const key=adKey(ad.link),row=key&&active.find(r=>[r.data.linkAnuncio,...(r.data.sourceAdLinks||[])].some(link=>adKey(link)===key));
       const media=mediaOf(row?.data).filter(m=>verified.has(m.url));
       return media.length?{...ad,video:media.find(m=>m.type==='video')?.url || '',img:media.find(m=>m.type==='image')?.url || '',media,ingestStatus:'done',ingestError:''}:ad;
     });
     const pending=references(offer.data).filter(ref=>!mediaOf(matchCreative(active,id,ref)?.data).some(m=>verified.has(m.url))).map(ref=>({link:ref.link,name:ref.nome || ref.title,key:ref.key}));
-    const summary={verifiedFiles:verified.size,creativeCards:active.length,pendingLinks:pending.length};
+    const summary={verifiedFiles:new Set([...verified.values()].map(assetIdentity)).size,creativeCards:active.length,pendingLinks:pending.length};
     const next={...offer.data,brandArchivedAds:gallery,brandTopAds:topAds,brandArchiveSummary:summary,brandArchiveSourceKey:brandArchiveSourceKey({...offer.data,brandTopAds:topAds})};
     const patch=shallowDataPatch(offer.data,next);
     if(Object.keys(patch).length){await store().setJSON(`backups/${new Date().toISOString()}/${id}.json`,offer);await mergeSupabaseOfferData(id,patch);}

@@ -4807,7 +4807,7 @@ const creativeTranslations=new Set();
 let creativeTranslationQueue=[],creativeTranslationActive=0;
 function creativeNeedsTranslation(o){
   const d=(o&&o.data)||{},status=String(d.transcricaoPtStatus||"").toLowerCase();
-  if(d.kind==="organic"||d.division==="organic")return false;if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic"||status==="source_required")return false;if(brandCreativeArchived(d))return false;
   const retryAt=Date.parse(d.transcricaoPtProximaTentativa||"");
   return d.kind==="criativo"&&String(d.transcricao||"").trim()&&!String(d.transcricaoPt||"").trim()&&!["working","processing"].includes(status)&&(!Number.isFinite(retryAt)||retryAt<=Date.now());
 }
@@ -5443,13 +5443,14 @@ function criativoCard(o){
 function brandCreativeCard(o){
   const d=o.data||{},va=videoOfCrv(d),hasVid=!!va,brand=d.marca||"Balls n Brains";
   const collection=d.collectionLabel||brand;
+  const archiveState=d.mediaArchiveStatus==="source_required"?"Arquivo original necessário":!va&&!d.print?"Arquivamento pendente":"Mídia salva";
   const actions=[hasVid?qbtn("Vídeo",va,"play"):"",d.print?qbtn("Imagem",d.print,"image"):""].filter(Boolean).join("");
   return card({
     id:o.id,variant:"kcard brand-card",
     head:`<span class="tbadge tbadge--brands"><span class="tdot"></span>FEG Brands</span><span class="ktag">${ic("play")}${esc(brand)}</span>`,
     media:mediaThumb(d.print,d.nome,hasVid,hasVid?va:""),
     body:`<div class="collection-flag">${ic("trending")}${esc(collection)}</div>${cardIdentity(brand,d.nome||"Criativo sem título")}`,
-    chips:`<div class="card__chips"><span class="chip accent">${esc(brand)}</span><span class="chip">Swipe de Criativos</span></div>`,
+    chips:`<div class="card__chips"><span class="chip accent">${esc(brand)}</span><span class="chip">${esc(archiveState)}</span></div>`,
     actions
   });
 }
@@ -5894,7 +5895,7 @@ function fbStatusOf(o){
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 function offerCreativeNeedsArchive(o){
   const d=(o&&o.data)||{},status=String(d.mediaArchiveStatus||d.fbIngestStatus||"").toLowerCase();
-  if(d.kind==="organic"||d.division==="organic")return false;if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic"||status==="source_required")return false;if(brandCreativeArchived(d))return false;
   if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
   if(String(d.video||d.print||"").trim())return false;
   if(["queued","working","processing"].includes(status))return fbArchiveIsStale(d);
@@ -5990,7 +5991,7 @@ function fbIngestControl(o){
   const st=fbStatusOf(o),working=st==="working";
   const btn=isAdmin?`<button class="btn btn--outline btn--sm" data-fbingest="${o.id}"${working?" disabled":""}>${ic("download")}${working?"Baixando do Facebook…":(d.video?"Rebaixar do Facebook":"Baixar criativo do Facebook")}</button>`:"";
   const note=st==="partial"?`<div class="fbnote">${ic("alert")}Dados do anúncio salvos, mas o vídeo não pôde ser baixado${d.fbIngestError?` (${esc(d.fbIngestError)})`:""}.</div>`
-    :st==="error"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
+    :st==="error"||st==="source_required"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
   return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
 }
 
