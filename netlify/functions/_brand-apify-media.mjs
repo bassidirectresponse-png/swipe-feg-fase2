@@ -109,6 +109,6 @@ export async function resolveBrandMedia(url){
   if(receipt?.state==='running')throw unavailable('Coleta Apify em andamento.','BRAND_MEDIA_PROCESSING');
   if(receipt?.state!=='ready' && receipt?.publicCheck?.status==='login_required')throw unavailable('Esta prévia exige login no Facebook. É necessária uma sessão com acesso ou o arquivo original; não significa que o anúncio foi apagado.','BRAND_MEDIA_ACCESS_REQUIRED');
   if(receipt?.state==='incomplete')throw unavailable(receipt.error,'BRAND_MEDIA_INCOMPLETE');
-  if(receipt?.state==='ready' && receipt.media?.length)return {media:receipt.media,source:'apify:'+receipt.runId};
+  if(receipt?.state==='ready' && receipt.media?.length)return {media:receipt.media,source:receipt.source || 'apify:'+receipt.runId};
   throw unavailable(receipt?.error || 'Mídia não recuperada pela Apify.');
 }
