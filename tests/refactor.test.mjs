@@ -153,7 +153,7 @@ test("todas as listas usam 20 itens por página com opções de 50 e 100", () =>
   assert.match(html, /const page=pagedItems\(list\),groups=new Map/);
   assert.match(html, /gridSearchTimer=setTimeout\(\(\)=>renderGrid\(true\),140\)/);
   assert.match(html, /requestIdleCallback\(run,\{timeout:1800\}\)/);
-  assert.match(html, /d\.transcricao="";d\.copy=""/);
+  assert.match(html, /SwipeCatalog\.project\(o,/);
   assert.match(html, /\.grid>\.card\{content-visibility:auto;contain-intrinsic-size:460px;\}/);
   assert.doesNotMatch(html, /\.card\{[^\n]+will-change:transform/);
 });
@@ -510,7 +510,8 @@ test("cards carregam antes das consultas complementares do administrador", async
   assert.ok(source,"função de carregamento encontrada");
   let rendered = false, status = "";
   const context = {
-    loadOfferPage:async()=>({rows:[{id:"card-1",data:{kind:"brandsvalidated"}}],pageSize:100}),
+    ensureCatalogSection:async()=>{context.offers=[{id:"card-1",data:{kind:"brandsvalidated"}}];},
+    requestedCatalogSection:()=>"brandsvalidated",loadCatalogIndex:()=>new Promise(()=>{}),
     setSync:(_,value)=>{status=value;},isAdmin:true,offers:[],routeReady:false,
     applyRoute:()=>{rendered=true;},writeCache:()=>{},syncRadarGeneration:()=>{},
     loadAdminEnhancements:()=>new Promise(()=>{}),

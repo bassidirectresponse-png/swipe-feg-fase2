@@ -42,7 +42,7 @@ test("QA applyRoute denies non-admin before changing section, drawing or fetchin
   for (const section of ["inteligencia", "updates"]) {
     const calls = [];
     const c = FAKE_context({
-      PATH2SEC: {}, routeReady: true, location: { pathname: "/inteligencia/descobertas" },
+      requestedCatalogSection:()=>section, PATH2SEC: {}, routeReady: true, location: { pathname: "/inteligencia/descobertas" },
       parseLocation: () => ({ section, notFound: false }), ADMIN_SECTIONS: new Set(["updates"]), isAdmin: false,
       activeSection: "tiktok", renderNotFound: message => calls.push(message),
       renderGrid: () => assert.fail("must not render protected area"), fetch: () => assert.fail("must not fetch")

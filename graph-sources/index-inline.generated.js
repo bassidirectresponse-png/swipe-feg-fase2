@@ -279,7 +279,8 @@ function applyRole(user){
 function requireAdmin(){if(isAdmin)return true;toast("Somente leitura — apenas o admin pode alterar.",true);return false;}
 function showLogin(ssoFailed=false){$("#loginScreen").classList.add("show");$("#app").classList.add("hidden");$("#setupScreen").classList.add("hidden");$("#loginErr").classList.toggle("show",ssoFailed);setTimeout(()=>{const i=$("#fegsysLoginLink");if(i)i.focus();},50);}
 function hideLogin(){$("#loginScreen").classList.remove("show");}
-function showWho(user){const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";applyRole(user);}
+let catalogOwner="";
+function showWho(user){catalogOwner=currentSbUrl+":"+(user?.id||"");const el=$("#whoami");if(el)el.textContent=user?(user.email||"").split("@")[0]:"";applyRole(user);}
 
 async function startAuth(){
   // O fragmento não deve permanecer na URL nem no histórico durante as chamadas assíncronas.
@@ -324,11 +325,28 @@ function showSetup(){$("#setupScreen").classList.remove("hidden");$("#app").clas
 function showApp(){$("#setupScreen").classList.add("hidden");$("#app").classList.remove("hidden");}
 function initSupabase(u,k){try{currentSbUrl=String(u||"").replace(/\/+$/,"");currentSbKey=k;sb=window.supabase.createClient(currentSbUrl,k);return true;}catch(e){console.error(e);return false;}}
 
-function readCache(){try{if(localStorage.getItem("feg_taxonomy_version")!==SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion){localStorage.removeItem(LS.cache);localStorage.setItem("feg_taxonomy_version",SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion);return null;}const r=localStorage.getItem(LS.cache);return r?JSON.parse(r):null;}catch(e){return null;}}
+const catalogScopes=new Set(),catalogRequests=new Map(),offerDetailRequests=new Map();
+let catalogIndexReady=false,catalogIndexRequest=null,detailViewRequest=0;
+function requestedCatalogSection(){const path=location.pathname.split("/").filter(Boolean)[0];return PATH2SEC[path]||"brandsvalidated";}
+function readCache(){
+  try{
+    const cache=JSON.parse(localStorage.getItem(LS.cache)||"null");
+    if(!cache||cache.owner!==catalogOwner||cache.version!==SwipeCatalog.version||cache.taxonomy!==SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion||Date.now()-cache.at>15*60*1000)return null;
+    for(const scope of cache.scopes||[])catalogScopes.add(scope);
+    catalogIndexReady=!!cache.indexReady;return cache.rows;
+  }catch(_){return null;}
+}
 let cacheWriteVersion=0;
 function persistLiteCache(version){
   if(version!==cacheWriteVersion)return;
-  try{const lite=offers.filter(o=>!o.adminPrivate).map(o=>{const d=Object.assign({},o.data);d.printSemrush="";d.printSemrushOriginal="";d.printSemrushThumb="";d.brandSemrush1m="";d.brandSemrush3m="";d.transcricao="";d.copy="";d.transcricaoPt="";d.copyVsl="";d.copyCriativo="";d.transcricaoWords=[];return{id:o.id,created_at:o.created_at,data:d};});localStorage.setItem(LS.cache,JSON.stringify(lite));}catch(e){}
+  try{
+    // Never store full transcripts, analyses or private drafts in localStorage.
+    const rows=offers.filter(o=>!o.adminPrivate).map(o=>SwipeCatalog.project(o,o._catalogLevel==="index"?"index":SwipeCatalog.group(sectionOf(o))||"index"));
+    const cache={owner:catalogOwner,version:SwipeCatalog.version,taxonomy:SwipeTaxonomy.version+":"+SwipeTaxonomy.reviewVersion,at:Date.now(),scopes:[...catalogScopes],indexReady:catalogIndexReady,rows};
+    let serialized=JSON.stringify(cache);
+    if(serialized.length>1800000){const scope=SwipeCatalog.group(requestedCatalogSection());cache.rows=rows.filter(row=>SwipeCatalog.group(sectionOf(row))===scope);cache.scopes=scope&&catalogScopes.has(scope)?[scope]:[];cache.indexReady=false;serialized=JSON.stringify(cache);}
+    if(serialized.length<=1800000)localStorage.setItem(LS.cache,serialized);else localStorage.removeItem(LS.cache);
+  }catch(_){/* The live session works even when browser storage is unavailable. */}
 }
 function writeCache(){
   const version=++cacheWriteVersion,run=()=>persistLiteCache(version);
@@ -412,7 +430,7 @@ async function boot(){
   if(!displayedCached)$("#gridArea").innerHTML='<div class="grid">'+Array(4).fill('<article class="card card--skeleton" aria-hidden="true"><div class="sk sk--head"></div><div class="sk sk--media"></div><div class="sk sk--title"></div><div class="sk sk--meta"></div><div class="sk sk--actions"></div></article>').join("")+'</div>';
   try{
     const ok=await loadOffers();
-    if(ok!==false&&isAdmin)ensureJoymodeInsider();
+    // Optional seed waits for the complete identity index, never a partial section.
     if(ok!==false&&activeSection==="megabrainfegsys")loadFegsysBrain();
     if(ok===false&&!displayedCached)showOffersLoadError();
   }catch(error){console.error("Falha ao carregar ofertas",error);setSync("err","Erro ao carregar");if(!displayedCached)showOffersLoadError();else toast("Não foi possível atualizar as ofertas; mostrando dados salvos neste navegador.",true);}
@@ -437,44 +455,87 @@ async function loadAdminEnhancements(){
   }
   setSync("ok","Sincronizado");
 }
-async function loadOfferPage(from,limit){
+async function loadOfferPage(from,limit,scope="index"){
   let pageSize=limit;
   for(let attempt=0;attempt<3;attempt++){
     const controller=new AbortController();let timer;
     try{
-      const query=sb.from("offers").select("*").order("created_at",{ascending:true}).order("id",{ascending:true}).range(from,from+pageSize-1).abortSignal(controller.signal);
+      let query=sb.from("offers").select(SwipeCatalog.select(scope)).order("created_at",{ascending:true}).order("id",{ascending:true}).range(from,from+pageSize-1);
+      if(scope==="oferta")query=query.or("data->>kind.is.null,data->>kind.not.in.(brandsvalidated,brandsgeneral,criativo,megabrain,noticia,tiktok,presell,organic)");
+      else if(scope!=="index")query=query.in("data->>kind",SwipeCatalog.kinds[scope]);
+      query=query.abortSignal(controller.signal);
       const result=await Promise.race([query,new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Object.assign(new Error("Tempo esgotado ao buscar ofertas"),{transient:true}));},25000);})]);
       if(result.error){const error=Object.assign(new Error(result.error.message||"Falha ao buscar ofertas"),{status:result.status,transient:!result.status||result.status===408||result.status===429||result.status>=500});throw error;}
       if(!Array.isArray(result.data))throw new Error("Resposta inválida ao buscar ofertas");
-      return {rows:result.data,pageSize};
+      return {rows:result.data.map(row=>SwipeCatalog.decode(row,scope)),pageSize};
     }catch(error){
       if(attempt===2||!(error.transient||error.name==="TypeError"||error.name==="AbortError"))throw error;
       pageSize=Math.max(10,Math.floor(pageSize/2));
-      setSync("load","Retomando carregamento");
+      if(scope!=="index")setSync("load","Retomando carregamento");
       await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
     }finally{clearTimeout(timer);}
   }
 }
+async function readCatalogScope(scope){
+  const PAGE=["index","noticia","tiktok"].includes(scope)?500:scope==="criativo"?300:100;let all=[],from=0;
+  for(;;){const {rows,pageSize}=await loadOfferPage(from,PAGE,scope);all=all.concat(rows);if(rows.length<pageSize)break;from+=rows.length;}
+  return all;
+}
+async function ensureCatalogSection(section,refresh=false){
+  const scope=SwipeCatalog.group(section);if(!scope)return;
+  if(catalogRequests.has(scope))return catalogRequests.get(scope);
+  if(!refresh&&catalogScopes.has(scope))return;
+  const request=(async()=>{
+    const rows=await readCatalogScope(scope),ids=new Set(rows.map(row=>row.id));
+    // Publish atomically after all pages succeed. Keep already hydrated documents.
+    offers=SwipeCatalog.merge(offers.filter(row=>row.adminPrivate||SwipeCatalog.group(sectionOf(row))!==scope||ids.has(row.id)),rows);
+    catalogScopes.add(scope);
+  })();
+  catalogRequests.set(scope,request);
+  try{await request;}finally{catalogRequests.delete(scope);}
+}
+async function loadCatalogIndex(){
+  if(catalogIndexRequest)return catalogIndexRequest;
+  catalogIndexRequest=(async()=>{
+    const rows=await readCatalogScope("index");offers=SwipeCatalog.merge(offers,rows);catalogIndexReady=true;
+    if(routeReady){renderSideNav();if(["creativereview","inteligencia"].includes(activeSection))renderGrid(true);}writeCache();
+  })();
+  try{await catalogIndexRequest;}finally{catalogIndexRequest=null;}
+}
 async function loadOffers(){
   setSync("load","Carregando");
-  // Transcrições completas tornavam o lote de 1.000 registros maior que 30 MB.
-  // Lotes menores e retomada no mesmo offset evitam perder ou repetir registros.
-  const PAGE=100;let all=[],from=0;
-  for(;;){
-    const {rows,pageSize}=await loadOfferPage(from,PAGE);
-    all=all.concat(rows);
-    if(rows.length<pageSize)break;
-    from+=rows.length;
-  }
-  offers=all;syncRadarGeneration(offers);
+  await ensureCatalogSection(requestedCatalogSection(),true);
   if(!isAdmin){updates=[];updatesTotal=0;adminOfferDrafts={};adminBmHistoryPatches={};}
   setSync("ok",isAdmin?"Ofertas carregadas":"Sincronizado");routeReady=true;applyRoute();writeCache();
-  if(isAdmin){
-    void loadAdminEnhancements();
-    setTimeout(()=>scheduleCreativeTranslations(),1200);
-    setTimeout(()=>resumeOfferCreativeArchives(),2200);
-  }
+  // Index contains only identity/classification, not media, transcripts or reports.
+  void loadCatalogIndex().then(()=>{if(isAdmin)ensureJoymodeInsider();}).catch(error=>{console.warn("Contadores indisponíveis",error);toast("A seção foi carregada, mas não foi possível atualizar todos os contadores.",true);});
+  if(isAdmin)void loadAdminEnhancements();
   return true;
+}
+async function ensureOfferDetail(id){
+  const current=itemById(id);if(SwipeCatalog.isFull(current))return current;
+  if(offerDetailRequests.has(id))return offerDetailRequests.get(id);
+  const request=(async()=>{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
+    try{
+      const {data,error}=await sb.from("offers").select("id,created_at,data").eq("id",id).abortSignal(controller.signal).single();
+      if(error)throw new Error(error.message||"Não foi possível carregar o card");
+      if(!data?.id)throw new Error("Card não encontrado");
+      offers=SwipeCatalog.merge(offers,[data]);return data;
+    }finally{clearTimeout(timer);}
+  })();
+  offerDetailRequests.set(id,request);
+  try{return await request;}finally{offerDetailRequests.delete(id);}
+}
+function showCatalogLoading(){
+  $("#gridArea").innerHTML='<div class="empty" role="status"><h2>Carregando esta seção…</h2><p>Preparando os cards e filtros.</p></div>';
+}
+function loadSectionForRoute(section){
+  const path=location.pathname+location.search;activeSection=section;renderSideNav();setSectionHeader();showCatalogLoading();
+  void ensureCatalogSection(section).then(()=>{if(location.pathname+location.search===path){setSync("ok","Sincronizado");applyRoute();writeCache();}}).catch(error=>{
+    if(location.pathname+location.search!==path)return;
+    console.error("Falha ao carregar seção",error);setSync("err","Erro ao carregar");showOffersLoadError();
+  });
 }
 let joymodeSeedWorking=false;
 const JOYMODE_OFFER_ID="4b878728-fa39-4512-815a-762507835dc0";
@@ -1947,6 +2008,11 @@ function maybeOpenView(id){
 }
 function applyRoute(){
   if(!routeReady)return;
+  const requested=requestedCatalogSection();
+  if((ADMIN_SECTIONS.has(requested)||["inteligencia","creativereview"].includes(requested))&&!isAdmin){renderNotFound("Esta área está disponível somente no painel administrativo.");return;}
+  detailViewRequest++;
+  const scope=SwipeCatalog.group(requested);
+  if(scope&&!catalogScopes.has(scope)){loadSectionForRoute(requested);return;}
   if(/^\/feg-brands-geral(?:\/|$)/.test(location.pathname))try{history.replaceState(history.state,"",location.pathname.replace(/^\/feg-brands-geral(?=\/|$)/,"/feg-brands-insider")+location.search+location.hash);}catch(_){}
   if(/^\/inteligencia\/semanal\/?$/.test(location.pathname))try{history.replaceState(history.state,"","/creative-review");}catch(_){}
   const legacyParts=decodeURIComponent(location.pathname).split("/").filter(Boolean),legacySection=PATH2SEC[legacyParts[0]];
@@ -2093,7 +2159,7 @@ function renderSideNav(){
   const navItem=s=>{
     const active=activeSection===s.key;
     const updateCount=s.key==="updates"?unreadUpdates():0;
-    const chip=s.key==="vsldissector"||s.key==="inteligencia"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(s.key==="creativereview"?crFolderCount():(counts[s.key]||0))}</span>`;
+    const chip=s.key==="vsldissector"||s.key==="inteligencia"?`<span class="snav__badge">Beta</span>`:s.key==="transcritor"?"":`<span class="snav__cnt${s.key==="updates"&&updateCount?" snav__cnt--alert":""}">${s.key==="updates"?updateCount:(s.key==="creativereview"?crFolderCount():(!catalogIndexReady&&SwipeCatalog.group(s.key)&&!catalogScopes.has(SwipeCatalog.group(s.key))?"…":counts[s.key]||0))}</span>`;
     const aiHi=s.key==="vsldissector"?" snav__sec--ai":"";
     const label=SEC_SHORT[s.key]||s.label;
     let out=`<a class="snav__sec${active?" active":""}${aiHi}" data-nav href="${esc(listPath(s.key,""))}" data-section="${s.key}">${ic(s.icon)}<span class="snav__lbl">${esc(label)}</span>${chip}</a>`;
@@ -2634,6 +2700,7 @@ function renderAdminGeneral(items){
   return html+'</div>'+gridPager(page);
 }
 function renderGrid(skipNav){
+  const scope=SwipeCatalog.group(activeSection);if(routeReady&&scope&&!catalogScopes.has(scope)){showCatalogLoading();return;}
   if(!skipNav)renderSideNav();
   renderSubFilter();
   setSectionHeader();
@@ -2709,6 +2776,7 @@ function renderGrid(skipNav){
   });
   $$('[data-edit-tags]',area).forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openTagEditor(button.dataset.editTags);}));
   $$(".qbtn",area).forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();
+    if(b.dataset.openDetail!=null){navigate(offerPath(itemById(b.dataset.openDetail)),{state:{modal:true}});return;}
     if(b.dataset.copyTranscript!=null){const o=itemById(b.dataset.copyTranscript),text=String(((o||{}).data||{}).transcricao||"").trim();if(!text)return;try{b.disabled=true;await navigator.clipboard.writeText(text);const old=b.innerHTML,oldLabel=b.getAttribute("aria-label")||"";b.innerHTML=ic("clipboard")+"Copiado";b.setAttribute("aria-label","Transcrição copiada");toast("Transcrição copiada");setTimeout(()=>{if(b.isConnected){b.innerHTML=old;b.disabled=false;b.setAttribute("aria-label",oldLabel);}},1600);}catch(_){b.disabled=false;toast("Não foi possível copiar a transcrição.",true);}return;}
     if(b.dataset.transcribeCard!=null){const o=itemById(b.dataset.transcribeCard),video=o&&videoOfCrv(o.data||{});if(o&&video)requestInstantTranscription(o.id,video);return;}
     if(b.dataset.copy!=null){openCopyPop(b.dataset.copy);return;}if(b.dataset.href)window.open(b.dataset.href,"_blank","noopener");}));
@@ -2859,8 +2927,20 @@ async function pinDiscoveredLibraryAdmin(id,index,button){
     if(button)button.disabled=false;
   }
 }
-function openView(id,useAdminDraft=true){
-  const o=itemById(id);if(!o)return;
+async function openView(id,useAdminDraft=true){
+  const ticket=++detailViewRequest;
+  if(!SwipeCatalog.isFull(itemById(id))){
+    $("#viewTag").textContent="Carregando card…";$("#viewBody").innerHTML='<div class="empty" role="status">Carregando os detalhes…</div>';
+    $("#viewEditBtn").hidden=true;$("#viewDeleteBtn").hidden=true;$("#viewDraftToggleBtn").hidden=true;$("#viewInvestigateBtn").hidden=true;openOverlay("#viewOverlay");
+  }
+  let o;
+  try{o=await ensureOfferDetail(id);}catch(error){
+    if(ticket!==detailViewRequest)return;
+    $("#viewBody").innerHTML='<div class="empty" role="alert"><h2>Não foi possível carregar este card</h2><p>Tente novamente. Os dados continuam salvos.</p><button class="btn btn--outline" id="retryCardDetail">Tentar novamente</button></div>';
+    $("#retryCardDetail").onclick=()=>openView(id,useAdminDraft);return;
+  }
+  if(ticket!==detailViewRequest)return;
+  $("#viewEditBtn").hidden=!isAdmin;$("#viewDeleteBtn").hidden=!isAdmin;
   const section=itemSection(o),isBrand=BRAND_OFFER_SECTIONS.has(section);
   if(section!=="oferta"&&!isBrand){openSimpleView(o);return;}
   const adminDraft=o.adminPrivate?null:adminOfferPatch(id),showingDraft=!!(o.adminPrivate||useAdminDraft&&adminDraft);
@@ -3045,8 +3125,9 @@ function openView(id,useAdminDraft=true){
 $("#viewClose").addEventListener("click",()=>closeView());
 
 /* ===== FORM ===== */
-function openForm(id){
+async function openForm(id){
   if(!requireAdmin())return;
+  if(id)try{await ensureOfferDetail(id);}catch(error){toast("Não foi possível carregar os dados para edição. Tente novamente.",true);return;}
   editingId=id;formDirty=false;saving=false;
   const d=id?normalize(offers.find(x=>x.id===id)?.data):normalize({});
   $("#formTag").textContent=id?"Editar oferta":"Nova oferta";
@@ -3322,6 +3403,7 @@ function nextCreativeName(niche){
 }
 
 async function syncOfferCreatives(offerRow){
+  await ensureCatalogSection("criativo");
   const d=offerRow&&offerRow.data||{};
   const items=[
     ...(Array.isArray(d.criativos)?d.criativos:[]).map(item=>({
@@ -3370,6 +3452,7 @@ window.runAdminOfferBatch=runAdminOfferBatch;
 
 async function saveForm(){
   if(!requireAdmin())return false;
+  if(editingId&&!SwipeCatalog.isFull(itemById(editingId))){toast("Abra novamente a edição para carregar todos os dados.",true);return false;}
   if(semrushUploading){toast("Aguarde o upload do SEMrush terminar.",true);return false;}
   if(brandMediaUploading){toast("Aguarde o arquivo do top ad terminar de salvar.",true);return false;}
   if(offerVslUploading){toast("Aguarde a VSL terminar de salvar.",true);return false;}
@@ -3755,7 +3838,8 @@ $("#lightboxImg").addEventListener("pointermove",e=>{if(!lbDrag||lbDrag.id!==e.p
 $("#lightboxImg").addEventListener("pointerup",()=>{lbDrag=null;$("#lightboxStage").classList.remove("dragging");});
 
 /* ===== POPUP DA COPY (ver copy direto do card) ===== */
-function openCopyPop(id){
+async function openCopyPop(id){
+  try{await ensureOfferDetail(id);}catch(error){toast("Não foi possível carregar a copy. Tente novamente.",true);return;}
   const o=itemById(id);if(!o)return;
   const d=o.data||{};
   const copy=brainCopyText(d);
@@ -4751,7 +4835,7 @@ function pumpCreativeTranslations(){
 }
 function scheduleCreativeTranslations(items){
   if(!isAdmin||!sb)return;
-  const source=Array.isArray(items)?items:offers;
+  const source=(Array.isArray(items)?items:offers).filter(SwipeCatalog.isFull);
   for(const o of source)if(creativeNeedsTranslation(o)&&!creativeTranslations.has(o.id)&&!creativeTranslationQueue.some(x=>x.id===o.id))creativeTranslationQueue.push(o);
   pumpCreativeTranslations();
 }
@@ -5328,10 +5412,10 @@ function criativoCard(o){
      nativos também podem ter MP4 e devem usar o primeiro frame como capa. */
   const hasVid=!!va;
   const copy=brainCopyText(d),transcript=String(d.transcricao||"").trim(),copyLink=(d.copyLink||"").trim();
-  const canonical=String(d.transcriptionStatus||d.transcricaoStatus||"").toLowerCase(),transcriptState=transcript?"ready":canonical==="failed"||canonical==="error"?"error":["pending","processing","working","retry_scheduled"].includes(canonical)?"pending":"missing";
+  const canonical=String(d.transcriptionStatus||d.transcricaoStatus||"").toLowerCase(),transcriptState=o._catalogLevel?"detail":transcript?"ready":canonical==="failed"||canonical==="error"?"error":["pending","processing","working","retry_scheduled"].includes(canonical)?"pending":"missing";
   const translated=!!String(d.transcricaoPt||"").trim(),translationState=String(d.transcricaoPtStatus||"").toLowerCase();
-  const copyAction=transcript?`<button class="qbtn" data-copy-transcript="${o.id}" title="Copiar a transcrição" aria-label="Copiar transcrição de ${esc(d.nome||"criativo")}">${ic("clipboard")}Copiar transcrição</button>`:hasVid&&isAdmin?`<button class="qbtn" data-transcribe-card="${o.id}" title="Gerar transcrição">${ic("mic")}Transcrever</button>`:`<button class="qbtn" disabled title="Transcrição ainda não disponível">${ic("mic")}Sem transcrição</button>`;
-  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
+  const copyAction=o._catalogLevel?`<button class="qbtn" data-open-detail="${o.id}">${ic("file")}Ver transcrição</button>`:transcript?`<button class="qbtn" data-copy-transcript="${o.id}" title="Copiar a transcrição" aria-label="Copiar transcrição de ${esc(d.nome||"criativo")}">${ic("clipboard")}Copiar transcrição</button>`:hasVid&&isAdmin?`<button class="qbtn" data-transcribe-card="${o.id}" title="Gerar transcrição">${ic("mic")}Transcrever</button>`:`<button class="qbtn" disabled title="Transcrição ainda não disponível">${ic("mic")}Sem transcrição</button>`;
+  const acts=[qbtn("Anúncio",d.linkAnuncio,"external"),hasVid?qbtn("Vídeo",va,"play"):"",copyAction,(o._catalogLevel||copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:""].filter(Boolean).join("");
   const st=fbStatusOf(o);
   const fbchip=d.fbDaysActive!=null?`<span class="chip ${d.fbActive?"accent":""}">${ic("clock")}${esc(fbDaysText(d))}</span>`:"";
   const chips=(d.nicho||fbchip)?`<div class="card__chips">${d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:""}${fbchip}</div>`:"";
@@ -5342,7 +5426,7 @@ function criativoCard(o){
     head:`${badge}<span class="ktag">${ic("play")}Criativo</span>`,
     media:creativeCardMedia(d,hasVid?va:""),
     body:`${collection}${cardIdentity(d.marca||"",d.nome||"Sem título")}${creativeUploadMeta(o)}`,
-    chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
+    chips:`${chips}${fbwork}<div class="transcription-state ${transcriptState==="ready"?"is-ready":transcriptState==="error"?"is-error":""}">${ic(transcriptState==="ready"?"file":transcriptState==="error"?"alert":"clock")}${transcriptState==="detail"?"Transcrição e análise no card":transcriptState==="ready"?"Transcrição original pronta":transcriptState==="pending"?"Transcrição em andamento":transcriptState==="error"?"Transcrição precisa de nova tentativa":"Aguardando transcrição"}${transcript?`<span class="transcription-state__translation">· ${translated?"Português pronto":translationState==="working"?"traduzindo…":"tradução na fila"}</span>`:""}</div>`,
     actions:acts
   });
 }
@@ -5438,7 +5522,7 @@ function megabrainCard(o){
   const metric=brainHasMetric(d)?`<div class="brain-metric"><span class="brain-metric__ic">${ic(brainIsFat(d)?"dollar":"cart")}</span><span class="brain-metric__v">${esc(brainMetricValue(d))}</span><span class="brain-metric__l">${brainMetricLabel(d)}</span></div>`:"";
   const acts=[
     video?qbtn("Abrir criativo",video,"play"):(image?qbtn("Abrir criativo",image,"image"):""),
-    (copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
+    (o._catalogLevel||copy||copyLink)?`<button class="qbtn" data-copy="${o.id}" title="Ver copy do criativo">${ic("type")}Ver copy</button>`:""
   ].filter(Boolean).join("");
   const ist=brainStatusOf(o);
   const testChip=brainIsValidationTest(o)?`<span class="chip brain-err">${ic("alert")}CRIATIVO TESTE</span>`:"";
@@ -5752,7 +5836,8 @@ function queueBrainChunkedTranscription(offerId,videoUrl){
   brainTranscriptionQueue=job.catch(()=>{});return job;
 }
 async function requestInstantTranscription(offerId,videoUrl){
-  const o=offers.find(x=>x.id===offerId); if(!o)return;
+  let o;try{o=await ensureOfferDetail(offerId);}catch(error){toast("Não foi possível carregar o card.",true);return;}
+  if(String(o.data.transcricao||"").trim()){openView(offerId);return;}
   videoUrl=videoUrl||videoForOffer(o);
   const emb=videoUrl?videoEmbedUrl(videoUrl):null;
   if(!emb||emb.type!=="video"){toast("A transcrição automática funciona só para vídeo MP4.",true);return;}
@@ -5826,7 +5911,7 @@ async function resumeOfferCreativeArchives(){
   if(!isAdmin||offerArchiveResumeWorking)return;
   let last=0;try{last=Number(localStorage.getItem("feg_offer_media_archive_v2")||0);}catch(e){}
   if(last&&Date.now()-last<15*60*1000)return;
-  const candidates=offers.filter(offerCreativeNeedsArchive).filter(o=>!offerArchiveQueued.has(o.id)).slice(0,24);
+  const candidates=offers.filter(SwipeCatalog.isFull).filter(offerCreativeNeedsArchive).filter(o=>!offerArchiveQueued.has(o.id)).slice(0,24);
   if(!candidates.length)return;
   offerArchiveResumeWorking=true;
   try{
@@ -5939,6 +6024,7 @@ async function importBrainBatch(files){
     const nome=String(record.nome||"").trim();
     const key=nome.toLowerCase(),current=existing.get(key);
     if(current){
+      try{Object.assign(current,await ensureOfferDetail(current.id));delete current._catalogLevel;}catch(error){failures.push(`${nome}: não foi possível carregar os dados completos`);done++;setBrainBatchState(done,queue.length);continue;}
       const data={...(current.data||{})};
       for(const field of ["autor","nicho","metricaTipo","linkDrive","copy","copyLink","comentario"]){
         if(Object.prototype.hasOwnProperty.call(record,field))data[field]=String(record[field]??"");
@@ -6079,6 +6165,7 @@ function brainIngestControl(o){
 
 /* ===== VIEW DOS NOVOS SWIPES ===== */
 function openSimpleView(o,skipOpen){
+  if(!SwipeCatalog.isFull(o)){void openView(o.id);return;}
   currentSimpleId=o.id;
   const d=o.data||{}, kind=d.kind, logicalKind=sectionOf(o), cfg=sectionCfg(logicalKind);
   const isFegsys=d.source==="fegsys";
@@ -6436,8 +6523,9 @@ function wireVideoUpload(){
   zone.addEventListener("drop",e=>{e.preventDefault();zone.classList.remove("active");const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("video/"));if(f)uploadVideoFile(f);else toast("Arraste um arquivo de vídeo.",true);});
 }
 
-function openSimpleForm(kind,id){
+async function openSimpleForm(kind,id){
   if(!requireAdmin())return;
+  if(id)try{await ensureOfferDetail(id);}catch(error){toast("Não foi possível carregar os dados para edição. Tente novamente.",true);return;}
   sKind=kind;sEditingId=id;sFormDirty=false;sSaving=false;
   const cfg=sectionCfg(kind);
   const src=id?(offers.find(o=>o.id===id)||{}).data:null;
@@ -6577,6 +6665,7 @@ async function compressSimpleImages(){if(typeof sItem.print==="string")sItem.pri
 function hasSimpleContent(p){return !!(p.nome||p.link||p.linkAnuncio||p.video||p.transcricao||p.print||p.comentario||p.marca||p.autor||p.metricaValor||p.linkDrive||p.copy||p.copyLink||p.resumo||p.copyVsl||p.copyVslLink||p.videoVsl||p.copyCriativo||p.copyCriativoLink||p.videoCriativo);}
 async function saveSimpleForm(){
   if(!requireAdmin())return false;
+  if(sEditingId&&!SwipeCatalog.isFull(itemById(sEditingId))){toast("Abra novamente a edição para carregar todos os dados.",true);return false;}
   if(sSaving)return false;
   sSaving=true;setSimpleSaveState("saving");setSync("load","Salvando");
   await compressSimpleImages();
