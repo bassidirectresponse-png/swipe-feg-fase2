@@ -12,6 +12,7 @@ import {
 import { supabaseAdminHeaders } from "./_supabase-admin.mjs";
 import { verifyGithubAutomationToken } from "./_github-oidc.mjs";
 
+import { BRAND_CREATIVE_GENERATION } from "../../lib/brand-creative-policy.mjs";
 import {taxonomy} from "../../lib/niche-taxonomy.mjs";
 
 export function normalizeTaxonomy(data) {
@@ -316,7 +317,7 @@ export default async req => {
         byIdentity.set(identity(item), row);
         for (const [index, ad] of (item.createCreativeCards ? item.ads : []).entries()) {
           const key = canonicalUrl(ad.url); if (!key || adUrls.has(key)) continue;
-          const brandFields = item.kind === "brandsvalidated" ? { division: "fegbrands", marca: item.brand || item.name } : {};
+          const brandFields = ["brandsvalidated", "brandsgeneral"].includes(item.kind) ? { division: "fegbrands", brandCreativeGeneration: BRAND_CREATIVE_GENERATION, collectionLabel: item.brand || item.name, marca: item.brand || item.name } : {};
           const creative = await createRow({ ...standaloneData({ ...item, kind: "criativo", name: ad.creativeName || `${item.name} · anúncio ${index + 1}` }, batchDate, ad), ...brandFields, sourceOfferId: row.id, sourceOfferName: item.name });
           adUrls.add(key); applied.push({ id: creative.id, kind: "criativo", name: creative.data.nome });
         }

@@ -1,5 +1,7 @@
 import { brandCreativeArchived } from "../../lib/brand-creative-policy.mjs";
 
+import { mediaOf } from "../../lib/brand-media-archive.mjs";
+
 const FACEBOOK_HOSTS = ["facebook.com", "fb.com", "fb.me", "fb.watch"];
 const STORAGE_VIDEO_MARK = "/storage/v1/object/public/criativos/";
 const VIDEO_EXTENSIONS = /\.(?:mp4|webm|mov|m4v|ogg)(?:\?|$)/i;
@@ -70,7 +72,9 @@ function isFreshWork(data, fields, now, staleMs) {
 export function mediaArchiveDue(data = {}, now = Date.now()) {
   if (data.kind === "organic" || data.division === "organic") return false;
   if (brandCreativeArchived(data)) return false;
-  if (data.kind !== "criativo" || !data.sourceOfferId || !isFacebookUrl(data.linkAnuncio) || hasStoredMedia(data)) return false;
+  if (data.mediaArchiveStatus === "source_required") return false;
+  const archived = data.division === "fegbrands" ? mediaOf(data).length > 0 : hasStoredMedia(data);
+  if (data.kind !== "criativo" || !data.sourceOfferId || !isFacebookUrl(data.linkAnuncio) || archived) return false;
   const retryAt = timestamp(data.mediaArchiveNextRetryAt);
   if (retryAt && retryAt > now) return false;
   const status = String(data.mediaArchiveStatus || data.fbIngestStatus || "").toLowerCase();

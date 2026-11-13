@@ -12,6 +12,8 @@ import {
   queueMediaArchive,
 } from "./_creative-integrity.mjs";
 
+import { listArchiveBrands, reconcileBrand, brandArchiveSourceKey } from "./_brand-archive.mjs";
+
 const MAX_DISPATCHES = 8;
 const PAGE_SIZE = 1000;
 
@@ -87,6 +89,8 @@ export default async () => {
   const lock = await acquireAutomationLock("offer-creative-archive", 9 * 60_000);
   if (!lock) return Response.json({ ok: true, skipped: "already_running" });
   try {
+    const changedBrands = (await listArchiveBrands()).filter(row => row.data.brandArchiveSourceKey !== brandArchiveSourceKey(row.data));
+    for (const brand of changedBrands.slice(0, 2)) await reconcileBrand(brand.id);
     const pending = await listPending();
     let dispatched = 0;
     for (const row of pending) {

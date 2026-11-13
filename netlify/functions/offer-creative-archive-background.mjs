@@ -17,6 +17,10 @@ import {
   hasStoredMedia,
 } from "./_creative-integrity.mjs";
 
+import { resolveBrandMedia } from "./_brand-apify-media.mjs";
+import { mediaOf } from "../../lib/brand-media-archive.mjs";
+import { saveBrandCreativeMedia } from "./_brand-archive.mjs";
+
 const MAX_BYTES = 60 * 1024 * 1024;
 const FB_MEDIA_HOSTS = ["facebook.com", "fbcdn.net", "fbsbx.com", "akamaihd.net"];
 
@@ -111,6 +115,15 @@ export const handler = async event => {
     if (current.kind !== "criativo" || !current.sourceOfferId || !isFacebookUrl(current.linkAnuncio)) {
       throw new Error("criativo não pertence a uma oferta do Facebook");
     }
+    if (current.division === "fegbrands") {
+      if (mediaOf(current).length) {
+        await saveBrandCreativeMedia(id, mediaOf(current), "storage-existing");
+        return { statusCode: 202, body: "" };
+      }
+      const scraped = await resolveBrandMedia(current.linkAnuncio);
+      await saveBrandCreativeMedia(id, scraped.media, scraped.source);
+      return { statusCode: 202, body: "" };
+    }
     if (hasStoredMedia(current)) {
       const type = String(current.video || "").trim() ? "video" : "image";
       const url = type === "video" ? current.video : (current.print || current.img);
@@ -121,11 +134,11 @@ export const handler = async event => {
       return { statusCode: 202, body: "" };
     }
 
+    const beforeWorking = { ...current };
     current.fbIngestStatus = "working";
     current.mediaArchiveStatus = "working";
     current.fbIngestError = "";
     current.mediaArchiveStartedAt = new Date().toISOString();
-    const beforeWorking = { ...current };
     await saveCreative(id, beforeWorking, current);
 
     const scraped = await resolveFacebookMedia(current.linkAnuncio);
@@ -151,9 +164,10 @@ export const handler = async event => {
         latest.fbIngestError = message;
         latest.fbIngestAt = new Date().toISOString();
         latest.mediaArchiveRequired = true;
-        latest.mediaArchiveStatus = "error";
+        latest.mediaArchiveStatus = error?.code === "BRAND_MEDIA_SOURCE_REQUIRED" ? "source_required" : "error";
         latest.mediaArchiveError = message;
-        latest.mediaArchiveNextRetryAt = unavailable
+        latest.mediaArchiveNextRetryAt = error?.code === "BRAND_MEDIA_PROCESSING"
+          ? new Date(Date.now() + 3 * 60_000).toISOString() : unavailable
           ? new Date(Date.now() + 12 * 60 * 60_000).toISOString()
           : retryAt(attempt);
         await saveCreative(id, beforeFailure, latest);

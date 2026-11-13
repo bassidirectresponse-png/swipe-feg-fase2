@@ -3030,7 +3030,7 @@ async function openView(id,useAdminDraft=true){
     const topAdName=(ad,index)=>interactiveInsider?topAdDisplayName(ad,index):(ad.nome||`Top ad ${index+1}`);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
     const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":"Link do Facebook"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
-    const archivedHtml=archivedAds.length?`<div class="taboola-grid">${archivedAds.map((ad,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(ad.title||`Anúncio ${ad.adArchiveId}`)}</span></div><div class="brand-ad-meta"><span class="chip accent">${ad.media.length} arquivo${ad.media.length===1?"":"s"} salvo${ad.media.length===1?"":"s"}</span><span class="chip">Meta ID ${esc(ad.adArchiveId)}</span></div>${ad.media.map((media,index)=>`<div style="margin-top:12px">${media.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(media.url)}"></video></div>`:shotView(`Arquivo ${index+1}`,media.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn(`Baixar ${media.quality==="hd"||media.quality==="original"?"original":"cópia disponível"}`,media.url,false,"file")}</div></div>`).join("")}<div class="linkbtns" style="margin-top:12px">${linkbtn("Ver anúncio na Meta",ad.link,true,"play")}</div></div>`).join("")}</div>`:"";
+    const archivedHtml=archivedAds.length?`<div class="taboola-grid">${archivedAds.map((ad,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(ad.title||`Anúncio ${ad.adArchiveId}`)}</span></div><div class="brand-ad-meta"><span class="chip accent">${ad.media.length} arquivo${ad.media.length===1?"":"s"} salvo${ad.media.length===1?"":"s"}</span>${ad.adArchiveId?`<span class="chip">Meta ID ${esc(ad.adArchiveId)}</span>`:""}</div>${ad.media.map((media,index)=>`<div style="margin-top:12px">${media.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(media.url)}"></video></div>`:shotView(`Arquivo ${index+1}`,media.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn(`Baixar ${media.quality==="hd"||media.quality==="original"?"original":"cópia disponível"}`,media.url,false,"file")}</div></div>`).join("")}<div class="linkbtns" style="margin-top:12px">${linkbtn("Ver anúncio na Meta",ad.link,true,"play")}</div></div>`).join("")}</div>`:"";
     const bmCore=interactiveInsider
       ?`${reportsHtml}${bmEvidenceHtml(d,id)}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
       :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
@@ -3413,6 +3413,7 @@ async function syncOfferCreatives(offerRow){
   await ensureCatalogSection("criativo");
   const d=offerRow&&offerRow.data||{};
   const items=[
+    ...(Array.isArray(d.brandTopAds)?d.brandTopAds:[]),
     ...(Array.isArray(d.criativos)?d.criativos:[]).map(item=>({
       nome:item&&item.nome,link:item&&item.link,copyLink:item&&item.transcricao,print:""
     })),
@@ -3424,11 +3425,13 @@ async function syncOfferCreatives(offerRow){
     const link=String(source&&source.link||"").trim(),key=canonicalCreativeUrl(link);
     if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&canonicalCreativeUrl(o.data.linkAnuncio||o.data.video||o.data.print)===key))continue;
     const facebook=isFbUrl(link);
+    const brand=["brandsvalidated","brandsgeneral"].includes(d.kind);
     const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionRequired:facebook,transcriptionStatus:facebook?"waiting_for_media":"",transcricaoStatus:facebook?"waiting_for_media":"",transcriptionAttempts:0,transcriptionProvider:"groq",transcriptionVersion:"1",fbIngestStatus:facebook?"pending":"",mediaArchiveRequired:facebook,mediaArchiveStatus:facebook?"pending":"",sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
+    if(brand)Object.assign(data,{division:"fegbrands",brandCreativeGeneration:BRAND_CREATIVE_GENERATION,marca:d.nomeMarca||d.nomeOferta||"",collectionLabel:d.nomeMarca||d.nomeOferta||"",subnicho:d.subnicho||"",brandCategory:d.brandCategory||""});
     const result=await sb.from("offers").insert({data}).select();
     const created=result.data&&result.data[0];if(!created)continue;
     offers.push(created);
-    if(facebook)setTimeout(()=>triggerFbIngest(created.id,link),0);
+    if(facebook&&!brand)setTimeout(()=>triggerFbIngest(created.id,link),0);
   }
 }
 
@@ -6249,6 +6252,8 @@ function openSimpleView(o,skipOpen){
     if(showVideo){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
     }
+    const extraMedia=(d.archivedMedia||[]).filter(m=>m.url&&m.url!==va&&m.url!==d.print);
+    if(extraMedia.length)sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Outros arquivos do anúncio</span><span class="sec__line"></span></div><div class="taboola-grid">${extraMedia.map((m,i)=>`<div class="dom">${m.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(m.url)}"></video></div>`:shotView(`Imagem ${i+1}`,m.url)}<div class="linkbtns">${linkbtn("Baixar arquivo",m.url,false,"file")}</div></div>`).join("")}</div></section>`;
     if(d.print){
       const lbl=d.plataforma==="taboola"?"Anúncio (Taboola)":"Imagem";
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">${lbl}</span><span class="sec__line"></span></div><div class="dom__shots" style="grid-template-columns:1fr">${shotView("Criativo",d.print)}</div></section>`;
