@@ -164,7 +164,7 @@ export const handler = async event => {
         latest.fbIngestError = message;
         latest.fbIngestAt = new Date().toISOString();
         latest.mediaArchiveRequired = true;
-        latest.mediaArchiveStatus = error?.code === "BRAND_MEDIA_SOURCE_REQUIRED" ? "source_required" : "error";
+        latest.mediaArchiveStatus = error?.code === "BRAND_MEDIA_ACCESS_REQUIRED" ? "access_required" : error?.code === "BRAND_MEDIA_INCOMPLETE" ? "review_required" : error?.code === "BRAND_MEDIA_SOURCE_REQUIRED" ? "source_required" : "error";
         latest.mediaArchiveError = message;
         latest.mediaArchiveNextRetryAt = error?.code === "BRAND_MEDIA_PROCESSING"
           ? new Date(Date.now() + 3 * 60_000).toISOString() : unavailable

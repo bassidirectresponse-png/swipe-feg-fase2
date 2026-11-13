@@ -72,7 +72,7 @@ function isFreshWork(data, fields, now, staleMs) {
 export function mediaArchiveDue(data = {}, now = Date.now()) {
   if (data.kind === "organic" || data.division === "organic") return false;
   if (brandCreativeArchived(data)) return false;
-  if (data.mediaArchiveStatus === "source_required") return false;
+  if (["source_required", "access_required", "review_required"].includes(data.mediaArchiveStatus)) return false;
   const archived = data.division === "fegbrands" ? mediaOf(data).length > 0 : hasStoredMedia(data);
   if (data.kind !== "criativo" || !data.sourceOfferId || !isFacebookUrl(data.linkAnuncio) || archived) return false;
   const retryAt = timestamp(data.mediaArchiveNextRetryAt);

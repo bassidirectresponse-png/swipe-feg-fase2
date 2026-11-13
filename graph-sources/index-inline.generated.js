@@ -3029,7 +3029,7 @@ async function openView(id,useAdminDraft=true){
     const reportsHtml=interactiveInsider?brandReportsHtml(d,id):brandReportsStaticHtml(d);
     const topAdName=(ad,index)=>interactiveInsider?topAdDisplayName(ad,index):(ad.nome||`Top ad ${index+1}`);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":x.ingestStatus==="source_required"?"Arquivo original necessário":"Arquivamento pendente"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":x.ingestStatus==="access_required"?"Prévia exige login":x.ingestStatus==="review_required"?"Coleta não concluída":x.ingestStatus==="source_required"?"Arquivo original necessário":"Arquivamento pendente"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     const archivedHtml=archivedAds.length?`<div class="taboola-grid">${archivedAds.map((ad,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(ad.title||`Anúncio ${ad.adArchiveId}`)}</span></div><div class="brand-ad-meta"><span class="chip accent">${ad.media.length} arquivo${ad.media.length===1?"":"s"} salvo${ad.media.length===1?"":"s"}</span>${ad.adArchiveId?`<span class="chip">Meta ID ${esc(ad.adArchiveId)}</span>`:""}</div>${ad.media.map((media,index)=>`<div style="margin-top:12px">${media.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(media.url)}"></video></div>`:shotView(`Arquivo ${index+1}`,media.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn(`Baixar ${media.quality==="hd"||media.quality==="original"?"original":"cópia disponível"}`,media.url,false,"file")}</div></div>`).join("")}<div class="linkbtns" style="margin-top:12px">${linkbtn("Ver anúncio na Meta",ad.link,true,"play")}</div></div>`).join("")}</div>`:"";
     const bmCore=interactiveInsider
       ?`${reportsHtml}${bmEvidenceHtml(d,id)}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
@@ -4807,7 +4807,7 @@ const creativeTranslations=new Set();
 let creativeTranslationQueue=[],creativeTranslationActive=0;
 function creativeNeedsTranslation(o){
   const d=(o&&o.data)||{},status=String(d.transcricaoPtStatus||"").toLowerCase();
-  if(d.kind==="organic"||d.division==="organic"||status==="source_required")return false;if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic"||["source_required","access_required","review_required"].includes(status))return false;if(brandCreativeArchived(d))return false;
   const retryAt=Date.parse(d.transcricaoPtProximaTentativa||"");
   return d.kind==="criativo"&&String(d.transcricao||"").trim()&&!String(d.transcricaoPt||"").trim()&&!["working","processing"].includes(status)&&(!Number.isFinite(retryAt)||retryAt<=Date.now());
 }
@@ -5443,7 +5443,7 @@ function criativoCard(o){
 function brandCreativeCard(o){
   const d=o.data||{},va=videoOfCrv(d),hasVid=!!va,brand=d.marca||"Balls n Brains";
   const collection=d.collectionLabel||brand;
-  const archiveState=d.mediaArchiveStatus==="source_required"?"Arquivo original necessário":!va&&!d.print?"Arquivamento pendente":"Mídia salva";
+  const archiveState=d.mediaArchiveStatus==="access_required"?"Prévia exige login":d.mediaArchiveStatus==="review_required"?"Coleta não concluída":d.mediaArchiveStatus==="source_required"?"Arquivo original necessário":!va&&!d.print?"Arquivamento pendente":"Mídia salva";
   const actions=[hasVid?qbtn("Vídeo",va,"play"):"",d.print?qbtn("Imagem",d.print,"image"):""].filter(Boolean).join("");
   return card({
     id:o.id,variant:"kcard brand-card",
@@ -5895,7 +5895,7 @@ function fbStatusOf(o){
 function fbDaysText(d){if(d.fbDaysActive==null)return"";const n=d.fbDaysActive;return (d.fbActive?"Ativo há ":"Ficou ativo ")+n+(n===1?" dia":" dias");}
 function offerCreativeNeedsArchive(o){
   const d=(o&&o.data)||{},status=String(d.mediaArchiveStatus||d.fbIngestStatus||"").toLowerCase();
-  if(d.kind==="organic"||d.division==="organic"||status==="source_required")return false;if(brandCreativeArchived(d))return false;
+  if(d.kind==="organic"||d.division==="organic"||["source_required","access_required","review_required"].includes(status))return false;if(brandCreativeArchived(d))return false;
   if(d.kind!=="criativo"||!d.sourceOfferId||!isFbUrl(d.linkAnuncio))return false;
   if(String(d.video||d.print||"").trim())return false;
   if(["queued","working","processing"].includes(status))return fbArchiveIsStale(d);
@@ -5991,7 +5991,7 @@ function fbIngestControl(o){
   const st=fbStatusOf(o),working=st==="working";
   const btn=isAdmin?`<button class="btn btn--outline btn--sm" data-fbingest="${o.id}"${working?" disabled":""}>${ic("download")}${working?"Baixando do Facebook…":(d.video?"Rebaixar do Facebook":"Baixar criativo do Facebook")}</button>`:"";
   const note=st==="partial"?`<div class="fbnote">${ic("alert")}Dados do anúncio salvos, mas o vídeo não pôde ser baixado${d.fbIngestError?` (${esc(d.fbIngestError)})`:""}.</div>`
-    :st==="error"||st==="source_required"?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
+    :["error","source_required","access_required","review_required"].includes(st)?`<div class="fbnote fbnote--err">${ic("alert")}${esc(d.fbIngestError||"falha ao baixar do Facebook")}</div>`:"";
   return btn||note?`<div class="linkbtns" style="margin-top:12px">${btn}</div>${note}`:"";
 }
 

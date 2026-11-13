@@ -56,3 +56,28 @@ test('reaproveita vínculo alternativo confirmado sem associar outros anúncios'
  assert.equal(matchCreative([row],'brand',{key:adKey(link)})?.id,'original');
  assert.equal(matchCreative([row],'brand',{key:adKey(link+'D')}),undefined);
 });
+test('timeout não comprova mídia indisponível e login não dispara cobrança recorrente',async()=>{
+ const {collectionOutcome}=await import('../netlify/functions/_brand-apify-media.mjs');
+ assert.equal(collectionOutcome('TIMED-OUT',[]),'incomplete');
+ assert.equal(collectionOutcome('FAILED',[]),'incomplete');
+ assert.equal(collectionOutcome('SUCCEEDED',[]),'unavailable');
+ assert.equal(collectionOutcome('TIMED-OUT',[{sourceUrl:'https://v.fbcdn.net/a.mp4'}]),'ready');
+ for(const state of ['access_required','review_required'])assert.equal(mediaArchiveDue({kind:'criativo',division:'fegbrands',brandCreativeGeneration:'offer-topads-2026-10-07',sourceOfferId:'brand',linkAnuncio:'https://fb.me/adspreview/facebook/ABC',mediaArchiveStatus:state}),false);
+});
+test('prévia que exige login é reconhecida antes de consulta paga, sem usar palavras isoladas',async()=>{
+ const {previewRequiresLogin}=await import('../netlify/functions/_brand-apify-media.mjs');
+ assert.equal(previewRequiresLogin('https://business.facebook.com/business/loginpage/?next=x'),true);
+ assert.equal(previewRequiresLogin('https://facebook.com/checkpoint/123'),true);
+ assert.equal(previewRequiresLogin('https://facebook.com/ads/experience/confirmation/', '<input name="email"><input name="pass">'),true);
+ assert.equal(previewRequiresLogin('https://facebook.com/ads/experience/confirmation/', 'Login to learn more about our product'),false);
+ assert.equal(previewRequiresLogin('https://evil.example/login/'),false);
+});
+test('nova tentativa é explícita e nunca recolhe mídia pronta ou prévia bloqueada por login',async()=>{
+ const {collectionEligible}=await import('../netlify/functions/_brand-apify-media.mjs');
+ assert.equal(collectionEligible(null),true);
+ assert.equal(collectionEligible({state:'incomplete'}),false);
+ assert.equal(collectionEligible({state:'incomplete'},true),true);
+ assert.equal(collectionEligible({state:'ready',media:[{url}]},true),false);
+ assert.equal(collectionEligible({state:'incomplete',publicCheck:{status:'login_required'}},true),false);
+ assert.equal(collectionEligible({state:'running'},true),false);
+});
