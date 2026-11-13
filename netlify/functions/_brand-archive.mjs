@@ -137,7 +137,7 @@ export async function reconcileBrand(id) {
     const topAds=(offer.data.brandTopAds || []).map(ad=>{
       const key=adKey(ad.link),row=key&&active.find(r=>[r.data.linkAnuncio,...(r.data.sourceAdLinks||[])].some(link=>adKey(link)===key));
       const media=mediaOf(row?.data).filter(m=>verified.has(m.url));
-      return media.length?{...ad,video:media.find(m=>m.type==='video')?.url || '',img:media.find(m=>m.type==='image')?.url || '',media,ingestStatus:'done',ingestError:''}:ad;
+      return media.length?{...ad,video:media.find(m=>m.type==='video')?.url || '',img:media.find(m=>m.type==='image')?.url || '',media,ingestStatus:'done',ingestError:''}:row?{...ad,ingestStatus:row.data.mediaArchiveStatus==='source_required'?'source_required':'pending',ingestError:row.data.mediaArchiveError||''}:ad;
     });
     const pending=references(offer.data).filter(ref=>!mediaOf(matchCreative(active,id,ref)?.data).some(m=>verified.has(m.url))).map(ref=>({link:ref.link,name:ref.nome || ref.title,key:ref.key}));
     const summary={verifiedFiles:new Set([...verified.values()].map(assetIdentity)).size,creativeCards:active.length,pendingLinks:pending.length};

@@ -50,3 +50,9 @@ test('manutenção recusa acesso anônimo e campos arbitrários antes de tocar n
  handler=createBrandMaintenance({verify:async()=>({})});
  assert.equal((await handler(new Request('https://app.test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reconcile',sql:'drop table'})}))).status,400);
 });
+test('reaproveita vínculo alternativo confirmado sem associar outros anúncios',()=>{
+ const link='https://fb.me/adspreview/facebook/ABC';
+ const row={id:'original',data:{sourceOfferId:'brand',video:url,sourceAdLinks:[link]}};
+ assert.equal(matchCreative([row],'brand',{key:adKey(link)})?.id,'original');
+ assert.equal(matchCreative([row],'brand',{key:adKey(link+'D')}),undefined);
+});
