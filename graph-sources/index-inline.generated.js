@@ -485,10 +485,11 @@ async function ensureCatalogSection(section,refresh=false){
   const scope=SwipeCatalog.group(section);if(!scope)return;
   if(catalogRequests.has(scope))return catalogRequests.get(scope);
   if(!refresh&&catalogScopes.has(scope))return;
+  const previousRows=new Map(offers.map(row=>[row.id,row]));
   const request=(async()=>{
     const rows=await readCatalogScope(scope),ids=new Set(rows.map(row=>row.id));
-    // Publish atomically after all pages succeed. Keep already hydrated documents.
-    offers=SwipeCatalog.merge(offers.filter(row=>row.adminPrivate||SwipeCatalog.group(sectionOf(row))!==scope||ids.has(row.id)),rows);
+    // Publish atomically. Explicit refresh invalidates old details, but never a newer in-flight read.
+    offers=SwipeCatalog.merge(offers.filter(row=>row.adminPrivate||SwipeCatalog.group(sectionOf(row))!==scope||ids.has(row.id)&&(!refresh||previousRows.get(row.id)!==row)),rows);
     catalogScopes.add(scope);
   })();
   catalogRequests.set(scope,request);
@@ -513,7 +514,13 @@ async function loadOffers(){
   return true;
 }
 async function ensureOfferDetail(id){
-  const current=itemById(id);if(SwipeCatalog.isFull(current))return current;
+  const current=itemById(id);
+  if(current?.data?.source==="fegsys"&&current._catalogLevel&&current.manualOfferId){
+    const manual=await ensureOfferDetail(current.manualOfferId),d=manual.data||{};
+    current.data={...d,...current.data,copy:current.data.copy||brainCopyText(d),transcricao:d.transcricao||"",transcricaoPt:d.transcricaoPt||"",transcricaoWords:d.transcricaoWords||[],transcricaoSegments:d.transcricaoSegments||[]};
+    current.data.copyMissing=!(current.data.copy||current.data.copyLink);delete current._catalogLevel;return current;
+  }
+  if(SwipeCatalog.isFull(current))return current;
   if(offerDetailRequests.has(id))return offerDetailRequests.get(id);
   const request=(async()=>{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
@@ -3971,7 +3978,7 @@ async function loadFegsysBrain(force=false){
     fegsysCards=incoming.map(card=>{
       const manualItem=manual.get(brainNameKey(card.nome)),existing=manualItem&&manualItem.data||{};
       const video=card.video_url||existing.video||"",print=card.thumbnail_url||existing.print||"",copy=card.copy_text||existing.copy||existing.transcricao||"",copyLink=card.copy_url||existing.copyLink||existing.copyVslLink||existing.copyCriativoLink||"";
-      return{id:card.id,created_at:result.syncedAt,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:existing.autor||"FEGSYS",nicho:existing.nicho||"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"vendas",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video,linkDrive:card.drive_video_view_url||existing.linkDrive||"",print,copy,copyLink,driveStatus:card.drive_status||"",driveVideoName:card.drive_video_name||"",driveCopyName:card.drive_copy_name||"",matchedManual:!!manualItem,videoMissing:!video,copyMissing:!(copy||copyLink)}};
+      return{id:card.id,created_at:result.syncedAt,manualOfferId:manualItem?.id,_catalogLevel:manualItem&&!SwipeCatalog.isFull(manualItem)?"summary":undefined,data:{kind:"megabrain",source:"fegsys",nome:card.nome,autor:existing.autor||"FEGSYS",nicho:existing.nicho||"",platforms:card.platforms||[],channels:card.channels||[],shops:card.shops||[],salesPlatforms:card.sales_platforms||[],fegsysRange:result.range,fegsysSources:result.sourceStatus||null,fegsysMetrics:card,metricaTipo:"vendas",metricaValor:String(Math.round(+card.conversions||0)),metricaPendente:false,video,linkDrive:card.drive_video_view_url||existing.linkDrive||"",print,copy,copyLink,driveStatus:card.drive_status||"",driveVideoName:card.drive_video_name||"",driveCopyName:card.drive_copy_name||"",matchedManual:!!manualItem,videoMissing:!video,copyMissing:!(copy||copyLink)}};
     });
     fegsysTotals=result.totals||null;fegsysSyncedAt=result.syncedAt||"";fegsysCoverage=result.coverage||null;fegsysSourceStatus=result.sourceStatus||null;fegsysLoadedKey=key;
   }catch(error){fegsysCards=[];fegsysTotals=null;fegsysSourceStatus=null;fegsysError=String(error&&error.message||error);fegsysLoadedKey=key;}
@@ -5498,7 +5505,7 @@ function fegsysBrainCard(o){
   const sourceLinks=[
     d.linkDrive?`<a class="btn btn--outline btn--sm" href="${esc(d.linkDrive)}" target="_blank" rel="noopener">${ic("folder")}Abrir no Drive</a>`:"",
     d.video?`<a class="btn btn--outline btn--sm" href="${esc(d.video)}" target="_blank" rel="noopener">${ic("play")}Abrir mídia</a>`:"",
-    d.copy?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:"",
+    (o._catalogLevel||d.copy)?`<button class="qbtn" data-copy="${o.id}" title="Ver e copiar a copy">${ic("type")}Ver copy</button>`:"",
     d.copyLink?`<a class="btn btn--outline btn--sm" href="${esc(d.copyLink)}" target="_blank" rel="noopener">${ic("file")}Abrir documento</a>`:""
   ].filter(Boolean).join("");
   const availability=[d.video?`<span class="chip fegsys-available">${ic("play")}Vídeo</span>`:"",(d.copy||d.copyLink)?`<span class="chip fegsys-available">${ic("file")}Copy</span>`:""].filter(Boolean).join("");

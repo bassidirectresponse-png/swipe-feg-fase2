@@ -52,3 +52,13 @@ test('both save paths reject partial documents before constructing or writing a 
 test('stale detail response cannot reopen a card after navigating away',async()=>{
  let finish;const elements=new Map();const ctx=vm.createContext({SwipeCatalog,detailViewRequest:0,isAdmin:true,itemById:()=>({_catalogLevel:'summary'}),ensureOfferDetail:()=>new Promise(resolve=>{finish=resolve;}),$:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);},openOverlay:()=>{},itemSection:()=>assert.fail('stale detail rendered')});vm.runInContext(fn('openView'),ctx);const pending=ctx.openView('1');ctx.detailViewRequest++;finish({id:'1',data:{}});await pending;
 });
+test('Fegsys hydrates the linked manual creative without replacing its sales metrics',async()=>{
+ const virtual={id:'fegsys:1',manualOfferId:'1',_catalogLevel:'summary',data:{source:'fegsys',nome:'Creative',copy:'',fegsysMetrics:{conversions:7}}};
+ const ctx=detailContext(async()=>({data:{id:'1',data:{nome:'Manual',transcricao:'Saved transcript',transcricaoWords:[{word:'Saved',start:0,end:1}]}}}));
+ const lookup=ctx.itemById;ctx.itemById=id=>id===virtual.id?virtual:lookup(id);ctx.brainCopyText=d=>d.transcricao||d.copy||'';
+ const detail=await ctx.ensureOfferDetail('fegsys:1');assert.equal(detail.data.copy,'Saved transcript');assert.equal(detail.data.fegsysMetrics.conversions,7);assert.equal(detail.data.transcricaoWords.length,1);assert.ok(SwipeCatalog.isFull(detail));assert.equal(SwipeCatalog.group('megabrainfegsys'),'megabrain');
+});
+test('explicit refresh updates metadata and invalidates previously hydrated details',async()=>{
+ const ctx=vm.createContext({SwipeCatalog,Set,Map,catalogScopes:new Set(['criativo']),catalogRequests:new Map(),sectionOf:r=>r.data.kind,offers:[{id:'1',data:{kind:'criativo',nome:'Old',transcricao:'outdated'}}],readCatalogScope:async()=>[{id:'1',data:{kind:'criativo',nome:'Updated'},_catalogLevel:'summary'}]});
+ vm.runInContext(fn('ensureCatalogSection'),ctx);await ctx.ensureCatalogSection('criativo',true);assert.equal(ctx.offers[0].data.nome,'Updated');assert.equal(SwipeCatalog.isFull(ctx.offers[0]),false);
+});
