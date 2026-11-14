@@ -8,7 +8,7 @@ import { detectMedia } from '../../lib/apify-brand-archive.mjs';
 import { ownedMedia, assetIdentity, hasInsiderData, adKey, stableCreativeId, mediaOf, references, brandCreativeFields, matchCreative } from '../../lib/brand-media-archive.mjs';
 import { BRAND_CREATIVE_GENERATION } from '../../lib/brand-creative-policy.mjs';
 
-export function brandArchiveSourceKey(d) { return createHash("sha256").update(JSON.stringify([d.brandTopAds || [], d.criativos || []])).digest("hex"); }
+export function brandArchiveSourceKey(d) { return createHash("sha256").update(JSON.stringify(['top-ads-only-v1',d.brandTopAds || []])).digest("hex"); }
 const store = () => getStore({name:'brand-media-archive',consistency:'strong'});
 async function query(params) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/offers?${new URLSearchParams(params)}`, {headers:await supabaseAdminHeaders(),signal:AbortSignal.timeout(15000)});
@@ -17,7 +17,7 @@ async function query(params) {
 }
 export async function listArchiveBrands() {
   const rows = await query({select:'id,data', 'data->>kind':'in.(brandsvalidated,brandsgeneral)',limit:'500',order:'id'});
-  return rows.filter(r=>hasInsiderData(r.data));
+  return rows.filter(r=>hasInsiderData(r.data) || references(r.data).length);
 }
 export async function readArchiveBrand(id) {
   const [row] = await query({id:`eq.${id}`,select:'id,data'});
@@ -102,7 +102,8 @@ export async function reconcileBrand(id) {
     const candidates=[...references(offer.data).flatMap(mediaOf),...rows.filter(r=>r.data.brandCreativeGeneration===BRAND_CREATIVE_GENERATION || references(offer.data).some(ref=>adKey(r.data.linkAnuncio)===ref.key)).flatMap(r=>mediaOf(r.data))];
     const queue=[...new Map(candidates.map(m=>[m.url,m])).values()];
     await Promise.all(Array.from({length:5},async()=>{while(queue.length){const a=queue.shift(),v=await verifiedMedia(a);if(v)verified.set(v.url,v);}}));
-    let created=0,updated=0;
+    let created=0,updated=0,excluded=0;
+    const selected=new Set();
     const canonical=new Map(),identityRows=new Map();
     for(const duplicate of rows.filter(r=>r.data.mediaDuplicateOf)){
       const primary=rows.find(r=>r.id===duplicate.data.mediaDuplicateOf);
@@ -127,6 +128,8 @@ export async function reconcileBrand(id) {
       let row=matchCreative(rows,id,ref);
       const ready=mediaOf({media:[...mediaOf(row?.data),...mediaOf(ref)]}).filter(m=>verified.has(m.url)).map(m=>verified.get(m.url));
       const next={...(row?.data || {}),...fields};
+      delete next.mediaDuplicateOf;
+      delete next.brandCreativeExclusionReason;
       next.nome ||= `${fields.marca} · ${ref.nome || ref.title || 'Anúncio'}`;
       next.nomeOriginal ||= ref.nome || ref.title || '';
       next.linkAnuncio ||= ref.link || '';
@@ -145,6 +148,12 @@ export async function reconcileBrand(id) {
         const r=await fetch(`${SUPABASE_URL}/rest/v1/offers`,{method:'POST',headers:await supabaseAdminHeaders({'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates,return=minimal'}),body:JSON.stringify(row),signal:AbortSignal.timeout(12000)});
         if(!r.ok)throw new Error(`Cadastro do criativo: HTTP ${r.status}`);rows.push(row);created++;
       }
+      selected.add(row.id);
+    }
+    // Logical archive only: retain every file, original reference and history row.
+    for(const row of rows.filter(r=>r.data.brandCreativeGeneration===BRAND_CREATIVE_GENERATION&&!selected.has(r.id))){
+      await patchCreative(row,{...row.data,brandCreativeGeneration:BRAND_CREATIVE_GENERATION+'-outside-top-ads',brandCreativeExclusionReason:'not_in_product_top_ads'});
+      excluded++;
     }
     const active=rows.filter(r=>r.data.brandCreativeGeneration===BRAND_CREATIVE_GENERATION);
     // Keep historical archive entries; add only verified assets, once per URL.
@@ -164,11 +173,11 @@ export async function reconcileBrand(id) {
       return media.length?{...ad,video:media.find(m=>m.type==='video')?.url || '',img:media.find(m=>m.type==='image')?.url || '',media,ingestStatus:'done',ingestError:''}:row?{...ad,ingestStatus:['source_required','access_required','review_required'].includes(row.data.mediaArchiveStatus)?row.data.mediaArchiveStatus:'pending',ingestError:row.data.mediaArchiveError||''}:ad;
     });
     const pending=references(offer.data).filter(ref=>!mediaOf(matchCreative(active,id,ref)?.data).some(m=>verified.has(m.url))).map(ref=>({link:ref.link,name:ref.nome || ref.title,key:ref.key}));
-    const summary={verifiedFiles:new Set([...verified.values()].map(assetIdentity)).size,creativeCards:active.length,pendingLinks:pending.length};
+    const summary={verifiedFiles:new Set(active.flatMap(r=>mediaOf(r.data)).map(m=>verified.get(m.url)).filter(Boolean).map(assetIdentity)).size,creativeCards:active.length,pendingLinks:pending.length};
     const next={...offer.data,brandArchivedAds:gallery,brandTopAds:topAds,brandArchiveSummary:summary,brandArchiveSourceKey:brandArchiveSourceKey({...offer.data,brandTopAds:topAds})};
     const patch=shallowDataPatch(offer.data,next);
     if(Object.keys(patch).length){await store().setJSON(`backups/${new Date().toISOString()}/${id}.json`,offer);await mergeSupabaseOfferData(id,patch);}
-    return {id,name:fields.marca,created,updated,...summary,pending};
+    return {id,name:fields.marca,created,updated,excluded,...summary,pending};
   } finally {await releaseAutomationLock(lock);}
 }
 export async function saveBrandCreativeMedia(id, assets, source) {

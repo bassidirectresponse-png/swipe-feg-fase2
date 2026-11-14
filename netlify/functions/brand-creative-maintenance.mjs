@@ -41,7 +41,7 @@ export function createBrandMaintenance({verify=verifyGithubAutomationToken}={}){
     }
     const brands=body.offerId?[await readArchiveBrand(body.offerId)]:await listArchiveBrands();
     if(body.action==='inspect'){
-      const out=[];for(const b of brands){const rows=await archiveCreatives(b.id);out.push({id:b.id,name:b.data.nomeMarca||b.data.nomeOferta,refs:references(b.data),summary:b.data.brandArchiveSummary,creatives:rows.map(r=>({id:r.id,data:Object.fromEntries(Object.entries(r.data).filter(([k])=>!(/transcri|analysis|copy/i.test(k))))}))});}
+      const out=[];for(const b of brands){const rows=await archiveCreatives(b.id);out.push({id:b.id,name:b.data.nomeMarca||b.data.nomeOferta,topAds:b.data.brandTopAds||[],refs:references(b.data),summary:b.data.brandArchiveSummary,creatives:rows.map(r=>({id:r.id,data:Object.fromEntries(Object.entries(r.data).filter(([k])=>!(/transcri|analysis|copy/i.test(k))))}))});}
       return reply(200,{ok:true,brands:out,storage:await archiveStorageInfo()});
     }
     const links=[];

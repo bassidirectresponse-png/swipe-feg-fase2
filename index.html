@@ -4737,12 +4737,25 @@ function brandAdsCardSnapshot(d){
   const reading=hist.length>=2?`${hist.length} leituras · última em ${fmtDateShort(latest.d)}`:hist.length===1?`1 leitura em ${fmtDateShort(latest.d)}`:d.adsLibraryCheckedAt?`Conferido em ${esc(d.adsLibraryCheckedAt)} · histórico em formação`:"Histórico em formação";
   return `<div class="brand-ads-snapshot" role="img" aria-label="${approximate?"Aproximadamente ":""}${fmtNum(count)} anúncios ativos. ${esc(reading)}"><div class="brand-ads-snapshot__head"><span class="brand-ads-snapshot__label">Anúncios ativos</span><strong class="brand-ads-snapshot__value">${approximate}${fmtNum(count)}</strong></div>${chart}<span class="brand-ads-snapshot__meta">${reading}</span></div>`;
 }
+function brandAdMedia(ad){
+  const seenUrls=new Set(),seenAssets=new Set();
+  return [...(ad.media||[]),...(ad.archivedMedia||[]),...(ad.video?[{type:"video",url:ad.video}]:[]),...(ad.img||ad.print?[{type:"image",url:ad.img||ad.print}]:[])].filter(m=>{
+    if(!m||!m.url||!["video","image"].includes(m.type))return false;
+    const key=m.etag&&m.bytes?`${m.type}:${m.etag}:${m.bytes}`:m.url;
+    if(seenUrls.has(m.url)||seenAssets.has(key))return false;seenUrls.add(m.url);seenAssets.add(key);return true;
+  });
+}
+function brandTopAdHtml(ad,index){
+  const media=brandAdMedia(ad),name=topAdDisplayName(ad,index);
+  const state=media.length?"Mídia salva no Swipe":ad.ingestStatus==="access_required"?"Prévia exige login":ad.ingestStatus==="review_required"?"Coleta não concluída":ad.ingestStatus==="source_required"?"Arquivo original necessário":"Arquivamento pendente";
+  return `<div class="dom" data-product-top-ad="${index+1}"><div class="dom__top"><span class="dom__badge">${String(index+1).padStart(2,"0")}</span><span class="dom__name">${esc(name)}</span></div>${media.map((m,i)=>`<div class="brand-top-ad-file">${m.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(m.url)}"></video></div>`:shotView(`${name} · ${i+1}`,m.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn("Abrir mídia salva",m.url,false,"file")}</div></div>`).join("")}<div class="brand-ad-meta"><span class="chip${media.length?" accent":""}">${state}</span></div><div class="linkbtns" style="margin-top:12px">${ad.link?linkbtn("Abrir anúncio",ad.link,true,"play"):""}</div></div>`;
+}
 function brandCard(o){
   const d=normalize(isAdmin?brandHubAdminData(o):o.data),validated=sectionOf(o)==="brandsvalidated",clean=validated;
   if(clean){d.nicho=insiderCategoryOf(o);d.nomeOferta=insiderProductName(o);}
-  const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link)),archivedAds=d.brandArchivedAds.filter(x=>x&&Array.isArray(x.media)&&x.media.some(media=>media.url));
+  const bmPrints=d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.link||brandAdMedia(x).length));
   const ads=getAds(d),adsPrefix=d.adsLibraryApprox?"≈ ":"";
-  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!clean&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!clean&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!clean&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:"",validated&&archivedAds.length?`<span class="chip accent">${archivedAds.length} anúncio${archivedAds.length===1?"":"s"} arquivado${archivedAds.length===1?"":"s"}</span>`:""].filter(Boolean).join("");
+  const chips=[d.nicho?`<span class="chip niche">${esc(d.nicho)}</span>`:"",!clean&&ads!=null?`<span class="chip accent">${adsPrefix}${ads.toLocaleString("pt-BR")} ads ativos</span>`:"",!clean&&validated&&bmPrints.length?`<span class="chip">${bmPrints.length} print${bmPrints.length===1?"":"s"} da BM</span>`:"",!clean&&validated&&topAds.length?`<span class="chip accent">${topAds.length} top ad${topAds.length===1?"":"s"}</span>`:"",validated&&topAds.some(x=>brandAdMedia(x).length)?`<span class="chip accent">${topAds.filter(x=>brandAdMedia(x).length).length} top ads com mídia salva</span>`:""].filter(Boolean).join("");
   const firstDomain=(d.dominios.find(x=>x.linkDominio)||{}).linkDominio||"",firstLibrary=(d.bibliotecas.find(x=>x.link)||{}).link||"",firstAd=validated?((topAds.find(x=>x.link)||{}).link||""):((d.criativos.find(x=>x.link)||{}).link||""),fallbackVideo=(topAds.find(x=>x.video)||{}).video||"";
   const libBtnLabel=hasBmHistoryData(d)?"Funil Winner":"Biblioteca";
   return card({
@@ -5193,19 +5206,16 @@ async function openView(id,useAdminDraft=true){
   }
   let bmSection="";
   if(section==="brandsvalidated"){
-    const interactiveInsider=true, bmPrints=interactiveInsider?[]:d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.img||x.link)),archivedAds=d.brandArchivedAds.filter(x=>x&&Array.isArray(x.media)&&x.media.some(media=>media.url));
+    const interactiveInsider=true, bmPrints=interactiveInsider?[]:d.bmPrints.filter(x=>x&&x.img),topAds=d.brandTopAds.filter(x=>x&&(x.link||brandAdMedia(x).length));
     const reportsHtml=interactiveInsider?brandReportsHtml(d,id):brandReportsStaticHtml(d);
-    const topAdName=(ad,index)=>interactiveInsider?topAdDisplayName(ad,index):(ad.nome||`Top ad ${index+1}`);
     const printsHtml=bmPrints.length?`<div class="dom__shots">${bmPrints.map((x,i)=>shotView(x.nome||`Print da BM ${i+1}`,x.img)).join("")}</div>`:`<div class="muted-empty">Nenhum print da BM anexado.</div>`;
-    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map((x,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(topAdName(x,i))}</span></div>${x.video?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(x.video)}"></video></div>`:(x.img?shotView(topAdName(x,i),x.img):"")}<div class="brand-ad-meta"><span class="chip${x.video||x.img?" accent":""}">${x.video||x.img?"Mídia salva no Swipe":x.ingestStatus==="access_required"?"Prévia exige login":x.ingestStatus==="review_required"?"Coleta não concluída":x.ingestStatus==="source_required"?"Arquivo original necessário":"Arquivamento pendente"}</span></div><div class="linkbtns" style="margin-top:12px">${x.link?linkbtn("Abrir anúncio",x.link,true,"play"):""}${x.video||x.img?linkbtn("Abrir mídia salva",x.video||x.img,false,"file"):""}</div></div>`).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
-    const archivedHtml=archivedAds.length?`<div class="taboola-grid">${archivedAds.map((ad,i)=>`<div class="dom"><div class="dom__top"><span class="dom__badge">${String(i+1).padStart(2,"0")}</span><span class="dom__name">${esc(ad.title||`Anúncio ${ad.adArchiveId}`)}</span></div><div class="brand-ad-meta"><span class="chip accent">${ad.media.length} arquivo${ad.media.length===1?"":"s"} salvo${ad.media.length===1?"":"s"}</span>${ad.adArchiveId?`<span class="chip">Meta ID ${esc(ad.adArchiveId)}</span>`:""}</div>${ad.media.map((media,index)=>`<div style="margin-top:12px">${media.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(media.url)}"></video></div>`:shotView(`Arquivo ${index+1}`,media.url)}<div class="linkbtns" style="margin-top:8px">${linkbtn(`Baixar ${media.quality==="hd"||media.quality==="original"?"original":"cópia disponível"}`,media.url,false,"file")}</div></div>`).join("")}<div class="linkbtns" style="margin-top:12px">${linkbtn("Ver anúncio na Meta",ad.link,true,"play")}</div></div>`).join("")}</div>`:"";
+    const topAdsHtml=topAds.length?`<div class="taboola-grid">${topAds.map(brandTopAdHtml).join("")}</div>`:`<div class="muted-empty">Nenhum top ad anexado.</div>`;
     const bmCore=interactiveInsider
       ?`${reportsHtml}${bmEvidenceHtml(d,id)}${d.bmNotes?`<details class="bm-history-notes"><summary>Notas dos relatórios</summary><div class="resumo">${esc(d.bmNotes)}</div></details>`:""}`
       :`${brandMetricGrid(d,true)}${d.bmNotes?`<div class="resumo" style="margin-top:16px">${esc(d.bmNotes)}</div>`:""}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Métricas por campanha e período</span><span class="sec__line"></span></div>${reportsHtml}<div class="sec__head" style="margin-top:26px"><span class="sec__title">Prints da BM</span><span class="sec__line"></span></div>${printsHtml}`;
     bmSection=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Resumo da Business Manager</span><span class="sec__line"></span></div>
       ${bmCore}
       <div class="sec__head" style="margin-top:26px"><span class="sec__title">Top ads</span><span class="sec__line"></span></div>${topAdsHtml}
-      ${archivedAds.length?`<div class="sec__head" style="margin-top:26px"><span class="sec__title">Anúncios arquivados · ${archivedAds.length}</span><span class="sec__line"></span></div><p class="muted-empty">Arquivos salvos no Swipe; continuam disponíveis mesmo se o anúncio sair do ar.</p>${archivedHtml}`:""}
     </section>`;
   }
   const discoverySection=!native&&isAdmin?adminOfferDiscoverySectionHtml(d,id,num):"";
@@ -5580,7 +5590,8 @@ function nextCreativeName(niche){
 async function syncOfferCreatives(offerRow){
   await ensureCatalogSection("criativo");
   const d=offerRow&&offerRow.data||{};
-  const items=[
+  const brand=["brandsvalidated","brandsgeneral"].includes(d.kind);
+  const items=brand?(Array.isArray(d.brandTopAds)?d.brandTopAds:[]):[
     ...(Array.isArray(d.brandTopAds)?d.brandTopAds:[]),
     ...(Array.isArray(d.criativos)?d.criativos:[]).map(item=>({
       nome:item&&item.nome,link:item&&item.link,copyLink:item&&item.transcricao,print:""
@@ -5591,10 +5602,10 @@ async function syncOfferCreatives(offerRow){
   ];
   for(const source of items){
     const link=String(source&&source.link||"").trim(),key=canonicalCreativeUrl(link);
-    if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&canonicalCreativeUrl(o.data.linkAnuncio||o.data.video||o.data.print)===key))continue;
+    if(!key||offers.some(o=>(o.data||{}).kind==="criativo"&&(!brand||o.data.sourceOfferId===offerRow.id)&&[o.data.linkAnuncio||o.data.video||o.data.print,...(o.data.sourceAdLinks||[])].some(url=>canonicalCreativeUrl(url)===key)))continue;
     const facebook=isFbUrl(link);
-    const brand=["brandsvalidated","brandsgeneral"].includes(d.kind);
     const data={kind:"criativo",nome:nextCreativeName(d.nicho),nomeOriginal:String(source.nome||"").trim(),nicho:d.nicho||"Outro",marca:d.nomeOferta||d.nomeMarca||"",plataforma:d.tipoTrafego==="native"?"taboola":"meta",linkAnuncio:link,video:"",print:String(source.print||"").trim(),copyLink:String(source.copyLink||"").trim(),transcricao:"",transcricaoPt:"",transcriptionRequired:facebook,transcriptionStatus:facebook?"waiting_for_media":"",transcricaoStatus:facebook?"waiting_for_media":"",transcriptionAttempts:0,transcriptionProvider:"groq",transcriptionVersion:"1",fbIngestStatus:facebook?"pending":"",mediaArchiveRequired:facebook,mediaArchiveStatus:facebook?"pending":"",sourceOfferId:offerRow.id,sourceOfferName:d.nomeOferta||""};
+    if(brand){const media=brandAdMedia(source);if(media.length)Object.assign(data,{video:media.find(m=>m.type==="video")?.url||"",print:media.find(m=>m.type==="image")?.url||"",archivedMedia:media,mediaArchived:true,mediaAttached:true,mediaArchiveStatus:"done",fbIngestStatus:"done"});}
     if(brand)Object.assign(data,{division:"fegbrands",brandCreativeGeneration:BRAND_CREATIVE_GENERATION,marca:d.nomeMarca||d.nomeOferta||"",collectionLabel:d.nomeMarca||d.nomeOferta||"",subnicho:d.subnicho||"",brandCategory:d.brandCategory||""});
     const result=await sb.from("offers").insert({data}).select();
     const created=result.data&&result.data[0];if(!created)continue;
@@ -8421,7 +8432,7 @@ function openSimpleView(o,skipOpen){
     if(showVideo){
       sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Criativo</span><span class="sec__line"></span></div>${videoBlock(va,d,true,d.transcricaoStatus)}${transcribeBtn(o,va,d)}</section>`;
     }
-    const extraMedia=(d.archivedMedia||[]).filter(m=>m.url&&m.url!==va&&m.url!==d.print);
+    const extraMedia=brandAdMedia(d).filter(m=>m.url!==va&&m.url!==d.print);
     if(extraMedia.length)sections+=`<section class="sec"><div class="sec__head"><span class="sec__num">${num()}</span><span class="sec__title">Outros arquivos do anúncio</span><span class="sec__line"></span></div><div class="taboola-grid">${extraMedia.map((m,i)=>`<div class="dom">${m.type==="video"?`<div class="brand-ad-media"><video controls preload="none" playsinline src="${esc(m.url)}"></video></div>`:shotView(`Imagem ${i+1}`,m.url)}<div class="linkbtns">${linkbtn("Baixar arquivo",m.url,false,"file")}</div></div>`).join("")}</div></section>`;
     if(d.print){
       const lbl=d.plataforma==="taboola"?"Anúncio (Taboola)":"Imagem";
@@ -8431,6 +8442,8 @@ function openSimpleView(o,skipOpen){
       const mediaState=fbStatusOf(o);
       sections+=mediaState==="working"||mediaState==="queued"
         ?`<div class="muted-empty">${ic("download")}A mídia está sendo anexada automaticamente a este card.</div>`
+        : ["source_required","access_required","review_required"].includes(d.mediaArchiveStatus)
+          ?`<div class="muted-empty">O link original foi preservado, mas a mídia desse anúncio ainda não pôde ser recuperada.</div>`
         :mediaState==="retry_scheduled"||mediaState==="pending"||d.mediaArchiveRequired===true
           ?`<div class="muted-empty">${ic("clock")}A mídia ainda não foi anexada. A recuperação automática continuará tentando até concluir.</div>`
           :`<div class="muted-empty">Nenhum criativo cadastrado. Clique em Editar para adicionar vídeo ou imagem.</div>`;

@@ -41,5 +41,6 @@ test("workflow do piloto limita a Ultima Peak e mantém Apify em secret", () => 
   assert.match(workflow, /APIFY_TOKEN: \$\{\{ secrets\.APIFY_TOKEN \}\}/);
   assert.match(script, /const PAGE_ID = "688168747706811"/);
   assert.match(script, /brandArchivedAds/);
-  assert.match(html, /Anúncios arquivados/);
+  assert.match(html, /data-product-top-ad/);
+  assert.doesNotMatch(html, /Anúncios arquivados ·/);
 });

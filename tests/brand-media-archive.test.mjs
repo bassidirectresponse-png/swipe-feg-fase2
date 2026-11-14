@@ -30,6 +30,17 @@ test('referências repetidas são fundidas sem perder mídia do primeiro registr
  const refs=references({brandTopAds:[{link,video:url}],criativos:[{link,nome:'Ad'}]});
  assert.equal(refs.length,1);assert.equal(refs[0].media[0].url,url);
 });
+test('somente Top ads definem a coleção; acervo histórico não cria novos vínculos',()=>{
+ const link='https://fb.me/adspreview/facebook/ABC',other='https://fb.me/adspreview/facebook/OTHER';
+ const data={brandTopAds:[{link,nome:'Enviado'}],criativos:[{link:other,nome:'Outro'}],brandArchivedAds:[{link,video:url,title:'Histórico'},{link:other,video:url+'?other'}]};
+ const before=JSON.stringify(data),refs=references(data);
+ assert.equal(refs.length,1);assert.equal(refs[0].nome,'Enviado');assert.equal(refs[0].media[0].url,url);
+ assert.equal(JSON.stringify(data),before);
+ assert.deepEqual(references({criativos:data.criativos,brandArchivedAds:data.brandArchivedAds}),[]);
+});
+test('Top ads fornecidos em quantidade maior que três não são truncados',()=>{
+ assert.equal(references({brandTopAds:Array.from({length:5},(_,i)=>({link:`https://fb.me/adspreview/facebook/AD${i}`}))}).length,5);
+});
 test('Apify exige identidade exata e preserva vídeo e imagem do carrossel',()=>{
  const link='https://fb.me/adspreview/facebook/ABC';
  const row={inputUrl:link,pageId:'123',adArchiveId:'456',snapshot:{cards:[{videoHdUrl:'https://v.fbcdn.net/a.mp4'},{originalImageUrl:'https://v.fbcdn.net/b.jpg'}]}};
