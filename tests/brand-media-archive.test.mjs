@@ -81,3 +81,14 @@ test('nova tentativa é explícita e nunca recolhe mídia pronta ou prévia bloq
  assert.equal(collectionEligible({state:'incomplete',publicCheck:{status:'login_required'}},true),false);
  assert.equal(collectionEligible({state:'running'},true),false);
 });
+test('mídia preparada exige escopo de arquivo, hash exato e bytes de vídeo',async()=>{
+ const {createHash}=await import('node:crypto');
+ const {validatePreparedBrandAsset}=await import('../netlify/functions/_brand-archive.mjs');
+ const video=Buffer.from([0,0,0,24,102,116,121,112,105,115,111,109,0,0,2,0,105,115,111,109,105,115,111,50]);
+ const hash=createHash('sha256').update(video).digest('hex');
+ assert.equal(validatePreparedBrandAsset(video,`prepared/${hash}.mp4`),video);
+ assert.throws(()=>validatePreparedBrandAsset(video,`originals/${hash}.mp4`));
+ assert.throws(()=>validatePreparedBrandAsset(video,`prepared/${'0'.repeat(64)}.mp4`));
+ const html=Buffer.from('<html>not video</html>'),badHash=createHash('sha256').update(html).digest('hex');
+ assert.throws(()=>validatePreparedBrandAsset(html,`prepared/${badHash}.mp4`));
+});

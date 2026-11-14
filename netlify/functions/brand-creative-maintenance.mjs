@@ -1,6 +1,6 @@
 import {verifyGithubAutomationToken} from './_github-oidc.mjs';
 import {readJson} from './_security.mjs';
-import {listArchiveBrands,readArchiveBrand,archiveCreatives,reconcileBrand,saveBrandCreativeMedia} from './_brand-archive.mjs';
+import {listArchiveBrands,readArchiveBrand,archiveCreatives,archiveStorageInfo,reconcileBrand,saveBrandCreativeMedia} from './_brand-archive.mjs';
 import {references,mediaOf,matchCreative} from '../../lib/brand-media-archive.mjs';
 import {startBrandCollection,brandCollectionStatus,resolveBrandMedia} from './_brand-apify-media.mjs';
 import {mergeSupabaseOfferData} from './_supabase-admin.mjs';
@@ -42,7 +42,7 @@ export function createBrandMaintenance({verify=verifyGithubAutomationToken}={}){
     const brands=body.offerId?[await readArchiveBrand(body.offerId)]:await listArchiveBrands();
     if(body.action==='inspect'){
       const out=[];for(const b of brands){const rows=await archiveCreatives(b.id);out.push({id:b.id,name:b.data.nomeMarca||b.data.nomeOferta,refs:references(b.data),summary:b.data.brandArchiveSummary,creatives:rows.map(r=>({id:r.id,data:Object.fromEntries(Object.entries(r.data).filter(([k])=>!(/transcri|analysis|copy/i.test(k))))}))});}
-      return reply(200,{ok:true,brands:out});
+      return reply(200,{ok:true,brands:out,storage:await archiveStorageInfo()});
     }
     const links=[];
     for(const b of brands){const rows=await archiveCreatives(b.id);for(const ref of references(b.data))if(!mediaOf(ref).length&&!mediaOf(matchCreative(rows,b.id,ref)?.data).length&&ref.link)links.push(ref.link);}

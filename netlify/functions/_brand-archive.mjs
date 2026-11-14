@@ -27,6 +27,12 @@ export async function readArchiveBrand(id) {
 export async function archiveCreatives(id) {
   return query({select:'id,data','data->>kind':'eq.criativo','data->>sourceOfferId':`eq.${id}`,order:'id',limit:'1000'});
 }
+export async function archiveStorageInfo() {
+  const response=await fetch(`${SUPABASE_URL}/storage/v1/bucket/criativos`,{headers:await supabaseAdminHeaders(),signal:AbortSignal.timeout(12000)});
+  if(!response.ok)return {available:false,httpStatus:response.status};
+  const bucket=await response.json();
+  return {available:true,fileSizeLimit:bucket.file_size_limit,allowedMimeTypes:bucket.allowed_mime_types};
+}
 export async function verifiedMedia(asset) {
   if (!ownedMedia(asset?.url)) return null;
   const key='verified/'+createHash('sha256').update(asset.url).digest('hex')+'.json';
@@ -43,23 +49,41 @@ export async function verifiedMedia(asset) {
     return saved;
   } catch { return null; }
 }
+export function validatePreparedBrandAsset(bytes, key) {
+  const match=/^prepared\/([a-f0-9]{64})\.mp4$/.exec(String(key || ''));
+  if(!match || !Buffer.isBuffer(bytes) || !bytes.length || bytes.length>120*1024*1024)throw new Error('Mídia preparada inválida.');
+  if(createHash('sha256').update(bytes).digest('hex')!==match[1] || detectMedia(bytes).type!=='video')throw new Error('Integridade da mídia preparada divergente.');
+  return bytes;
+}
 export async function storeBrandAsset(asset, offerId) {
   if (ownedMedia(asset?.url || asset?.sourceUrl)) {
     const verified=await verifiedMedia({...asset,url:asset.url || asset.sourceUrl});
     if(verified)return verified;
     throw new Error('Arquivo armazenado indisponível.');
   }
-  const response=await safeRemoteFetch(asset.sourceUrl,{allowedHostSuffixes:['facebook.com','fbcdn.net','fbsbx.com','akamaihd.net'],timeoutMs:40000});
-  if(!response.ok)throw new Error(`Mídia Meta: HTTP ${response.status}`);
-  const bytes=await boundedBuffer(response,120*1024*1024), detected=detectMedia(bytes);
+  let bytes;
+  if(asset.archiveKey){
+    if(!/^prepared\/[a-f0-9]{64}\.mp4$/.test(asset.archiveKey))throw new Error('Referência de mídia preparada inválida.');
+    const staged=await store().get(asset.archiveKey,{type:'arrayBuffer'});
+    bytes=validatePreparedBrandAsset(Buffer.from(staged || []),asset.archiveKey);
+  }else{
+    const response=await safeRemoteFetch(asset.sourceUrl,{allowedHostSuffixes:['facebook.com','fbcdn.net','fbsbx.com','akamaihd.net'],timeoutMs:40000});
+    if(!response.ok)throw new Error(`Mídia Meta: HTTP ${response.status}`);
+    bytes=await boundedBuffer(response,120*1024*1024);
+  }
+  const detected=detectMedia(bytes);
   if(asset.type && detected.type!==asset.type)throw new Error('Tipo de mídia divergente.');
   const sha256=createHash('sha256').update(bytes).digest('hex');
   const path=`brands/offer-topads/${offerId}/${sha256}.${detected.ext}`;
   const url=`${SUPABASE_URL}/storage/v1/object/public/criativos/${path}`;
   const reused=await verifiedMedia({type:detected.type,url});if(reused)return reused;
   const uploaded=await fetch(`${SUPABASE_URL}/storage/v1/object/criativos/${path}`,{method:'POST',headers:await supabaseAdminHeaders({'Content-Type':detected.contentType,'x-upsert':'true'}),body:bytes,signal:AbortSignal.timeout(90000)});
-  if(!uploaded.ok)throw new Error(`Armazenamento: HTTP ${uploaded.status}`);
-  const result=await verifiedMedia({type:detected.type,url,sha256,bytes:bytes.length,quality:asset.quality || 'available'});
+  if(!uploaded.ok){
+    const failure=await uploaded.json().catch(()=>({}));
+    throw new Error(`Armazenamento: HTTP ${uploaded.status} (${String(failure.code || failure.error || 'upload_failed').slice(0,60)}): ${String(failure.message || '').slice(0,100)}`);
+  }
+  const originalArchive=/^originals\/[a-f0-9]{64}\.mp4$/.test(asset.originalArchive?.key || '')?asset.originalArchive:undefined;
+  const result=await verifiedMedia({type:detected.type,url,sha256,bytes:bytes.length,quality:asset.quality || 'available',...(originalArchive?{originalArchive}: {})});
   if(!result)throw new Error('Falha na conferência do arquivo salvo.');
   return result;
 }
