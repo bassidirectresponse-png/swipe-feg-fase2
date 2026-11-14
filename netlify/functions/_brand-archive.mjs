@@ -139,8 +139,9 @@ export async function reconcileBrand(id) {
         next.video=ready.find(m=>m.type==='video')?.url || '';
         next.print=ready.find(m=>m.type==='image')?.url || '';
         if(!row)Object.assign(next,applyArchivedMedia(next,ready.find(m=>m.type==='video') || ready[0],{source:'storage-existing'}));
-      } else if(!next.mediaArchiveStatus || next.mediaArchiveStatus==='done') {
-        Object.assign(next,{mediaArchiveRequired:true,mediaArchiveStatus:'pending',fbIngestStatus:'pending',mediaAttached:false});
+      } else if(!['source_required','access_required','review_required'].includes(next.mediaArchiveStatus)) {
+        // Reconciliation reuses stored files; it must not enqueue paid collection.
+        Object.assign(next,{mediaArchiveRequired:true,mediaArchiveStatus:'review_required',fbIngestStatus:'error',mediaAttached:false,mediaArchiveNextRetryAt:'',mediaArchiveError:'Top ad vinculado; arquivo ainda não verificado. Nenhuma nova coleta iniciada.'});
       }
       if(row){if(Object.keys(shallowDataPatch(row.data,next)).length){await patchCreative(row,next);updated++;}}
       else {
